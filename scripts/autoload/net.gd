@@ -49,6 +49,9 @@ var teams := {}
 ## e vale para a partida inteira.
 var mode := "ffa"
 var lives := GameModes.DEFAULT_LIVES
+## Mapas que o anfitrião ligou ou desligou (MapList: id -> bool; o resto é automático).
+## Só o host sorteia; os convidados recebem para ver na sala.
+var maps := {}
 var team_mode: bool:
 	get:
 		return mode == "teams"
@@ -82,6 +85,7 @@ func host(port := PORT) -> Error:
 	_raw_names = names.duplicate()
 	looks = {1: GameState.look()}
 	teams = {1: 0}
+	maps = GameState.map_choices.duplicate()
 	return OK
 
 
@@ -110,6 +114,7 @@ func stop() -> void:
 	looks.clear()
 	mode = "ffa"
 	lives = GameModes.DEFAULT_LIVES
+	maps.clear()
 	teams.clear()
 	chat_log.clear()
 	_chat_last.clear()
@@ -148,6 +153,40 @@ func start_match() -> void:
 ## 2x2 só começa com 4 na sala, 2 em cada time.
 func teams_ready() -> bool:
 	return lobby_count == 4 and teams.values().count(0) == 2 and teams.values().count(1) == 2
+
+
+## Quantos vão estar na arena com a sala como está (o Duelos monta sempre para 2): decide o
+## automático dos mapas grandes.
+func arena_players() -> int:
+	return 2 if mode == "duels" else lobby_count
+
+
+## Host: liga ou desliga um mapa. O último ligado não desliga.
+func set_map(index: int, on: bool) -> void:
+	if not multiplayer.is_server():
+		return
+	var next := maps.duplicate()
+	next[MapList.id(index)] = on
+	if not on and range(MapList.count()).filter(func(i): return MapList.is_on(next, i, arena_players())).is_empty():
+		return
+	_set_maps(next)
+
+
+## Host: liga todos, ou volta todos ao automático (choices vazio).
+func set_all_maps(on_all: bool) -> void:
+	if not multiplayer.is_server():
+		return
+	var next := {}
+	if on_all:
+		for i in MapList.count():
+			next[MapList.id(i)] = true
+	_set_maps(next)
+
+
+func _set_maps(next: Dictionary) -> void:
+	maps = next
+	GameState.set_map_choices(maps)
+	_broadcast_lobby()
 
 
 ## Host: troca o modo de jogo e as vidas do Duelos.
@@ -327,17 +366,19 @@ func _broadcast_lobby() -> void:
 	for id in ids:
 		if not teams.has(id):
 			teams[id] = 0 if teams.values().count(0) <= teams.values().count(1) else 1
-	_lobby.rpc(ids.size(), _unique_names(ids), mode, lives, teams, looks)
+	_lobby.rpc(ids.size(), _unique_names(ids), mode, lives, teams, looks, maps)
 
 
 @rpc("authority", "call_local", "reliable")
-func _lobby(count: int, all_names: Dictionary, p_mode: String, p_lives: int, p_teams: Dictionary, all_looks: Dictionary) -> void:
+func _lobby(count: int, all_names: Dictionary, p_mode: String, p_lives: int, p_teams: Dictionary,
+		all_looks: Dictionary, p_maps: Dictionary) -> void:
 	lobby_count = count
 	names = all_names
 	looks = all_looks
 	mode = p_mode
 	lives = p_lives
 	teams = p_teams
+	maps = p_maps
 	lobby_changed.emit(count)
 
 

@@ -36,7 +36,7 @@ var round_num := 0
 var phase := Phase.WAIT
 var arena: Arena
 # Só usados no host:
-var last_style := -1
+var last_map := -1
 var pending_picks: Array = []
 var votes := {}
 var last_losers: Array = []
@@ -225,10 +225,11 @@ func _host_draft(who: Array, title: String, size := DRAFT_SIZE) -> void:
 
 
 func _host_start_round() -> void:
-	var style := randi() % Arena.STYLES.size()
-	if style == last_style:
-		style = (style + 1 + randi() % (Arena.STYLES.size() - 1)) % Arena.STYLES.size()
-	last_style = style
+	# Mapa (MapList): online, os que o anfitrião deixou ligados; no treino, pelo número de bots.
+	var arena_count := 2 if mode == "duels" else players.size()
+	var pool := MapList.enabled(Net.maps, arena_count) if Net.online else MapList.training(players.size() - 1)
+	var map_index := MapList.pick(pool, last_map)
+	last_map = map_index
 	var duel := {}
 	if mode == "duels":
 		if duel_pair.is_empty():
@@ -237,7 +238,7 @@ func _host_start_round() -> void:
 			duel_queue.shuffle()
 			duel_pair = [duel_queue.pop_front(), duel_queue.pop_front()]
 		duel = {"pair": duel_pair, "lives": lives, "queue": duel_queue}
-	_all("net_start_round", [round_num + 1, style, randi(), duel])
+	_all("net_start_round", [round_num + 1, map_index, randi(), duel])
 
 
 ## A rodada acaba quando sobra no máximo um vivo (no 2x2, um time com alguém de pé).
@@ -446,16 +447,17 @@ func net_card_picked(node_name: String, card: String) -> void:
 			_host_start_round()
 
 
-## duel: no Duelos, {"pair": [quem duela], "lives": vidas, "queue": a fila}; vazio nos outros.
+## map_index: o mapa (MapList, estilo e tamanho). duel: no Duelos, {"pair": [quem duela],
+## "lives": vidas, "queue": a fila}; vazio nos outros.
 @rpc("authority", "call_local", "reliable")
-func net_start_round(number: int, style: int, seed_value: int, duel: Dictionary) -> void:
+func net_start_round(number: int, map_index: int, seed_value: int, duel: Dictionary) -> void:
 	round_num = number
 	_clear_bullets()
 	if not duel.is_empty():
 		duel_pair = duel["pair"]
 		lives = duel["lives"]
 		duel_queue = duel["queue"]
-	_build_arena(style, seed_value, 2 if mode == "duels" else players.size())
+	_build_arena(map_index, seed_value, 2 if mode == "duels" else players.size())
 	_reset_players()
 	hud.set_score(score, round_num, _block_end())
 	var title := "Rodada %d" % round_num
@@ -466,10 +468,10 @@ func net_start_round(number: int, style: int, seed_value: int, duel: Dictionary)
 			title += "\nVocê assiste este duelo" if lives.get(String(me.name), 0) > 0 else ""
 	phase = Phase.COUNTDOWN
 	_capture_mouse()
-	_log("rodada %d: %s, tema %s%s" % [round_num, arena.style_name, arena.theme_name,
+	_log("rodada %d: %s, ambiente %s%s" % [round_num, arena.map_name, arena.theme_name,
 		" (duelo %s x %s)" % duel_pair.map(func(n): return _player(n).player_name) if mode == "duels" else ""])
 	for n in [3, 2, 1]:
-		hud.show_center("%s: %s (%s)\n%d" % [title, arena.style_name, arena.theme_name, n])
+		hud.show_center("%s: %s (%s)\n%d" % [title, arena.map_name, arena.theme_name, n])
 		await get_tree().create_timer(0.8, false).timeout
 		if phase != Phase.COUNTDOWN:
 			return
@@ -634,13 +636,13 @@ func _bullet(id: String) -> Bullet:
 
 # ---------------------------------------------------------------- utilidades
 
-func _build_arena(style: int, seed_value: int, count := -1) -> void:
+func _build_arena(map_index: int, seed_value: int, count := -1) -> void:
 	if arena:
 		remove_child(arena)
 		arena.queue_free()
 	arena = Arena.new()
 	add_child(arena)
-	arena.build(style, seed_value, players.size() if count < 0 else count)
+	arena.build(map_index, seed_value, players.size() if count < 0 else count)
 	ArenaTheme.apply_environment(arena.palette, $WorldEnvironment.environment, $Sun)
 	for item in arena.pickups:
 		item.taken.connect(_on_pickup_taken)

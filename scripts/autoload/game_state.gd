@@ -107,6 +107,11 @@ var test_master := ""
 var test_cards: Array = []
 ## Teste: "--tema=2" força o tema das arenas (índice em ArenaTheme.THEMES).
 var test_theme := -1
+## Teste: "--tamanho=grande" faz o treino usar só mapas desse tamanho (MapList.SIZES).
+var test_size := -1
+## Mapas que o anfitrião ligou ou desligou na sala (id de MapList -> bool; o que não está
+## aqui é automático). Salvo em settings.cfg para a próxima sala.
+var map_choices := {}
 
 
 func _ready() -> void:
@@ -119,6 +124,8 @@ func _ready() -> void:
 			test_cards = Array(arg.trim_prefix("--cartas=").split(",")).filter(func(c): return CardDB.CARDS.has(c))
 		if arg.begins_with("--tema="):
 			test_theme = int(arg.trim_prefix("--tema="))
+		if arg.begins_with("--tamanho="):
+			test_size = MapList.size_index(arg.trim_prefix("--tamanho="))
 	for n in [2, 3]:
 		if "--bots=%d" % n in OS.get_cmdline_user_args():
 			bot_count = n
@@ -128,6 +135,9 @@ func _ready() -> void:
 		mode = saved_mode if saved_mode in GameModes.ids() else mode
 		var saved_lives: int = cfg_modes.get_value("treino", "vidas", lives)
 		lives = saved_lives if saved_lives in GameModes.LIVES_OPTIONS else lives
+		var saved_maps = cfg_modes.get_value("sala", "mapas", {})
+		if saved_maps is Dictionary:
+			map_choices = saved_maps
 	# Teste: "--2x2" (com 3 bots), "--duelos" e "--vidas=5".
 	if "--2x2" in OS.get_cmdline_user_args():
 		mode = "teams"
@@ -336,6 +346,12 @@ func set_mode(id: String, p_lives: int) -> void:
 	if not autotest:
 		_save_setting("treino", "modo", mode)
 		_save_setting("treino", "vidas", lives)
+
+
+func set_map_choices(choices: Dictionary) -> void:
+	map_choices = choices.duplicate()
+	if not autotest:
+		_save_setting("sala", "mapas", map_choices)
 
 
 func set_show_fps(value: bool) -> void:

@@ -5,7 +5,9 @@ extends Node3D
 ## os lados são idênticos e ninguém começa com vantagem de mapa.
 ## O mesmo número (seed) gera sempre o mesmo mapa, o que vai servir para a rede:
 ## basta mandar o estilo e a seed para o outro jogador.
-## Para criar um estilo novo: acrescente o nome em STYLES e um caso no match de build().
+## Para criar um estilo novo: acrescente o nome em STYLES, o id em MapList.STYLE_IDS e um
+## caso no match de build(). O tamanho (pequeno, médio, grande) vem de MapList.SIZES: muda o
+## lado do mapa e quantas peças entram (_n); o grande ganha muros que dividem os lados.
 ## A aparência (cores, texturas, céu) vem do tema (ArenaTheme), sorteado à parte pela seed.
 ##
 ## Altura conta: o pulo sobe ~2,2 m e a escalada de beirada alcança 2,2 m acima dos pés,
@@ -28,8 +30,17 @@ const FLOOR_CELL := 2.0   # o chão com buracos é montado em faixas desta largu
 ## O chão desce até abaixo do vazio, como um penhasco: quem cai fica ao lado da parede e
 ## pode escalar de volta, sem um vão embaixo do mapa onde ficar preso.
 const FLOOR_DEPTH := 8.0
+## Mapa grande: altura, quantas passagens por muro e a largura de cada uma.
+const DIVIDER_HEIGHT := 10.0
+const DIVIDER_GAPS := 2
+const DIVIDER_GAP_WIDTH := 5.0
+## Ruínas: chance de cada trecho da grade ter muro (no grande menos, por desempenho).
+const RUIN_WALLS := [0.38, 0.3]
 
 var style_name := ""
+var map_name := ""      # estilo e tamanho ("Ruínas grande")
+var density := 1.0      # quantas vezes mais peças que no mapa pequeno (MapList.SIZES)
+var divided := false    # grande: muros do centro até a borda entre os lados (_dividers)
 var half := 35.0
 var copies := 2
 var spawns: Array[Transform3D] = []
@@ -46,11 +57,16 @@ var _materials := {}
 var _tex_by_color := {}   # cor do papel -> textura do papel (ver _material)
 
 
-func build(style: int, seed_value: int, player_count := 2) -> void:
+func build(map_index: int, seed_value: int, player_count := 2) -> void:
 	rng.seed = seed_value
 	copies = player_count
+	var style := MapList.style_of(map_index)
+	var size: Dictionary = MapList.SIZES[MapList.size_of(map_index)]
 	style_name = STYLES[style]
-	half = rng.randf_range(32.0, 42.0) + (copies - 2) * 4.0   # mais gente, arena maior
+	map_name = MapList.map_name(map_index)
+	density = size["density"]
+	divided = size["divided"]
+	half = rng.randf_range(size["half"].x, size["half"].y) + (copies - 2) * 4.0   # mais gente, arena maior
 	palette = ArenaTheme.THEMES[ArenaTheme.pick(seed_value)]
 	theme_name = palette["name"]
 	for role in palette["tex"]:
@@ -63,8 +79,10 @@ func build(style: int, seed_value: int, player_count := 2) -> void:
 		spawns.append(Transform3D(turn, turn * Vector3(0, 0.1, spawn_z)))
 	_reserve(0.0, spawn_z, SPAWN_CLEAR)
 	open_edges = rng.randf() < OPEN_CHANCE
+	if divided:
+		_dividers()
 	if rng.randf() < PIT_CHANCE:
-		_pits(rng.randi_range(1, 2))
+		_pits(_n(1, 2))
 	_floor_and_walls()
 	_void_plane()
 	match style:
@@ -72,7 +90,8 @@ func build(style: int, seed_value: int, player_count := 2) -> void:
 		1: _style_ruins()
 		2: _style_towers()
 		3: _style_factory()
-	_pickups()
+	for i in size["items"]:
+		_pickups()
 	# Malha de navegação para o bot achar caminho. Só o que é fixo entra nela.
 	nav.bake_navigation_mesh(false)
 
@@ -97,12 +116,12 @@ func _setup_nav() -> void:
 ## Aberto: obstáculos espalhados, plataformas com rampa.
 func _style_patio() -> void:
 	_center_piece()
-	for i in rng.randi_range(2, 3):
+	for i in _n(2, 3):
 		_random_platform(rng.randf_range(3.0, 4.5), rng.randf_range(6.0, 8.0), false, rng.randf() < 0.5)
-	_scatter(rng.randi_range(10, 14))
-	_floating(rng.randi_range(1, 2))
-	_jump_pads(rng.randi_range(2, 3))
-	_sliders(rng.randi_range(0, 1))
+	_scatter(_n(10, 14))
+	_floating(_n(1, 2))
+	_jump_pads(_n(2, 3))
+	_sliders(_n(0, 1))
 
 
 ## Labirinto aberto: muros numa grade, com vãos de 2 m em todo cruzamento (sempre há passagem).
@@ -119,11 +138,11 @@ func _style_ruins() -> void:
 					continue
 				if absf(c.x) > half - 3.0 or absf(c.z) > half - 3.0:
 					continue
-				if rng.randf() > 0.38:
+				if rng.randf() > RUIN_WALLS[1 if divided else 0]:
 					continue
 				if _in_pit_margin(c.x, c.z, 3.5):
 					continue
-				if copies > 2 and not _is_free(c.x, c.z, 2.0):
+				if (copies > 2 or divided) and not _is_free(c.x, c.z, 2.0):
 					continue
 				if copies == 2 and Vector2(c.x, c.z).distance_to(Vector2(0, half - 4.0)) < SPAWN_CLEAR + 1.0:
 					continue
@@ -133,16 +152,17 @@ func _style_ruins() -> void:
 				var basis := Basis() if along_x else Basis(Vector3.UP, PI / 2.0)
 				_pair(c, Vector3(cell - 2.0, h, 0.7), basis, palette["wall"] if tall else palette["cover"])
 				_reserve(c.x, c.z, 2.5)
-	_scatter(rng.randi_range(3, 5))
-	_random_platform(rng.randf_range(3.0, 4.0), 6.0, false)
-	_floating(1)
-	_jump_pads(2)
-	_sliders(rng.randi_range(0, 1))
+	_scatter(_n(3, 5))
+	for i in _n(1, 1):
+		_random_platform(rng.randf_range(3.0, 4.0), 6.0, false)
+	_floating(_n(1, 1))
+	_jump_pads(_n(2, 2))
+	_sliders(_n(0, 1))
 
 
 ## Vertical: torres com rampas e elevadores, às vezes uma ponte elevada no centro.
 func _style_towers() -> void:
-	if rng.randf() < 0.6:
+	if rng.randf() < 0.6 and not divided:
 		var h := 6.0
 		_box(nav, Vector3(0, h - 0.25, 0), Vector3(8, 0.5, 8), Basis(), palette["cover"])
 		_box(nav, Vector3(0, (h - 0.5) / 2.0, 0), Vector3(2, h - 0.5, 2), Basis(), palette["wall"])
@@ -151,27 +171,65 @@ func _style_towers() -> void:
 		_reserve(0, 0, 4.0 + h / tan(deg_to_rad(RAMP_ANGLE)) + 1.0)
 	else:
 		_center_piece()
-	for i in rng.randi_range(2, 3):
+	for i in _n(2, 3):
 		_random_platform(rng.randf_range(5.0, 7.5), rng.randf_range(6.0, 8.0), rng.randf() < 0.6, true)
-	_scatter(rng.randi_range(5, 7))
-	_floating(rng.randi_range(2, 3))
-	_jump_pads(3)
+	_scatter(_n(5, 7))
+	_floating(_n(2, 3))
+	_jump_pads(_n(3, 3))
 
 
 ## Industrial: muros que deslizam, barras giratórias para pular e elevador.
 func _style_factory() -> void:
-	_spinners(rng.randi_range(1, 2))
-	_sliders(rng.randi_range(2, 3))
-	_random_platform(rng.randf_range(5.0, 6.5), 7.0, true, rng.randf() < 0.5)
-	_scatter(rng.randi_range(6, 9))
-	_floating(1)
-	_jump_pads(2)
+	_spinners(_n(1, 2))
+	_sliders(_n(2, 3))
+	for i in _n(1, 1):
+		_random_platform(rng.randf_range(5.0, 6.5), 7.0, true, rng.randf() < 0.5)
+	_scatter(_n(6, 9))
+	_floating(_n(1, 1))
+	_jump_pads(_n(2, 2))
 
 
 # ---------------------------------------------------------------- peças
 
+## Quantas peças de um tipo: o sorteio do mapa pequeno vezes a densidade do tamanho.
+func _n(lo: int, hi: int) -> int:
+	var base := rng.randi_range(lo, hi) if lo != hi else lo
+	return int(round(base * density))
+
+
+## Mapa grande: um muro alto do centro até a borda entre os lados de cada jogador (com 2,
+## uma linha que corta o mapa; com 4, uma cruz), com passagens. Assim duas lutas em cantos
+## diferentes não se veem. Alto demais para subir pela parede (a escalada chega a ~7 m).
+func _dividers() -> void:
+	var dir := Vector3(sin(PI / copies), 0, cos(PI / copies))   # a meio caminho entre dois lados
+	var reach := (half - 1.0) / maxf(absf(dir.x), absf(dir.z))   # até a borda quadrada
+	var gaps: Array = []
+	for i in DIVIDER_GAPS:
+		gaps.append(rng.randf_range(0.22, 0.85) * reach)
+	gaps.sort()
+	# Passagens não podem se encostar.
+	for i in range(1, gaps.size()):
+		gaps[i] = maxf(gaps[i], gaps[i - 1] + DIVIDER_GAP_WIDTH * 2.0)
+	var start := 0.0
+	for edge in gaps + [reach]:
+		var end: float = edge - DIVIDER_GAP_WIDTH / 2.0 if edge < reach else reach
+		if end - start > 1.0:
+			var mid := dir * ((start + end) / 2.0) + Vector3.UP * DIVIDER_HEIGHT / 2.0
+			_pair(mid, Vector3(1.2, DIVIDER_HEIGHT, end - start), Basis(Vector3.UP, PI / copies), palette["wall"])
+		start = edge + DIVIDER_GAP_WIDTH / 2.0
+	# Reserva a faixa inteira, passagens incluídas, para nada tapar a passagem.
+	var r := 2.5
+	var d := 0.0
+	while d <= reach:
+		var p := dir * d
+		_reserve(p.x, p.z, r)
+		d += r
+
 func _center_piece() -> void:
-	match rng.randi() % 3:
+	var kind := rng.randi() % 3
+	if divided:
+		return   # o centro é onde os muros do mapa grande se encontram
+	match kind:
 		0:
 			_box(nav, Vector3(0, 1.5, 0), Vector3(4, 3, 4), Basis(Vector3.UP, rng.randf_range(0, PI)), palette["wall"])
 			_reserve(0, 0, 4.0)

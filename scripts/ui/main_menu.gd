@@ -29,6 +29,8 @@ var solo_modes: ModePicker   # modo do treino
 var solo_bots: Array = []    # botões de 1, 2 e 3 bots
 var start_solo: Button
 var lobby_modes: ModePicker  # modo da sala (só o anfitrião mexe)
+var maps_button: Button      # abre a lista de mapas da sala (MapPicker)
+var map_picker: MapPicker
 var shuffle_button: Button
 var nick_edits: Array = []   # o campo de nome aparece na Sala e em Configurações
 var nick_timer: Timer        # espera a pessoa parar de digitar para mandar o nome à sala
@@ -69,6 +71,8 @@ func _ready() -> void:
 	for p in pages.values():
 		p.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		stack.add_child(p)
+	map_picker = MapPicker.new()
+	add_child(map_picker)
 	_show(Page.HOME)
 	if GameState.from_lobby:
 		# Voltando dos Baralhos com a sala aberta.
@@ -98,6 +102,8 @@ func _ready() -> void:
 
 func _show(p: Page) -> void:
 	page = p
+	if map_picker and p != Page.LOBBY:
+		map_picker.close()
 	for k in pages:
 		pages[k].visible = k == p
 
@@ -111,7 +117,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			Page.CUSTOM:
 				_close_custom()
 			Page.LOBBY:
-				_leave_lobby()
+				if map_picker.visible:
+					map_picker.close()
+				else:
+					_leave_lobby()
 
 
 # ---------------------------------------------------------------- páginas
@@ -272,6 +281,8 @@ func _lobby_page() -> Control:
 	lobby_modes = ModePicker.new("ffa", GameModes.DEFAULT_LIVES)
 	lobby_modes.changed.connect(func(m, n): Net.set_mode(m, n))
 	right.add_child(lobby_modes)
+	maps_button = Ui.button("Mapas", func(): map_picker.open())
+	right.add_child(maps_button)
 	right.add_child(Ui.gap(6))
 	lobby_info = Ui.label("", 16, Ui.TEXT)
 	lobby_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -600,6 +611,7 @@ func _refresh_lobby() -> void:
 				lobby_slots.add_child(_empty_slot())
 	shuffle_button.visible = host and Net.team_mode
 	lobby_modes.set_state(Net.mode, Net.lives, host)
+	maps_button.text = MapPicker.summary() + ("" if host else "  (ver)")
 	var reason := GameModes.blocked_reason(Net.mode, count)
 	if not host:
 		lobby_modes.set_note("Só o anfitrião escolhe o modo.")
