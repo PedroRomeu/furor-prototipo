@@ -1,8 +1,10 @@
 class_name SettingsPanel
 extends HBoxContainer
-## Configurações em dois painéis: geral (nome, mouse, qualidade, som, FPS, créditos) e
-## controles (troca de teclas). Usado no menu principal e no menu de pausa da partida.
-## Tudo é salvo na hora pelo GameState.
+## Configurações por categoria (2026-10-05, pedido do usuário; antes era tudo numa tela):
+## lista à esquerda e, à direita, só a categoria aberta, como na maioria dos jogos.
+## Perfil (nome, só no menu principal), Vídeo, Áudio, Controles (mouse e teclas) e
+## Créditos. Usado no menu principal e no menu de pausa da partida; a última categoria
+## aberta volta aberta. Tudo é salvo na hora pelo GameState.
 
 const QUALITY_NAMES := ["Baixa", "Média", "Alta"]
 const QUALITY_HINTS := [
@@ -11,55 +13,107 @@ const QUALITY_HINTS := [
 	"Sombras detalhadas, brilho, névoa e antisserrilhado. Pesada em placa de vídeo integrada.",
 ]
 
+static var _last_tab := ""
+
 var bind_buttons := {}   # [ação, vaga] -> Button
 var bind_hint: Label
 var rebind_action := ""   # esperando tecla para esta ação ("" = não)
 var rebind_slot := 0
+var _tabs := {}           # nome -> [botão da lista, página]
 
 
-## nick_field: campo do nome (o menu principal manda o seu); null esconde o nome.
+## nick_field: campo do nome (o menu principal manda o seu); null tira a categoria Perfil.
 func _init(nick_field: Control = null) -> void:
 	add_theme_constant_override("separation", 20)
-	# Coluna geral rolável: com o som ela passa da altura da tela em 1280x720.
+	var nav := Ui.vbox(6)
+	nav.custom_minimum_size.x = 220
+	add_child(nav)
 	var holder := Ui.panel(self)
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	holder.add_child(scroll)
-	var panel := Ui.vbox(10)
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.add_child(panel)
+	var group := ButtonGroup.new()
+	var pages: Array = []
 	if nick_field:
-		panel.add_child(Ui.label("Seu nome (o que os amigos veem online)", 14, Ui.MUTED))
-		panel.add_child(nick_field)
-		panel.add_child(Ui.gap(8))
-	panel.add_child(Ui.label("Sensibilidade do mouse", 14, Ui.MUTED))
-	panel.add_child(_sens_row())
-	panel.add_child(Ui.gap(8))
-	panel.add_child(Ui.label("Qualidade gráfica", 14, Ui.MUTED))
+		pages.append(["Perfil", _profile_page(nick_field)])
+	pages.append_array([["Vídeo", _video_page()], ["Áudio", _audio_page()],
+		["Controles", _controls_page()], ["Créditos", _credits_page()]])
+	for entry in pages:
+		var title: String = entry[0]
+		var b := Button.new()
+		b.text = title
+		b.toggle_mode = true
+		b.button_group = group
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.custom_minimum_size.y = 46
+		b.add_theme_font_size_override("font_size", 17)
+		b.pressed.connect(_open.bind(title))
+		nav.add_child(b)
+		var page: Control = entry[1]
+		page.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		page.visible = false
+		holder.add_child(page)
+		_tabs[title] = [b, page]
+	_open(_last_tab if _tabs.has(_last_tab) else String(pages[0][0]))
+
+
+func _open(title: String) -> void:
+	stop_rebind()
+	_last_tab = title
+	for t in _tabs:
+		_tabs[t][0].set_pressed_no_signal(t == title)
+		_tabs[t][1].visible = t == title
+
+
+## Página com título e uma frase curta embaixo.
+func _page(title: String, subtitle: String) -> VBoxContainer:
+	var col := Ui.vbox(10)
+	col.add_child(Ui.label(title, 22, Ui.TEXT, true))
+	if subtitle != "":
+		var sub := Ui.label(subtitle, 14, Ui.MUTED)
+		sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		col.add_child(sub)
+	col.add_child(Ui.gap(8))
+	return col
+
+
+func _profile_page(nick_field: Control) -> Control:
+	var col := _page("Perfil", "Como os outros jogadores te veem online. Também dá para mudar dentro da sala.")
+	col.add_child(Ui.label("Seu nome", 14, Ui.MUTED))
+	col.add_child(nick_field)
+	return col
+
+
+func _video_page() -> Control:
+	var col := _page("Vídeo", "")
+	col.add_child(Ui.label("Qualidade gráfica", 14, Ui.MUTED))
 	var hint := Ui.label(QUALITY_HINTS[GameState.quality], 14, Ui.MUTED)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	panel.add_child(Ui.segmented(QUALITY_NAMES, GameState.quality, func(i):
+	col.add_child(Ui.segmented(QUALITY_NAMES, GameState.quality, func(i):
 		GameState.set_quality(i)
 		hint.text = QUALITY_HINTS[i]))
-	panel.add_child(hint)
-	panel.add_child(Ui.gap(8))
-	panel.add_child(Ui.label("Som", 14, Ui.MUTED))
-	for b in GameState.AUDIO_BUSES:
-		panel.add_child(_volume_row(b[0], b[1]))
-	panel.add_child(Ui.gap(8))
+	col.add_child(hint)
+	col.add_child(Ui.gap(12))
 	var fps := CheckButton.new()
 	fps.text = "Mostrar FPS na partida"
 	fps.button_pressed = GameState.show_fps
 	fps.toggled.connect(GameState.set_show_fps)
-	panel.add_child(fps)
-	panel.add_child(Ui.grow())
-	var credits := Ui.label("Créditos: modelos e sons de Kenney (CC0). Ícones das cartas de game-icons.net, "
-		+ "por Lorc, Delapouite, Caro Asercion, Felbrigg, HeavenlyDog, John Colburn, Sbed e Skoll (CC BY 3.0).", 12, Ui.MUTED)
-	credits.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	panel.add_child(credits)
-	_controls_panel()
+	col.add_child(fps)
+	return col
+
+
+func _audio_page() -> Control:
+	var col := _page("Áudio", "Solte a barra para ouvir um exemplo.")
+	col.add_theme_constant_override("separation", 16)
+	for b in GameState.AUDIO_BUSES:
+		col.add_child(_volume_row(b[0], b[1]))
+	return col
+
+
+func _credits_page() -> Control:
+	var col := _page("Créditos", "")
+	var text := Ui.label("Modelos e sons de Kenney (kenney.nl), CC0.\n\nÍcones das cartas de game-icons.net, "
+		+ "por Lorc, Delapouite, Caro Asercion, Felbrigg, HeavenlyDog, John Colburn, Sbed e Skoll (CC BY 3.0).", 15, Ui.TEXT)
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(text)
+	return col
 
 
 func _sens_row() -> Control:
@@ -120,11 +174,14 @@ func _volume_row(bus: String, title: String) -> Control:
 
 ## Controles: uma linha por ação, com duas vagas de tecla. Clicar numa vaga e apertar a
 ## tecla (ou botão do mouse) nova; Esc cancela; botão direito na vaga a esvazia.
-func _controls_panel() -> void:
-	var col := Ui.panel(self)
+func _controls_page() -> Control:
+	var col := _page("Controles", "")
+	col.add_child(Ui.label("Sensibilidade do mouse", 14, Ui.MUTED))
+	col.add_child(_sens_row())
+	col.add_child(Ui.gap(8))
 	var top := Ui.hbox(8)
 	col.add_child(top)
-	top.add_child(Ui.label("Controles", 14, Ui.MUTED))
+	top.add_child(Ui.label("Teclas", 14, Ui.MUTED))
 	top.add_child(Ui.spacer())
 	top.add_child(Ui.flat(Ui.button("Restaurar padrão", func():
 		stop_rebind()
@@ -158,6 +215,7 @@ func _controls_panel() -> void:
 	bind_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(bind_hint)
 	_refresh_binds()
+	return col
 
 
 func _start_rebind(action: String, slot: int) -> void:

@@ -46,7 +46,8 @@ velocidade, e no ar dá para virar sem perder embalo. Dash no ar segurando Ctrl 
 deslizando. Pulando contra um muro e segurando W, o personagem escala a beirada (até 2,2 m
 acima dos pés): caixotes servem de degrau para os andares de cima.
 
-Configurações (no menu): seu nome (o que os amigos veem online; também dá para mudar
+Configurações (no menu e no Esc da partida), separadas em Perfil, Vídeo, Áudio, Controles e
+Créditos: seu nome (o que os amigos veem online; também dá para mudar
 dentro da sala), volume (Geral, Efeitos, Interface e Música; ao soltar a barra toca um
 exemplo), sensibilidade do mouse, qualidade gráfica (Baixa, Média, Alta), contador
 de FPS e troca de teclas (clique na tecla e aperte a nova; botão direito apaga). Num Intel HD a Alta roda a ~14 FPS; Média e Baixa, a 45-60.
