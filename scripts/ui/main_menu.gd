@@ -12,7 +12,6 @@ extends Control
 enum Page { HOME, PLAY, LOBBY, SETTINGS, CUSTOM }
 
 const SETTINGS_PATH := "user://settings.cfg"
-const MODES := ["", "", "1x1", "1x1x1", "1x1x1x1"]
 
 var page := Page.HOME
 var pages := {}
@@ -26,9 +25,10 @@ var lobby_slots: VBoxContainer
 var lobby_info: Label
 var start_button: Button
 var deck_picks: Array = []   # OptionButton do baralho em Jogar e na Sala, sempre iguais
-var solo_format: Control     # Cada um por si ou 2x2, só com 3 bots
-var lobby_format: Array = [] # botões do formato na sala
-var lobby_format_note: Label
+var solo_modes: ModePicker   # modo do treino
+var solo_bots: Array = []    # botões de 1, 2 e 3 bots
+var start_solo: Button
+var lobby_modes: ModePicker  # modo da sala (só o anfitrião mexe)
 var shuffle_button: Button
 var nick_edits: Array = []   # o campo de nome aparece na Sala e em Configurações
 var nick_timer: Timer        # espera a pessoa parar de digitar para mandar o nome à sala
@@ -155,22 +155,26 @@ func _play_page() -> Control:
 	solo.add_child(Ui.label("Treino", 26, Ui.TEXT, true))
 	solo.add_child(Ui.label("Contra bots, no seu computador.", 15, Ui.MUTED))
 	solo.add_child(Ui.gap(8))
+	solo.add_child(Ui.label("Modo de jogo", 14, Ui.MUTED))
+	solo_modes = ModePicker.new(GameState.mode, GameState.lives)
+	solo_modes.changed.connect(func(m, n):
+		GameState.set_mode(m, n)
+		if m == "teams":
+			_set_bots(3)   # 2x2 no treino é você e um bot contra dois
+		_refresh_solo())
+	solo.add_child(solo_modes)
+	solo.add_child(Ui.gap(4))
 	solo.add_child(Ui.label("Adversários", 14, Ui.MUTED))
-	solo.add_child(Ui.segmented(["1 bot", "2 bots", "3 bots"], bot_count - 1, func(i):
+	var bots := Ui.segmented(["1 bot", "2 bots", "3 bots"], bot_count - 1, func(i):
 		bot_count = i + 1
-		solo_format.visible = bot_count == 3))
-	solo_format = Ui.vbox(10)
-	solo_format.add_child(Ui.gap(4))
-	solo_format.add_child(Ui.label("Formato", 14, Ui.MUTED))
-	solo_format.add_child(Ui.segmented(["Cada um por si", "2x2"], 1 if GameState.team_mode else 0,
-		func(i): GameState.team_mode = i == 1))
-	solo_format.add_child(Ui.label("2x2: você e um bot aliado contra dois bots.", 13, Ui.MUTED))
-	solo_format.visible = bot_count == 3
-	solo.add_child(solo_format)
+		_refresh_solo())
+	solo_bots = bots.get_children()
+	solo.add_child(bots)
 	solo.add_child(Ui.grow())
-	var start_solo := Ui.accent(Ui.button("Começar treino", _play_bots))
+	start_solo = Ui.accent(Ui.button("Começar treino", _play_bots))
 	start_solo.custom_minimum_size.y = 48
 	solo.add_child(start_solo)
+	_refresh_solo()
 
 	var online := Ui.panel(row)
 	online.add_child(Ui.label("Online", 26, Ui.TEXT, true))
@@ -264,13 +268,10 @@ func _lobby_page() -> Control:
 	deck_line.add_child(Ui.button("Editar", _open_decks_from_lobby, 100))
 	right.add_child(deck_line)
 	right.add_child(Ui.gap(6))
-	right.add_child(Ui.label("Formato", 14, Ui.MUTED))
-	var format_row := Ui.segmented(["Cada um por si", "2x2"], 0, func(i): Net.set_team_mode(i == 1))
-	lobby_format = format_row.get_children()
-	right.add_child(format_row)
-	lobby_format_note = Ui.label("", 13, Ui.MUTED)
-	lobby_format_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	right.add_child(lobby_format_note)
+	right.add_child(Ui.label("Modo de jogo", 14, Ui.MUTED))
+	lobby_modes = ModePicker.new("ffa", GameModes.DEFAULT_LIVES)
+	lobby_modes.changed.connect(func(m, n): Net.set_mode(m, n))
+	right.add_child(lobby_modes)
 	right.add_child(Ui.gap(6))
 	lobby_info = Ui.label("", 16, Ui.TEXT)
 	lobby_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -519,6 +520,25 @@ func _open_decks_from_lobby() -> void:
 	_open_decks()
 
 
+func _set_bots(n: int) -> void:
+	bot_count = n
+	for i in solo_bots.size():
+		solo_bots[i].set_pressed_no_signal(i == n - 1)
+
+
+## Treino: o modo precisa caber no número de bots (2x2 = 3 bots); senão, avisa e trava.
+func _refresh_solo() -> void:
+	var reason := GameModes.blocked_reason(GameState.mode, bot_count + 1)
+	if GameState.mode == "teams":
+		reason = "" if bot_count == 3 else "2x2 no treino é com 3 bots: você e um aliado contra dois."
+		solo_modes.set_note("Você e um bot aliado contra dois bots." if reason == "" else reason, reason != "")
+	elif GameState.mode == "duels":
+		solo_modes.set_note("Você e os bots duelam um de cada vez; quem espera assiste.")
+	else:
+		solo_modes.set_note("")
+	start_solo.disabled = reason != ""
+
+
 func _play_bots() -> void:
 	GameState.bot_count = bot_count
 	get_tree().change_scene_to_file("res://scenes/match.tscn")
@@ -529,8 +549,8 @@ func _host() -> void:
 	if err != OK:
 		_play_error("Não deu para abrir a porta %d (erro %d). Outro programa já está usando?" % [Net.PORT, err])
 		return
-	if GameState.autotest and GameState.team_mode:
-		Net.set_team_mode(true)
+	# A sala abre no último modo usado no treino (o anfitrião troca na sala).
+	Net.set_mode(GameState.mode, GameState.lives)
 	_show(Page.LOBBY)
 	_refresh_lobby()
 
@@ -579,36 +599,38 @@ func _refresh_lobby() -> void:
 			else:
 				lobby_slots.add_child(_empty_slot())
 	shuffle_button.visible = host and Net.team_mode
-	lobby_format[0].set_pressed_no_signal(not Net.team_mode)
-	lobby_format[1].set_pressed_no_signal(Net.team_mode)
-	for b in lobby_format:
-		b.disabled = not host
-	lobby_format_note.text = "Só o anfitrião escolhe." if not host else \
-		"2x2 precisa de 4 jogadores, 2 em cada time." if Net.team_mode else ""
-	lobby_format_note.visible = lobby_format_note.text != ""
+	lobby_modes.set_state(Net.mode, Net.lives, host)
+	var reason := GameModes.blocked_reason(Net.mode, count)
+	if not host:
+		lobby_modes.set_note("Só o anfitrião escolhe o modo.")
+	elif reason != "":
+		lobby_modes.set_note("%s: %s." % [GameModes.mode_name(Net.mode), reason.to_lower()], true)
+	elif Net.team_mode and not Net.teams_ready():
+		lobby_modes.set_note("Os times precisam de 2 cada (troque ou sorteie ao lado).", true)
+	else:
+		lobby_modes.set_note("")
 
-	var mode: String = "2x2" if Net.team_mode else MODES[clampi(count, 2, MODES.size() - 1)]
+	var mode := GameModes.label(Net.mode, Net.lives)
 	lobby_title.text = "Sala  ·  %d de %d" % [count, Net.MAX_GUESTS + 1]
 	if host:
 		var ips := Net.local_ips()
 		lobby_info.text = "Seu IP: %s   ·   porta %d\nOs amigos abrem Jogar > Online, digitam esse IP e clicam em Entrar." % [
 			", ".join(ips) if not ips.is_empty() else "não encontrado", Net.PORT]
 		start_button.visible = true
-		if Net.team_mode:
-			start_button.disabled = not Net.teams_ready()
-			if count < 4:
-				start_button.text = "Esperando 4 jogadores (%d/4)" % count
-			elif not Net.teams_ready():
-				start_button.text = "Os times precisam de 2 cada"
-			else:
-				start_button.text = "Começar  2x2"
+		var blocked := reason != "" or (Net.team_mode and not Net.teams_ready())
+		start_button.disabled = blocked
+		if count < 2:
+			start_button.text = "Esperando jogadores..."
+		elif Net.team_mode and count < 4:
+			start_button.text = "Esperando 4 jogadores (%d/4)" % count
+		elif blocked:
+			start_button.text = "Ajuste o modo para começar"
 		else:
-			start_button.disabled = count < 2
-			start_button.text = "Esperando jogadores..." if count < 2 else "Começar  %s" % mode
+			start_button.text = "Começar  ·  %s" % mode
 		if _autotest_players() > 0 and count >= _autotest_players():
 			Net.start_match()
 	else:
-		lobby_info.text = "Conectado. Esperando o anfitrião começar (%s com quem está na sala agora)." % mode
+		lobby_info.text = "Conectado. Esperando o anfitrião começar (%s)." % mode
 		start_button.visible = false
 
 

@@ -111,6 +111,20 @@ counts exactly when they press E); the host decides map, cards, score and end. "
 rounds" only continues if everyone votes to continue. If someone's connection drops,
 everyone goes back to the menu.
 
+## Game modes
+
+Picked on mode cards in Treino (practice) and, by the host, in the lobby. The current mode
+shows in a corner during the match.
+
+- **Cada um por si** (free-for-all), 2 to 4 players: last one standing wins the round.
+- **2x2**, exactly 4 players (practice: you and an allied bot against two bots): the team
+  with someone standing wins.
+- **Duelos** (duels), 2 to 4 players: 1v1 in rotation with lives (3, 5 or 7). The first two
+  in the queue fight; the winner stays and the loser loses a life and goes to the back of the
+  queue. The loser picks 1 of 3 cards, or 1 of 4 on their last life. Out of lives, you're
+  out; the last one with lives wins. Whoever is waiting watches (follow a duelist or free
+  camera).
+
 ## Match rules
 
 - Decks of 30 to 50 cards, up to 3 copies each. More copies = more chance of the card

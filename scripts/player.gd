@@ -1923,6 +1923,19 @@ func _apply_death(killer := "", assists: Array = []) -> void:
 	died.emit(self)
 
 
+## Duelos: quem espera a vez fica fora da luta (invisível, sem colisão, sem levar nem dar
+## tiro, ignorado pelos bots e pelas balas) até a próxima rodada; reset_for_round desfaz.
+func bench() -> void:
+	alive = false
+	frozen = true
+	velocity = Vector3.ZERO
+	shape.set_deferred("disabled", true)
+	tag.visible = false
+	if model:   # o jogador desta tela não tem modelo nem anel (primeira pessoa)
+		model.visible = false
+		ring.visible = false
+
+
 ## Usado pelo bot para mirar: gira o corpo (horizontal) e a cabeça (vertical) até o ponto.
 func look_at_point(point: Vector3, max_step: float) -> void:
 	var to := point - head.global_position

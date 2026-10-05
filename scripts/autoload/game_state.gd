@@ -39,7 +39,13 @@ var gun_skin := "blaster-b"
 var bot_count := 1
 ## Treino com 3 bots em 2x2 (você e um bot aliado contra dois). Online quem decide é a
 ## sala (Net.teams). Teste: "-- --autotest --solo --bots=3 --2x2".
-var team_mode := false
+## Modo do treino (GameModes: "ffa", "teams", "duels") e vidas do Duelos, salvos em
+## settings.cfg. Online quem decide é a sala (Net.mode, Net.lives).
+var mode := "ffa"
+var lives := GameModes.DEFAULT_LIVES
+var team_mode: bool:
+	get:
+		return mode == "teams"
 ## Saiu da sala online para mexer nos baralhos: o menu volta direto para a sala.
 var from_lobby := false
 ## Times: nomes e cores (Azul e Vermelho), duas cores por time, uma para cada jogador.
@@ -116,7 +122,22 @@ func _ready() -> void:
 	for n in [2, 3]:
 		if "--bots=%d" % n in OS.get_cmdline_user_args():
 			bot_count = n
-	team_mode = "--2x2" in OS.get_cmdline_user_args()
+	var cfg_modes := ConfigFile.new()
+	if cfg_modes.load(SETTINGS_PATH) == OK:
+		var saved_mode: String = cfg_modes.get_value("treino", "modo", mode)
+		mode = saved_mode if saved_mode in GameModes.ids() else mode
+		var saved_lives: int = cfg_modes.get_value("treino", "vidas", lives)
+		lives = saved_lives if saved_lives in GameModes.LIVES_OPTIONS else lives
+	# Teste: "--2x2" (com 3 bots), "--duelos" e "--vidas=5".
+	if "--2x2" in OS.get_cmdline_user_args():
+		mode = "teams"
+	elif "--duelos" in OS.get_cmdline_user_args():
+		mode = "duels"
+	elif autotest:
+		mode = "ffa"
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--vidas="):
+			lives = int(arg.trim_prefix("--vidas="))
 	_register_inputs()
 	load_decks()
 	_setup_audio.call_deferred()
@@ -307,6 +328,14 @@ func restart_game() -> void:
 	Net.stop()
 	OS.set_restart_on_exit(true, OS.get_cmdline_args())
 	get_tree().quit()
+
+
+func set_mode(id: String, p_lives: int) -> void:
+	mode = id if id in GameModes.ids() else "ffa"
+	lives = p_lives if p_lives in GameModes.LIVES_OPTIONS else GameModes.DEFAULT_LIVES
+	if not autotest:
+		_save_setting("treino", "modo", mode)
+		_save_setting("treino", "vidas", lives)
 
 
 func set_show_fps(value: bool) -> void:

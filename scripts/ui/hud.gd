@@ -41,6 +41,12 @@ var master_label: Label
 var master_bar: ProgressBar
 var fps_label: Label
 var scoreboard: Scoreboard
+var mode := "ffa"
+var start_lives := 3
+var mode_label: Label
+var duel_names: Array = []
+var duel_hearts: Array = []
+var duel_queue_label: Label
 var kill_feed: KillFeed
 var chat: ChatBox          # só online
 var tab_hint: Label
@@ -85,7 +91,9 @@ func _ready() -> void:
 	spectate_label.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	spectate_hint = _label("", 15, Rect2(0.15, 0.88, 0.7, 0.035))
 	spectate_hint.modulate.a = 0.8
-	fps_label = _label("", 14, Rect2(0.005, 0.005, 0.1, 0.03), HORIZONTAL_ALIGNMENT_LEFT)
+	mode_label = _label("", 14, Rect2(0.006, 0.005, 0.3, 0.03), HORIZONTAL_ALIGNMENT_LEFT)
+	mode_label.modulate.a = 0.6
+	fps_label = _label("", 14, Rect2(0.006, 0.035, 0.1, 0.03), HORIZONTAL_ALIGNMENT_LEFT)
 	fps_label.visible = GameState.show_fps
 	kill_feed = KillFeed.new()
 	_place(kill_feed, Rect2(0.55, 0.045, 0.435, 0.35))
@@ -101,10 +109,13 @@ func _ready() -> void:
 	add_child(scoreboard)
 
 
-func setup(p_me: Player, all_players: Array, p_teams := false) -> void:
+func setup(p_me: Player, all_players: Array, p_teams := false, p_mode := "ffa", p_lives := 3) -> void:
 	me = p_me
 	players = all_players
 	teams_on = p_teams
+	mode = p_mode
+	start_lives = p_lives
+	mode_label.text = GameModes.label(mode, start_lives)
 	me.damaged.connect(_on_me_damaged)
 	me.damage_dealt.connect(_on_damage_dealt)
 	scoreboard.setup(me, players)
@@ -116,6 +127,82 @@ func setup(p_me: Player, all_players: Array, p_teams := false) -> void:
 		score_label.visible = false
 		_place(toast_label, Rect2(0, 0.115, 1, 0.06))
 		_place(kill_feed, Rect2(0.55, 0.13, 0.435, 0.35))   # abaixo da barra dos times
+	if mode == "duels":
+		_build_duel_bar()
+		score_label.visible = false
+		_place(toast_label, Rect2(0, 0.115, 1, 0.06))
+
+
+## Duelos, no topo: [nome] [vidas]  x  [vidas] [nome], e embaixo a fila de quem vem depois.
+func _build_duel_bar() -> void:
+	var row := HBoxContainer.new()
+	_place(row, Rect2(0, 0.015, 1, 0))
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 12)
+	add_child(row)
+	for side in 2:
+		var name_label := _ui_label("", 22, Color.WHITE, true)
+		var hearts := LivesIcons.new()
+		duel_names.append(name_label)
+		duel_hearts.append(hearts)
+		if side == 0:
+			row.add_child(name_label)
+			row.add_child(hearts)
+			row.add_child(_ui_label("x", 20, Color(1, 1, 1, 0.6), true))
+		else:
+			row.add_child(hearts)
+			row.add_child(name_label)
+	duel_queue_label = _label("", 15, Rect2(0, 0.065, 1, 0.035))
+	duel_queue_label.modulate.a = 0.75
+
+
+## pair: nomes dos nós de quem duela; lives: nome -> vidas; queue: nomes na fila.
+func set_duel(pair: Array, p_lives: Dictionary, queue: Array) -> void:
+	if duel_names.is_empty():
+		return
+	for side in 2:
+		var p: Player = null
+		if side < pair.size():
+			p = players.filter(func(x): return String(x.name) == pair[side]).front()
+		duel_names[side].text = p.player_name if p else ""
+		duel_names[side].add_theme_color_override("font_color", p.color.lightened(0.35) if p else Color.WHITE)
+		duel_hearts[side].visible = p != null
+		if p:
+			duel_hearts[side].total = start_lives
+			duel_hearts[side].custom_minimum_size = Vector2(start_lives * 20.0, 18.0)
+			duel_hearts[side].left = p_lives.get(pair[side], 0)
+			duel_hearts[side].queue_redraw()
+	var waiting := PackedStringArray()
+	for n in queue:
+		for x in players:
+			if String(x.name) == n:
+				waiting.append(x.player_name)
+	duel_queue_label.text = "Próximos: " + ", ".join(waiting) if not waiting.is_empty() else ""
+
+
+## Corações das vidas: cheios os que restam, vazios (só contorno) os perdidos.
+class LivesIcons extends Control:
+	var total := 3
+	var left := 3
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		size_flags_vertical = Control.SIZE_SHRINK_CENTER
+
+	func _draw() -> void:
+		for i in total:
+			var c := Vector2(10.0 + i * 20.0, 9.0)
+			var full := i < left
+			var fill := Color(1.0, 0.3, 0.32) if full else Color(1, 1, 1, 0.18)
+			_heart(c, 7.0, Color(0, 0, 0, 0.6), 1.6)
+			_heart(c, 7.0, fill, 0.0)
+
+	func _heart(c: Vector2, r: float, color: Color, grow: float) -> void:
+		var k := r + grow
+		draw_circle(c + Vector2(-k * 0.5, -k * 0.2), k * 0.55, color)
+		draw_circle(c + Vector2(k * 0.5, -k * 0.2), k * 0.55, color)
+		draw_colored_polygon(PackedVector2Array([c + Vector2(-k * 1.02, 0.0), c + Vector2(k * 1.02, 0.0),
+			c + Vector2(0.0, k * 1.05)]), color)
 
 
 ## Topo da tela no 2x2: [cartões do seu time] [placar do seu time] RODADA [placar do outro]

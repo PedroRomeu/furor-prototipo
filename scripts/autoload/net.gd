@@ -44,8 +44,14 @@ var _raw_names := {}
 var looks := {}
 ## Formato 2x2 escolhido pelo host e o time de cada um (id -> 0 Azul, 1 Vermelho). Na sala
 ## o host arruma; ao começar vai junto e vale para a partida inteira.
-var team_mode := false
 var teams := {}
+## Modo escolhido pelo host na sala (GameModes) e as vidas do Duelos. Ao começar vai junto
+## e vale para a partida inteira.
+var mode := "ffa"
+var lives := GameModes.DEFAULT_LIVES
+var team_mode: bool:
+	get:
+		return mode == "teams"
 ## Chat da sala e da partida, o mesmo do começo ao fim da conexão. Cada mensagem guarda o
 ## nome e a cor de quem mandou no momento do envio: {"name", "color", "text", "system"}.
 ## O host carimba nome e cor e repassa a todos; ninguém escolhe a própria cor.
@@ -102,7 +108,8 @@ func stop() -> void:
 	names.clear()
 	_raw_names.clear()
 	looks.clear()
-	team_mode = false
+	mode = "ffa"
+	lives = GameModes.DEFAULT_LIVES
 	teams.clear()
 	chat_log.clear()
 	_chat_last.clear()
@@ -128,14 +135,14 @@ func local_ips() -> Array:
 ## Host: manda todo mundo abrir a partida com quem estiver na sala.
 func start_match() -> void:
 	var ids := _room_ids()
-	if ids.size() < 2 or (team_mode and not teams_ready()):
+	if GameModes.blocked_reason(mode, ids.size()) != "" or (team_mode and not teams_ready()):
 		return
 	var all_names := _unique_names(ids)
 	var match_teams := teams.duplicate() if team_mode else {}
 	for id in ids:
 		if id != 1:
-			_start.rpc_id(id, ids, all_names, match_teams, looks)
-	_start(ids, all_names, match_teams, looks)
+			_start.rpc_id(id, ids, all_names, match_teams, looks, mode, lives)
+	_start(ids, all_names, match_teams, looks, mode, lives)
 
 
 ## 2x2 só começa com 4 na sala, 2 em cada time.
@@ -143,10 +150,11 @@ func teams_ready() -> bool:
 	return lobby_count == 4 and teams.values().count(0) == 2 and teams.values().count(1) == 2
 
 
-## Host: liga ou desliga o 2x2.
-func set_team_mode(on: bool) -> void:
+## Host: troca o modo de jogo e as vidas do Duelos.
+func set_mode(id: String, p_lives: int) -> void:
 	if multiplayer.is_server():
-		team_mode = on
+		mode = id if id in GameModes.ids() else "ffa"
+		lives = p_lives if p_lives in GameModes.LIVES_OPTIONS else GameModes.DEFAULT_LIVES
 		_broadcast_lobby()
 
 
@@ -177,12 +185,14 @@ func _room_ids() -> Array:
 
 
 @rpc("authority", "call_local", "reliable")
-func _start(ids: Array, all_names: Dictionary, match_teams: Dictionary, all_looks: Dictionary) -> void:
+func _start(ids: Array, all_names: Dictionary, match_teams: Dictionary, all_looks: Dictionary,
+		p_mode: String, p_lives: int) -> void:
 	match_peers = ids
 	names = all_names
 	looks = all_looks
 	teams = match_teams
-	team_mode = not match_teams.is_empty()
+	mode = p_mode
+	lives = p_lives
 	ready_peers.clear()
 	match_starting.emit()
 
@@ -317,15 +327,16 @@ func _broadcast_lobby() -> void:
 	for id in ids:
 		if not teams.has(id):
 			teams[id] = 0 if teams.values().count(0) <= teams.values().count(1) else 1
-	_lobby.rpc(ids.size(), _unique_names(ids), team_mode, teams, looks)
+	_lobby.rpc(ids.size(), _unique_names(ids), mode, lives, teams, looks)
 
 
 @rpc("authority", "call_local", "reliable")
-func _lobby(count: int, all_names: Dictionary, p_team_mode: bool, p_teams: Dictionary, all_looks: Dictionary) -> void:
+func _lobby(count: int, all_names: Dictionary, p_mode: String, p_lives: int, p_teams: Dictionary, all_looks: Dictionary) -> void:
 	lobby_count = count
 	names = all_names
 	looks = all_looks
-	team_mode = p_team_mode
+	mode = p_mode
+	lives = p_lives
 	teams = p_teams
 	lobby_changed.emit(count)
 

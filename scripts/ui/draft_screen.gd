@@ -14,7 +14,8 @@ func _ready() -> void:
 
 
 func choose(options: Array, title: String, owned: Array) -> String:
-	var row := _open(title, "Clique numa carta ou aperte 1, 2 ou 3")
+	var keys := "1, 2 ou 3" if options.size() == 3 else "1 a %d" % options.size()
+	var row := _open(title, "Clique numa carta ou aperte " + keys)
 	for i in options.size():
 		row.add_child(_card(options[i], i, owned.count(options[i])))
 	var index: int = await _wait(options.size())

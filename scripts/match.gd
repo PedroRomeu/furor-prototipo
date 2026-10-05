@@ -1,5 +1,6 @@
 extends Node3D
-## Partida de 2 a 4 jogadores, contra bots ou em rede. Cada um por si, ou 2x2 com 4.
+## Partida de 2 a 4 jogadores, contra bots ou em rede, num dos modos de GameModes: cada um
+## por si, 2x2 (com 4) ou Duelos (1x1 em rodízio com vidas; ver _duel_over).
 ## Compra inicial de todos; a rodada acaba quando sobra um vivo (no 2x2, um time), que
 ## ganha o ponto; quem morreu escolhe uma carta (no 2x2, os dois do time que perdeu). A cada GameState.ROUNDS_PER_BLOCK rodadas pergunta se
 ## continua por mais um bloco ou termina; ganha quem tiver mais rodadas no fim.
@@ -22,6 +23,13 @@ var me: Player            # o jogador desta máquina (câmera e HUD)
 var players: Array = []   # na ordem dos lados; no online o host é sempre o primeiro
 var score := {}           # nome do nó -> rodadas vencidas (no 2x2, os dois do time somam juntos)
 var teams_on := false     # 2x2: Player.team de cada um é 0 (Azul) ou 1 (Vermelho)
+var mode := "ffa"         # GameModes
+## Duelos (todas as máquinas, mandado pelo host a cada duelo): quem duela agora, vidas de
+## cada um (nome do nó -> vidas), a fila (só o host mexe) e a ordem em que saíram.
+var duel_pair: Array = []
+var lives := {}
+var duel_queue: Array = []
+var out_order: Array = []
 ## 2x2: morto, assiste o parceiro por uma câmera atrás dele.
 var spectator: Spectator
 var round_num := 0
@@ -44,7 +52,11 @@ func _ready() -> void:
 		Engine.time_scale = 2.0
 	_apply_quality()
 	GameState.quality_changed.connect(_apply_quality)
-	teams_on = Net.team_mode if Net.online else GameState.team_mode and GameState.bot_count == 3
+	mode = Net.mode if Net.online else GameState.mode
+	if GameModes.blocked_reason(mode, (Net.match_peers.size() if Net.online else GameState.bot_count + 1)) != "":
+		mode = "ffa"
+	teams_on = mode == "teams"
+	var start_lives: int = Net.lives if Net.online else GameState.lives
 	if Net.online:
 		# No 2x2 o lado vem do time (Azul nasce nos lados 0 e 1, vizinhos; Vermelho no 2 e 3).
 		var in_team := [0, 0]
@@ -79,11 +91,13 @@ func _ready() -> void:
 			bot.deck = CardDB.random_deck()
 	me.player_name = "Você"
 	Player.viewer = me
+	for p in players:
+		lives[String(p.name)] = start_lives
 	if GameState.autotest:
 		me.brain = BotBrain.new()
 		me.brain.player = me
 		me.add_child(me.brain)
-	hud.setup(me, players, teams_on)
+	hud.setup(me, players, teams_on, mode, start_lives)
 	hud.set_kda(kda)
 	for p in players:
 		p.revived.connect(hud.toast.bind("Fênix: %s voltou!" % p.player_name if p != me else "Fênix: você voltou!"))
@@ -204,10 +218,10 @@ func team_score(team: int) -> int:
 
 # ---------------------------------------------------------------- fluxo (host)
 
-func _host_draft(who: Array, title: String) -> void:
+func _host_draft(who: Array, title: String, size := DRAFT_SIZE) -> void:
 	pending_picks = who.map(func(p): return String(p.name))
 	for p: Player in who:
-		_to_owner(p, "net_draft", [String(p.name), title])
+		_to_owner(p, "net_draft", [String(p.name), title, size])
 
 
 func _host_start_round() -> void:
@@ -215,7 +229,15 @@ func _host_start_round() -> void:
 	if style == last_style:
 		style = (style + 1 + randi() % (Arena.STYLES.size() - 1)) % Arena.STYLES.size()
 	last_style = style
-	_all("net_start_round", [round_num + 1, style, randi()])
+	var duel := {}
+	if mode == "duels":
+		if duel_pair.is_empty():
+			# Primeiro duelo: fila sorteada, os dois primeiros duelam.
+			duel_queue = players.map(func(p): return String(p.name))
+			duel_queue.shuffle()
+			duel_pair = [duel_queue.pop_front(), duel_queue.pop_front()]
+		duel = {"pair": duel_pair, "lives": lives, "queue": duel_queue}
+	_all("net_start_round", [round_num + 1, style, randi(), duel])
 
 
 ## A rodada acaba quando sobra no máximo um vivo (no 2x2, um time com alguém de pé).
@@ -230,6 +252,10 @@ func _on_player_died(dead: Player) -> void:
 	if not Net.is_host() or phase != Phase.FIGHT:
 		return
 	var alive := players.filter(func(p): return p.alive)
+	if mode == "duels":
+		if alive.size() <= 1:
+			_duel_over(alive[0] if alive.size() == 1 else null)
+		return
 	var winner: Player = null
 	var winner_team := -1
 	if teams_on:
@@ -259,6 +285,60 @@ func _on_player_died(dead: Player) -> void:
 		_all("net_ask_continue", [])
 	else:
 		_draft_losers()
+
+
+## Duelos (host): o vencedor fica; o perdedor perde uma vida e vai para o fim da fila (ou
+## sai, se zerou). Quem perdeu escolhe 1 de 3 cartas, ou 1 de 4 na última vida. Empate
+## (os dois caíram): ninguém perde vida e o mesmo duelo se repete. Sobrou um com vida: fim.
+func _duel_over(winner: Player) -> void:
+	phase = Phase.ROUND_OVER
+	var fought := duel_pair.duplicate()
+	var loser_name := ""
+	if winner:
+		var winner_name := String(winner.name)
+		loser_name = duel_pair[0] if duel_pair[1] == winner_name else duel_pair[1]
+		score[winner_name] += 1
+		lives[loser_name] -= 1
+		if lives[loser_name] > 0:
+			duel_queue.append(loser_name)
+		duel_pair = [winner_name, duel_queue.pop_front()] if not duel_queue.is_empty() else [winner_name]
+	_all("net_duel_over", [fought, String(winner.name) if winner else "", loser_name, lives, _scores()])
+	await get_tree().create_timer(1.5, false).timeout
+	var standing := lives.keys().filter(func(n): return lives[n] > 0)
+	if standing.size() <= 1:
+		_all("net_end_match", [])
+	elif loser_name != "" and lives[loser_name] > 0:
+		var last: bool = lives[loser_name] == 1
+		_host_draft([_player(loser_name)], "Última vida! Escolha uma entre 4 cartas" if last
+			else "Você perdeu o duelo. Escolha uma carta", GameModes.LAST_CHANCE_CARDS if last else DRAFT_SIZE)
+	else:
+		_host_start_round()
+
+
+@rpc("authority", "call_local", "reliable")
+func net_duel_over(fought: Array, winner_name: String, loser_name: String, p_lives: Dictionary, scores: Array) -> void:
+	phase = Phase.ROUND_OVER
+	lives = p_lives
+	for i in players.size():
+		score[String(players[i].name)] = scores[i]
+	for p in players:
+		p.frozen = true
+	_clear_bullets()
+	var winner := _player(winner_name)
+	var loser := _player(loser_name)
+	if loser and lives[loser_name] <= 0 and not loser_name in out_order:
+		out_order.append(loser_name)
+	hud.set_duel(fought, lives, [])
+	if winner == null:
+		hud.show_center("Os dois caíram: duelo repetido")
+	elif lives[loser_name] <= 0:
+		hud.show_center("%s venceu o duelo\n%s está fora" % [winner.player_name, loser.player_name])
+	else:
+		var left: int = lives[loser_name]
+		hud.show_center("%s venceu o duelo\n%s perde uma vida (%d %s)" % [winner.player_name, loser.player_name,
+			left, "restante" if left == 1 else "restantes"])
+	_log("duelo %d: %s venceu, %s fica com %s vidas" % [round_num, winner.player_name if winner else "ninguém",
+		loser.player_name if loser else "-", str(lives.get(loser_name, "-"))])
 
 
 func _count_death(dead: Player) -> void:
@@ -314,7 +394,7 @@ func net_vote(keep_going: bool) -> void:
 
 ## Na máquina dona do jogador: mostra as cartas (ou o bot escolhe) e avisa a escolha.
 @rpc("authority", "call_local", "reliable")
-func net_draft(node_name: String, title: String) -> void:
+func net_draft(node_name: String, title: String, size: int) -> void:
 	var p := _player(node_name)
 	phase = Phase.DRAFT
 	hud.show_center("")
@@ -322,7 +402,7 @@ func net_draft(node_name: String, title: String) -> void:
 		# Começo da partida: a carta mestra entra antes da primeira escolha.
 		var master: String = GameState.player_master if p == me else CardDB.master_ids().pick_random()
 		_all("net_master", [node_name, master])
-	var options := CardDB.offer(p.deck if p.brain == null else _bot_deck(p), p.cards, DRAFT_SIZE)
+	var options := CardDB.offer(p.deck if p.brain == null else _bot_deck(p), p.cards, size)
 	var pick := ""
 	if not options.is_empty():
 		if p.brain:
@@ -366,25 +446,38 @@ func net_card_picked(node_name: String, card: String) -> void:
 			_host_start_round()
 
 
+## duel: no Duelos, {"pair": [quem duela], "lives": vidas, "queue": a fila}; vazio nos outros.
 @rpc("authority", "call_local", "reliable")
-func net_start_round(number: int, style: int, seed_value: int) -> void:
+func net_start_round(number: int, style: int, seed_value: int, duel: Dictionary) -> void:
 	round_num = number
 	_clear_bullets()
-	_build_arena(style, seed_value)
+	if not duel.is_empty():
+		duel_pair = duel["pair"]
+		lives = duel["lives"]
+		duel_queue = duel["queue"]
+	_build_arena(style, seed_value, 2 if mode == "duels" else players.size())
 	_reset_players()
 	hud.set_score(score, round_num, _block_end())
+	var title := "Rodada %d" % round_num
+	if mode == "duels":
+		hud.set_duel(duel_pair, lives, duel_queue)
+		title = "Duelo %d: %s x %s" % [round_num, _player(duel_pair[0]).player_name, _player(duel_pair[1]).player_name]
+		if not String(me.name) in duel_pair:
+			title += "\nVocê assiste este duelo" if lives.get(String(me.name), 0) > 0 else ""
 	phase = Phase.COUNTDOWN
 	_capture_mouse()
-	_log("rodada %d: %s, tema %s" % [round_num, arena.style_name, arena.theme_name])
+	_log("rodada %d: %s, tema %s%s" % [round_num, arena.style_name, arena.theme_name,
+		" (duelo %s x %s)" % duel_pair.map(func(n): return _player(n).player_name) if mode == "duels" else ""])
 	for n in [3, 2, 1]:
-		hud.show_center("Rodada %d: %s (%s)\n%d" % [round_num, arena.style_name, arena.theme_name, n])
+		hud.show_center("%s: %s (%s)\n%d" % [title, arena.style_name, arena.theme_name, n])
 		await get_tree().create_timer(0.8, false).timeout
 		if phase != Phase.COUNTDOWN:
 			return
 	hud.show_center("")
 	phase = Phase.FIGHT
 	for p in players:
-		p.frozen = false
+		if p.alive:
+			p.frozen = false
 
 
 ## Cair no vazio: a primeira vez na partida explica o escudo; depois só avisa o quique perfeito.
@@ -400,7 +493,7 @@ func _on_me_void(saved: bool) -> void:
 
 
 func _on_me_died(_p: Player) -> void:
-	if phase != Phase.FIGHT or players.size() <= 2:
+	if phase != Phase.FIGHT or players.size() <= 2 or mode == "duels":
 		return
 	if players.any(func(p): return p != me and p.alive and (not teams_on or me.is_ally(p))):
 		hud.show_center("")   # a câmera passa a seguir quem está vivo (Spectator)
@@ -458,6 +551,9 @@ func net_ask_continue() -> void:
 func net_end_match() -> void:
 	phase = Phase.MATCH_OVER
 	draft.close()
+	if mode == "duels":
+		_end_duels()
+		return
 	var mine: int = score[String(me.name)]
 	var best_other := 0
 	for p in players:
@@ -470,6 +566,32 @@ func net_end_match() -> void:
 		text = "DERROTA"
 	hud.show_center("%s\n%s" % [text, hud.score_text(score)])
 	_log("fim: %s %s depois de %d rodadas" % [text, str(_scores()), round_num])
+	if GameState.autotest:
+		_log(_perf_report())
+		await get_tree().create_timer(0.5).timeout
+		_quit()
+		return
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	if Net.online:
+		hud.show_end_buttons({"Menu": _to_menu})
+	else:
+		hud.show_end_buttons({"Jogar de novo": get_tree().reload_current_scene, "Menu": _to_menu})
+
+
+## Fim do Duelos: vence quem sobrou com vida; a classificação segue a ordem de saída.
+func _end_duels() -> void:
+	var ranking: Array = lives.keys().filter(func(n): return lives[n] > 0)
+	var gone := out_order.duplicate()
+	gone.reverse()
+	ranking.append_array(gone)
+	var winner := _player(ranking[0])
+	var lines := PackedStringArray()
+	for i in ranking.size():
+		lines.append("%dº %s" % [i + 1, _player(ranking[i]).player_name])
+	var text := "VITÓRIA" if winner == me else "%s VENCEU" % winner.player_name.to_upper()
+	hud.show_center("%s\n%s" % [text, "   ".join(lines)])
+	_log("fim: %s venceu os duelos; ordem %s depois de %d duelos" % [winner.player_name,
+		", ".join(ranking.map(func(n): return _player(n).player_name)), round_num])
 	if GameState.autotest:
 		_log(_perf_report())
 		await get_tree().create_timer(0.5).timeout
@@ -512,13 +634,13 @@ func _bullet(id: String) -> Bullet:
 
 # ---------------------------------------------------------------- utilidades
 
-func _build_arena(style: int, seed_value: int) -> void:
+func _build_arena(style: int, seed_value: int, count := -1) -> void:
 	if arena:
 		remove_child(arena)
 		arena.queue_free()
 	arena = Arena.new()
 	add_child(arena)
-	arena.build(style, seed_value, players.size())
+	arena.build(style, seed_value, players.size() if count < 0 else count)
 	ArenaTheme.apply_environment(arena.palette, $WorldEnvironment.environment, $Sun)
 	for item in arena.pickups:
 		item.taken.connect(_on_pickup_taken)
@@ -541,11 +663,16 @@ func _block_end() -> int:
 	return ceili(float(round_num) / block) * block
 
 
+## Duelos: os dois do duelo nascem nos dois lados da arena; os outros ficam no banco.
 func _reset_players() -> void:
+	var dueling := mode == "duels" and not duel_pair.is_empty()
 	for p in players:
 		p.net_round = round_num
-		p.reset_for_round(arena.spawns[p.side])
+		var spot: int = duel_pair.find(String(p.name)) if dueling else p.side
+		p.reset_for_round(arena.spawns[maxi(0, spot) % arena.spawns.size()])
 		p.frozen = true
+		if dueling and spot < 0:
+			p.bench()
 
 
 func _on_connection_lost() -> void:
@@ -617,7 +744,9 @@ func _open_pause() -> void:
 		hud.show_scoreboard(false)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var info := "Rodada %d" % round_num if round_num > 0 else "Escolha de cartas"
-	if teams_on:
+	if mode == "duels":
+		info = "Duelos  ·  duelo %d  ·  suas vidas: %d" % [round_num, lives.get(String(me.name), 0)]
+	elif teams_on:
 		info += "  ·  2x2, time %s" % GameState.TEAM_NAMES[me.team]
 		if not Net.online:
 			info += " (treino)"
