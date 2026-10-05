@@ -25,6 +25,7 @@ Configurações, com até duas teclas por ação.
 | R | recarregar |
 | Q | habilidade da carta mestra (Corrente, Bazuca, Bastião, Perfurante) |
 | Tab (segurar) | placar: rodadas, abates, assistências e mortes de cada um, e as cartas de todos (passe o mouse num ícone para ver o efeito) |
+| Enter | chat (online): Enter manda, Esc cancela |
 | Esc | menu de pausa (continuar, configurações, sair); contra bots o jogo para |
 
 Dicas de movimento: o pulo sobe uns 2,3 m. Encostado num muro, dá para pular nele 2 vezes
@@ -34,8 +35,8 @@ velocidade, e no ar dá para virar sem perder embalo. Dash no ar segurando Ctrl 
 deslizando. Pulando contra um muro e segurando W, o personagem escala a beirada (até 2,2 m
 acima dos pés): caixotes servem de degrau para os andares de cima.
 
-Configurações (no menu): seu nome (o que os amigos veem online; também dá para mudar em
-Jogar > Online), sensibilidade do mouse, qualidade gráfica (Baixa, Média, Alta), contador
+Configurações (no menu): seu nome (o que os amigos veem online; também dá para mudar
+dentro da sala), sensibilidade do mouse, qualidade gráfica (Baixa, Média, Alta), contador
 de FPS e troca de teclas (clique na tecla e aperte a nova; botão direito apaga). Num Intel HD a Alta roda a ~14 FPS; Média e Baixa, a 45-60.
 
 ## Versão para mandar aos amigos (sem instalar nada)
@@ -64,8 +65,10 @@ Todos precisam da **mesma versão**: mudou o código, gere e mande o zip de novo
    Com 4, dá para escolher **2x2** em Formato: a sala vira Time Azul e Time Vermelho, quem
    criou a sala troca as pessoas de time (ou clica em **Sortear times**) e só começa com 2
    em cada lado.
-   Na sala cada um troca o baralho equipado ou clica em **Editar** para mexer nele sem sair da
-   sala; se a partida começar enquanto você edita, ela abre sozinha.
+   Na sala cada um troca o próprio nome (vale na hora para todos), troca o baralho equipado
+   ou clica em **Editar** para mexer nele sem sair da sala; se a partida começar enquanto
+   você edita, ela abre sozinha. Embaixo da lista de jogadores fica o chat, que continua
+   na partida (Enter abre). Cada nome aparece na cor do jogador.
 4. Na primeira vez que criar uma sala, o Windows pergunta se libera o Godot no firewall: libere
    (marque também "redes públicas" se for usar VPN).
 
@@ -116,8 +119,8 @@ cartas que combinam entre si; uma carta pode estar em vários) e busca. O baralh
   mais de 2 jogadores, todos os que morreram.
 - **2x2** (online com 4, ou no Treino com 3 bots: você e um bot aliado): ganha o time com
   alguém de pé, e os dois do time que perdeu escolhem carta. Bala e explosão atravessam o
-  parceiro. O nome e a vida do parceiro aparecem através das paredes; no topo da tela fica o
-  placar dos times. Morto, você assiste o parceiro até a rodada acabar.
+  parceiro. O parceiro tem contorno na cor do time e uma seta sobre o nome, visíveis através
+  das paredes, com a vida embaixo do nome; no topo da tela fica o placar dos times. Morto, você assiste o parceiro até a rodada acabar.
 - As cartas nunca saem do baralho: dá para pegar a mesma várias vezes e o efeito soma.
   Algumas (Adrenalina, Radar, Fênix...) só podem ser pegas uma vez.
 - A cada 5 rodadas o jogo pergunta: mais 5 rodadas ou terminar. Ganha quem tiver mais rodadas.

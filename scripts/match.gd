@@ -13,8 +13,6 @@ enum Phase { WAIT, DRAFT, COUNTDOWN, FIGHT, ROUND_OVER, MATCH_OVER }
 const DRAFT_SIZE := 3
 const AUTOTEST_ROUNDS := 10
 const LOBBY_SEED := 12345
-const COLORS := [Color(0.25, 0.55, 1.0), Color(1.0, 0.35, 0.25), Color(0.35, 0.85, 0.35),
-	Color(1.0, 0.8, 0.2)]
 
 @onready var hud: Hud = $Hud
 @onready var draft: DraftScreen = $DraftScreen
@@ -63,6 +61,10 @@ func _ready() -> void:
 			if p.is_local:
 				me = p
 		Net.disconnected.connect(_on_connection_lost)
+		if GameState.autotest:
+			# Teste do chat: cada máquina manda uma mensagem e registra o que chega.
+			Net.chat_received.connect(func(e): _log("chat: %s: %s" % [e["name"] if not e["system"] else "*", e["text"]]))
+			get_tree().create_timer(4.0).timeout.connect(func(): Net.send_chat("oi, aqui é %s [b]sem negrito[/b]" % Net.display_name(Net.my_id())))
 	else:
 		me = _spawn_player(1, 0, "Você", 0 if teams_on else -1)
 		for i in GameState.bot_count:
@@ -126,7 +128,7 @@ func _spawn_player(peer: int, side: int, pname: String, team := -1) -> Player:
 	p.side = side
 	p.team = team
 	p.player_name = pname
-	p.color = COLORS[side % COLORS.size()] if team < 0 else GameState.TEAM_COLORS[team][side % 2]
+	p.color = GameState.player_color(side, team)
 	p.is_local = not Net.online or peer == Net.my_id()
 	p.is_human = p.is_local and side == 0 if not Net.online else p.is_local
 	p.deck = GameState.player_deck.duplicate() if p.is_human else []
@@ -202,6 +204,9 @@ func _host_start_round() -> void:
 ## Quem morreu escolhe carta; no 2x2, os dois do time que perdeu.
 func _on_player_died(dead: Player) -> void:
 	_count_death(dead)
+	var killer: Player = _player(dead.death_killer) if dead.death_killer != "" else null
+	var assist: Player = _player(dead.death_assists[0]) if not dead.death_assists.is_empty() else null
+	hud.kill_feed.add_kill(killer, dead, assist)
 	if teams_on and me.is_ally(dead) and phase == Phase.FIGHT:
 		hud.toast("Seu parceiro %s caiu" % dead.player_name)
 	if not Net.is_host() or phase != Phase.FIGHT:
@@ -257,7 +262,7 @@ func _process(_delta: float) -> void:
 	_update_spectator()
 	if GameState.autotest:
 		_sample_perf()
-	var want := not GameState.autotest and not draft.visible and not GameState.menu_open 		and Input.is_action_pressed("scoreboard")
+	var want := not GameState.autotest and not draft.visible and not GameState.menu_open 		and not GameState.chat_open and Input.is_action_pressed("scoreboard")
 	if want == _board_open:
 		return
 	_board_open = want
@@ -652,6 +657,7 @@ func _on_resumed() -> void:
 ## Saindo da partida por qualquer caminho, o jogo não pode ficar parado.
 func _exit_tree() -> void:
 	GameState.menu_open = false
+	GameState.chat_open = false
 	get_tree().paused = false
 	Bullet.clear_cache()
 	Effects.clear_cache()

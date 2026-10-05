@@ -5,7 +5,8 @@ extends Control
 ##
 ## Online, quem cria a sala espera os amigos entrarem e clica em Começar. A partida é cada
 ## um por si com quem estiver na sala (2 a 4 jogadores); com 4, o anfitrião pode escolher
-## 2x2 e arrumar os times. Na sala dá para trocar o baralho ou ir editar e voltar.
+## 2x2 e arrumar os times. Na sala cada um troca o próprio nome (vale na hora para todos),
+## troca ou edita o baralho e conversa no chat, embaixo da lista de jogadores.
 
 enum Page { HOME, PLAY, LOBBY, SETTINGS }
 
@@ -28,7 +29,8 @@ var solo_format: Control     # Cada um por si ou 2x2, só com 3 bots
 var lobby_format: Array = [] # botões do formato na sala
 var lobby_format_note: Label
 var shuffle_button: Button
-var nick_edits: Array = []   # o campo de nome aparece em Jogar e em Configurações
+var nick_edits: Array = []   # o campo de nome aparece na Sala e em Configurações
+var nick_timer: Timer        # espera a pessoa parar de digitar para mandar o nome à sala
 var settings: SettingsPanel
 
 
@@ -163,9 +165,6 @@ func _play_page() -> Control:
 	online.add_child(Ui.label("Online", 26, Ui.TEXT, true))
 	online.add_child(Ui.label("Com amigos: até 4 jogadores na sala.", 15, Ui.MUTED))
 	online.add_child(Ui.gap(8))
-	online.add_child(Ui.label("Seu nome", 14, Ui.MUTED))
-	online.add_child(_nick_edit())
-	online.add_child(Ui.gap(4))
 	host_button = Ui.accent(Ui.button("Criar sala", _host))
 	host_button.custom_minimum_size.y = 48
 	online.add_child(host_button)
@@ -189,8 +188,8 @@ func _play_page() -> Control:
 	return root
 
 
-## Sala: até 4 vagas (ou dois times de 2); à direita o formato, o seu baralho, o IP (para
-## o anfitrião) e o botão Começar.
+## Sala: até 4 vagas (ou dois times de 2) e o chat embaixo; à direita o seu nome, o seu
+## baralho, o formato, o IP (para o anfitrião) e o botão Começar.
 func _lobby_page() -> Control:
 	var root := Ui.vbox(24)
 	var header := Ui.hbox(16)
@@ -204,18 +203,29 @@ func _lobby_page() -> Control:
 	var left := Ui.panel(body)
 	lobby_slots = Ui.vbox(8)
 	left.add_child(lobby_slots)
-	left.add_child(Ui.grow())
 	shuffle_button = Ui.button("Sortear times", func(): Net.shuffle_teams())
 	shuffle_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	left.add_child(shuffle_button)
+	left.add_child(Ui.gap(4))
+	left.add_child(Ui.label("Chat", 14, Ui.MUTED))
+	var chat := ChatBox.new(false)
+	chat.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left.add_child(chat)
 	var right := Ui.panel(body)
-	right.add_child(Ui.label("Formato", 14, Ui.MUTED))
-	var format_row := Ui.segmented(["Cada um por si", "2x2"], 0, func(i): Net.set_team_mode(i == 1))
-	lobby_format = format_row.get_children()
-	right.add_child(format_row)
-	lobby_format_note = Ui.label("", 13, Ui.MUTED)
-	lobby_format_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	right.add_child(lobby_format_note)
+	right.add_child(Ui.label("Seu nome", 14, Ui.MUTED))
+	var nick := _nick_edit()
+	nick.placeholder_text = "Como os outros vão te ver"
+	nick_timer = Timer.new()
+	nick_timer.one_shot = true
+	nick_timer.wait_time = 0.5
+	nick_timer.timeout.connect(func(): Net.change_nick(nick.text))
+	right.add_child(nick_timer)
+	nick.text_changed.connect(func(_t): nick_timer.start())
+	nick.text_submitted.connect(func(t):
+		nick_timer.stop()
+		Net.change_nick(t)
+		nick.release_focus())
+	right.add_child(nick)
 	right.add_child(Ui.gap(6))
 	right.add_child(Ui.label("Seu baralho", 14, Ui.MUTED))
 	var deck_line := Ui.hbox(8)
@@ -225,6 +235,14 @@ func _lobby_page() -> Control:
 	deck_line.add_child(pick)
 	deck_line.add_child(Ui.button("Editar", _open_decks_from_lobby, 100))
 	right.add_child(deck_line)
+	right.add_child(Ui.gap(6))
+	right.add_child(Ui.label("Formato", 14, Ui.MUTED))
+	var format_row := Ui.segmented(["Cada um por si", "2x2"], 0, func(i): Net.set_team_mode(i == 1))
+	lobby_format = format_row.get_children()
+	right.add_child(format_row)
+	lobby_format_note = Ui.label("", 13, Ui.MUTED)
+	lobby_format_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	right.add_child(lobby_format_note)
 	right.add_child(Ui.gap(6))
 	lobby_info = Ui.label("", 16, Ui.TEXT)
 	lobby_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -405,7 +423,7 @@ func _refresh_lobby() -> void:
 		var ids := Net.lobby_ids()
 		for i in Net.MAX_GUESTS + 1:
 			if i < count and i < ids.size():
-				lobby_slots.add_child(_slot(ids[i], Color.TRANSPARENT, false))
+				lobby_slots.add_child(_slot(ids[i], false))
 			else:
 				lobby_slots.add_child(_empty_slot())
 	shuffle_button.visible = host and Net.team_mode
@@ -457,25 +475,25 @@ func _team_column(team: int, host: bool) -> void:
 	lobby_slots.add_child(head)
 	var members := Net.lobby_ids().filter(func(id): return Net.teams.get(id, 0) == team)
 	for id in members:
-		lobby_slots.add_child(_slot(id, color, host))
+		lobby_slots.add_child(_slot(id, host))
 	for i in maxi(0, 2 - members.size()):
 		lobby_slots.add_child(_empty_slot())
 
 
-## Vaga ocupada: nome, marcas (anfitrião, você) e, para o anfitrião no 2x2, o botão de
-## trocar de time.
-func _slot(id: int, team_color: Color, can_switch: bool) -> Control:
+## Vaga ocupada: faixa e nome na cor do jogador (a mesma do chat e da partida), marcas
+## (anfitrião, você) e, para o anfitrião no 2x2, o botão de trocar de time.
+func _slot(id: int, can_switch: bool) -> Control:
+	var color := Net.color_of(id)
 	var box := PanelContainer.new()
 	var style := Ui.box(Ui.SURFACE_HI, 8, Ui.LINE)
-	if team_color.a > 0.0:
-		style.border_color = team_color
-		style.border_width_left = 4
+	style.border_color = color
+	style.border_width_left = 4
 	style.set_content_margin_all(10)
 	style.content_margin_left = 14
 	box.add_theme_stylebox_override("panel", style)
 	var line := Ui.hbox(10)
 	box.add_child(line)
-	var name_label := Ui.label(Net.display_name(id), 18, Ui.TEXT, true)
+	var name_label := Ui.label(Net.display_name(id), 18, color.lightened(0.3), true)
 	name_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	line.add_child(name_label)
 	if id == 1:

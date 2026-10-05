@@ -43,6 +43,17 @@ var from_lobby := false
 const TEAM_NAMES := ["Azul", "Vermelho"]
 const TEAM_COLORS := [[Color(0.25, 0.55, 1.0), Color(0.3, 0.85, 0.95)],
 	[Color(1.0, 0.3, 0.25), Color(1.0, 0.62, 0.2)]]
+## Cada um por si: cor de cada vaga (a mesma na sala, no chat e na partida).
+const PLAYER_COLORS := [Color(0.25, 0.55, 1.0), Color(1.0, 0.35, 0.25), Color(0.35, 0.85, 0.35),
+	Color(1.0, 0.8, 0.2)]
+
+
+## Cor do jogador: pela vaga (cada um por si) ou pelo time e a ordem dentro dele (2x2).
+static func player_color(slot: int, team := -1) -> Color:
+	if team >= 0:
+		return TEAM_COLORS[team][slot % 2]
+	return PLAYER_COLORS[slot % PLAYER_COLORS.size()]
+
 ## Qualidade gráfica: 0 baixa, 1 média, 2 alta (ver match.gd, _apply_quality).
 var quality := 1
 ## Contador de quadros por segundo no canto da tela.
@@ -51,6 +62,8 @@ var show_fps := false
 var autotest := false
 ## Menu de pausa aberto na partida: o jogador desta máquina não recebe comandos.
 var menu_open := false
+## Campo do chat aberto na partida: o personagem fica parado enquanto a pessoa digita.
+var chat_open := false
 ## Teste: "-- --autotest --mestra=bastiao" troca a carta mestra deste processo.
 var test_master := ""
 ## Teste: "--cartas=metralhadora,explosiva" dá essas cartas a todos no começo (mede desempenho).
@@ -222,7 +235,7 @@ const ACTIONS := [
 	["move_forward", "Frente"], ["move_back", "Trás"], ["move_left", "Esquerda"], ["move_right", "Direita"],
 	["jump", "Pular"], ["shoot", "Atirar"], ["shield", "Escudo"], ["reload", "Recarregar"],
 	["master", "Carta mestra"], ["dash", "Dash"], ["crouch", "Agachar / deslizar"],
-	["scoreboard", "Placar e cartas (segurar)"],
+	["scoreboard", "Placar e cartas (segurar)"], ["chat", "Chat (online)"],
 ]
 ## Ctrl é as duas coisas: dash ao apertar e agachar/deslizar enquanto segura. Por isso a
 ## mesma tecla nessas duas ações não conta como conflito.
@@ -240,10 +253,11 @@ const DEFAULT_BINDS := {
 	"dash": ["k:%d" % KEY_CTRL, "k:%d" % KEY_SHIFT],
 	"crouch": ["k:%d" % KEY_CTRL, "k:%d" % KEY_C],
 	"scoreboard": ["k:%d" % KEY_TAB, ""],
+	"chat": ["k:%d" % KEY_ENTER, "k:%d" % KEY_KP_ENTER],
 }
 const KEY_NAMES := {
 	KEY_SPACE: "Espaço", KEY_CTRL: "Ctrl", KEY_SHIFT: "Shift", KEY_ALT: "Alt", KEY_TAB: "Tab",
-	KEY_CAPSLOCK: "Caps Lock", KEY_ENTER: "Enter", KEY_BACKSPACE: "Backspace",
+	KEY_CAPSLOCK: "Caps Lock", KEY_ENTER: "Enter", KEY_KP_ENTER: "Enter (num.)", KEY_BACKSPACE: "Backspace",
 	KEY_UP: "Seta cima", KEY_DOWN: "Seta baixo", KEY_LEFT: "Seta esq.", KEY_RIGHT: "Seta dir.",
 }
 const MOUSE_NAMES := {

@@ -35,6 +35,8 @@ var master_label: Label
 var master_bar: ProgressBar
 var fps_label: Label
 var scoreboard: Scoreboard
+var kill_feed: KillFeed
+var chat: ChatBox          # só online
 var tab_hint: Label
 var round_score := {}
 var round_text := ""
@@ -76,6 +78,16 @@ func _ready() -> void:
 	spectate_label.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	fps_label = _label("", 14, Rect2(0.005, 0.005, 0.1, 0.03), HORIZONTAL_ALIGNMENT_LEFT)
 	fps_label.visible = GameState.show_fps
+	kill_feed = KillFeed.new()
+	_place(kill_feed, Rect2(0.55, 0.045, 0.435, 0.35))
+	add_child(kill_feed)
+	if Net.online:
+		# Chat no canto esquerdo, acima da vida; o fundo só aparece com o campo aberto.
+		var holder := PanelContainer.new()
+		_place(holder, Rect2(0.012, 0.47, 0.34, 0.33))
+		add_child(holder)
+		chat = ChatBox.new(true)
+		holder.add_child(chat)
 	scoreboard = Scoreboard.new()
 	add_child(scoreboard)
 
@@ -87,11 +99,13 @@ func setup(p_me: Player, all_players: Array, p_teams := false) -> void:
 	me.damaged.connect(_on_me_damaged)
 	me.damage_dealt.connect(_on_damage_dealt)
 	scoreboard.setup(me, players)
+	kill_feed.me = me
 	tab_hint.text = "[%s] placar e cartas" % GameState.key_text("scoreboard")
 	if teams_on:
 		_build_team_bar()
 		score_label.visible = false
 		_place(toast_label, Rect2(0, 0.115, 1, 0.06))
+		_place(kill_feed, Rect2(0.55, 0.13, 0.435, 0.35))   # abaixo da barra dos times
 
 
 ## Topo da tela no 2x2: [cartões do seu time] [placar do seu time] RODADA [placar do outro]

@@ -17,9 +17,13 @@ signal match_starting              # todos: o host mandou começar
 signal failed(reason: String)
 signal disconnected
 signal everyone_ready
+signal chat_received(entry: Dictionary)   # todos: mensagem nova no chat (ver chat_log)
 
 const PORT := 7777
 const MAX_GUESTS := 3
+const CHAT_MAX := 120        # letras por mensagem
+const CHAT_KEEP := 60        # mensagens guardadas (a sala e a partida mostram as mesmas)
+const CHAT_GAP := 0.35       # segundos mínimos entre duas mensagens da mesma pessoa
 
 var online := false
 var remote_ids: Array = []
@@ -39,6 +43,11 @@ var _raw_names := {}
 ## o host arruma; ao começar vai junto e vale para a partida inteira.
 var team_mode := false
 var teams := {}
+## Chat da sala e da partida, o mesmo do começo ao fim da conexão. Cada mensagem guarda o
+## nome e a cor de quem mandou no momento do envio: {"name", "color", "text", "system"}.
+## O host carimba nome e cor e repassa a todos; ninguém escolhe a própria cor.
+var chat_log: Array = []
+var _chat_last := {}
 
 
 func _ready() -> void:
@@ -90,6 +99,8 @@ func stop() -> void:
 	_raw_names.clear()
 	team_mode = false
 	teams.clear()
+	chat_log.clear()
+	_chat_last.clear()
 
 
 func is_host() -> bool:
@@ -212,11 +223,15 @@ func _on_peer_connected(id: int) -> void:
 
 
 func _on_peer_disconnected(id: int) -> void:
+	var was_in_room := multiplayer.is_server() and _raw_names.has(id) and match_peers.is_empty()
+	var leaving := display_name(id)
 	remote_ids.erase(id)
 	if id in match_peers:
 		disconnected.emit()
 	elif multiplayer.is_server():
 		_broadcast_lobby()
+		if was_in_room:
+			_system_chat("%s saiu da sala" % leaving)
 
 
 ## Ordem da sala: host primeiro, convidados pela ordem dos ids (a mesma de start_match).
@@ -236,8 +251,22 @@ func display_name(id: int) -> String:
 func _hello(nick: String) -> void:
 	var id := multiplayer.get_remote_sender_id()
 	if multiplayer.is_server() and id in remote_ids:
+		var first := not _raw_names.has(id)
 		_raw_names[id] = GameState.clean_nick(nick)
 		_broadcast_lobby()
+		if first:
+			_system_chat("%s entrou na sala" % display_name(id))
+
+
+## Troca de nome na sala: vale na hora para todos (durante a partida os nomes ficam fixos).
+func change_nick(nick: String) -> void:
+	GameState.set_nick(nick)
+	if not online or not match_peers.is_empty():
+		return
+	if multiplayer.is_server():
+		_broadcast_lobby()
+	else:
+		_hello.rpc_id(1, GameState.nick)
 
 
 ## Dois com o mesmo nome: o segundo vira "Nome (2)".
@@ -277,6 +306,64 @@ func _lobby(count: int, all_names: Dictionary, p_team_mode: bool, p_teams: Dicti
 	team_mode = p_team_mode
 	teams = p_teams
 	lobby_changed.emit(count)
+
+
+## Cor de quem está na sala ou na partida: a mesma vaga e o mesmo time que valem na partida
+## (match.gd, _spawn_player), então o nome sai da mesma cor no chat, na sala e no jogo.
+func color_of(id: int) -> Color:
+	var ids: Array = match_peers if not match_peers.is_empty() else lobby_ids()
+	if team_mode and teams.has(id):
+		var team := int(teams[id])
+		var mates := ids.filter(func(other): return teams.get(other, -1) == team)
+		return GameState.player_color(maxi(0, mates.find(id)), team)
+	return GameState.player_color(maxi(0, ids.find(id)))
+
+
+## Manda uma mensagem no chat (o host confere e repassa a todos).
+func send_chat(text: String) -> void:
+	text = _clean_chat(text)
+	if text == "" or not online:
+		return
+	if multiplayer.is_server():
+		_accept_chat(1, text)
+	else:
+		_chat_request.rpc_id(1, text)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _chat_request(text: String) -> void:
+	if multiplayer.is_server():
+		_accept_chat(multiplayer.get_remote_sender_id(), text)
+
+
+## Host: confere quem mandou (o id vem da conexão, não da mensagem) e repassa a todos.
+func _accept_chat(id: int, text: String) -> void:
+	if id != 1 and not _raw_names.has(id) and not id in match_peers:
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - float(_chat_last.get(id, -10.0)) < CHAT_GAP:
+		return
+	_chat_last[id] = now
+	text = _clean_chat(text)
+	if text != "":
+		_chat.rpc(display_name(id), color_of(id), text, false)
+
+
+func _system_chat(text: String) -> void:
+	_chat.rpc("", Color.WHITE, text, true)
+
+
+@rpc("authority", "call_local", "reliable")
+func _chat(sender: String, color: Color, text: String, system: bool) -> void:
+	var entry := {"name": sender, "color": color, "text": text, "system": system}
+	chat_log.append(entry)
+	if chat_log.size() > CHAT_KEEP:
+		chat_log.pop_front()
+	chat_received.emit(entry)
+
+
+static func _clean_chat(text: String) -> String:
+	return text.replace("\n", " ").replace("\t", " ").strip_edges().left(CHAT_MAX)
 
 
 func _on_connection_failed() -> void:

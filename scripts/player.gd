@@ -348,6 +348,24 @@ var hit_flash := 0.0
 var flash_mat: StandardMaterial3D
 var body_meshes: Array = []
 static var _hit_sound_frame := -1
+## 2x2 (2026-10-05, era difícil achar o parceiro): o aliado ganha um contorno na cor do
+## time que aparece através das paredes (camada por cima do modelo, como no Valorant e no
+## Overwatch) e uma seta sobre o nome. Só o parceiro de quem está olhando; adversário não.
+const ALLY_RIM_SHADER := """
+shader_type spatial;
+render_mode unshaded, depth_test_disabled, cull_back, shadows_disabled;
+uniform vec4 rim_color : source_color;
+void fragment() {
+	float edge = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
+	ALBEDO = rim_color.rgb;
+	ALPHA = rim_color.a * (0.22 + 0.78 * edge);
+}
+"""
+static var _rim_shader: Shader
+static var _arrow_tex: ImageTexture
+var ally_mat: ShaderMaterial
+var ally_arrow: Sprite3D
+var _ally_look := false
 
 
 func _ready() -> void:
@@ -592,8 +610,8 @@ func _input(event: InputEvent) -> void:
 
 
 func _read_local_input() -> void:
-	if GameState.menu_open:
-		# Menu de pausa aberto online (o jogo não para): o personagem fica parado.
+	if GameState.menu_open or GameState.chat_open:
+		# Menu de pausa aberto online (o jogo não para) ou digitando no chat: fica parado.
 		in_move = Vector2.ZERO
 		in_jump = false
 		in_jump_held = false
@@ -638,6 +656,8 @@ func _process(delta: float) -> void:
 	if not is_human:
 		# Aliado: nome e vida sempre à vista, através das paredes, na cor do time.
 		var ally := viewer != null and viewer.is_ally(self)
+		if ally != _ally_look:
+			_set_ally_look(ally)
 		tag.no_depth_test = ally or (viewer != null and viewer != self and viewer.stats["radar"] > 0)
 		if tag.visible:
 			tag.text = "%s\n%d" % [player_name, ceili(health)] + (" +%d" % ceili(armor) if armor > 0.0 else "")
@@ -669,6 +689,58 @@ func _update_animation() -> void:
 	anim.speed_scale = clampf(hspeed / 6.0, 0.8, 1.6) if next == "walk" or next == "sprint" else 1.0
 
 
+## Liga ou desliga o visual de aliado (contorno através das paredes e seta sobre o nome).
+func _set_ally_look(on: bool) -> void:
+	_ally_look = on
+	if model == null:
+		return
+	if on and ally_mat == null:
+		if _rim_shader == null:
+			_rim_shader = Shader.new()
+			_rim_shader.code = ALLY_RIM_SHADER
+		ally_mat = ShaderMaterial.new()
+		ally_mat.shader = _rim_shader
+		ally_mat.set_shader_parameter("rim_color", Color(color, 0.65))
+		ally_arrow = Sprite3D.new()
+		ally_arrow.texture = _arrow_texture()
+		ally_arrow.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		ally_arrow.no_depth_test = true
+		ally_arrow.fixed_size = true
+		ally_arrow.pixel_size = 0.001
+		ally_arrow.render_priority = 2
+		ally_arrow.modulate = color.lightened(0.35)
+		ally_arrow.position.y = 0.55   # acima das duas linhas do nome (filha do tag, some com ele)
+		tag.add_child(ally_arrow)
+	if ally_arrow:
+		ally_arrow.visible = on
+	if hit_flash <= 0.0:
+		for m in body_meshes:
+			m.material_overlay = ally_mat if on else null
+
+
+## Seta para baixo, branca com borda escura (a cor vem do modulate), feita em código.
+static func _arrow_texture() -> ImageTexture:
+	if _arrow_tex:
+		return _arrow_tex
+	var w := 48
+	var h := 34
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	for y in h:
+		for x in w:
+			# Distância à borda do triângulo (topo largo, ponta embaixo).
+			var half := (w / 2.0) * (1.0 - float(y) / h)
+			var dx := absf(x + 0.5 - w / 2.0)
+			var inside := half - dx
+			var to_edge := minf(inside * float(h) / sqrt(h * h + (w / 2.0) * (w / 2.0)), float(y))
+			if inside <= 0.0:
+				continue
+			var c := Color.WHITE if to_edge > 3.0 else Color(0.05, 0.05, 0.08)
+			c.a = clampf(inside, 0.0, 1.0)
+			img.set_pixel(x, y, c)
+	_arrow_tex = ImageTexture.create_from_image(img)
+	return _arrow_tex
+
+
 ## Acerto visto de fora: o modelo pisca em branco e encolhe/achata um instante. A camada
 ## branca (material_overlay) só fica ligada enquanto pisca, porque custa um passe a mais.
 func flash_hit() -> void:
@@ -689,7 +761,7 @@ func _update_hit_flash(delta: float) -> void:
 	model.scale = squash * MODEL_SCALE * float(stats["body_scale"])
 	if hit_flash <= 0.0:
 		for m in body_meshes:
-			m.material_overlay = null
+			m.material_overlay = ally_mat if _ally_look else null
 
 
 ## Camuflagem: parado por CAMO_DELAY some da vista dos outros (o próprio jogador vê a
