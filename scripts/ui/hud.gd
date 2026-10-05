@@ -20,7 +20,7 @@ var chips: Array = []                   # [Player, cartão, barra de vida ou nul
 var spectate_label: Label
 
 var shield_tint: ColorRect
-var hurt_tint: ColorRect
+var damage_fx: DamageFeedback
 var blind_tint: ColorRect
 var crosshair: Control
 var center_label: Label
@@ -52,7 +52,8 @@ var toast_time := 0.0
 
 func _ready() -> void:
 	shield_tint = _rect(Color(0.4, 0.9, 1.0, 0.12))
-	hurt_tint = _rect(Color(1, 0, 0, 0))
+	damage_fx = DamageFeedback.new()
+	add_child(damage_fx)
 	blind_tint = _rect(Color(1, 1, 1, 0))
 	crosshair = Control.new()
 	_place(crosshair, Rect2(0.5, 0.5, 0, 0))
@@ -104,6 +105,7 @@ func setup(p_me: Player, all_players: Array, p_teams := false) -> void:
 	me.damage_dealt.connect(_on_damage_dealt)
 	scoreboard.setup(me, players)
 	kill_feed.me = me
+	damage_fx.me = me
 	tab_hint.text = "[%s] placar e cartas" % GameState.key_text("scoreboard")
 	if teams_on:
 		_build_team_bar()
@@ -240,8 +242,8 @@ func set_spectating(text: String) -> void:
 	spectate_label.text = text
 
 
-func _on_me_damaged(_amount: float, _from: Player) -> void:
-	hurt_tint.color.a = 0.35
+func _on_me_damaged(amount: float, from: Player) -> void:
+	damage_fx.hit(amount, from)
 
 
 ## O X cresce com o dano do acerto (vários no mesmo quadro, como na escopeta, somam).
@@ -393,9 +395,7 @@ func _process(delta: float) -> void:
 		status.append("INVISÍVEL")
 	if me.last_stand_timer > 0.0:
 		status.append("ÚLTIMO SUSPIRO: abata alguém! %.1f" % me.last_stand_timer)
-		hurt_tint.color.a = maxf(hurt_tint.color.a, 0.18 + 0.12 * sin(Time.get_ticks_msec() * 0.012))
 	status_label.text = "   ".join(status)
-	hurt_tint.color.a = move_toward(hurt_tint.color.a, 0.0, delta)
 	blind_tint.color.a = clampf(me.blind_timer / 0.3, 0.0, 1.0) * 0.97
 	hit_time = maxf(0.0, hit_time - delta)
 	kill_time = maxf(0.0, kill_time - delta)

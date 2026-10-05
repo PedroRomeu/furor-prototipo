@@ -108,14 +108,100 @@ const BASE_STATS := {
 	"last_stand": 0,
 }
 
-## Um modelo por lado da partida (pacote Mini Characters da Kenney, CC0).
-const CHARACTERS := [
-	"res://assets/characters/character-male-b.glb",
-	"res://assets/characters/character-female-c.glb",
-	"res://assets/characters/character-male-e.glb",
-	"res://assets/characters/character-female-a.glb",
+## Skins: os 12 modelos do pacote Mini Characters da Kenney (CC0), [id, nome]. O jogador
+## escolhe a sua em Personalizar (GameState.skin); bots e quem não tem skin usam a ordem da
+## lista pelo lado da partida. Os 4 primeiros eram os modelos fixos de cada lado.
+## Miniatura de cada uma em assets/skins/<id>.png (feitas com o próprio modelo).
+const SKINS := [
+	["male-b", "Barbudo"], ["female-c", "Marina"], ["male-e", "Engenheiro"], ["female-a", "Violeta"],
+	["male-a", "Professor"], ["female-b", "Sol"], ["male-c", "Policial"], ["female-d", "Executiva"],
+	["male-d", "Executivo"], ["female-e", "Doutora"], ["male-f", "Ranzinza"], ["female-f", "Mochileira"],
 ]
-const GUN_MODEL := "res://assets/blasters/blaster-b.glb"
+## Skins de arma: pistolas e armas pequenas do Blaster Kit da Kenney (CC0), parecidas com a
+## padrão (pedido do usuário: nada muito diferente). Só aparência; o tiro é o mesmo.
+## Miniaturas em assets/gun_skins/<id>.png.
+const GUN_SKINS := [
+	["blaster-b", "Padrão"], ["blaster-c", "Compacta"], ["blaster-k", "Dourada"],
+	["blaster-l", "Ametista"], ["blaster-m", "Vespa"],
+]
+const DEFAULT_GUN := "blaster-b"
+static var _gun_fronts := {}
+
+
+static func gun_ids() -> Array:
+	return GUN_SKINS.map(func(s): return s[0])
+
+
+static func gun_name(id: String) -> String:
+	for s in GUN_SKINS:
+		if s[0] == id:
+			return s[1]
+	return ""
+
+
+static func gun_model(id: String) -> String:
+	return "res://assets/blasters/%s.glb" % (id if id in gun_ids() else DEFAULT_GUN)
+
+
+static func gun_thumb(id: String) -> Texture2D:
+	return load("res://assets/gun_skins/%s.png" % id)
+
+
+## Visual vindo de fora (rede, arquivo): o que não existir vira "" (padrão).
+static func clean_look(look) -> Dictionary:
+	var out := {"skin": "", "gun": ""}
+	if look is Dictionary:
+		if String(look.get("skin", "")) in skin_ids():
+			out["skin"] = String(look["skin"])
+		if String(look.get("gun", "")) in gun_ids():
+			out["gun"] = String(look["gun"])
+	return out
+
+
+## Ponta do cano no espaço do modelo (frente da caixa que envolve as peças, que apontam
+## para -Z). O cano das outras armas fica onde o da padrão ficava, mais a diferença.
+static func gun_front(id: String) -> Vector3:
+	if not _gun_fronts.has(id):
+		var root: Node3D = load(gun_model(id)).instantiate()
+		var box := AABB()
+		var first := true
+		for mi in root.find_children("*", "MeshInstance3D", true, false):
+			var xf := Transform3D.IDENTITY
+			var n: Node = mi
+			while n != root:
+				xf = (n as Node3D).transform * xf
+				n = n.get_parent()
+			var b: AABB = xf * (mi as MeshInstance3D).get_aabb()
+			box = b if first else box.merge(b)
+			first = false
+		root.free()
+		_gun_fronts[id] = Vector3(box.get_center().x, box.get_center().y, box.position.z)
+	return _gun_fronts[id]
+
+
+## Quanto o cano desta arma fica à frente (ou atrás) do da arma padrão, no espaço do modelo.
+func _muzzle_shift() -> Vector3:
+	var id := gun_skin if gun_skin in gun_ids() else DEFAULT_GUN
+	return gun_front(id) - gun_front(DEFAULT_GUN)
+
+
+static func skin_ids() -> Array:
+	return SKINS.map(func(s): return s[0])
+
+
+static func skin_name(id: String) -> String:
+	for s in SKINS:
+		if s[0] == id:
+			return s[1]
+	return ""
+
+
+static func skin_model(id: String) -> String:
+	return "res://assets/characters/character-%s.glb" % id
+
+
+static func skin_thumb(id: String) -> Texture2D:
+	return load("res://assets/skins/%s.png" % id)
 const MODEL_SCALE := 2.6
 const LOOPING_ANIMS := ["idle", "walk", "sprint", "fall", "crouch"]
 
@@ -228,6 +314,8 @@ var last_stand_timer := 0.0
 var last_stand_used := false
 
 var player_name := "Jogador"
+var skin := ""          # id em SKINS (vazio: a do lado da partida)
+var gun_skin := ""      # id em GUN_SKINS (vazio: a padrão)
 var is_human := false   # este é o jogador da câmera desta máquina
 var is_local := true    # esta máquina simula o jogador (falso = cópia de um jogador remoto)
 var peer_id := 1
@@ -431,7 +519,7 @@ func _build_viewmodel() -> void:
 	viewmodel = Node3D.new()
 	viewmodel.position = VIEWMODEL_POS
 	camera.add_child(viewmodel)
-	var g: Node3D = load(GUN_MODEL).instantiate()
+	var g: Node3D = load(gun_model(gun_skin)).instantiate()
 	_no_shadows(g)
 	g.scale = Vector3.ONE * VIEWMODEL_SCALE
 	g.rotation.y = 0.06   # cano levemente virado para a mira
@@ -444,14 +532,15 @@ func _build_viewmodel() -> void:
 	bazooka.visible = false
 	viewmodel.add_child(bazooka)
 	muzzle = Marker3D.new()
-	muzzle.position = Vector3(-0.01, 0.025, -0.17)
+	muzzle.position = Vector3(-0.01, 0.025, -0.17) + _muzzle_shift() * VIEWMODEL_SCALE
 	viewmodel.add_child(muzzle)
 	_add_muzzle_light()
 
 
 ## Terceira pessoa: personagem animado com a arma na mão e um anel da cor do time no chão.
 func _build_body() -> void:
-	model = load(CHARACTERS[side % CHARACTERS.size()]).instantiate()
+	var id := skin if skin in skin_ids() else String(SKINS[side % SKINS.size()][0])
+	model = load(skin_model(id)).instantiate()
 	model.scale = Vector3.ONE * MODEL_SCALE
 	model.rotation.y = PI   # os modelos olham para +Z; o jogador olha para -Z
 	add_child(model)
@@ -471,7 +560,7 @@ func _build_body() -> void:
 	var hand := BoneAttachment3D.new()
 	hand.bone_name = "arm-right"
 	skeleton.add_child(hand)
-	gun = load(GUN_MODEL).instantiate()
+	gun = load(gun_model(gun_skin)).instantiate()
 	gun.scale = Vector3.ONE * (1.3 / MODEL_SCALE)
 	gun.rotation.x = -PI / 2.0
 	gun.position = Vector3(0, -0.13, 0.04)
@@ -483,7 +572,7 @@ func _build_body() -> void:
 	bazooka.visible = false
 	hand.add_child(bazooka)
 	muzzle = Marker3D.new()
-	muzzle.position = Vector3(0, 0.04, -0.3)
+	muzzle.position = Vector3(0, 0.04, -0.3) + _muzzle_shift()
 	gun.add_child(muzzle)
 	_add_muzzle_light()
 

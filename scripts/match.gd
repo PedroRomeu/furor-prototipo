@@ -129,6 +129,10 @@ func _spawn_player(peer: int, side: int, pname: String, team := -1) -> Player:
 	p.team = team
 	p.player_name = pname
 	p.color = GameState.player_color(side, team)
+	var look := _look_for(peer, side)
+	p.skin = look["skin"]
+	p.gun_skin = look["gun"]
+	_log("visual de %s: %s, %s" % [pname, look["skin"], look["gun"]])
 	p.is_local = not Net.online or peer == Net.my_id()
 	p.is_human = p.is_local and side == 0 if not Net.online else p.is_local
 	p.deck = GameState.player_deck.duplicate() if p.is_human else []
@@ -166,6 +170,18 @@ func _to_owner(p: Player, method: StringName, args: Array) -> void:
 		callv("rpc_id", [p.peer_id, method] + args)
 	else:
 		callv(method, args)
+
+
+## Visual de quem entra: online o que a pessoa escolheu; no treino o seu e, para os bots,
+## personagens da lista pela ordem, pulando o seu (o bot não fica igual a você), com a
+## arma padrão.
+func _look_for(peer: int, side: int) -> Dictionary:
+	if Net.online:
+		return Player.clean_look(Net.looks.get(peer, {}))
+	if side == 0:
+		return GameState.look()
+	var others := Player.skin_ids().filter(func(id): return id != GameState.skin)
+	return {"skin": others[(side - 1) % others.size()], "gun": ""}
 
 
 func _player(node_name: String) -> Player:
@@ -697,5 +713,5 @@ func _log(msg: String) -> void:
 	if GameState.autotest:
 		var prefix := ""
 		if Net.online:
-			prefix = "[host] " if Net.is_host() else "[convidado %d] " % me.side
+			prefix = "[host] " if Net.is_host() else "[convidado %d] " % (me.side if me else Net.match_peers.find(Net.my_id()))
 		print(prefix + msg)

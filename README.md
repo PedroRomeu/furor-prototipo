@@ -28,6 +28,13 @@ Configurações, com até duas teclas por ação.
 | Enter | chat (online): Enter manda, Esc cancela |
 | Esc | menu de pausa (continuar, configurações, sair); contra bots o jogo para |
 
+**Personalizar** (no menu ou na sala): escolha o personagem (12) e a arma (5 pistolas e armas
+pequenas). O modelo aparece no centro; arraste para girar. Só aparência, não muda nada no
+jogo; na sala os outros veem na hora.
+
+Levou dano: um arco vermelho em volta da mira aponta de onde veio o tiro e as bordas da
+tela avermelham por um instante. Com pouca vida, as bordas pulsam de leve.
+
 Na mira: o arco à direita mostra as balas do pente (as gastas apagam; a última fica
 laranja). Recarregando, a mira vira um anel que se fecha quando a recarga termina.
 

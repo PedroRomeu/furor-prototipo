@@ -1,14 +1,15 @@
 extends Control
-## Menu principal, em páginas: Início (Jogar, Baralhos, Configurações, Sair), Jogar
-## (treino contra bots ou online), Sala (quem entrou; o anfitrião começa quando quiser) e
-## Configurações. Esc volta uma página.
+## Menu principal, em páginas: Início (Jogar, Baralhos, Personalizar, Configurações, Sair),
+## Jogar (treino contra bots ou online), Sala (quem entrou; o anfitrião começa quando
+## quiser), Personalizar (personagem e arma, só aparência) e Configurações. Esc volta uma
+## página.
 ##
 ## Online, quem cria a sala espera os amigos entrarem e clica em Começar. A partida é cada
 ## um por si com quem estiver na sala (2 a 4 jogadores); com 4, o anfitrião pode escolher
 ## 2x2 e arrumar os times. Na sala cada um troca o próprio nome (vale na hora para todos),
 ## troca ou edita o baralho e conversa no chat, embaixo da lista de jogadores.
 
-enum Page { HOME, PLAY, LOBBY, SETTINGS }
+enum Page { HOME, PLAY, LOBBY, SETTINGS, CUSTOM }
 
 const SETTINGS_PATH := "user://settings.cfg"
 const MODES := ["", "", "1x1", "1x1x1", "1x1x1x1"]
@@ -32,6 +33,12 @@ var shuffle_button: Button
 var nick_edits: Array = []   # o campo de nome aparece na Sala e em Configurações
 var nick_timer: Timer        # espera a pessoa parar de digitar para mandar o nome à sala
 var settings: SettingsPanel
+var custom_back := Page.HOME   # Personalizar volta para onde foi aberto (Início ou Sala)
+var custom_tab := 0            # 0 personagem, 1 arma
+var preview: LookPreview
+var look_name: Label
+var look_grid: GridContainer
+var lobby_look: Array = []     # [miniatura, nome] do visual na Sala
 
 
 func _ready() -> void:
@@ -58,6 +65,7 @@ func _ready() -> void:
 	pages[Page.PLAY] = _play_page()
 	pages[Page.LOBBY] = _lobby_page()
 	pages[Page.SETTINGS] = _settings_page()
+	pages[Page.CUSTOM] = _custom_page()
 	for p in pages.values():
 		p.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		stack.add_child(p)
@@ -100,6 +108,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			Page.PLAY, Page.SETTINGS:
 				settings.stop_rebind()
 				_show(Page.HOME)
+			Page.CUSTOM:
+				_close_custom()
 			Page.LOBBY:
 				_leave_lobby()
 
@@ -122,6 +132,7 @@ func _home_page() -> Control:
 	play.add_theme_font_size_override("font_size", 22)
 	menu.add_child(play)
 	menu.add_child(_menu_button("Baralhos", _open_decks))
+	menu.add_child(_menu_button("Personalizar", _open_custom))
 	menu.add_child(_menu_button("Configurações", func(): _show(Page.SETTINGS)))
 	menu.add_child(_menu_button("Sair", func(): get_tree().quit()))
 	var fill := Control.new()
@@ -227,6 +238,23 @@ func _lobby_page() -> Control:
 		nick.release_focus())
 	right.add_child(nick)
 	right.add_child(Ui.gap(6))
+	right.add_child(Ui.label("Seu visual", 14, Ui.MUTED))
+	var look_line := Ui.hbox(10)
+	var thumb := TextureRect.new()
+	thumb.custom_minimum_size = Vector2(34, 42)
+	thumb.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	thumb.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	look_line.add_child(thumb)
+	var look_text := Ui.label("", 16, Ui.TEXT)
+	look_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	look_text.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	look_text.clip_text = true
+	look_line.add_child(look_text)
+	look_line.add_child(Ui.button("Personalizar", _open_custom, 130))
+	right.add_child(look_line)
+	lobby_look = [thumb, look_text]
+	_refresh_lobby_look()
+	right.add_child(Ui.gap(6))
 	right.add_child(Ui.label("Seu baralho", 14, Ui.MUTED))
 	var deck_line := Ui.hbox(8)
 	var pick := _deck_picker()
@@ -253,6 +281,130 @@ func _lobby_page() -> Control:
 	start_button.add_theme_font_size_override("font_size", 20)
 	right.add_child(start_button)
 	return root
+
+
+## Personalizar: o personagem em 3D no centro (arrastar gira) e, à direita, as abas de
+## cada parte com as opções. Escolher vale na hora, fica salvo e, na sala, os outros veem.
+func _custom_page() -> Control:
+	var root := Ui.vbox(24)
+	var header := Ui.hbox(16)
+	header.add_child(Ui.flat(Ui.button("< Voltar", _close_custom)))
+	var titles := Ui.vbox(2)
+	titles.add_child(Ui.label("Personalizar", 32, Ui.TEXT, true))
+	titles.add_child(Ui.label("Só aparência: não muda nada no jogo.", 15, Ui.MUTED))
+	header.add_child(titles)
+	root.add_child(header)
+	var body := Ui.hbox(20)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(body)
+
+	var stage := Ui.vbox(4)
+	stage.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stage.size_flags_stretch_ratio = 1.2
+	body.add_child(stage)
+	preview = LookPreview.new()
+	preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stage.add_child(preview)
+	look_name = Ui.label("", 22, Ui.TEXT, true)
+	look_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stage.add_child(look_name)
+	var hint := Ui.label("Arraste para girar", 13, Ui.MUTED)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stage.add_child(hint)
+
+	var side := Ui.panel(body)
+	side.get_parent().custom_minimum_size.x = 470
+	side.get_parent().size_flags_horizontal = Control.SIZE_SHRINK_END
+	side.add_child(Ui.segmented(["Personagem", "Arma"], custom_tab, func(i):
+		custom_tab = i
+		_refresh_custom()))
+	side.add_child(Ui.gap(4))
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	side.add_child(scroll)
+	look_grid = GridContainer.new()
+	look_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	look_grid.add_theme_constant_override("h_separation", 10)
+	look_grid.add_theme_constant_override("v_separation", 10)
+	scroll.add_child(look_grid)
+	return root
+
+
+func _open_custom() -> void:
+	custom_back = page
+	_show(Page.CUSTOM)
+	_refresh_custom()
+
+
+func _close_custom() -> void:
+	_show(custom_back)
+	if custom_back == Page.LOBBY:
+		_refresh_lobby()
+	_refresh_lobby_look()
+
+
+## Cartões da aba aberta (personagens em 4 colunas, armas em 2) e o modelo no centro.
+func _refresh_custom() -> void:
+	preview.show_look(GameState.skin, GameState.gun_skin)
+	look_name.text = "%s  ·  %s" % [Player.skin_name(GameState.skin), Player.gun_name(GameState.gun_skin)]
+	for c in look_grid.get_children():
+		c.queue_free()
+	var guns := custom_tab == 1
+	look_grid.columns = 2 if guns else 4
+	for s in (Player.GUN_SKINS if guns else Player.SKINS):
+		var id: String = s[0]
+		var chosen := id == (GameState.gun_skin if guns else GameState.skin)
+		var tex := Player.gun_thumb(id) if guns else Player.skin_thumb(id)
+		look_grid.add_child(_look_card(tex, s[1], chosen, Vector2(188, 116) if guns else Vector2(84, 116),
+			func(): _pick_look(id, guns)))
+
+
+func _pick_look(id: String, gun: bool) -> void:
+	if gun:
+		Net.change_look(GameState.skin, id)
+	else:
+		Net.change_look(id, GameState.gun_skin)
+	_refresh_custom()
+
+
+## Cartão de uma opção: miniatura e nome; a escolhida tem borda na cor de destaque.
+func _look_card(tex: Texture2D, title: String, chosen: bool, art: Vector2, action: Callable) -> Button:
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.add_theme_stylebox_override("normal", Ui.box(Ui.SURFACE_HI if chosen else Ui.BG, 10,
+		Ui.ACCENT if chosen else Ui.LINE, 2 if chosen else 1))
+	b.add_theme_stylebox_override("hover", Ui.box(Ui.SURFACE_HI, 10, Ui.ACCENT if chosen else Ui.LINE.lightened(0.3), 2 if chosen else 1))
+	b.add_theme_stylebox_override("pressed", Ui.box(Ui.SURFACE_HI, 10, Ui.ACCENT, 2))
+	b.pressed.connect(action)
+	var col := Ui.vbox(2)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	col.offset_left = 6
+	col.offset_right = -6
+	col.offset_top = 6
+	col.offset_bottom = -6
+	b.add_child(col)
+	var pic := TextureRect.new()
+	pic.texture = tex
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pic.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(pic)
+	var name_label := Ui.label(title, 13, Ui.TEXT if chosen else Ui.MUTED, chosen)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(name_label)
+	b.custom_minimum_size = art + Vector2(12, 34)
+	return b
+
+
+func _refresh_lobby_look() -> void:
+	if lobby_look.is_empty():
+		return
+	lobby_look[0].texture = Player.skin_thumb(GameState.skin)
+	lobby_look[1].text = "%s  ·  %s" % [Player.skin_name(GameState.skin), Player.gun_name(GameState.gun_skin)]
 
 
 func _settings_page() -> Control:

@@ -32,6 +32,9 @@ var mouse_sens := DEFAULT_SENS
 ## Nome que os outros veem online (vazio: "Jogador 2" etc., pela vaga na sala).
 var nick := ""
 const NICK_MAX := 16
+## Visual escolhido em Personalizar: personagem (Player.SKINS) e arma (Player.GUN_SKINS).
+var skin := "male-b"
+var gun_skin := "blaster-b"
 ## Quantos bots no treino: 1 a 3.
 var bot_count := 1
 ## Treino com 3 bots em 2x2 (você e um bot aliado contra dois). Online quem decide é a
@@ -94,10 +97,20 @@ func _ready() -> void:
 		quality = cfg.get_value("video", "qualidade", 1)
 		show_fps = cfg.get_value("video", "mostrar_fps", false)
 		nick = clean_nick(cfg.get_value("jogador", "nome", ""))
-	# Teste: "-- --autotest --nome=Fulano" troca o nome só neste processo (não salva).
+		var saved := Player.clean_look({"skin": cfg.get_value("jogador", "skin", skin),
+			"gun": cfg.get_value("jogador", "arma", gun_skin)})
+		skin = saved["skin"] if saved["skin"] != "" else skin
+		gun_skin = saved["gun"] if saved["gun"] != "" else gun_skin
+	# Teste: "-- --autotest --nome=Fulano" troca o nome só neste processo (não salva), e
+	# "--visual=female-a,blaster-k" o personagem e a arma.
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--nome="):
 			nick = clean_nick(arg.trim_prefix("--nome="))
+		if arg.begins_with("--visual="):
+			var parts := arg.trim_prefix("--visual=").split(",")
+			var look := Player.clean_look({"skin": parts[0], "gun": parts[1] if parts.size() > 1 else ""})
+			skin = look["skin"] if look["skin"] != "" else skin
+			gun_skin = look["gun"] if look["gun"] != "" else gun_skin
 
 
 ## O anfitrião começou a partida: vale de qualquer tela (menu, Baralhos ou editor).
@@ -110,6 +123,19 @@ func go_to_match() -> void:
 func set_mouse_sens(value: float) -> void:
 	mouse_sens = value
 	_save_setting("controles", "sensibilidade", value)
+
+
+func look() -> Dictionary:
+	return {"skin": skin, "gun": gun_skin}
+
+
+func set_look(p_skin: String, p_gun: String) -> void:
+	if p_skin in Player.skin_ids():
+		skin = p_skin
+		_save_setting("jogador", "skin", skin)
+	if p_gun in Player.gun_ids():
+		gun_skin = p_gun
+		_save_setting("jogador", "arma", gun_skin)
 
 
 func set_nick(value: String) -> void:

@@ -39,6 +39,9 @@ var ready_peers := {}
 ## (_hello).
 var names := {}
 var _raw_names := {}
+## Visual de cada jogador (id -> {"skin", "gun"}, ids de Player.SKINS e GUN_SKINS),
+## mandado junto com o nome. Só aparência: não muda nada no jogo.
+var looks := {}
 ## Formato 2x2 escolhido pelo host e o time de cada um (id -> 0 Azul, 1 Vermelho). Na sala
 ## o host arruma; ao começar vai junto e vale para a partida inteira.
 var team_mode := false
@@ -54,7 +57,7 @@ func _ready() -> void:
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	multiplayer.connected_to_server.connect(func():
-		_hello.rpc_id(1, GameState.nick)
+		_hello.rpc_id(1, GameState.nick, GameState.look())
 		joined.emit())
 	multiplayer.connection_failed.connect(_on_connection_failed)
 	multiplayer.server_disconnected.connect(func(): disconnected.emit())
@@ -71,6 +74,7 @@ func host(port := PORT) -> Error:
 	lobby_count = 1
 	names = {1: GameState.nick}
 	_raw_names = names.duplicate()
+	looks = {1: GameState.look()}
 	teams = {1: 0}
 	return OK
 
@@ -97,6 +101,7 @@ func stop() -> void:
 	ready_peers.clear()
 	names.clear()
 	_raw_names.clear()
+	looks.clear()
 	team_mode = false
 	teams.clear()
 	chat_log.clear()
@@ -129,8 +134,8 @@ func start_match() -> void:
 	var match_teams := teams.duplicate() if team_mode else {}
 	for id in ids:
 		if id != 1:
-			_start.rpc_id(id, ids, all_names, match_teams)
-	_start(ids, all_names, match_teams)
+			_start.rpc_id(id, ids, all_names, match_teams, looks)
+	_start(ids, all_names, match_teams, looks)
 
 
 ## 2x2 só começa com 4 na sala, 2 em cada time.
@@ -172,9 +177,10 @@ func _room_ids() -> Array:
 
 
 @rpc("authority", "call_local", "reliable")
-func _start(ids: Array, all_names: Dictionary, match_teams: Dictionary) -> void:
+func _start(ids: Array, all_names: Dictionary, match_teams: Dictionary, all_looks: Dictionary) -> void:
 	match_peers = ids
 	names = all_names
+	looks = all_looks
 	teams = match_teams
 	team_mode = not match_teams.is_empty()
 	ready_peers.clear()
@@ -248,11 +254,12 @@ func display_name(id: int) -> String:
 
 
 @rpc("any_peer", "call_remote", "reliable")
-func _hello(nick: String) -> void:
+func _hello(nick: String, look: Dictionary) -> void:
 	var id := multiplayer.get_remote_sender_id()
 	if multiplayer.is_server() and id in remote_ids:
 		var first := not _raw_names.has(id)
 		_raw_names[id] = GameState.clean_nick(nick)
+		looks[id] = Player.clean_look(look)
 		_broadcast_lobby()
 		if first:
 			_system_chat("%s entrou na sala" % display_name(id))
@@ -263,10 +270,22 @@ func change_nick(nick: String) -> void:
 	GameState.set_nick(nick)
 	if not online or not match_peers.is_empty():
 		return
+	_resend_profile()
+
+
+## Troca de personagem ou de arma (Personalizar): na sala vale na hora para todos.
+func change_look(skin: String, gun: String) -> void:
+	GameState.set_look(skin, gun)
+	_resend_profile()
+
+
+func _resend_profile() -> void:
+	if not online or not match_peers.is_empty():
+		return
 	if multiplayer.is_server():
 		_broadcast_lobby()
 	else:
-		_hello.rpc_id(1, GameState.nick)
+		_hello.rpc_id(1, GameState.nick, GameState.look())
 
 
 ## Dois com o mesmo nome: o segundo vira "Nome (2)".
@@ -285,9 +304,11 @@ func _unique_names(ids: Array) -> Dictionary:
 
 func _broadcast_lobby() -> void:
 	_raw_names[1] = GameState.nick
+	looks[1] = GameState.look()
 	for id in _raw_names.keys():
 		if id != 1 and not id in remote_ids:
 			_raw_names.erase(id)
+			looks.erase(id)
 	var ids := _room_ids()
 	# Quem saiu perde a vaga no time; quem chegou entra no time com menos gente.
 	for id in teams.keys():
@@ -296,13 +317,14 @@ func _broadcast_lobby() -> void:
 	for id in ids:
 		if not teams.has(id):
 			teams[id] = 0 if teams.values().count(0) <= teams.values().count(1) else 1
-	_lobby.rpc(ids.size(), _unique_names(ids), team_mode, teams)
+	_lobby.rpc(ids.size(), _unique_names(ids), team_mode, teams, looks)
 
 
 @rpc("authority", "call_local", "reliable")
-func _lobby(count: int, all_names: Dictionary, p_team_mode: bool, p_teams: Dictionary) -> void:
+func _lobby(count: int, all_names: Dictionary, p_team_mode: bool, p_teams: Dictionary, all_looks: Dictionary) -> void:
 	lobby_count = count
 	names = all_names
+	looks = all_looks
 	team_mode = p_team_mode
 	teams = p_teams
 	lobby_changed.emit(count)
