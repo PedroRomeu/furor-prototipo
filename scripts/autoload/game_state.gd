@@ -71,9 +71,10 @@ var volumes := DEFAULT_VOLUME.duplicate()
 ## janela, o que importa nas placas integradas. Modos: 0 janela, 1 tela cheia sem borda
 ## (janela do tamanho da tela; trocar de programa é instantâneo), 2 tela cheia exclusiva.
 const WINDOW_MODES := ["Janela", "Sem borda", "Tela cheia"]
-const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080)]
+const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1366, 768), Vector2i(1600, 900),
+	Vector2i(1920, 1080), Vector2i(2560, 1440)]
 var window_mode := 0
-var resolution := 0
+var resolution := Vector2i(1280, 720)
 ## Qualidade gráfica: 0 baixa, 1 média, 2 alta (ver match.gd, _apply_quality).
 var quality := 1
 ## Contador de quadros por segundo no canto da tela.
@@ -116,7 +117,9 @@ func _ready() -> void:
 		quality = cfg.get_value("video", "qualidade", 1)
 		show_fps = cfg.get_value("video", "mostrar_fps", false)
 		window_mode = clampi(int(cfg.get_value("video", "modo", 0)), 0, WINDOW_MODES.size() - 1)
-		resolution = clampi(int(cfg.get_value("video", "resolucao", 0)), 0, RESOLUTIONS.size() - 1)
+		var saved_res = cfg.get_value("video", "resolucao", resolution)
+		if saved_res is Vector2i and saved_res in RESOLUTIONS:
+			resolution = saved_res
 		for bus in volumes:
 			volumes[bus] = clampi(int(cfg.get_value("audio", bus, volumes[bus])), 0, 100)
 		nick = clean_nick(cfg.get_value("jogador", "nome", ""))
@@ -210,10 +213,22 @@ func set_window_mode(value: int) -> void:
 	_apply_display()
 
 
-func set_resolution(value: int) -> void:
-	resolution = clampi(value, 0, RESOLUTIONS.size() - 1)
-	_save_setting("video", "resolucao", resolution)
-	_apply_display()
+func set_resolution(value: Vector2i) -> void:
+	if value in RESOLUTIONS:
+		resolution = value
+		_save_setting("video", "resolucao", resolution)
+		_apply_display()
+
+
+## Resoluções que cabem no monitor (a escolhida entra mesmo que não caiba, para aparecer).
+func available_resolutions() -> Array:
+	var screen := DisplayServer.screen_get_size()
+	var out := RESOLUTIONS.filter(func(r): return r.x <= screen.x and r.y <= screen.y)
+	if out.is_empty():
+		out = [RESOLUTIONS[0]]
+	if not resolution in out:
+		out.append(resolution)
+	return out
 
 
 func _apply_display() -> void:
@@ -222,7 +237,7 @@ func _apply_display() -> void:
 	var win := get_window()
 	win.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 	win.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
-	win.content_scale_size = RESOLUTIONS[resolution]
+	win.content_scale_size = resolution
 	match window_mode:
 		0:
 			if win.mode != Window.MODE_WINDOWED:

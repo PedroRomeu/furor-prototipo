@@ -98,8 +98,16 @@ func _video_page() -> Control:
 	col.add_child(mode_hint)
 	col.add_child(Ui.gap(12))
 	col.add_child(Ui.label("Resolução", 14, Ui.MUTED))
-	col.add_child(Ui.segmented(GameState.RESOLUTIONS.map(func(r): return "%d x %d" % [r.x, r.y]),
-		GameState.resolution, GameState.set_resolution))
+	# Lista suspensa: mostra a atual e abre as que cabem no monitor.
+	var res_pick := OptionButton.new()
+	res_pick.custom_minimum_size = Vector2(260, 42)
+	res_pick.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	var options := GameState.available_resolutions()
+	for r in options:
+		res_pick.add_item("%d x %d" % [r.x, r.y])
+	res_pick.select(options.find(GameState.resolution))
+	res_pick.item_selected.connect(func(i): GameState.set_resolution(options[i]))
+	col.add_child(res_pick)
 	var res_hint := Ui.label("Mais alta fica mais nítida e mais pesada. Em PC modesto, 1280 x 720.", 14, Ui.MUTED)
 	res_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(res_hint)
