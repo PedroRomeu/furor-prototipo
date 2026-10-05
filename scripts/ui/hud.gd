@@ -4,6 +4,10 @@ extends CanvasLayer
 
 const HIT_SHOW := 0.22    # marcador de acerto (X branco)
 const KILL_SHOW := 0.6    # marcador de abate (X vermelho, maior)
+const AMMO_RADIUS := 26.0       # arco do pente, à direita da mira (px)
+const AMMO_SPAN := 80.0         # graus que o arco ocupa
+const AMMO_SEGMENTS_MAX := 24   # acima disso vira barra contínua
+const RELOAD_RING := 11.0       # anel da recarga no lugar da mira (px)
 
 var me: Player
 var players: Array = []
@@ -251,12 +255,26 @@ func _on_damage_dealt(amount: float, lethal: bool) -> void:
 
 ## Mira: quatro traços e um ponto. Acerto: X branco que surge grande e encolhe.
 ## Abate: X vermelho maior, que fica mais tempo.
+## Pente (2026-10-05, como no Furor): arco fino à direita da mira, um segmento por bala; os
+## gastos apagam de cima para baixo e a última bala fica laranja. Recarregando, os traços
+## somem e um anel se fecha no tempo da recarga; fechou, a mira volta.
 func _draw_crosshair() -> void:
 	var white := Color(1, 1, 1, 0.9)
-	var gap := 6.0 + (4.0 if me and me.recoil > 0.2 else 0.0)
-	for d in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
-		crosshair.draw_line(d * gap, d * (gap + 8.0), Color.BLACK, 4.0)
-		crosshair.draw_line(d * gap, d * (gap + 8.0), white, 2.0)
+	var reloading := me != null and me.alive and me.reload_timer > 0.0 and me.bazooka_timer <= 0.0
+	if reloading:
+		var total: float = maxf(0.01, me.stats["reload_time"])
+		var done := clampf(1.0 - me.reload_timer / total, 0.0, 1.0)
+		crosshair.draw_arc(Vector2.ZERO, RELOAD_RING, 0.0, TAU, 40, Color(0, 0, 0, 0.45), 4.5, true)
+		crosshair.draw_arc(Vector2.ZERO, RELOAD_RING, 0.0, TAU, 40, Color(1, 1, 1, 0.22), 2.5, true)
+		if done > 0.0:
+			crosshair.draw_arc(Vector2.ZERO, RELOAD_RING, -PI / 2.0, -PI / 2.0 + TAU * done, 40, white, 2.5, true)
+	else:
+		var gap := 6.0 + (4.0 if me and me.recoil > 0.2 else 0.0)
+		for d in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
+			crosshair.draw_line(d * gap, d * (gap + 8.0), Color.BLACK, 4.0)
+			crosshair.draw_line(d * gap, d * (gap + 8.0), white, 2.0)
+		if me != null and me.alive:
+			_draw_ammo_arc()
 	crosshair.draw_circle(Vector2.ZERO, 1.6, white)
 	var color := Color.WHITE
 	var size := 0.0
@@ -277,6 +295,44 @@ func _draw_crosshair() -> void:
 			var b: Vector2 = d.normalized() * 16.0 * pop
 			crosshair.draw_line(a, b, shadow, 5.0)
 			crosshair.draw_line(a, b, color, 2.5)
+
+
+## Arco do pente: até AMMO_SEGMENTS_MAX balas, um segmento cada; mais que isso, uma barra
+## contínua que esvazia. Na Bazuca conta os foguetes; tiros perfurantes saem roxos.
+func _draw_ammo_arc() -> void:
+	var count: int = me.stats["mag_size"]
+	var left: int = me.ammo
+	if me.bazooka_timer > 0.0:
+		count = Player.BAZOOKA_ROCKETS
+		left = me.rockets_left
+	if count <= 0:
+		return
+	var span := deg_to_rad(AMMO_SPAN)
+	var top := -span / 2.0
+	var shadow := Color(0, 0, 0, 0.45)
+	var empty := Color(1, 1, 1, 0.18)
+	var full := Color(1, 1, 1, 0.85)
+	var last := Color(1.0, 0.62, 0.25, 0.95)
+	if count > AMMO_SEGMENTS_MAX:
+		var cut := top + span * (1.0 - float(left) / count)
+		crosshair.draw_arc(Vector2.ZERO, AMMO_RADIUS, top, top + span, 24, shadow, 5.0, true)
+		crosshair.draw_arc(Vector2.ZERO, AMMO_RADIUS, top, top + span, 24, empty, 3.0, true)
+		if left > 0:
+			crosshair.draw_arc(Vector2.ZERO, AMMO_RADIUS, cut, top + span, 24, last if left == 1 else full, 3.0, true)
+		return
+	var gap := deg_to_rad(clampf(40.0 / count, 2.5, 9.0))
+	var seg := (span - gap * (count - 1)) / count
+	for i in count:
+		# i = 0 é o de cima: some primeiro. Quem sobra fica embaixo.
+		var a := top + i * (seg + gap)
+		var has := i >= count - left
+		var c := empty
+		if has:
+			c = last if left == 1 and me.bazooka_timer <= 0.0 else full
+			if me.pierce_left > 0 and i - (count - left) < me.pierce_left and me.bazooka_timer <= 0.0:
+				c = Color(Bullet.PIERCE_COLOR, 0.95)
+		crosshair.draw_arc(Vector2.ZERO, AMMO_RADIUS, a, a + seg, 6, shadow, 5.0, true)
+		crosshair.draw_arc(Vector2.ZERO, AMMO_RADIUS, a, a + seg, 6, c, 3.0, true)
 
 
 func _process(delta: float) -> void:

@@ -28,6 +28,9 @@ Configurações, com até duas teclas por ação.
 | Enter | chat (online): Enter manda, Esc cancela |
 | Esc | menu de pausa (continuar, configurações, sair); contra bots o jogo para |
 
+Na mira: o arco à direita mostra as balas do pente (as gastas apagam; a última fica
+laranja). Recarregando, a mira vira um anel que se fecha quando a recarga termina.
+
 Dicas de movimento: o pulo sobe uns 2,3 m. Encostado num muro, dá para pular nele 2 vezes
 antes de tocar o chão: segurando contra o muro, sobe rente a ele (escala uns 7 m);
 segurando para o outro lado, salta longe. Pular logo depois de deslizar mantém a
