@@ -60,7 +60,10 @@ const GUIDED_LEAD := 4.0       # ...mirando este tanto à frente da bala, na lin
 const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", "poison",
 	"slow", "push", "shield_break", "target_bounce", "execute", "reflected", "gravity",
 	"boomerang", "returning", "bounce_damage", "sticky", "split", "grow", "swap", "blind",
-	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult"]
+	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls"]
+## Bala Fantasma: só paredes contam (superfície quase em pé); no chão e no topo das peças a
+## bala para ou quica como as outras.
+const GHOST_WALL_NORMAL_Y := 0.7
 
 static var _counter := 0
 ## Desempenho (2026-10-05): malha e materiais são compartilhados (um material por cor), os
@@ -81,7 +84,11 @@ var radius := 0.1
 var bounces := 0
 var homing := 0.0      # curva fixa atrás do inimigo mais próximo (Espelho Perseguidor)
 var seek := 0.0        # Teleguiada: cópias da carta, se esta bala ganhou o sorteio
-var ghost := false
+var ghost := false      # atravessa todo o cenário (Perfurante)
+## Bala Fantasma (refeita em 2026-10-05, ideia do usuário, como no Furor): cada bala
+## atravessa as primeiras paredes em que bater, uma por cópia da carta.
+var ghost_walls := 0
+var _passed: Array[RID] = []   # paredes já atravessadas: o raio passa a ignorá-las
 var explosion := 0.0
 var poison := 0.0
 var slow := 0.0
@@ -129,6 +136,7 @@ static func fire(from: Player, pos: Vector3, dir: Vector3, damage_mult := 1.0, w
 	var size := pow(b.damage / float(Player.BASE_STATS["damage"]), DAMAGE_SIZE_EXP)
 	b.radius = s["bullet_radius"] * maxf(size, DAMAGE_SIZE_MIN)
 	b.bounces = s["bounces"]
+	b.ghost_walls = s["ghost"]
 	# Teleguiada: cada bala sorteia se procura alvo; o raio e a curva vêm do número de cópias.
 	var seekers := float(s["homing"])
 	if seekers > 0.0 and randf() < 1.0 - 1.0 / (1.0 + SEEK_CHANCE_K * seekers):
@@ -213,6 +221,7 @@ func _clone(dir: Vector3, overrides := {}) -> void:
 	b.shooter = shooter
 	for f in FIELDS:
 		b.set(f, get(f))
+	b._passed = _passed.duplicate()
 	b.grow = 0.0   # a cópia nasce com idade 0: fica do tamanho atual em vez de recomeçar a conta
 	for key in overrides:
 		b.set(key, overrides[key])
@@ -337,8 +346,12 @@ func _physics_process(delta: float) -> void:
 	var to := from + velocity * delta
 	var world_hit := {}
 	if not ghost:
-		var query := PhysicsRayQueryParameters3D.create(from, to, 1)
-		world_hit = get_world_3d().direct_space_state.intersect_ray(query)
+		world_hit = _world_ray(from, to)
+		while not world_hit.is_empty() and ghost_walls > 0 and absf(world_hit["normal"].y) < GHOST_WALL_NORMAL_Y:
+			ghost_walls -= 1
+			_passed.append(world_hit["rid"])
+			Effects.burst(get_parent(), world_hit["position"], maxf(0.35, radius * 2.5), Color(0.75, 0.6, 1.0), 0.15)
+			world_hit = _world_ray(from, to)
 	var end: Vector3 = to if world_hit.is_empty() else world_hit["position"]
 	if _check_barriers(from, end):
 		_remember_point(from)
@@ -352,6 +365,11 @@ func _physics_process(delta: float) -> void:
 		global_position = to
 		_orient()
 	_remember_point(from)
+
+
+func _world_ray(from: Vector3, to: Vector3) -> Dictionary:
+	var query := PhysicsRayQueryParameters3D.create(from, to, 1, _passed)
+	return get_world_3d().direct_space_state.intersect_ray(query)
 
 
 func _remember_point(p: Vector3) -> void:
@@ -567,9 +585,7 @@ func _hit_player(target: Player, point: Vector3) -> void:
 	if blind > 0.0:
 		target.apply_blind(blind)
 	if swap and is_instance_valid(shooter) and shooter.alive:
-		var here := target.global_position
-		target.teleport_to(shooter.global_position)
-		shooter.remote_call("teleport_to", [here])
+		target.begin_swap(shooter)
 	target.take_damage(dmg, shooter)
 	if Net.online:
 		get_parent().net_bullet_hit.rpc(id, point, dmg)

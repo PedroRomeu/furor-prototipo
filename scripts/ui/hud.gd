@@ -33,6 +33,7 @@ var hp_bar: ProgressBar
 var armor_bar: ProgressBar
 var ammo_label: Label
 var shield_label: Label
+var perk_label: Label   # Restauração e Couraça: prontas ou quanto falta (acima da vida)
 var shield_bar: ProgressBar
 var status_label: Label
 var dash_label: Label
@@ -73,6 +74,7 @@ func _ready() -> void:
 	tab_hint = _label("", 14, Rect2(0.79, 0.005, 0.2, 0.03), HORIZONTAL_ALIGNMENT_RIGHT)
 	tab_hint.modulate.a = 0.6
 	hp_label = _label("", 22, Rect2(0.02, 0.87, 0.25, 0.05), HORIZONTAL_ALIGNMENT_LEFT)
+	perk_label = _label("", 15, Rect2(0.02, 0.84, 0.25, 0.03), HORIZONTAL_ALIGNMENT_LEFT)
 	hp_bar = _bar(Rect2(0.02, 0.92, 0.25, 0.03), Color(0.3, 0.85, 0.4))
 	armor_bar = _bar(Rect2(0.02, 0.955, 0.25, 0.012), Color(1.0, 0.8, 0.3))
 	armor_bar.max_value = Player.ARMOR_MAX
@@ -332,7 +334,7 @@ func _ui_label(text: String, size: int, color: Color, is_bold := false) -> Label
 ## munição, carta mestra); a vida fica, zerada.
 func set_dead_view(on: bool) -> void:
 	dead_view = on
-	for c in [crosshair, shield_label, shield_bar, dash_label, dash_bar, master_label, master_bar,
+	for c in [crosshair, shield_label, shield_bar, perk_label, dash_label, dash_bar, master_label, master_bar,
 			ammo_label, status_label]:
 		c.visible = not on
 
@@ -457,8 +459,6 @@ func _process(delta: float) -> void:
 		ammo_label.text = "%d / %d" % [me.ammo, me.stats["mag_size"]]
 	if me.pierce_left > 0 and me.bazooka_timer <= 0.0:
 		ammo_label.text += "   Perfurantes %d" % me.pierce_left
-	elif me.ghost_left > 0 and me.bazooka_timer <= 0.0 and me.reload_timer <= 0.0:
-		ammo_label.text += "   Fantasma %d" % me.ghost_left
 
 	var total: float = me.stats["shield_duration"] + me.stats["shield_cooldown"]
 	if me.is_shielding():
@@ -471,6 +471,13 @@ func _process(delta: float) -> void:
 		shield_label.text = "Escudo pronto [%s]" % GameState.key_text("shield") + ("  x%d" % (me.shield_extra + 1) if me.shield_extra > 0 else "")
 		shield_bar.value = 1.0
 	shield_tint.visible = me.alive and me.is_shielding()
+	# Restauração e Couraça têm recarga própria: diz quando o escudo volta a curar.
+	var perks: Array = []
+	if me.stats["shield_heal"] > 0.0:
+		perks.append(_perk_text("Cura", "pronta", me.heal_cd))
+	if me.stats["shield_armor"] > 0.0:
+		perks.append(_perk_text("Colete", "pronto", me.armor_cd))
+	perk_label.text = "   ".join(perks)
 
 	# Dash: a barra enche com a recarga; ao lado, quantos dashes no ar ainda restam.
 	var dash_total: float = me.stats["dash_cooldown"]
@@ -628,6 +635,10 @@ func _rect(c: Color) -> ColorRect:
 
 
 ## Label esticado sobre uma região da tela (em frações: 0 a 1), com o texto alinhado dentro dela.
+func _perk_text(what: String, ready_word: String, cd: float) -> String:
+	return "%s no escudo: %s" % [what, ready_word] if cd <= 0.0 else "%s no escudo: %.1f s" % [what, cd]
+
+
 func _label(text: String, size: int, area: Rect2,
 		h := HORIZONTAL_ALIGNMENT_CENTER, v := VERTICAL_ALIGNMENT_CENTER) -> Label:
 	var l := Label.new()

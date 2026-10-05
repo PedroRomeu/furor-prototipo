@@ -237,6 +237,11 @@ const DASH_EXIT := 1.3       # ao fim do dash sobra pelo menos 1,3x a velocidade
 const DODGE_TIME := 0.24     # Esquiva: as balas atravessam por este tempo depois do dash
 const DASH_HIT_RANGE := 1.4  # Atropelar
 const GLIDE_FALL := 3.0     # Planador: velocidade máxima de queda segurando o pulo
+## Planador (2026-10-05, pedido do usuário: ao soltar o pulo o personagem seguia embalado
+## sem dar para mudar de rumo): depois de planar, até tocar o chão, segurar uma direção
+## gira a velocidade para ela a este tanto por segundo (radianos; 90 graus em ~0,25 s),
+## sem perder velocidade.
+const GLIDE_TURN := 6.0
 const SLAM_LOOK := -0.6      # Meteoro: olhando mais para baixo que isto (uns 35 graus)
 # Corpo
 const RADIUS := 0.4
@@ -275,6 +280,24 @@ const SHOT_BUFFER := 0.15
 const ADRENALINE_GAP := 0.4
 const CRIT_MULT := 2.5
 const TELEPORT_RANGE := 7.0
+## Teleporte (refeito em 2026-10-05, como no Furor): atravessa paredes. Se o ponto cair
+## dentro de uma peça, procura lugar livre na mesma linha, primeiro à frente até este
+## tanto a mais, depois para trás; nunca sai pelo muro de fora do mapa.
+const TELEPORT_OVERSHOOT := 4.0
+const TELEPORT_STEP := 0.5
+## Restauração e Couraça (2026-10-05, pedido do usuário: a build de escudo curava sem
+## parar): o efeito tem recarga própria, separada da do escudo. Cartas que aceleram o
+## escudo não multiplicam a cura; cópias aumentam a quantidade, não a frequência.
+const SHIELD_PERK_COOLDOWN := 3.0
+## Troca-Troca (2026-10-05, pedido do usuário: a troca instantânea confundia): os dois
+## ficam marcados por SWAP_DELAY e só então trocam; quem foi trocado não troca de novo por
+## SWAP_COOLDOWN depois disso.
+const SWAP_DELAY := 0.6
+const SWAP_COOLDOWN := 2.0
+## Depois da troca os dois não colidem entre si por este tempo: o motor (e a rede) ainda
+## veem o outro no lugar antigo por um instante, e quem chega por cima era empurrado para
+## o alto e ficava subindo sem parar, carregado como numa plataforma.
+const SWAP_GHOST := 0.5
 const ECHO_DELAY := 0.5
 const CAMO_DELAY := 1.0
 const SLAM_SPEED := 32.0
@@ -303,7 +326,7 @@ const RECOIL_KICK := 0.03
 const HIT_FLASH_TIME := 0.14   # o modelo atingido pisca em branco por este tempo
 ## Métodos que a outra máquina pode chamar neste jogador (ver remote_call).
 const ASSIST_TIME := 10.0   # placar: dano nos últimos 10 s antes da morte conta assistência
-const REMOTE_METHODS := ["receive_shockwave", "credit_damage", "teleport_to"]
+const REMOTE_METHODS := ["receive_shockwave", "credit_damage", "teleport_to", "swap_to"]
 ## Carta mestra que este jogador tem (a primeira de cards; "" se nenhuma).
 var master_id := ""
 var master_cd := 0.0
@@ -311,8 +334,6 @@ var bazooka_timer := 0.0
 var rockets_left := 0
 var pierce_left := 0       # Perfurante: tiros carregados
 var pierce_shot := false   # o disparo atual (com a rajada) é perfurante
-var ghost_left := 0        # Bala Fantasma: tiros deste pente que ainda atravessam parede
-var ghost_shot := false    # o disparo atual (com a rajada) atravessa parede
 var last_stand_timer := 0.0
 var last_stand_used := false
 
@@ -391,6 +412,12 @@ var death_assists: Array = []
 var revives_left := 0
 var blind_timer := 0.0
 var echo_timer := 0.0
+var glided := false       # Planador: planou neste salto (vale até tocar o chão)
+var heal_cd := 0.0        # Restauração: falta quanto para curar de novo
+var armor_cd := 0.0       # Couraça: falta quanto para dar colete de novo
+var swap_timer := 0.0     # Troca-Troca: falta quanto para a troca (na máquina de quem levou o tiro)
+var swap_lock := 0.0      # Troca-Troca: não começa outra troca enquanto for maior que zero
+var swap_partner: Player = null
 var still_time := 0.0     # parado há quanto tempo (Camuflagem)
 var slamming := false     # despencando com o Meteoro
 var shot_mult := 1.0      # dano extra do disparo atual (Última Bala)
@@ -645,7 +672,6 @@ func reset_for_round(spawn: Transform3D) -> void:
 	health = stats["max_health"]
 	armor = 0.0
 	ammo = stats["mag_size"]
-	ghost_left = stats["ghost"]
 	fire_timer = 0.0
 	shot_queued = 0.0
 	reload_timer = 0.0
@@ -670,6 +696,12 @@ func reset_for_round(spawn: Transform3D) -> void:
 	revives_left = stats["revives"]
 	blind_timer = 0.0
 	echo_timer = 0.0
+	heal_cd = 0.0
+	armor_cd = 0.0
+	glided = false
+	swap_timer = 0.0
+	swap_lock = 0.0
+	swap_partner = null
 	still_time = 0.0
 	slamming = false
 	alive = true
@@ -981,6 +1013,13 @@ func _tick(delta: float) -> void:
 		last_stand_timer -= delta
 		if last_stand_timer <= 0.0 and alive:
 			_lethal()   # ninguém abatido a tempo
+	heal_cd = maxf(0.0, heal_cd - delta)
+	armor_cd = maxf(0.0, armor_cd - delta)
+	swap_lock = maxf(0.0, swap_lock - delta)
+	if swap_timer > 0.0:
+		swap_timer -= delta
+		if swap_timer <= 0.0:
+			_finish_swap()
 	dodge_timer = maxf(0.0, dodge_timer - delta)
 	slide_cd = maxf(0.0, slide_cd - delta)
 	mantle_cd = maxf(0.0, mantle_cd - delta)
@@ -1000,7 +1039,6 @@ func _tick(delta: float) -> void:
 		reload_timer -= delta
 		if reload_timer <= 0.0:
 			ammo = stats["mag_size"]
-			ghost_left = stats["ghost"]
 	if not alive:
 		return
 	for p in poisons:
@@ -1176,8 +1214,15 @@ func _move(delta: float) -> void:
 	elif on_floor:
 		h = _friction(h, FRICTION, delta)
 		h = _accelerate(h, wish, target, GROUND_ACCEL, delta)
+	elif glided and wish != Vector3.ZERO and h.length() > 1.0:
+		# Depois de planar: gira para onde a pessoa aponta, mantendo a velocidade.
+		var turn := h.signed_angle_to(wish, Vector3.UP)
+		var speed := maxf(h.length(), move_toward(h.length(), target * wish.length(), AIR_ACCEL * target * delta))
+		h = h.rotated(Vector3.UP, clampf(turn, -GLIDE_TURN * delta, GLIDE_TURN * delta)).normalized() * speed
 	else:
 		h = _accelerate(h, wish, target, AIR_ACCEL * float(stats["air_control"]), delta)
+	if on_floor:
+		glided = false
 	h = h.limit_length(MAX_HSPEED)
 	velocity.x = h.x
 	velocity.z = h.z
@@ -1193,6 +1238,7 @@ func _move(delta: float) -> void:
 			velocity.y = maxf(velocity.y - _gravity() * delta, -MAX_FALL_SPEED)
 		if stats["glide"] > 0 and in_jump_held and not slamming and velocity.y < -GLIDE_FALL:
 			velocity.y = move_toward(velocity.y, -GLIDE_FALL, 60.0 * delta)
+			glided = true
 
 
 ## Pulo na parede: lembra a última parede tocada no ar (jogadores não contam como parede).
@@ -1657,9 +1703,6 @@ func _fire() -> void:
 	pierce_shot = pierce_left > 0
 	if pierce_shot:
 		pierce_left -= 1
-	ghost_shot = ghost_left > 0 and not pierce_shot
-	if ghost_shot:
-		ghost_left -= 1
 	shot_mult = float(stats["last_shot"]) if ammo == 0 else 1.0
 	burst_left = stats["burst"] - 1
 	burst_timer = BURST_GAP
@@ -1675,7 +1718,7 @@ func _volley() -> void:
 	var origin := head.global_position
 	var aim := -head.global_transform.basis.z
 	# Bala que atravessa parede mira só nos jogadores: o ponto na parede a entortaria.
-	var mask := 2 if pierce_shot or ghost_shot else 1 | 2
+	var mask := 2 if pierce_shot or stats["ghost"] > 0 else 1 | 2
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + aim * 300.0, mask, [get_rid()])
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	var target: Vector3 = hit["position"] if not hit.is_empty() else origin + aim * 300.0
@@ -1689,7 +1732,7 @@ func _volley() -> void:
 		var crit := randf() < float(stats["crit_chance"])
 		if crit:
 			mult *= CRIT_MULT
-		var extra := {"crit": crit, "ghost": ghost_shot}
+		var extra := {"crit": crit}
 		if pierce_shot:
 			# Perfurante: reta, bem mais rápida e atravessando paredes.
 			extra.merge({"speed": float(stats["bullet_speed"]) * PIERCE_SPEED, "gravity": 0.0,
@@ -1717,14 +1760,16 @@ func _activate_shield() -> void:
 		shield_cd = stats["shield_duration"] + stats["shield_cooldown"]
 		shield_extra = stats["shield_charges"] - 1
 	bash_hits.clear()
-	if stats["shield_armor"] > 0.0:
+	# O colete da Couraça é o mesmo do item do mapa: um só, até ARMOR_MAX.
+	if stats["shield_armor"] > 0.0 and armor_cd <= 0.0:
 		armor = minf(ARMOR_MAX, armor + stats["shield_armor"])
+		armor_cd = SHIELD_PERK_COOLDOWN
 	if stats["shield_reload"] > 0:
 		ammo = stats["mag_size"]
-		ghost_left = stats["ghost"]
 		reload_timer = 0.0
-	if stats["shield_heal"] > 0.0:
+	if stats["shield_heal"] > 0.0 and heal_cd <= 0.0:
 		heal(stats["shield_heal"])
+		heal_cd = SHIELD_PERK_COOLDOWN
 	if stats["shield_dash"] > 0:
 		dash_dir = _flat_forward()
 		dash_timer = DASH_TIME * 1.4
@@ -1753,25 +1798,93 @@ func _activate_shield() -> void:
 		_teleport_forward()
 
 
-## Teleporte: até TELEPORT_RANGE para onde a mira aponta, parando antes de paredes.
+## Teleporte: TELEPORT_RANGE para onde a mira aponta, atravessando paredes e peças. Se o
+## ponto cair dentro de algo, tenta mais à frente (até TELEPORT_OVERSHOOT) e depois mais
+## perto; sem lugar livre na linha, não teleporta.
 func _teleport_forward() -> void:
 	var aim := -head.global_transform.basis.z
-	var from := global_position + Vector3.UP * (height * 0.5)
-	var to := from + aim * TELEPORT_RANGE
-	var ray := PhysicsRayQueryParameters3D.create(from, to, 1, [get_rid()])
-	var hit := get_world_3d().direct_space_state.intersect_ray(ray)
-	if not hit.is_empty():
-		to = hit["position"] - aim * (RADIUS + 0.3)
-	var dest := to - Vector3.UP * (height * 0.5)
+	var tries: Array = [TELEPORT_RANGE]
+	var d := TELEPORT_RANGE + TELEPORT_STEP
+	while d <= TELEPORT_RANGE + TELEPORT_OVERSHOOT + 0.01:
+		tries.append(d)
+		d += TELEPORT_STEP
+	d = TELEPORT_RANGE - TELEPORT_STEP
+	while d >= 1.0:
+		tries.append(d)
+		d -= TELEPORT_STEP
+	var arena = get_parent().get("arena")
+	var limit: float = arena.half - RADIUS - 0.2 if arena else INF
 	var room := PhysicsShapeQueryParameters3D.new()
 	room.shape = capsule
 	room.collision_mask = 1
-	room.transform = Transform3D(Basis(), dest + Vector3.UP * (height / 2.0 + 0.05))
-	if from.distance_to(to) < 1.0 or not get_world_3d().direct_space_state.intersect_shape(room, 1).is_empty():
+	room.exclude = [get_rid()]
+	for dist in tries:
+		var dest: Vector3 = global_position + aim * dist
+		dest.y = maxf(dest.y, 0.05)   # olhando para baixo, para no chão
+		if absf(dest.x) > limit or absf(dest.z) > limit:
+			continue   # não sai pelo muro de fora
+		room.transform = Transform3D(Basis(), dest + Vector3.UP * (height / 2.0 + 0.05))
+		if not get_world_3d().direct_space_state.intersect_shape(room, 1).is_empty():
+			continue
+		Effects.burst(get_parent(), chest(), 1.2, Color(0.6, 0.5, 1.0), 0.2)
+		teleport_to(dest)
+		Effects.burst(get_parent(), chest(), 1.2, Color(0.6, 0.5, 1.0), 0.2)
 		return
-	Effects.burst(get_parent(), chest(), 1.2, Color(0.6, 0.5, 1.0), 0.2)
-	teleport_to(dest)
-	Effects.burst(get_parent(), chest(), 1.2, Color(0.6, 0.5, 1.0), 0.2)
+
+
+## Troca-Troca, na máquina de quem levou o tiro: marca os dois e troca depois de SWAP_DELAY.
+func begin_swap(shooter: Player) -> void:
+	if swap_lock > 0.0 or not alive or not is_instance_valid(shooter) or not shooter.alive:
+		return
+	swap_partner = shooter
+	swap_timer = SWAP_DELAY
+	swap_lock = SWAP_DELAY + SWAP_COOLDOWN
+	_show_swap(String(shooter.name))
+	if Net.online:
+		_net_swap_mark.rpc(String(shooter.name))
+
+
+## A troca usa onde cada um está no fim da espera. Se um dos dois morreu, não acontece.
+func _finish_swap() -> void:
+	var other := swap_partner
+	swap_partner = null
+	if not alive or not is_instance_valid(other) or not other.alive:
+		return
+	var here := global_position
+	var there := other.global_position
+	Effects.burst(get_parent(), chest(), 1.4, SwapLink.COLOR, 0.25)
+	swap_to(there, String(other.name))
+	other.remote_call("swap_to", [here, String(name)])
+	Effects.burst(get_parent(), chest(), 1.4, SwapLink.COLOR, 0.25)
+
+
+## Vai para o lugar do outro sem colidir com ele por SWAP_GHOST.
+func swap_to(pos: Vector3, other_name: String) -> void:
+	var other := get_parent().get_node_or_null(other_name) as Player
+	if other:
+		add_collision_exception_with(other)
+		get_tree().create_timer(SWAP_GHOST, false).timeout.connect(func():
+			if is_instance_valid(other):
+				remove_collision_exception_with(other))
+	teleport_to(pos)
+
+
+## Linha e anéis roxos entre os dois enquanto a troca carrega (em todas as máquinas).
+func _show_swap(other_name: String) -> void:
+	var other := get_parent().get_node_or_null(other_name) as Player
+	if other == null:
+		return
+	var link := SwapLink.new()
+	link.a = self
+	link.b = other
+	link.time = SWAP_DELAY
+	get_parent().add_child(link)
+	Sfx.at(self, "pad", chest())
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_swap_mark(other_name: String) -> void:
+	_show_swap(other_name)
 
 
 ## Os adversários vivos: todos os outros no cada um por si, o outro time no 2x2.
