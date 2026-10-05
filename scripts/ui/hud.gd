@@ -363,21 +363,39 @@ func _on_damage_dealt(amount: float, lethal: bool) -> void:
 ## Pente (2026-10-05, como no Furor): arco fino à direita da mira, um segmento por bala; os
 ## gastos apagam de cima para baixo e a última bala fica laranja. Recarregando, os traços
 ## somem e um anel se fecha no tempo da recarga; fechou, a mira volta.
+##
+## Desempenho (2026-10-05): na Intel HD (OpenGL via ANGLE) cada chamada draw_* custa de 0,3
+## a 0,9 ms por quadro, então a mira junta tudo em poucas chamadas draw_multiline: uma
+## para as sombras e outra para as cores. Com um draw_arc por bala, o pente de 14 da
+## Metralhadora custava ~26 ms por quadro (medido com janela, _teste/).
 func _draw_crosshair() -> void:
 	var white := Color(1, 1, 1, 0.9)
 	var reloading := me != null and me.alive and me.reload_timer > 0.0 and me.bazooka_timer <= 0.0
 	if reloading:
 		var total: float = maxf(0.01, me.stats["reload_time"])
 		var done := clampf(1.0 - me.reload_timer / total, 0.0, 1.0)
-		crosshair.draw_arc(Vector2.ZERO, RELOAD_RING, 0.0, TAU, 40, Color(0, 0, 0, 0.45), 4.5, true)
-		crosshair.draw_arc(Vector2.ZERO, RELOAD_RING, 0.0, TAU, 40, Color(1, 1, 1, 0.22), 2.5, true)
-		if done > 0.0:
-			crosshair.draw_arc(Vector2.ZERO, RELOAD_RING, -PI / 2.0, -PI / 2.0 + TAU * done, 40, white, 2.5, true)
+		var pts := PackedVector2Array()
+		var cols := PackedColorArray()
+		var cut := -PI / 2.0 + TAU * done
+		# Anel inteiro em 40 pedaços: até o corte branco (já recarregado), depois apagado.
+		for k in 40:
+			var a0 := -PI / 2.0 + TAU * k / 40.0
+			var a1 := -PI / 2.0 + TAU * (k + 1) / 40.0
+			if a0 < cut and a1 > cut:
+				_arc_piece(pts, cols, RELOAD_RING, a0, cut, white)
+				_arc_piece(pts, cols, RELOAD_RING, cut, a1, Color(1, 1, 1, 0.22))
+			else:
+				_arc_piece(pts, cols, RELOAD_RING, a0, a1, white if a1 <= cut else Color(1, 1, 1, 0.22))
+		crosshair.draw_multiline(pts, Color(0, 0, 0, 0.45), 4.5, true)
+		crosshair.draw_multiline_colors(pts, cols, 2.5, true)
 	else:
 		var gap := 6.0 + (4.0 if me and me.recoil > 0.2 else 0.0)
+		var ticks := PackedVector2Array()
 		for d in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
-			crosshair.draw_line(d * gap, d * (gap + 8.0), Color.BLACK, 4.0)
-			crosshair.draw_line(d * gap, d * (gap + 8.0), white, 2.0)
+			ticks.append(d * gap)
+			ticks.append(d * (gap + 8.0))
+		crosshair.draw_multiline(ticks, Color.BLACK, 4.0)
+		crosshair.draw_multiline(ticks, white, 2.0)
 		if me != null and me.alive:
 			_draw_ammo_arc()
 	crosshair.draw_circle(Vector2.ZERO, 1.6, white)
@@ -395,11 +413,12 @@ func _draw_crosshair() -> void:
 		var pop := size * (1.0 + 0.35 * t * t)
 		color.a = clampf(t * 2.5, 0.0, 1.0)
 		var shadow := Color(0, 0, 0, color.a * 0.7)
+		var x := PackedVector2Array()
 		for d in [Vector2(1, 1), Vector2(-1, 1), Vector2(1, -1), Vector2(-1, -1)]:
-			var a: Vector2 = d.normalized() * 8.0 * pop
-			var b: Vector2 = d.normalized() * 16.0 * pop
-			crosshair.draw_line(a, b, shadow, 5.0)
-			crosshair.draw_line(a, b, color, 2.5)
+			x.append(d.normalized() * 8.0 * pop)
+			x.append(d.normalized() * 16.0 * pop)
+		crosshair.draw_multiline(x, shadow, 5.0)
+		crosshair.draw_multiline(x, color, 2.5)
 
 
 ## Arco do pente: até AMMO_SEGMENTS_MAX balas, um segmento cada; mais que isso, uma barra
@@ -418,12 +437,22 @@ func _draw_ammo_arc() -> void:
 	var empty := Color(1, 1, 1, 0.18)
 	var full := Color(1, 1, 1, 0.85)
 	var last := Color(1.0, 0.62, 0.25, 0.95)
+	var pts := PackedVector2Array()
+	var cols := PackedColorArray()
 	if count > AMMO_SEGMENTS_MAX:
+		# Barra contínua em 24 pedaços: apagada acima do corte, cheia abaixo.
 		var cut := top + span * (1.0 - float(left) / count)
-		crosshair.draw_arc(Vector2.ZERO, AMMO_RADIUS, top, top + span, 24, shadow, 5.0, true)
-		crosshair.draw_arc(Vector2.ZERO, AMMO_RADIUS, top, top + span, 24, empty, 3.0, true)
-		if left > 0:
-			crosshair.draw_arc(Vector2.ZERO, AMMO_RADIUS, cut, top + span, 24, last if left == 1 else full, 3.0, true)
+		var bar := last if left == 1 else full
+		for k in 24:
+			var a0 := top + span * k / 24.0
+			var a1 := top + span * (k + 1) / 24.0
+			if left > 0 and a0 < cut and a1 > cut:
+				_arc_piece(pts, cols, AMMO_RADIUS, a0, cut, empty)
+				_arc_piece(pts, cols, AMMO_RADIUS, cut, a1, bar)
+			else:
+				_arc_piece(pts, cols, AMMO_RADIUS, a0, a1, bar if left > 0 and a0 >= cut else empty)
+		crosshair.draw_multiline(pts, shadow, 5.0, true)
+		crosshair.draw_multiline_colors(pts, cols, 3.0, true)
 		return
 	var gap := deg_to_rad(clampf(40.0 / count, 2.5, 9.0))
 	var seg := (span - gap * (count - 1)) / count
@@ -436,8 +465,17 @@ func _draw_ammo_arc() -> void:
 			c = last if left == 1 and me.bazooka_timer <= 0.0 else full
 			if me.pierce_left > 0 and i - (count - left) < me.pierce_left and me.bazooka_timer <= 0.0:
 				c = Color(Bullet.PIERCE_COLOR, 0.95)
-		crosshair.draw_arc(Vector2.ZERO, AMMO_RADIUS, a, a + seg, 6, shadow, 5.0, true)
-		crosshair.draw_arc(Vector2.ZERO, AMMO_RADIUS, a, a + seg, 6, c, 3.0, true)
+		for k in 3:
+			_arc_piece(pts, cols, AMMO_RADIUS, a + seg * k / 3.0, a + seg * (k + 1) / 3.0, c)
+	crosshair.draw_multiline(pts, shadow, 5.0, true)
+	crosshair.draw_multiline_colors(pts, cols, 3.0, true)
+
+
+## Um pedaço reto de arco (de a0 a a1, em radianos) para draw_multiline.
+func _arc_piece(pts: PackedVector2Array, cols: PackedColorArray, radius: float, a0: float, a1: float, c: Color) -> void:
+	pts.append(Vector2.from_angle(a0) * radius)
+	pts.append(Vector2.from_angle(a1) * radius)
+	cols.append(c)
 
 
 func _process(delta: float) -> void:
