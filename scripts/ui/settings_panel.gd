@@ -13,6 +13,12 @@ const QUALITY_HINTS := [
 	"Sombras detalhadas, brilho, névoa e antisserrilhado. Pesada em placa de vídeo integrada.",
 ]
 
+const MODE_HINTS := [
+	"Janela comum, que dá para mover e redimensionar.",
+	"Ocupa a tela toda sem borda; trocar de programa (Alt+Tab) é instantâneo.",
+	"Tela cheia exclusiva: pode render um pouco mais, mas o Alt+Tab demora.",
+]
+
 static var _last_tab := ""
 
 var bind_buttons := {}   # [ação, vaga] -> Button
@@ -83,6 +89,21 @@ func _profile_page(nick_field: Control) -> Control:
 
 func _video_page() -> Control:
 	var col := _page("Vídeo", "")
+	col.add_child(Ui.label("Modo de exibição", 14, Ui.MUTED))
+	var mode_hint := Ui.label(MODE_HINTS[GameState.window_mode], 14, Ui.MUTED)
+	mode_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(Ui.segmented(GameState.WINDOW_MODES, GameState.window_mode, func(i):
+		GameState.set_window_mode(i)
+		mode_hint.text = MODE_HINTS[i]))
+	col.add_child(mode_hint)
+	col.add_child(Ui.gap(12))
+	col.add_child(Ui.label("Resolução", 14, Ui.MUTED))
+	col.add_child(Ui.segmented(GameState.RESOLUTIONS.map(func(r): return "%d x %d" % [r.x, r.y]),
+		GameState.resolution, GameState.set_resolution))
+	var res_hint := Ui.label("Mais alta fica mais nítida e mais pesada. Em PC modesto, 1280 x 720.", 14, Ui.MUTED)
+	res_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(res_hint)
+	col.add_child(Ui.gap(12))
 	col.add_child(Ui.label("Qualidade gráfica", 14, Ui.MUTED))
 	var hint := Ui.label(QUALITY_HINTS[GameState.quality], 14, Ui.MUTED)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

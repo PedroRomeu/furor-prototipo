@@ -65,6 +65,15 @@ const AUDIO_BUSES := [["Master", "Geral"], ["Efeitos", "Efeitos"], ["Interface",
 	["Musica", "Música"]]
 const DEFAULT_VOLUME := {"Master": 80, "Efeitos": 80, "Interface": 80, "Musica": 70}
 var volumes := DEFAULT_VOLUME.duplicate()
+## Tela (Configurações > Vídeo): modo de exibição e resolução em que o jogo é desenhado.
+## O jogo é sempre desenhado na resolução escolhida e esticado para a janela ou a tela
+## (content_scale VIEWPORT): em tela cheia num monitor maior, 1280x720 pesa o mesmo que a
+## janela, o que importa nas placas integradas. Modos: 0 janela, 1 tela cheia sem borda
+## (janela do tamanho da tela; trocar de programa é instantâneo), 2 tela cheia exclusiva.
+const WINDOW_MODES := ["Janela", "Sem borda", "Tela cheia"]
+const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080)]
+var window_mode := 0
+var resolution := 0
 ## Qualidade gráfica: 0 baixa, 1 média, 2 alta (ver match.gd, _apply_quality).
 var quality := 1
 ## Contador de quadros por segundo no canto da tela.
@@ -100,11 +109,14 @@ func _ready() -> void:
 	_register_inputs()
 	load_decks()
 	_setup_audio.call_deferred()
+	_apply_display.call_deferred()
 	var cfg := ConfigFile.new()
 	if cfg.load(SETTINGS_PATH) == OK:
 		mouse_sens = cfg.get_value("controles", "sensibilidade", DEFAULT_SENS)
 		quality = cfg.get_value("video", "qualidade", 1)
 		show_fps = cfg.get_value("video", "mostrar_fps", false)
+		window_mode = clampi(int(cfg.get_value("video", "modo", 0)), 0, WINDOW_MODES.size() - 1)
+		resolution = clampi(int(cfg.get_value("video", "resolucao", 0)), 0, RESOLUTIONS.size() - 1)
 		for bus in volumes:
 			volumes[bus] = clampi(int(cfg.get_value("audio", bus, volumes[bus])), 0, 100)
 		nick = clean_nick(cfg.get_value("jogador", "nome", ""))
@@ -190,6 +202,37 @@ func _apply_volume(bus: String) -> void:
 	AudioServer.set_bus_mute(i, v == 0)
 	# Curva ao quadrado: a barra soa mais uniforme (o meio não fica alto demais).
 	AudioServer.set_bus_volume_db(i, linear_to_db(pow(v / 100.0, 2.0)) if v > 0 else -80.0)
+
+
+func set_window_mode(value: int) -> void:
+	window_mode = clampi(value, 0, WINDOW_MODES.size() - 1)
+	_save_setting("video", "modo", window_mode)
+	_apply_display()
+
+
+func set_resolution(value: int) -> void:
+	resolution = clampi(value, 0, RESOLUTIONS.size() - 1)
+	_save_setting("video", "resolucao", resolution)
+	_apply_display()
+
+
+func _apply_display() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var win := get_window()
+	win.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+	win.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	win.content_scale_size = RESOLUTIONS[resolution]
+	match window_mode:
+		0:
+			if win.mode != Window.MODE_WINDOWED:
+				win.mode = Window.MODE_WINDOWED
+				win.size = RESOLUTIONS[0]
+				win.move_to_center()
+		1:
+			win.mode = Window.MODE_FULLSCREEN
+		2:
+			win.mode = Window.MODE_EXCLUSIVE_FULLSCREEN
 
 
 func set_show_fps(value: bool) -> void:

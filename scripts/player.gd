@@ -244,6 +244,9 @@ const STAND_HEIGHT := 1.8
 const CROUCH_HEIGHT := 1.1
 const STAND_EYE := 1.6
 const CROUCH_EYE := 0.95
+## Tamanho do corpo (cartas e vida) na altura da câmera (2026-10-05, pedido do usuário):
+## acompanha 85% da mudança, então quem cresce vê mais de cima e quem encolhe, de baixo.
+const EYE_SIZE_FOLLOW := 0.85
 const SHIELD_HIT_RADIUS := 0.9
 # Vazio (Arena.VOID_Y, 1 m abaixo do chão): quem cai quica e leva dano. O quique normal é
 # baixo e curto: perto da borda dá para voltar, longe precisa de vários (e cada um fere).
@@ -882,7 +885,10 @@ func reveal() -> void:
 ## passo e atrasa com o mouse.
 func _camera_feel(delta: float) -> void:
 	eye_dip = move_toward(eye_dip, 0.0, delta * 1.2)
-	var eye := (CROUCH_EYE if crouching else STAND_EYE) - eye_dip
+	var size := 1.0 + (float(stats["body_scale"]) - 1.0) * EYE_SIZE_FOLLOW
+	var eye := (CROUCH_EYE if crouching else STAND_EYE) * size - eye_dip
+	if size > 1.0:
+		eye = minf(eye, _ceiling_room(eye))
 	head.position.y = lerpf(head.position.y, eye, minf(1.0, delta * 14.0))
 	var hspeed := Vector2(velocity.x, velocity.z).length()
 	var fov := BASE_FOV + clampf((hspeed - 9.0) / 10.0, 0.0, 1.0) * SPEED_FOV
@@ -900,6 +906,15 @@ func _camera_feel(delta: float) -> void:
 		sway = sway.lerp(Vector2.ZERO, minf(1.0, delta * 8.0))
 		viewmodel.position = VIEWMODEL_POS + bob + Vector3(sway.x, sway.y, recoil * 0.07)
 		viewmodel.rotation = Vector3(recoil * 0.25, 0.0, 0.0)
+
+
+## Gigante embaixo de laje: a câmera para um pouco abaixo do teto em vez de entrar nele
+## (a colisão do corpo não cresce com o tamanho, só o modelo e a área de acerto).
+func _ceiling_room(eye: float) -> float:
+	var from := global_position + Vector3.UP * 1.0
+	var query := PhysicsRayQueryParameters3D.create(from, global_position + Vector3.UP * (eye + 0.25), 1, [get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	return eye if hit.is_empty() else maxf(1.0, hit["position"].y - global_position.y - 0.25)
 
 
 ## Põe a câmera na posição interpolada do corpo, com a mira atual do mouse.
