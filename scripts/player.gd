@@ -1,0 +1,1731 @@
+class_name Player
+extends CharacterBody3D
+## Jogador do 1x1. As ações chegam pelas variáveis in_*, preenchidas pelo teclado e mouse
+## ou por um BotBrain. Em rede, só o dono simula o jogador (is_local); a cópia nas outras
+## máquinas só segue o que chega pela rede (_net_state).
+##
+## Movimento no estilo arena shooter: aceleração e atrito próprios, controle no ar que
+## preserva o embalo, deslize, escalada de beirada, pulo na parede (2 por pulo, para
+## escalar), gravidade mais forte
+## na descida (pulo firme, sem flutuar), tolerância para pular depois de sair da beirada
+## e pulo guardado antes de pousar. Dash no Ctrl: no chão (andando) dá um tiro curto de
+## velocidade que, segurando, vira deslize; no ar dá uma corridinha reta, uma vez por pulo.
+
+signal died(player: Player)
+signal damaged(amount: float, from: Player)
+signal damage_dealt(amount: float, lethal: bool)
+signal reflected
+signal revived
+signal void_bounced(saved: bool)
+
+## Atributos sem nenhuma carta. As cartas (CardDB) alteram estes valores.
+const BASE_STATS := {
+	"max_health": 100.0,
+	"move_speed": 9.0,
+	"jump_velocity": 12.0,   # sobe ~2,35 m com GRAVITY_RISE
+	"gravity_mult": 1.0,
+	"extra_jumps": 0,
+	"wall_jumps": 2,
+	"air_dashes": 1,
+	"dash_cooldown": 0.9,
+	"dash_dodge": 0,
+	"dash_hit": 0.0,
+	"dash_ammo": 0,
+	"dash_power": 1.0,
+	"hit_dash": 0,
+	"air_control": 1.0,
+	"glide": 0,
+	"slide_boost": 1.0,
+	# Tiro no estilo ROUNDS: poucas balas por pente, cada uma pesa (3 acertos matam),
+	# projétil visível que cai com a distância.
+	"damage": 34.0,
+	"fire_interval": 0.3,
+	"mag_size": 4,
+	"reload_time": 1.3,
+	"bullet_speed": 48.0,
+	"bullet_gravity": 7.0,
+	"bullet_count": 1,
+	"spread": 4.0,
+	"burst": 1,
+	"bullet_radius": 0.15,
+	"last_shot": 1.0,
+	"crit_chance": 0.0,
+	"bounces": 0,
+	"homing": 0.0,
+	"ghost": 0,
+	"explosion": 0.0,
+	"poison": 0.0,
+	"slow": 0.0,
+	"knockback": 0.0,
+	"shield_break": 0,
+	"target_bounce": 0,
+	"execute": 0.0,
+	"lifesteal": 0.0,
+	"boomerang": 0,
+	"bounce_damage": 0.0,
+	"sticky": 0,
+	"split": 0,
+	"grow": 0.0,
+	"swap": 0,
+	"blind": 0.0,
+	"lazy": 0,
+	"shield_duration": 0.35,
+	"shield_cooldown": 2.0,
+	"reflect_mult": 1.0,
+	"reflect_refund": 0,
+	"reflect_split": 0,
+	"reflect_homing": 0.0,
+	"shield_reload": 0,
+	"shield_dash": 0,
+	"shield_shockwave": 0,
+	"shield_heal": 0.0,
+	"shield_nova": 0,
+	"shield_teleport": 0,
+	"shield_bombs": 0,
+	"shield_echo": 0,
+	"shield_on_empty": 0,
+	"shield_size": 1.0,
+	"shield_charges": 1,
+	"shield_bash": 0.0,
+	"shield_armor": 0.0,
+	"bloodlust": 0.0,
+	"rage": 0.0,
+	"revives": 0,
+	"regen": 0.0,
+	"radar": 0,
+	"body_scale": 1.0,
+	"chase": 0.0,
+	"camo": 0,
+	"rocket_jump": 0,
+	"ground_slam": 0,
+	# Cartas mestras (CardDB.MASTERS)
+	"updraft": 0,
+	"bazooka": 0,
+	"barrier": 0,
+	"pierce": 0,
+	"guided": 0,   # Piloto, mestra guardada (CardDB.SHELVED_MASTERS)
+	"last_stand": 0,
+}
+
+## Um modelo por lado da partida (pacote Mini Characters da Kenney, CC0).
+const CHARACTERS := [
+	"res://assets/characters/character-male-b.glb",
+	"res://assets/characters/character-female-c.glb",
+	"res://assets/characters/character-male-e.glb",
+	"res://assets/characters/character-female-a.glb",
+]
+const GUN_MODEL := "res://assets/blasters/blaster-b.glb"
+const MODEL_SCALE := 2.6
+const LOOPING_ANIMS := ["idle", "walk", "sprint", "fall", "crouch"]
+
+# Movimento
+## Gravidade forte e impulsos maiores: as alturas continuam as mesmas, mas tudo no ar
+## dura menos (~15% mais rápido que com 22/30), como em Valorant, Apex e Titanfall.
+const GRAVITY_RISE := 30.0   # subindo
+const GRAVITY_FALL := 42.0   # descendo: queda mais rápida que a subida
+const APEX_SPEED := 1.2      # perto do topo do pulo...
+const APEX_GRAVITY := 0.6    # ...a gravidade alivia um instante (pulo mais controlável)
+const MAX_FALL_SPEED := 55.0
+const GROUND_ACCEL := 12.0
+const AIR_ACCEL := 3.2
+const FRICTION := 7.0
+const STOP_SPEED := 3.0
+const MAX_HSPEED := 24.0
+const COYOTE_TIME := 0.12
+const JUMP_BUFFER := 0.12
+const JUMP_CUT := 0.65
+const CROUCH_SPEED_MULT := 0.5
+const SLIDE_MIN_SPEED := 5.5
+const SLIDE_STOP_SPEED := 4.0
+const SLIDE_BOOST := 4.0
+const SLIDE_FRICTION := 0.45
+const SLIDE_COOLDOWN := 0.6
+const WALL_JUMP_PUSH := 7.0  # pulo na parede soltando o movimento para longe dela
+const WALL_CLIMB_PUSH := 1.5 # pulo na parede empurrando contra ela: sobe rente (escalada)
+const WALL_GRACE := 0.15     # ainda vale pular na parede este tempo depois de desencostar
+const MANTLE_REACH := 2.2    # altura máxima (a partir dos pés) de uma beirada que dá para escalar
+const DASH_SPEED := 24.0
+const DASH_TIME := 0.18
+const DASH_EXIT := 1.3       # ao fim do dash sobra pelo menos 1,3x a velocidade de corrida
+const DODGE_TIME := 0.24     # Esquiva: as balas atravessam por este tempo depois do dash
+const DASH_HIT_RANGE := 1.4  # Atropelar
+const GLIDE_FALL := 3.0     # Planador: velocidade máxima de queda segurando o pulo
+const SLAM_LOOK := -0.6      # Meteoro: olhando mais para baixo que isto (uns 35 graus)
+# Corpo
+const RADIUS := 0.4
+const STAND_HEIGHT := 1.8
+const CROUCH_HEIGHT := 1.1
+const STAND_EYE := 1.6
+const CROUCH_EYE := 0.95
+const SHIELD_HIT_RADIUS := 0.9
+# Vazio (Arena.VOID_Y, 1 m abaixo do chão): quem cai quica e leva dano. O quique normal é
+# baixo e curto: perto da borda dá para voltar, longe precisa de vários (e cada um fere).
+# Com o escudo de pé na hora, não leva dano e o quique é alto e longo.
+const VOID_DAMAGE := 20.0
+const VOID_BOUNCE := 11.1         # sobe ~2 m (1 m acima do chão), ~0,7 s no ar
+const VOID_BOUNCE_SHIELD := 18.7  # sobe ~5,8 m, ~1,2 s no ar
+const VOID_CREDIT := 4.0          # quem acertou você nestes segundos leva o crédito da queda
+const ARMOR_MAX := 50.0      # colete (item do mapa): absorve dano antes da vida
+# Combate
+const SHOCKWAVE_RANGE := 8.0
+const BASH_RANGE := 2.2         # Pancada: alcance do escudo, do peito de um ao do outro
+const SHIELD_DOUBLE_GAP := 0.5  # Escudo Duplo: espera entre a primeira e a segunda vez
+const SILENCE_TIME := 1.5
+const SLOW_TIME := 1.5
+const POISON_TIME := 3.0
+const BLOODLUST_TIME := 3.0
+const RAGE_THRESHOLD := 0.35
+const REGEN_DELAY := 3.0
+const BURST_GAP := 0.07
+const ADRENALINE_GAP := 0.4
+const CRIT_MULT := 2.5
+const TELEPORT_RANGE := 7.0
+const ECHO_DELAY := 0.5
+const CAMO_DELAY := 1.0
+const SLAM_SPEED := 32.0
+const SLAM_MIN_HEIGHT := 2.5
+const SLAM_RANGE := 5.0
+const SLAM_DAMAGE := 25.0
+# Cartas mestras
+const UPDRAFT_SPEED := 21.9      # Corrente: sobe ~8 m em ~0,7 s
+const BAZOOKA_TIME := 6.0        # Bazuca: quanto tempo dura...
+const BAZOOKA_ROCKETS := 3       # ...e quantos foguetes dá
+const BAZOOKA_INTERVAL := 0.7
+const ROCKET_SPEED := 30.0
+const ROCKET_DAMAGE := 2.0       # vezes o dano da arma
+const ROCKET_EXPLOSION := 4.0
+const LAST_STAND_TIME := 3.0     # Último Suspiro
+const PIERCE_SHOTS := 3          # Perfurante: tiros por uso...
+const PIERCE_SPEED := 3.0        # ...quantas vezes mais rápidos
+# Câmera e arma em primeira pessoa
+## FOV vertical (o Godot mede na altura). 74 graus dão uns 105 na horizontal em 16:9,
+## perto do padrão de Apex, Valorant e Overwatch; mais que isso distorce as bordas.
+const BASE_FOV := 74.0
+const SPEED_FOV := 8.0
+const VIEWMODEL_POS := Vector3(0.2, -0.19, -0.36)
+const VIEWMODEL_SCALE := 0.55
+const RECOIL_KICK := 0.03
+const HIT_FLASH_TIME := 0.14   # o modelo atingido pisca em branco por este tempo
+## Métodos que a outra máquina pode chamar neste jogador (ver remote_call).
+const ASSIST_TIME := 10.0   # placar: dano nos últimos 10 s antes da morte conta assistência
+const REMOTE_METHODS := ["receive_shockwave", "credit_damage", "teleport_to"]
+## Carta mestra que este jogador tem (a primeira de cards; "" se nenhuma).
+var master_id := ""
+var master_cd := 0.0
+var bazooka_timer := 0.0
+var rockets_left := 0
+var pierce_left := 0       # Perfurante: tiros carregados
+var pierce_shot := false   # o disparo atual (com a rajada) é perfurante
+var ghost_left := 0        # Bala Fantasma: tiros deste pente que ainda atravessam parede
+var ghost_shot := false    # o disparo atual (com a rajada) atravessa parede
+var last_stand_timer := 0.0
+var last_stand_used := false
+
+var player_name := "Jogador"
+var is_human := false   # este é o jogador da câmera desta máquina
+var is_local := true    # esta máquina simula o jogador (falso = cópia de um jogador remoto)
+var peer_id := 1
+var side := 0
+## Time no 2x2 (0 Azul, 1 Vermelho); -1 é cada um por si.
+var team := -1
+var color := Color.WHITE
+## O jogador da câmera desta máquina (usado pelo Radar).
+static var viewer: Player
+var brain: BotBrain
+var deck: Array = []
+var cards: Array = []
+var stats: Dictionary = BASE_STATS.duplicate()
+
+var health := 100.0
+var armor := 0.0
+var ammo := 6
+var alive := true
+var frozen := true
+var fire_timer := 0.0
+var reload_timer := 0.0
+var burst_left := 0
+var burst_timer := 0.0
+var shield_timer := 0.0
+var shield_cd := 0.0
+var shield_extra := 0          # Escudo Duplo: usos rápidos que ainda restam neste ciclo
+var bash_hits: Array = []      # Pancada: quem já apanhou deste escudo
+var reflect_flash := 0.0
+
+var height := STAND_HEIGHT
+var crouching := false
+var sliding := false
+var slide_cd := 0.0
+var coyote := 0.0
+var jump_buffer := 0.0
+var jump_rising := false
+var jumps_left := 0
+var wall_jumps_left := 0
+var wall_time := 0.0         # encostou numa parede há pouco (WALL_GRACE)
+var wall_normal := Vector3.ZERO
+var mantle_cd := 0.0
+var air_dashes_left := 0
+var dash_cd := 0.0
+var dash_timer := 0.0
+var dash_dir := Vector3.ZERO
+var dash_air := false        # o dash atual começou no ar (sem gravidade enquanto dura)
+var dash_exit := 0.0         # velocidade que sobra quando o dash acaba
+var dodge_timer := 0.0
+var dash_hits: Array = []    # inimigos já atropelados neste dash
+var was_on_floor := true
+var was_shielding := false
+var eye_dip := 0.0
+
+var slow_timer := 0.0
+var slow_amount := 0.0
+var poisons: Array = []   # [{dps, time, from}]
+var silence_timer := 0.0
+var bloodlust_timer := 0.0
+var since_damage := 0.0
+var last_attacker: Player       # quem causou o último dano (crédito de quem empurra no vazio)
+## Placar (Tab): quem causou dano e quando (Time.get_ticks_msec), só na máquina dona. Na
+## morte, o último que causou dano leva o abate e os outros dos últimos ASSIST_TIME s, a
+## assistência. Vai junto com o aviso de morte, então todas as máquinas contam igual.
+var recent_hits := {}           # Player -> ms
+var death_killer := ""          # nome do nó de quem matou ("" = ninguém, ex.: a própria bala)
+var death_assists: Array = []
+var revives_left := 0
+var blind_timer := 0.0
+var echo_timer := 0.0
+var still_time := 0.0     # parado há quanto tempo (Camuflagem)
+var slamming := false     # despencando com o Meteoro
+var shot_mult := 1.0      # dano extra do disparo atual (Última Bala)
+
+var in_move := Vector2.ZERO
+var in_jump := false
+var in_jump_held := false
+var in_crouch := false
+var in_shoot := false
+var in_shield := false
+var in_dash := false
+var in_reload := false
+var in_master := false
+
+# Rede
+var net_round := 0
+var net_pos := Vector3.ZERO
+var net_yaw := 0.0
+var net_pitch := 0.0
+var net_on_floor := true
+
+var head: Node3D
+var camera: Camera3D
+var muzzle: Marker3D
+var muzzle_light: OmniLight3D
+var shape: CollisionShape3D
+var capsule: CapsuleShape3D
+var model: Node3D
+var anim: AnimationPlayer
+var aim_arm: AimArm
+var gun: Node3D
+var bazooka: Node3D     # aparece no lugar da arma enquanto a Bazuca dura
+var ring: MeshInstance3D
+var viewmodel: Node3D
+var shield_mesh: MeshInstance3D
+var shield_mat: StandardMaterial3D
+var tag: Label3D
+var recoil := 0.0
+var sway := Vector2.ZERO
+var bob_time := 0.0
+var shake := 0.0
+var cam_roll := 0.0
+var look_yaw := 0.0
+var hit_flash := 0.0
+var flash_mat: StandardMaterial3D
+var body_meshes: Array = []
+static var _hit_sound_frame := -1
+
+
+func _ready() -> void:
+	add_to_group("players")
+	collision_layer = 2
+	collision_mask = 1 | 2
+	floor_max_angle = deg_to_rad(46.0)
+	floor_snap_length = 0.3
+
+	shape = CollisionShape3D.new()
+	capsule = CapsuleShape3D.new()
+	capsule.radius = RADIUS
+	shape.shape = capsule
+	add_child(shape)
+
+	head = Node3D.new()
+	head.position.y = STAND_EYE
+	add_child(head)
+	camera = Camera3D.new()
+	camera.near = 0.05
+	camera.fov = BASE_FOV
+	head.add_child(camera)
+	camera.current = is_human
+	if is_human:
+		# A física roda a 60 Hz e o corpo é interpolado entre um passo e outro (sem tremer
+		# em monitor de 120 ou 144 Hz). A câmera fica de fora da interpolação e é posta a
+		# cada quadro em _place_camera: assim o mouse responde na hora, sem atraso.
+		camera.top_level = true
+		camera.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+
+	if is_human:
+		_build_viewmodel()
+	else:
+		_build_body()
+
+	shield_mesh = MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 1.05
+	sphere.height = 2.1
+	shield_mat = StandardMaterial3D.new()
+	shield_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	shield_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	shield_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	shield_mat.albedo_color = Color(0.4, 0.9, 1.0, 0.22)
+	sphere.material = shield_mat
+	shield_mesh.mesh = sphere
+	shield_mesh.visible = false
+	shield_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(shield_mesh)
+
+	tag = Label3D.new()
+	tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	tag.font_size = 48
+	tag.outline_size = 8
+	tag.modulate = color.lightened(0.5)
+	tag.visible = not is_human
+	add_child(tag)
+	_set_height(STAND_HEIGHT)
+
+
+## Primeira pessoa: só a arma presa na câmera, com luz de disparo no cano.
+func _build_viewmodel() -> void:
+	viewmodel = Node3D.new()
+	viewmodel.position = VIEWMODEL_POS
+	camera.add_child(viewmodel)
+	var g: Node3D = load(GUN_MODEL).instantiate()
+	_no_shadows(g)
+	g.scale = Vector3.ONE * VIEWMODEL_SCALE
+	g.rotation.y = 0.06   # cano levemente virado para a mira
+	viewmodel.add_child(g)
+	gun = g
+	bazooka = _make_bazooka()
+	_no_shadows(bazooka)
+	bazooka.scale = Vector3.ONE * 0.6
+	bazooka.position = Vector3(0.06, -0.02, 0.0)
+	bazooka.visible = false
+	viewmodel.add_child(bazooka)
+	muzzle = Marker3D.new()
+	muzzle.position = Vector3(-0.01, 0.025, -0.17)
+	viewmodel.add_child(muzzle)
+	_add_muzzle_light()
+
+
+## Terceira pessoa: personagem animado com a arma na mão e um anel da cor do time no chão.
+func _build_body() -> void:
+	model = load(CHARACTERS[side % CHARACTERS.size()]).instantiate()
+	model.scale = Vector3.ONE * MODEL_SCALE
+	model.rotation.y = PI   # os modelos olham para +Z; o jogador olha para -Z
+	add_child(model)
+	anim = model.find_children("*", "AnimationPlayer", true, false)[0]
+	for a in LOOPING_ANIMS:
+		if anim.has_animation(a):
+			anim.get_animation(a).loop_mode = Animation.LOOP_LINEAR
+	anim.play("idle")
+	body_meshes = model.find_children("*", "MeshInstance3D", true, false)
+	flash_mat = StandardMaterial3D.new()
+	flash_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	flash_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	flash_mat.albedo_color = Color(1, 1, 1, 0)
+	var skeleton: Skeleton3D = model.find_children("*", "Skeleton3D", true, false)[0]
+	aim_arm = AimArm.new()
+	skeleton.add_child(aim_arm)
+	var hand := BoneAttachment3D.new()
+	hand.bone_name = "arm-right"
+	skeleton.add_child(hand)
+	gun = load(GUN_MODEL).instantiate()
+	gun.scale = Vector3.ONE * (1.3 / MODEL_SCALE)
+	gun.rotation.x = -PI / 2.0
+	gun.position = Vector3(0, -0.13, 0.04)
+	hand.add_child(gun)
+	bazooka = _make_bazooka()
+	bazooka.scale = Vector3.ONE * (3.0 / MODEL_SCALE)
+	bazooka.rotation = gun.rotation
+	bazooka.position = gun.position
+	bazooka.visible = false
+	hand.add_child(bazooka)
+	muzzle = Marker3D.new()
+	muzzle.position = Vector3(0, 0.04, -0.3)
+	gun.add_child(muzzle)
+	_add_muzzle_light()
+
+	ring = MeshInstance3D.new()
+	var disc := CylinderMesh.new()
+	disc.top_radius = 0.6
+	disc.bottom_radius = 0.6
+	disc.height = 0.02
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = color
+	disc.material = mat
+	ring.mesh = disc
+	ring.position.y = 0.03
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(ring)
+
+
+func _add_muzzle_light() -> void:
+	muzzle_light = OmniLight3D.new()
+	muzzle_light.light_color = color.lightened(0.5)
+	muzzle_light.omni_range = 4.0
+	muzzle_light.light_energy = 0.0
+	muzzle_light.visible = false
+	muzzle.add_child(muzzle_light)
+
+
+func _no_shadows(node: Node) -> void:
+	if node is GeometryInstance3D:
+		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for c in node.get_children():
+		_no_shadows(c)
+
+
+func _set_height(h: float) -> void:
+	height = h
+	capsule.height = h
+	shape.position.y = h / 2.0
+	if shield_mesh:
+		shield_mesh.position.y = h / 2.0 + 0.05
+	if tag:
+		tag.position.y = h + 0.5
+
+
+## Começo de rodada: recalcula os atributos com as cartas e volta ao ponto de partida.
+func reset_for_round(spawn: Transform3D) -> void:
+	stats = CardDB.compute_stats(BASE_STATS, cards)
+	var masters := cards.filter(CardDB.is_master)
+	master_id = masters[0] if not masters.is_empty() else ""
+	master_cd = 0.0
+	bazooka_timer = 0.0
+	rockets_left = 0
+	pierce_left = 0
+	pierce_shot = false
+	_show_bazooka(false)
+	last_stand_timer = 0.0
+	last_stand_used = false
+	global_transform = spawn
+	reset_physics_interpolation()
+	net_pos = spawn.origin
+	net_yaw = rotation.y
+	look_yaw = rotation.y
+	net_pitch = 0.0
+	head.rotation = Vector3.ZERO
+	camera.rotation = Vector3.ZERO
+	velocity = Vector3.ZERO
+	health = stats["max_health"]
+	armor = 0.0
+	ammo = stats["mag_size"]
+	ghost_left = stats["ghost"]
+	fire_timer = 0.0
+	reload_timer = 0.0
+	burst_left = 0
+	shield_timer = 0.0
+	shield_cd = 0.0
+	shield_extra = stats["shield_charges"] - 1
+	air_dashes_left = stats["air_dashes"]
+	dash_timer = 0.0
+	dash_cd = 0.0
+	dodge_timer = 0.0
+	crouching = false
+	sliding = false
+	_set_height(STAND_HEIGHT)
+	slow_timer = 0.0
+	poisons.clear()
+	silence_timer = 0.0
+	bloodlust_timer = 0.0
+	since_damage = 0.0
+	recent_hits.clear()
+	last_attacker = null
+	revives_left = stats["revives"]
+	blind_timer = 0.0
+	echo_timer = 0.0
+	still_time = 0.0
+	slamming = false
+	alive = true
+	shape.disabled = false
+	tag.visible = not is_human
+	var body_scale: float = stats["body_scale"]
+	tag.position.y = height * body_scale + 0.5
+	shield_mesh.scale = Vector3.ONE * maxf(body_scale, 1.0) * float(stats["shield_size"])
+	if model:
+		model.scale = Vector3.ONE * MODEL_SCALE * body_scale
+		model.visible = true
+		ring.visible = true
+		anim.play("idle")
+
+
+func _input(event: InputEvent) -> void:
+	if not is_human or brain != null:
+		return
+	var motion := event as InputEventMouseMotion
+	if motion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		# O giro do corpo vai para look_yaw e é aplicado no passo de física (o corpo é
+		# interpolado); a câmera já usa look_yaw no quadro seguinte.
+		var sens := GameState.mouse_sens
+		look_yaw = wrapf(look_yaw - motion.relative.x * sens, -PI, PI)
+		head.rotate_x(-motion.relative.y * sens)
+		head.rotation.x = clampf(head.rotation.x, -1.5, 1.5)
+		sway = (sway - motion.relative * 0.0004).limit_length(0.05)
+
+
+func _read_local_input() -> void:
+	if GameState.menu_open:
+		# Menu de pausa aberto online (o jogo não para): o personagem fica parado.
+		in_move = Vector2.ZERO
+		in_jump = false
+		in_jump_held = false
+		in_crouch = false
+		in_shoot = false
+		in_shield = false
+		in_dash = false
+		in_reload = false
+		in_master = false
+		return
+	var captured := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+	in_move = Input.get_vector("move_left", "move_right", "move_back", "move_forward")
+	in_jump = Input.is_action_just_pressed("jump")
+	in_jump_held = Input.is_action_pressed("jump")
+	in_crouch = Input.is_action_pressed("crouch")
+	in_shoot = captured and Input.is_action_pressed("shoot")
+	in_shield = Input.is_action_just_pressed("shield")
+	in_dash = Input.is_action_just_pressed("dash")
+	in_reload = Input.is_action_just_pressed("reload")
+	in_master = Input.is_action_just_pressed("master")
+
+
+# ---------------------------------------------------------------- visual
+
+func _process(delta: float) -> void:
+	var shielding := alive and is_shielding()
+	if shielding and not was_shielding:
+		Sfx.at(self, "shield", chest())
+	was_shielding = shielding
+	shield_mesh.visible = shielding
+	reflect_flash = maxf(0.0, reflect_flash - delta * 4.0)
+	shield_mat.albedo_color.a = 0.22 + reflect_flash * 0.5
+	if muzzle_light:
+		muzzle_light.light_energy = move_toward(muzzle_light.light_energy, 0.0, delta * 60.0)
+		# Luz apagada fica invisível: no OpenGL cada luz ligada custa um passe a mais.
+		muzzle_light.visible = muzzle_light.light_energy > 0.0
+	_update_camo(delta)
+	if not is_human:
+		# Aliado: nome e vida sempre à vista, através das paredes, na cor do time.
+		var ally := viewer != null and viewer.is_ally(self)
+		tag.no_depth_test = ally or (viewer != null and viewer != self and viewer.stats["radar"] > 0)
+		if tag.visible:
+			tag.text = "%s\n%d" % [player_name, ceili(health)] + (" +%d" % ceili(armor) if armor > 0.0 else "")
+	if model:
+		_update_animation()
+		_update_hit_flash(delta)
+	if is_human:
+		_camera_feel(delta)
+
+
+func _update_animation() -> void:
+	aim_arm.pitch = head.rotation.x
+	aim_arm.active = alive
+	if not alive:
+		return
+	var hspeed := Vector2(velocity.x, velocity.z).length()
+	var on_floor := is_on_floor() if is_local else net_on_floor
+	var next := "idle"
+	if not on_floor:
+		next = "jump" if velocity.y > 0.0 else "fall"
+	elif crouching:
+		next = "crouch"
+	elif hspeed > 7.0:
+		next = "sprint"
+	elif hspeed > 0.5:
+		next = "walk"
+	if anim.current_animation != next:
+		anim.play(next, 0.15)
+	anim.speed_scale = clampf(hspeed / 6.0, 0.8, 1.6) if next == "walk" or next == "sprint" else 1.0
+
+
+## Acerto visto de fora: o modelo pisca em branco e encolhe/achata um instante. A camada
+## branca (material_overlay) só fica ligada enquanto pisca, porque custa um passe a mais.
+func flash_hit() -> void:
+	if model == null:
+		return
+	if hit_flash <= 0.0:
+		for m in body_meshes:
+			m.material_overlay = flash_mat
+	hit_flash = 1.0
+
+
+func _update_hit_flash(delta: float) -> void:
+	if hit_flash <= 0.0:
+		return
+	hit_flash = maxf(0.0, hit_flash - delta / HIT_FLASH_TIME)
+	flash_mat.albedo_color.a = hit_flash * 0.85
+	var squash := Vector3(1.0 + 0.05 * hit_flash, 1.0 - 0.07 * hit_flash, 1.0 + 0.05 * hit_flash)
+	model.scale = squash * MODEL_SCALE * float(stats["body_scale"])
+	if hit_flash <= 0.0:
+		for m in body_meshes:
+			m.material_overlay = null
+
+
+## Camuflagem: parado por CAMO_DELAY some da vista dos outros (o próprio jogador vê a
+## tela escurecer nas bordas pelo HUD). Atirar ou levar dano revela (reveal).
+func _update_camo(delta: float) -> void:
+	if stats["camo"] <= 0 or not alive:
+		still_time = 0.0
+	elif velocity.length() < 0.6 and not is_shielding():
+		still_time += delta
+	else:
+		still_time = 0.0
+	if model and alive:
+		var show := not is_hidden() or (viewer != null and viewer.is_ally(self))
+		model.visible = show
+		ring.visible = show
+		tag.visible = show
+
+
+func is_hidden() -> bool:
+	return still_time > CAMO_DELAY
+
+
+func reveal() -> void:
+	still_time = 0.0
+
+
+## Câmera: abaixa ao agachar, afunda ao pousar, inclina de leve no deslize, abre o FOV
+## com a velocidade, dá o coice do tiro e treme ao levar dano. A arma balança com o
+## passo e atrasa com o mouse.
+func _camera_feel(delta: float) -> void:
+	eye_dip = move_toward(eye_dip, 0.0, delta * 1.2)
+	var eye := (CROUCH_EYE if crouching else STAND_EYE) - eye_dip
+	head.position.y = lerpf(head.position.y, eye, minf(1.0, delta * 14.0))
+	var hspeed := Vector2(velocity.x, velocity.z).length()
+	var fov := BASE_FOV + clampf((hspeed - 9.0) / 10.0, 0.0, 1.0) * SPEED_FOV
+	camera.fov = lerpf(camera.fov, fov, minf(1.0, delta * 6.0))
+	var roll := -in_move.x * 0.012 + (0.04 if sliding else 0.0)
+	cam_roll = lerpf(cam_roll, roll, minf(1.0, delta * 8.0))
+	recoil = move_toward(recoil, 0.0, delta * 6.0)
+	shake = move_toward(shake, 0.0, delta * 2.5)
+	_place_camera()
+	if viewmodel:
+		var grounded := is_on_floor() and not sliding
+		if grounded and hspeed > 1.0:
+			bob_time += delta * hspeed * 1.3
+		var bob := Vector3(sin(bob_time) * 0.012, -absf(cos(bob_time)) * 0.014, 0.0) * minf(hspeed / 9.0, 1.0)
+		sway = sway.lerp(Vector2.ZERO, minf(1.0, delta * 8.0))
+		viewmodel.position = VIEWMODEL_POS + bob + Vector3(sway.x, sway.y, recoil * 0.07)
+		viewmodel.rotation = Vector3(recoil * 0.25, 0.0, 0.0)
+
+
+## Põe a câmera na posição interpolada do corpo, com a mira atual do mouse.
+func _place_camera() -> void:
+	var yaw := look_yaw if brain == null else rotation.y
+	var origin := get_global_transform_interpolated().origin + Vector3(0, head.position.y, 0)
+	var jitter := Vector3.ZERO
+	if shake > 0.0:
+		jitter = Vector3(randf_range(-1, 1), randf_range(-1, 1), 0.0) * shake * 0.06
+	var euler := Vector3(head.rotation.x + recoil * RECOIL_KICK + jitter.y, yaw + jitter.x, cam_roll)
+	camera.global_transform = Transform3D(Basis.from_euler(euler), origin)
+
+
+# ---------------------------------------------------------------- simulação
+
+func _physics_process(delta: float) -> void:
+	if not is_local:
+		_follow_network(delta)
+		return
+	if brain:
+		brain.think(delta)
+	elif is_human:
+		_read_local_input()
+		rotation.y = look_yaw
+	_tick(delta)
+	if not alive:
+		return
+	if frozen:
+		velocity.x = 0.0
+		velocity.z = 0.0
+		if not is_on_floor():
+			velocity.y -= GRAVITY_FALL * delta
+		if global_position.y < Arena.VOID_Y:
+			velocity.y = maxf(velocity.y, 0.0)   # rodada parada: fica no vazio, sem cair sem fim
+		move_and_slide()
+		_send_state()
+		return
+	_update_crouch()
+	_move(delta)
+	_act(delta)
+	var fall_speed := velocity.y
+	move_and_slide()
+	_check_wall()
+	if is_on_floor() and not was_on_floor:
+		_on_landed(fall_speed)
+	was_on_floor = is_on_floor()
+	if global_position.y < Arena.VOID_Y and velocity.y <= 0.0:
+		_void_bounce()
+	_send_state()
+
+
+func _tick(delta: float) -> void:
+	fire_timer = maxf(0.0, fire_timer - delta)
+	shield_timer = maxf(0.0, shield_timer - delta)
+	shield_cd = maxf(0.0, shield_cd - delta)
+	dash_cd = maxf(0.0, dash_cd - delta)
+	master_cd = maxf(0.0, master_cd - delta)
+	if bazooka_timer > 0.0:
+		bazooka_timer -= delta
+		if bazooka_timer <= 0.0 or (rockets_left <= 0 and fire_timer <= 0.0):
+			bazooka_timer = 0.0
+			_show_bazooka(false)
+	if last_stand_timer > 0.0:
+		last_stand_timer -= delta
+		if last_stand_timer <= 0.0 and alive:
+			_lethal()   # ninguém abatido a tempo
+	dodge_timer = maxf(0.0, dodge_timer - delta)
+	slide_cd = maxf(0.0, slide_cd - delta)
+	mantle_cd = maxf(0.0, mantle_cd - delta)
+	coyote = maxf(0.0, coyote - delta)
+	wall_time = maxf(0.0, wall_time - delta)
+	jump_buffer = maxf(0.0, jump_buffer - delta)
+	slow_timer = maxf(0.0, slow_timer - delta)
+	silence_timer = maxf(0.0, silence_timer - delta)
+	bloodlust_timer = maxf(0.0, bloodlust_timer - delta)
+	blind_timer = maxf(0.0, blind_timer - delta)
+	since_damage += delta
+	if echo_timer > 0.0:
+		echo_timer -= delta
+		if echo_timer <= 0.0 and alive and silence_timer <= 0.0:
+			shield_timer = stats["shield_duration"]
+	if reload_timer > 0.0:
+		reload_timer -= delta
+		if reload_timer <= 0.0:
+			ammo = stats["mag_size"]
+			ghost_left = stats["ghost"]
+	if not alive:
+		return
+	for p in poisons:
+		p["time"] -= delta
+		take_damage(p["dps"] * delta, p["from"], false)
+	poisons = poisons.filter(func(p): return p["time"] > 0.0)
+	if stats["regen"] > 0.0 and since_damage > REGEN_DELAY:
+		heal(stats["regen"] * delta)
+
+
+func _target_speed() -> float:
+	var speed: float = stats["move_speed"]
+	if crouching and not sliding:
+		speed *= CROUCH_SPEED_MULT
+	if slow_timer > 0.0:
+		speed *= 1.0 - slow_amount
+	if bloodlust_timer > 0.0:
+		speed *= 1.0 + stats["bloodlust"]
+	if stats["chase"] > 0.0 and _toward_enemy():
+		speed *= 1.0 + stats["chase"]
+	return speed
+
+
+## Caçador: andando na direção de algum inimigo (até 45 graus de desvio)?
+func _toward_enemy() -> bool:
+	var wish := _wish_dir()
+	if wish == Vector3.ZERO:
+		return false
+	for enemy in enemies():
+		var to: Vector3 = enemy.global_position - global_position
+		to.y = 0.0
+		if to.length() > 0.1 and wish.normalized().dot(to.normalized()) > 0.7:
+			return true
+	return false
+
+
+func _wish_dir() -> Vector3:
+	var wish := global_transform.basis * Vector3(in_move.x, 0.0, -in_move.y)
+	wish.y = 0.0
+	return wish.limit_length(1.0)
+
+
+func _update_crouch() -> void:
+	var hspeed := Vector2(velocity.x, velocity.z).length()
+	if in_crouch and not crouching:
+		crouching = true
+		_set_height(CROUCH_HEIGHT)
+		if stats["ground_slam"] > 0 and not is_on_floor() and head.rotation.x < SLAM_LOOK 				and _height_above_ground() > SLAM_MIN_HEIGHT:
+			slamming = true
+			velocity = Vector3(velocity.x * 0.3, -SLAM_SPEED, velocity.z * 0.3)
+		if is_on_floor() and hspeed > SLIDE_MIN_SPEED and slide_cd <= 0.0:
+			_start_slide(true)
+	elif not in_crouch and crouching and _can_stand():
+		crouching = false
+		sliding = false
+		_set_height(STAND_HEIGHT)
+	if sliding and (hspeed < SLIDE_STOP_SPEED or not crouching):
+		sliding = false
+
+
+func _start_slide(boost: bool) -> void:
+	sliding = true
+	slide_cd = SLIDE_COOLDOWN
+	if boost:
+		var h := Vector3(velocity.x, 0.0, velocity.z)
+		var add := h.normalized() * SLIDE_BOOST * float(stats["slide_boost"])
+		velocity.x += add.x
+		velocity.z += add.z
+
+
+func _can_stand() -> bool:
+	return not test_move(global_transform, Vector3.UP * (STAND_HEIGHT - CROUCH_HEIGHT))
+
+
+func _height_above_ground() -> float:
+	var from := global_position + Vector3.UP * 0.1
+	var ray := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * 50.0, 1, [get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(ray)
+	return 50.0 if hit.is_empty() else from.y - hit["position"].y
+
+
+## Meteoro: o impacto fere e empurra quem estiver perto.
+func _slam_impact() -> void:
+	slamming = false
+	eye_dip = 0.35
+	shake = maxf(shake, 0.6)
+	Effects.burst(get_parent(), global_position + Vector3.UP * 0.3, SLAM_RANGE, Color(1.0, 0.55, 0.2))
+	Sfx.at(self, "explosion", global_position)
+	for enemy in enemies():
+		if global_position.distance_to(enemy.global_position) < SLAM_RANGE:
+			enemy.remote_call("receive_shockwave",
+				[global_position, SLAM_DAMAGE * stats["ground_slam"], String(name)])
+
+
+func _on_landed(fall_speed: float) -> void:
+	if slamming:
+		_slam_impact()
+	if fall_speed < -9.0:
+		eye_dip = clampf(-fall_speed * 0.01, 0.0, 0.3)
+	# Agachado ao pousar com embalo vira deslize, sem precisar soltar e apertar de novo.
+	if crouching and not sliding and Vector2(velocity.x, velocity.z).length() > SLIDE_MIN_SPEED:
+		_start_slide(false)
+
+
+func _move(delta: float) -> void:
+	var on_floor := is_on_floor()
+	if on_floor:
+		coyote = COYOTE_TIME
+		jumps_left = stats["extra_jumps"]
+		wall_jumps_left = stats["wall_jumps"]
+		if dash_timer <= 0.0:
+			air_dashes_left = stats["air_dashes"]
+	if in_jump:
+		jump_buffer = JUMP_BUFFER
+
+	var wish := _wish_dir()
+	var target := _target_speed()
+	var h := Vector3(velocity.x, 0.0, velocity.z)
+
+	var jumped := false
+	if jump_buffer > 0.0:
+		if on_floor or coyote > 0.0:
+			jumped = true
+		elif wall_time > 0.0 and wall_jumps_left > 0:
+			# Empurrando contra a parede (ou sem tecla) sobe rente a ela; para outro lado, salta longe.
+			wall_jumps_left -= 1
+			wall_time = 0.0
+			var climb := wish == Vector3.ZERO or wish.normalized().dot(-wall_normal) > 0.3
+			h = h - wall_normal * h.dot(wall_normal) + wall_normal * (WALL_CLIMB_PUSH if climb else WALL_JUMP_PUSH)
+			jumped = true
+		elif jumps_left > 0:
+			jumps_left -= 1
+			# O pulo no ar deixa trocar de direção sem perder velocidade.
+			if wish != Vector3.ZERO:
+				h = wish.normalized() * maxf(h.length(), target)
+			jumped = true
+	if jumped:
+		velocity.y = stats["jump_velocity"]
+		jump_buffer = 0.0
+		coyote = 0.0
+		jump_rising = true
+		sliding = false
+		slamming = false
+		on_floor = false
+	elif not on_floor and _try_mantle(wish):
+		h = Vector3(velocity.x, 0.0, velocity.z)
+
+	if in_dash and not slamming and dash_cd <= 0.0 and dash_timer <= 0.0:
+		if on_floor and wish != Vector3.ZERO:
+			_start_dash(wish, h, target, false)
+		elif not on_floor and air_dashes_left > 0:
+			air_dashes_left -= 1
+			_start_dash(wish, h, target, true)
+
+	var dashing := dash_timer > 0.0
+	dash_timer = maxf(0.0, dash_timer - delta)
+	if dashing and dash_timer <= 0.0:
+		_end_dash()
+		h = Vector3(velocity.x, 0.0, velocity.z)
+	elif dashing:
+		h = dash_dir * DASH_SPEED
+		if dash_air:
+			velocity.y = 0.0
+		_dash_hits()
+	elif on_floor and sliding:
+		h = _friction(h, SLIDE_FRICTION, delta)
+		# Ladeira abaixo o deslize ganha velocidade.
+		var n := get_floor_normal()
+		var down := Vector3.DOWN * GRAVITY_FALL
+		var along := down - n * down.dot(n)
+		h += Vector3(along.x, 0.0, along.z) * delta
+		h = _accelerate(h, wish, 3.0, 4.0, delta)
+	elif on_floor:
+		h = _friction(h, FRICTION, delta)
+		h = _accelerate(h, wish, target, GROUND_ACCEL, delta)
+	else:
+		h = _accelerate(h, wish, target, AIR_ACCEL * float(stats["air_control"]), delta)
+	h = h.limit_length(MAX_HSPEED)
+	velocity.x = h.x
+	velocity.z = h.z
+
+	# Soltar o pulo cedo corta a subida: toque curto = pulo baixo.
+	if jump_rising and velocity.y > 0.0 and not in_jump_held:
+		velocity.y *= JUMP_CUT
+		jump_rising = false
+	if velocity.y <= 0.0:
+		jump_rising = false
+	if not on_floor:
+		if not (dash_timer > 0.0 and dash_air):
+			velocity.y = maxf(velocity.y - _gravity() * delta, -MAX_FALL_SPEED)
+		if stats["glide"] > 0 and in_jump_held and not slamming and velocity.y < -GLIDE_FALL:
+			velocity.y = move_toward(velocity.y, -GLIDE_FALL, 60.0 * delta)
+
+
+## Pulo na parede: lembra a última parede tocada no ar (jogadores não contam como parede).
+func _check_wall() -> void:
+	if is_on_floor():
+		wall_time = 0.0
+		return
+	for i in get_slide_collision_count():
+		var c := get_slide_collision(i)
+		var n := c.get_normal()
+		if absf(n.y) < 0.35 and c.get_collider() is not Player:
+			wall_normal = Vector3(n.x, 0.0, n.z).normalized()
+			wall_time = WALL_GRACE
+			return
+
+
+## Dash: tiro curto e reto na direção em que anda (ou para a frente, sem tecla).
+func _start_dash(wish: Vector3, h: Vector3, target: float, air: bool) -> void:
+	dash_dir = wish.normalized() if wish != Vector3.ZERO else _flat_forward()
+	dash_timer = DASH_TIME * float(stats["dash_power"])
+	dash_cd = stats["dash_cooldown"]
+	dash_air = air
+	dash_exit = maxf(h.length(), target * DASH_EXIT)
+	dash_hits.clear()
+	jump_rising = false
+	if stats["dash_dodge"] > 0:
+		dodge_timer = DODGE_TIME
+	if stats["dash_ammo"] > 0 and reload_timer <= 0.0:
+		ammo = mini(stats["mag_size"], ammo + int(stats["dash_ammo"]))
+	if is_human:
+		Sfx.ui(self, "dash")
+	reveal()
+
+
+## Fim do dash: sobra a velocidade de saída, e se o Ctrl ainda está seguro no chão, desliza.
+func _end_dash() -> void:
+	var speed := dash_exit
+	if not dash_air and crouching and is_on_floor():
+		speed += SLIDE_BOOST * float(stats["slide_boost"])
+		sliding = true
+		slide_cd = SLIDE_COOLDOWN
+	velocity.x = dash_dir.x * speed
+	velocity.z = dash_dir.z * speed
+	dash_air = false
+
+
+## Atropelar: o dash fere e empurra quem estiver no caminho (uma vez por dash).
+func _dash_hits() -> void:
+	if stats["dash_hit"] <= 0.0:
+		return
+	for enemy in enemies():
+		if enemy in dash_hits or chest().distance_to(enemy.chest()) > DASH_HIT_RANGE:
+			continue
+		dash_hits.append(enemy)
+		enemy.remote_call("receive_shockwave", [global_position, float(stats["dash_hit"]), String(name)])
+		Effects.burst(get_parent(), enemy.chest(), 1.2, Color(1.0, 0.8, 0.3), 0.2)
+
+
+## Bateu no vazio: quica e leva dano, ou, com o escudo de pé, quica alto sem dano. O
+## quique devolve os pulos e dashes no ar, como tocar o chão, para dar chance de voltar.
+func _void_bounce() -> void:
+	var saved := is_shielding()
+	global_position.y = Arena.VOID_Y
+	velocity.y = VOID_BOUNCE_SHIELD if saved else VOID_BOUNCE
+	jump_rising = false
+	slamming = false
+	sliding = false
+	air_dashes_left = stats["air_dashes"]
+	jumps_left = stats["extra_jumps"]
+	wall_jumps_left = stats["wall_jumps"]
+	eye_dip = 0.25
+	var feet := global_position + Vector3.UP * 0.2
+	if saved:
+		reflect_flash = 1.0
+		Effects.burst(get_parent(), feet, 3.0, Color(0.5, 0.9, 1.0), 0.3)
+		Sfx.at(self, "reflect", feet)
+	else:
+		Effects.burst(get_parent(), feet, 2.0, Color(0.7, 0.35, 1.0), 0.3)
+		var who := last_attacker if since_damage < VOID_CREDIT and is_instance_valid(last_attacker) else null
+		take_damage(VOID_DAMAGE, who)
+	void_bounced.emit(saved)
+
+
+## Orbe de movimento: devolve os dashes no ar, zera a recarga e dá ao menos um pulo no ar.
+func refresh_movement() -> void:
+	air_dashes_left = stats["air_dashes"]
+	dash_cd = 0.0
+	jumps_left = maxi(jumps_left, maxi(int(stats["extra_jumps"]), 1))
+	wall_jumps_left = stats["wall_jumps"]
+	Effects.burst(get_parent(), chest(), 1.0, Pickup.COLORS[Pickup.Kind.MOVE], 0.2)
+
+
+func is_dodging() -> bool:
+	return dodge_timer > 0.0
+
+
+func _gravity() -> float:
+	var g := GRAVITY_RISE if velocity.y > 0.0 else GRAVITY_FALL
+	if absf(velocity.y) < APEX_SPEED and in_jump_held:
+		g *= APEX_GRAVITY
+	return g * float(stats["gravity_mult"])
+
+
+## Escalada de beirada (como em Apex e Titanfall): no ar, empurrando contra uma parede
+## cujo topo está ao alcance, o jogador sobe por cima dela.
+func _try_mantle(wish: Vector3) -> bool:
+	if mantle_cd > 0.0 or velocity.y > 3.0 or wish == Vector3.ZERO or not is_on_wall():
+		return false
+	var n := get_wall_normal()
+	n.y = 0.0
+	if n.length() < 0.5:
+		return false
+	var forward := -n.normalized()
+	if wish.normalized().dot(forward) < 0.5:
+		return false
+	var space := get_world_3d().direct_space_state
+	var top := global_position + forward * (RADIUS + 0.35) + Vector3.UP * (MANTLE_REACH + 0.3)
+	var ray := PhysicsRayQueryParameters3D.create(top, top + Vector3.DOWN * (MANTLE_REACH + 0.3), 1, [get_rid()])
+	var hit := space.intersect_ray(ray)
+	if hit.is_empty() or hit["normal"].y < 0.7:
+		return false
+	var rise: float = hit["position"].y - global_position.y
+	if rise < 0.3 or rise > MANTLE_REACH:
+		return false
+	# Precisa caber em cima da beirada.
+	var room := PhysicsShapeQueryParameters3D.new()
+	room.shape = capsule
+	room.collision_mask = 1
+	room.transform = Transform3D(Basis(), hit["position"] + Vector3.UP * (height / 2.0 + 0.05))
+	if not space.intersect_shape(room, 1).is_empty():
+		return false
+	velocity.y = sqrt(2.0 * GRAVITY_RISE * (rise + 0.3))
+	var keep := maxf(Vector3(velocity.x, 0.0, velocity.z).dot(forward), 4.0)
+	velocity.x = forward.x * keep
+	velocity.z = forward.z * keep
+	mantle_cd = 0.5
+	jump_rising = false
+	return true
+
+
+## Aceleração no estilo Quake: só acelera até a velocidade alvo na direção desejada,
+## sem frear o que já passa dela. É isso que preserva o embalo de deslizes e pulos.
+func _accelerate(h: Vector3, wish: Vector3, wish_speed: float, accel: float, delta: float) -> Vector3:
+	if wish == Vector3.ZERO:
+		return h
+	var dir := wish.normalized()
+	var speed := wish_speed * wish.length()
+	var add := speed - h.dot(dir)
+	if add <= 0.0:
+		return h
+	return h + dir * minf(accel * speed * delta, add)
+
+
+func _friction(h: Vector3, friction: float, delta: float) -> Vector3:
+	var speed := h.length()
+	if speed < 0.01:
+		return Vector3.ZERO
+	var drop := maxf(speed, STOP_SPEED) * friction * delta
+	return h * maxf(speed - drop, 0.0) / speed
+
+
+func _flat_forward() -> Vector3:
+	var f := -global_transform.basis.z
+	return Vector3(f.x, 0.0, f.z).normalized()
+
+
+## Usado por plataformas de salto, explosões e empurrões.
+func launch(v: Vector3) -> void:
+	if not is_local:
+		return
+	velocity = Vector3(velocity.x * 0.5 + v.x, v.y, velocity.z * 0.5 + v.z)
+	jump_rising = false
+	coyote = 0.0
+	sliding = false
+
+
+func knockback(v: Vector3) -> void:
+	velocity += v
+	jump_rising = false
+
+
+# ---------------------------------------------------------------- rede
+
+## Manda o estado deste jogador para a outra máquina, a cada quadro de física.
+func _send_state() -> void:
+	if not Net.online or not Net.all_ready():
+		return
+	var flags := (1 if is_on_floor() else 0) | (2 if crouching else 0) | (4 if sliding else 0)
+	_net_state.rpc(net_round, global_position, velocity, rotation.y, head.rotation.x, flags, shield_timer, health, armor)
+
+
+@rpc("authority", "call_remote", "unreliable_ordered")
+func _net_state(round_id: int, pos: Vector3, vel: Vector3, yaw: float, pitch: float,
+		flags: int, shield: float, hp: float, vest: float) -> void:
+	if round_id != net_round:
+		return   # pacote atrasado da rodada anterior
+	if hp < health - 1.0:
+		flash_hit()   # levou dano na máquina dele (o veneno tira menos que isso por pacote)
+	net_pos = pos
+	velocity = vel
+	net_yaw = yaw
+	net_pitch = pitch
+	shield_timer = shield
+	health = hp
+	armor = vest
+	net_on_floor = (flags & 1) != 0
+	sliding = (flags & 4) != 0
+	var crouch := (flags & 2) != 0
+	if crouch != crouching:
+		crouching = crouch
+		_set_height(CROUCH_HEIGHT if crouch else STAND_HEIGHT)
+
+
+func _follow_network(delta: float) -> void:
+	shield_timer = maxf(0.0, shield_timer - delta)
+	if global_position.distance_to(net_pos) > 4.0:
+		global_position = net_pos
+		reset_physics_interpolation()
+	else:
+		global_position = global_position.lerp(net_pos, minf(1.0, delta * 18.0))
+	rotation.y = lerp_angle(rotation.y, net_yaw, minf(1.0, delta * 20.0))
+	head.rotation.x = lerpf(head.rotation.x, net_pitch, minf(1.0, delta * 20.0))
+
+
+## Chama um método no dono deste jogador: direto se ele é desta máquina, pela rede se não.
+func remote_call(method: String, args: Array = []) -> void:
+	if is_local:
+		callv(method, args)
+	else:
+		_net_call.rpc_id(peer_id, method, args)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _net_call(method: String, args: Array) -> void:
+	if method in REMOTE_METHODS and is_local:
+		callv(method, args)
+
+
+func receive_shockwave(from_pos: Vector3, dmg: float, from_name: String) -> void:
+	var push := global_position - from_pos
+	push.y = 0.0
+	knockback(push.normalized() * 14.0 + Vector3.UP * 5.0)
+	take_damage(dmg, get_parent().get_node_or_null(from_name) as Player)
+
+
+## Troca-Troca (e Teleporte): vai direto para o ponto, sem interpolar o caminho.
+func teleport_to(pos: Vector3) -> void:
+	global_position = pos
+	net_pos = pos
+	reset_physics_interpolation()
+	if is_human:
+		_place_camera()
+
+
+## Quem causou dano recebe o crédito: roubo de vida, Sede de Sangue e o som de acerto.
+func credit_damage(amount: float, lethal := false) -> void:
+	if not alive:
+		return
+	if stats["lifesteal"] > 0.0:
+		heal(amount * stats["lifesteal"])
+	if stats["bloodlust"] > 0.0:
+		bloodlust_timer = BLOODLUST_TIME
+	if stats["hit_dash"] > 0:
+		dash_cd = 0.0
+		air_dashes_left = mini(air_dashes_left + 1, stats["air_dashes"])
+	if lethal and last_stand_timer > 0.0:
+		# Último Suspiro: abateu alguém a tempo, volta com metade da vida.
+		last_stand_timer = 0.0
+		health = maxf(health, stats["max_health"] * 0.5)
+		Effects.burst(get_parent(), chest(), 3.0, Color(0.5, 0.95, 0.5))
+		revived.emit()
+	damage_dealt.emit(amount, lethal)
+	# Um som por quadro: os chumbos de uma escopeta soam como um acerto só.
+	if is_human and (lethal or _hit_sound_frame != Engine.get_physics_frames()):
+		_hit_sound_frame = Engine.get_physics_frames()
+		Sfx.ui(self, "kill" if lethal else "hitmarker")
+
+
+# ---------------------------------------------------------------- combate
+
+func _act(delta: float) -> void:
+	if in_master and master_cd <= 0.0 and master_id != "" and CardDB.CARDS[master_id].has("cooldown"):
+		_use_master()
+	if in_shield and shield_cd <= 0.0 and silence_timer <= 0.0:
+		_activate_shield()
+	_shield_bash()
+	if bazooka_timer > 0.0:
+		if in_shoot and not is_shielding() and fire_timer <= 0.0 and rockets_left > 0:
+			_fire_rocket()
+		return
+	if in_reload and reload_timer <= 0.0 and ammo < stats["mag_size"] and burst_left == 0:
+		_start_reload()
+	if burst_left > 0:
+		burst_timer -= delta
+		if burst_timer <= 0.0:
+			burst_left -= 1
+			burst_timer = BURST_GAP
+			_volley()
+	elif in_shoot and not is_shielding() and fire_timer <= 0.0 and reload_timer <= 0.0:
+		if ammo > 0:
+			_fire()
+		else:
+			_start_reload()
+	if ammo == 0 and reload_timer <= 0.0 and burst_left == 0:
+		_start_reload()
+
+
+## Habilidade da carta mestra (tecla Q).
+func _use_master() -> void:
+	master_cd = CardDB.CARDS[master_id]["cooldown"]
+	reveal()
+	if stats["updraft"] > 0:
+		# Corrente: impulso reto para cima, também no ar (como o da Jett, de Valorant).
+		velocity.y = maxf(velocity.y, UPDRAFT_SPEED)
+		jump_rising = false
+		coyote = 0.0
+		sliding = false
+		slamming = false
+		dash_timer = 0.0
+		Effects.burst(get_parent(), global_position + Vector3.UP * 0.2, 2.2, Color(0.75, 0.6, 1.0), 0.25)
+		Sfx.at(self, "pad", global_position)
+	if stats["bazooka"] > 0:
+		bazooka_timer = BAZOOKA_TIME
+		rockets_left = BAZOOKA_ROCKETS
+		burst_left = 0
+		fire_timer = 0.25
+		_show_bazooka(true)
+		Sfx.at(self, "pickup", chest())
+	if stats["pierce"] > 0:
+		pierce_left = PIERCE_SHOTS
+		Effects.burst(get_parent(), muzzle.global_position, 0.6, Bullet.PIERCE_COLOR, 0.2)
+		Sfx.at(self, "pickup", chest())
+	if stats["barrier"] > 0:
+		var pos := global_position + _flat_forward() * 2.5
+		_make_barrier(pos, rotation.y)
+		if Net.online:
+			_net_barrier.rpc(pos, rotation.y)
+
+
+## Bazuca montada com formas simples (o Blaster Kit não tem uma): tubo largo apontando
+## para -Z como as armas do kit, bocas mais grossas, empunhadura, gatilho e mira. Medidas
+## em metros; o tamanho na mão é ajustado por quem chama.
+func _make_bazooka() -> Node3D:
+	var root := Node3D.new()
+	var green := StandardMaterial3D.new()
+	green.albedo_color = Color(0.32, 0.4, 0.24)
+	green.roughness = 0.8
+	var dark := StandardMaterial3D.new()
+	dark.albedo_color = Color(0.12, 0.12, 0.13)
+	dark.roughness = 0.6
+	var stripe := StandardMaterial3D.new()
+	stripe.albedo_color = Color(0.95, 0.65, 0.15)
+	var tube := func(radius: float, length: float, z: float, mat: Material, y := 0.0) -> void:
+		var m := CylinderMesh.new()
+		m.top_radius = radius
+		m.bottom_radius = radius
+		m.height = length
+		m.radial_segments = 14
+		m.material = mat
+		var mi := MeshInstance3D.new()
+		mi.mesh = m
+		mi.rotation.x = PI / 2.0
+		mi.position = Vector3(0.0, y, z)
+		root.add_child(mi)
+	var box := func(size: Vector3, pos: Vector3, mat: Material, tilt := 0.0) -> void:
+		var m := BoxMesh.new()
+		m.size = size
+		m.material = mat
+		var mi := MeshInstance3D.new()
+		mi.mesh = m
+		mi.position = pos
+		mi.rotation.x = tilt
+		root.add_child(mi)
+	tube.call(0.055, 0.78, -0.05, green)          # corpo
+	tube.call(0.07, 0.1, -0.46, dark)             # boca da frente
+	tube.call(0.072, 0.025, -0.39, stripe)        # faixa de aviso
+	tube.call(0.075, 0.14, 0.36, dark)            # boca de trás (escape)
+	tube.call(0.06, 0.04, 0.12, dark)             # anel do meio
+	box.call(Vector3(0.035, 0.11, 0.045), Vector3(0.0, -0.1, 0.05), dark, -0.25)    # empunhadura
+	box.call(Vector3(0.035, 0.09, 0.04), Vector3(0.0, -0.09, -0.2), dark, 0.2)      # apoio da frente
+	box.call(Vector3(0.012, 0.04, 0.05), Vector3(0.0, -0.065, 0.0), dark)            # gatilho
+	box.call(Vector3(0.02, 0.035, 0.09), Vector3(-0.06, 0.035, -0.08), dark)         # mira, de lado
+	return root
+
+
+func _show_bazooka(on: bool) -> void:
+	if bazooka:
+		bazooka.visible = on
+		gun.visible = not on
+	if Net.online and is_local and is_inside_tree() and Net.all_ready():
+		_net_bazooka.rpc(on)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_bazooka(on: bool) -> void:
+	if bazooka:
+		bazooka.visible = on
+		gun.visible = not on
+
+
+## Bastião: a parede existe em todas as máquinas; quem decide o reflexo é a do dono.
+func _make_barrier(pos: Vector3, yaw: float) -> void:
+	var b := Barrier.new()
+	b.owner_player = self
+	get_parent().add_child(b)
+	b.global_position = pos
+	b.rotation.y = yaw
+	Sfx.at(self, "shield", pos + Vector3.UP)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_barrier(pos: Vector3, yaw: float) -> void:
+	_make_barrier(pos, yaw)
+
+
+## Bazuca: foguete reto, lento, com o dobro do dano e explosão grande.
+func _fire_rocket() -> void:
+	rockets_left -= 1
+	fire_timer = BAZOOKA_INTERVAL
+	var origin := head.global_position
+	var aim := -head.global_transform.basis.z
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + aim * 300.0, 1 | 2, [get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	var target: Vector3 = hit["position"] if not hit.is_empty() else origin + aim * 300.0
+	shot_mult = 1.0
+	Bullet.fire(self, muzzle.global_position, (target - muzzle.global_position).normalized(), ROCKET_DAMAGE, true,
+		{"speed": ROCKET_SPEED, "gravity": 0.0, "explosion": maxf(ROCKET_EXPLOSION, float(stats["explosion"])),
+		"bounces": 0, "split": 0, "sticky": false, "boomerang": false, "guided": false, "pierce": false})
+	recoil = 1.6
+	shake = maxf(shake, 0.25)
+	muzzle_light.light_energy = 5.0
+	muzzle_light.visible = true
+	reveal()
+
+
+## Pancada: com o escudo de pé, quem estiver colado leva dano e um empurrão (uma vez por escudo).
+func _shield_bash() -> void:
+	if stats["shield_bash"] <= 0.0 or not is_shielding():
+		return
+	for enemy in enemies():
+		if enemy in bash_hits or chest().distance_to(enemy.chest()) > BASH_RANGE * maxf(1.0, float(stats["shield_size"])):
+			continue
+		bash_hits.append(enemy)
+		enemy.remote_call("receive_shockwave", [global_position, float(stats["shield_bash"]), String(name)])
+		Effects.burst(get_parent(), enemy.chest(), 1.4, Color(0.5, 0.9, 1.0), 0.2)
+		Sfx.at(self, "hit", enemy.chest())
+
+
+func _start_reload() -> void:
+	reload_timer = stats["reload_time"]
+
+
+func _fire() -> void:
+	ammo -= 1
+	pierce_shot = pierce_left > 0
+	if pierce_shot:
+		pierce_left -= 1
+	ghost_shot = ghost_left > 0 and not pierce_shot
+	if ghost_shot:
+		ghost_left -= 1
+	shot_mult = float(stats["last_shot"]) if ammo == 0 else 1.0
+	burst_left = stats["burst"] - 1
+	burst_timer = BURST_GAP
+	fire_timer = maxf(stats["fire_interval"], stats["burst"] * BURST_GAP)
+	_volley()
+	if ammo == 0 and stats["shield_on_empty"] > 0 and shield_cd <= 0.0 and silence_timer <= 0.0:
+		_activate_shield()
+
+
+## Um disparo: a mira é o centro da câmera. Um raio acha o ponto mirado e as balas
+## saem do cano até ele, abertas em leque quando há mais de uma.
+func _volley() -> void:
+	var origin := head.global_position
+	var aim := -head.global_transform.basis.z
+	# Bala que atravessa parede mira só nos jogadores: o ponto na parede a entortaria.
+	var mask := 2 if pierce_shot or ghost_shot else 1 | 2
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + aim * 300.0, mask, [get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	var target: Vector3 = hit["position"] if not hit.is_empty() else origin + aim * 300.0
+	var count: int = stats["bullet_count"]
+	var spread := deg_to_rad(stats["spread"])
+	for k in count:
+		var dir := (target - muzzle.global_position).normalized()
+		if count > 1:
+			dir = dir.rotated(Vector3.UP, spread * (k - (count - 1) / 2.0))
+		var mult := shot_mult
+		var crit := randf() < float(stats["crit_chance"])
+		if crit:
+			mult *= CRIT_MULT
+		var extra := {"crit": crit, "ghost": ghost_shot}
+		if pierce_shot:
+			# Perfurante: reta, bem mais rápida e atravessando paredes.
+			extra.merge({"speed": float(stats["bullet_speed"]) * PIERCE_SPEED, "gravity": 0.0,
+				"ghost": true, "pierce": true})
+		Bullet.fire(self, muzzle.global_position, dir, mult, k == 0, extra)
+	recoil = 1.0
+	muzzle_light.light_energy = 3.0
+	muzzle_light.visible = true
+	reveal()
+
+
+func shot_damage() -> float:
+	var dmg: float = stats["damage"]
+	if health < stats["max_health"] * RAGE_THRESHOLD:
+		dmg *= 1.0 + stats["rage"]
+	return dmg
+
+
+func _activate_shield() -> void:
+	shield_timer = stats["shield_duration"]
+	if shield_extra > 0:
+		shield_extra -= 1
+		shield_cd = stats["shield_duration"] + SHIELD_DOUBLE_GAP
+	else:
+		shield_cd = stats["shield_duration"] + stats["shield_cooldown"]
+		shield_extra = stats["shield_charges"] - 1
+	bash_hits.clear()
+	if stats["shield_armor"] > 0.0:
+		armor = minf(ARMOR_MAX, armor + stats["shield_armor"])
+	if stats["shield_reload"] > 0:
+		ammo = stats["mag_size"]
+		ghost_left = stats["ghost"]
+		reload_timer = 0.0
+	if stats["shield_heal"] > 0.0:
+		heal(stats["shield_heal"])
+	if stats["shield_dash"] > 0:
+		dash_dir = _flat_forward()
+		dash_timer = DASH_TIME * 1.4
+		dash_air = false
+		dash_exit = maxf(Vector3(velocity.x, 0.0, velocity.z).length(), float(stats["move_speed"]))
+		dash_hits.clear()
+	if stats["shield_shockwave"] > 0:
+		Effects.burst(get_parent(), chest(), SHOCKWAVE_RANGE, Color(0.5, 0.9, 1.0))
+		for enemy in enemies():
+			if chest().distance_to(enemy.chest()) < SHOCKWAVE_RANGE:
+				enemy.remote_call("receive_shockwave", [global_position, 10.0 * stats["shield_shockwave"], String(name)])
+	var nova: int = stats["shield_nova"]
+	for k in nova:
+		var dir := _flat_forward().rotated(Vector3.UP, TAU * k / nova)
+		Bullet.fire(self, chest() + dir * 1.2, dir, 0.5, k == 0)
+	# Chuva de Bombas: bombas lentas em arco, que explodem ao tocar qualquer coisa.
+	var bombs: int = stats["shield_bombs"]
+	for k in bombs:
+		var dir := _flat_forward().rotated(Vector3.UP, TAU * k / bombs) * 0.55 + Vector3.UP * 0.85
+		Bullet.fire(self, chest() + Vector3.UP * 0.6, dir.normalized(), 0.8, k == 0,
+			{"speed": 11.0, "gravity": 18.0, "explosion": maxf(3.0, float(stats["explosion"])),
+			"radius": 0.25, "bounces": 0, "homing": 0.0, "seek": 0.0, "boomerang": false, "split": 0, "sticky": false})
+	if stats["shield_echo"] > 0 and echo_timer <= 0.0:
+		echo_timer = stats["shield_duration"] + ECHO_DELAY
+	if stats["shield_teleport"] > 0:
+		_teleport_forward()
+
+
+## Teleporte: até TELEPORT_RANGE para onde a mira aponta, parando antes de paredes.
+func _teleport_forward() -> void:
+	var aim := -head.global_transform.basis.z
+	var from := global_position + Vector3.UP * (height * 0.5)
+	var to := from + aim * TELEPORT_RANGE
+	var ray := PhysicsRayQueryParameters3D.create(from, to, 1, [get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(ray)
+	if not hit.is_empty():
+		to = hit["position"] - aim * (RADIUS + 0.3)
+	var dest := to - Vector3.UP * (height * 0.5)
+	var room := PhysicsShapeQueryParameters3D.new()
+	room.shape = capsule
+	room.collision_mask = 1
+	room.transform = Transform3D(Basis(), dest + Vector3.UP * (height / 2.0 + 0.05))
+	if from.distance_to(to) < 1.0 or not get_world_3d().direct_space_state.intersect_shape(room, 1).is_empty():
+		return
+	Effects.burst(get_parent(), chest(), 1.2, Color(0.6, 0.5, 1.0), 0.2)
+	teleport_to(dest)
+	Effects.burst(get_parent(), chest(), 1.2, Color(0.6, 0.5, 1.0), 0.2)
+
+
+## Os adversários vivos: todos os outros no cada um por si, o outro time no 2x2.
+func enemies() -> Array:
+	return get_tree().get_nodes_in_group("players").filter(func(p): return p.alive and is_enemy(p))
+
+
+func is_enemy(other: Player) -> bool:
+	return other != self and (team < 0 or other.team != team)
+
+
+## Parceiro de time (nunca o próprio jogador). Bala e explosão atravessam aliados.
+func is_ally(other: Player) -> bool:
+	return other != null and other != self and team >= 0 and other.team == team
+
+
+func is_shielding() -> bool:
+	return shield_timer > 0.0
+
+
+func on_reflect() -> void:
+	reflect_flash = 1.0
+	reflected.emit()
+	Sfx.at(self, "reflect", chest())
+	if stats["reflect_refund"] > 0:
+		# O escudo fica pronto pouco depois de o atual acabar (sem a folga, ficaria permanente).
+		shield_cd = minf(shield_cd, shield_timer + ADRENALINE_GAP)
+
+
+func chest() -> Vector3:
+	return global_position + Vector3(0, height * 0.66 * float(stats["body_scale"]), 0)
+
+
+## Eixo da cápsula, usado pelas balas para testar o acerto com o raio de cada uma.
+func hit_segment() -> Array:
+	var s: float = stats["body_scale"]
+	return [global_position + Vector3(0, RADIUS * s, 0), global_position + Vector3(0, (height - RADIUS) * s, 0)]
+
+
+func hit_radius() -> float:
+	var s: float = stats["body_scale"]
+	if is_shielding():
+		return SHIELD_HIT_RADIUS * maxf(s, 1.0) * float(stats["shield_size"])
+	return RADIUS * s
+
+
+func heal(amount: float) -> void:
+	health = minf(stats["max_health"], health + amount)
+
+
+func apply_slow(amount: float) -> void:
+	slow_amount = clampf(maxf(slow_amount if slow_timer > 0.0 else 0.0, amount), 0.0, 0.7)
+	slow_timer = SLOW_TIME
+
+
+func apply_poison(total: float, from: Player) -> void:
+	poisons.append({"dps": total / POISON_TIME, "time": POISON_TIME, "from": from})
+
+
+## Flash: a tela de quem levou o tiro fica branca (o bot erra mais a mira).
+func apply_blind(time: float) -> void:
+	blind_timer = maxf(blind_timer, time)
+
+
+func silence() -> void:
+	silence_timer = SILENCE_TIME
+	shield_timer = 0.0
+
+
+## Só é chamado na máquina dona deste jogador.
+func take_damage(amount: float, from: Player, flash := true) -> void:
+	if not alive or amount <= 0.0:
+		return
+	if from and from != self:
+		last_attacker = from
+		recent_hits[from] = Time.get_ticks_msec()
+	var absorbed := minf(armor, amount)
+	armor -= absorbed
+	health -= amount - absorbed
+	if last_stand_timer > 0.0:
+		health = maxf(health, 1.0)   # Último Suspiro: não morre enquanto dura
+	elif health <= 0.0 and stats["last_stand"] > 0 and not last_stand_used:
+		last_stand_used = true
+		last_stand_timer = LAST_STAND_TIME
+		health = 1.0
+		poisons.clear()
+		Effects.burst(get_parent(), chest(), 2.0, Color(1.0, 0.3, 0.3), 0.3)
+	since_damage = 0.0
+	reveal()
+	if flash:
+		shake = maxf(shake, clampf(amount / 40.0, 0.15, 0.6))
+		flash_hit()
+		damaged.emit(amount, from)
+		if is_human:
+			Sfx.ui(self, "hurt")
+		if from and from != self:
+			from.remote_call("credit_damage", [amount, health <= 0.0 and revives_left == 0])
+	if health <= 0.0:
+		_lethal()
+
+
+## Vida zerada: a Fênix segura, senão morre.
+func _lethal() -> void:
+	last_stand_timer = 0.0
+	if revives_left > 0:
+		revives_left -= 1
+		health = stats["max_health"] * 0.5
+		poisons.clear()
+		Effects.burst(get_parent(), chest(), 3.0, Color(1.0, 0.6, 0.2))
+		revived.emit()
+	else:
+		health = 0.0
+		_die()
+
+
+func _die() -> void:
+	var now := Time.get_ticks_msec()
+	var window := int(ASSIST_TIME * 1000.0)
+	var killer := ""
+	if is_instance_valid(last_attacker) and now - int(recent_hits.get(last_attacker, -window)) < window:
+		killer = String(last_attacker.name)
+	var assists: Array = []
+	for p in recent_hits:
+		if is_instance_valid(p) and String(p.name) != killer and now - int(recent_hits[p]) < window:
+			assists.append(String(p.name))
+	if Net.online:
+		_net_die.rpc(killer, assists)
+	_apply_death(killer, assists)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_die(killer: String, assists: Array) -> void:
+	_apply_death(killer, assists)
+
+
+func _apply_death(killer := "", assists: Array = []) -> void:
+	if not alive:
+		return
+	death_killer = killer
+	death_assists = assists
+	alive = false
+	health = 0.0
+	shape.set_deferred("disabled", true)
+	tag.visible = false
+	if model:
+		anim.speed_scale = 1.0
+		anim.play("die")
+	Sfx.at(self, "death", chest())
+	died.emit(self)
+
+
+## Usado pelo bot para mirar: gira o corpo (horizontal) e a cabeça (vertical) até o ponto.
+func look_at_point(point: Vector3, max_step: float) -> void:
+	var to := point - head.global_position
+	rotation.y = rotate_toward(rotation.y, atan2(-to.x, -to.z), max_step)
+	var pitch := atan2(to.y, Vector2(to.x, to.z).length())
+	head.rotation.x = rotate_toward(head.rotation.x, pitch, max_step)

@@ -1,0 +1,20 @@
+# Cache e importacoes do Godot (refeitos ao abrir o projeto)
+.godot/
+
+# Builds (o zip vai como anexo da release, nao no repositorio)
+build/
+*.zip
+export_credentials.cfg
+
+# Prints e testes temporarios
+_prints/
+_teste/
+
+# Sistema
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Notas do assistente (ficam so neste PC)
+CLAUDE.md
+.claude/
