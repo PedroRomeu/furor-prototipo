@@ -1,6 +1,6 @@
 # Furor (prototype)
 
-First-person shooter with an upgrade card deck, for 2 to 4 players (free-for-all, or 2v2 with 4),
+First-person shooter with an upgrade card deck, for 2 to 4 players (free-for-all, 2v2 with 4, or Duels),
 inspired by Furor on Roblox. Made with Godot 4.7.2 and GDScript.
 
 The game itself is in Brazilian Portuguese; button and card names below are written as they
@@ -157,10 +157,16 @@ shows in a corner during the match.
 - Cards never leave the deck: you can pick the same one several times and the effects
   stack. A few (Adrenalina, Radar, Fênix...) can only be picked once.
 - Every 5 rounds the game asks: 5 more rounds or finish. Most rounds wins.
-- Each round rolls a new arena in one of 4 styles: Pátio, Ruínas, Torres and Fábrica, and
-  one of 6 color themes. Each piece repeats rotated around the center, once per player (2
-  to 4 identical sides). Arenas have height: platforms with a second floor, floating slabs,
-  jump pads.
+- Each round rolls a new arena from one of 12 maps: 4 styles (Pátio, Ruínas, Torres and
+  Fábrica) in 3 sizes (small, medium, large), plus one of 6 color ambiences. Medium and
+  large maps have proportionally more pieces; large maps add tall dividing walls with
+  passages so fights in different corners don't see each other. Each piece repeats rotated
+  around the center, once per player (2 to 4 identical sides). Arenas have height:
+  platforms with a second floor, floating slabs, jump pads.
+- Online, the host turns maps on and off in the lobby ("Mapas"). Untouched maps follow an
+  automatic rule: large maps are off with 2 players in the arena (1v1 and Duels), on with
+  3 or 4. In Treino the bot count decides: 1 bot small only, 2 bots small and medium,
+  3 bots all sizes.
 - Map items (not every map, one of each per player): **purple orb** up high (gives back the
   air dash, resets the dash cooldown and grants an air jump; respawns in 6 s), **green
   cross** (30 health; 25 s) and, rarer, **yellow vest** (25 armor, up to 50, absorbs damage
