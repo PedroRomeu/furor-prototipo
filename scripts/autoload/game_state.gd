@@ -75,6 +75,16 @@ const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1366, 768), Vector2i(1600, 9
 	Vector2i(1920, 1080), Vector2i(2560, 1440)]
 var window_mode := 0
 var resolution := Vector2i(1280, 720)
+## API gráfica (Configurações > Vídeo, 2026-10-05). O projeto usa Compatibilidade (OpenGL;
+## no Windows com driver fraco o Godot passa sozinho para ANGLE sobre Direct3D 11), que é
+## o que roda no PC do usuário (sem Vulkan nem D3D12). Vulkan e DirectX 12 usam o
+## renderizador Forward+. A API só muda ao abrir o jogo: a escolha vai para um
+## override.cfg (ao lado do .exe; na pasta do projeto rodando pelo editor), que o Godot lê
+## antes de iniciar. Sem a API escolhida, o Godot volta sozinho para OpenGL (testado no PC
+## do usuário com Vulkan e com DirectX 12 forçados).
+const GRAPHICS_APIS := [["compat", "Compatibilidade (OpenGL)"], ["vulkan", "Vulkan"], ["d3d12", "DirectX 12"]]
+## A que estava gravada quando o jogo abriu (a tela compara para saber se falta reiniciar).
+var api_at_start := "compat"
 ## Qualidade gráfica: 0 baixa, 1 média, 2 alta (ver match.gd, _apply_quality).
 var quality := 1
 ## Contador de quadros por segundo no canto da tela.
@@ -110,6 +120,7 @@ func _ready() -> void:
 	_register_inputs()
 	load_decks()
 	_setup_audio.call_deferred()
+	api_at_start = chosen_graphics_api()
 	_apply_display.call_deferred()
 	var cfg := ConfigFile.new()
 	if cfg.load(SETTINGS_PATH) == OK:
@@ -248,6 +259,54 @@ func _apply_display() -> void:
 			win.mode = Window.MODE_FULLSCREEN
 		2:
 			win.mode = Window.MODE_EXCLUSIVE_FULLSCREEN
+
+
+func override_path() -> String:
+	if OS.has_feature("template"):
+		return OS.get_executable_path().get_base_dir().path_join("override.cfg")
+	return ProjectSettings.globalize_path("res://override.cfg")
+
+
+## API escolhida (a que vale na próxima abertura): "compat", "vulkan" ou "d3d12".
+func chosen_graphics_api() -> String:
+	var cfg := ConfigFile.new()
+	if cfg.load(override_path()) != OK:
+		return "compat"
+	var driver := String(cfg.get_value("rendering", "rendering_device/driver.windows", "compat"))
+	return driver if driver in ["vulkan", "d3d12"] else "compat"
+
+
+func set_graphics_api(id: String) -> void:
+	if id == "compat":
+		if FileAccess.file_exists(override_path()):
+			DirAccess.remove_absolute(override_path())
+		return
+	var cfg := ConfigFile.new()
+	cfg.set_value("rendering", "renderer/rendering_method", "forward_plus")
+	cfg.set_value("rendering", "rendering_device/driver", id)
+	cfg.set_value("rendering", "rendering_device/driver.windows", id)
+	cfg.save(override_path())
+
+
+## API em uso agora, com nome de gente.
+static func current_graphics_api() -> String:
+	match RenderingServer.get_current_rendering_driver_name():
+		"vulkan":
+			return "Vulkan"
+		"d3d12":
+			return "DirectX 12"
+		"opengl3_angle":
+			return "OpenGL (via Direct3D 11)"
+		"opengl3":
+			return "OpenGL"
+	return RenderingServer.get_current_rendering_driver_name()
+
+
+## Fecha e abre o jogo de novo (para a API escolhida valer).
+func restart_game() -> void:
+	Net.stop()
+	OS.set_restart_on_exit(true, OS.get_cmdline_args())
+	get_tree().quit()
 
 
 func set_show_fps(value: bool) -> void:

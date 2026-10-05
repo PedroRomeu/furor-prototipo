@@ -18,3 +18,6 @@ desktop.ini
 # Notas do assistente (ficam so neste PC)
 CLAUDE.md
 .claude/
+
+# Escolha de API gráfica (Configurações > Vídeo), gerada pelo jogo
+override.cfg

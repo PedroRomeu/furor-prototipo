@@ -26,10 +26,12 @@ var bind_hint: Label
 var rebind_action := ""   # esperando tecla para esta ação ("" = não)
 var rebind_slot := 0
 var _tabs := {}           # nome -> [botão da lista, página]
+var in_main_menu := false  # no menu principal dá para reiniciar o jogo (API gráfica)
 
 
 ## nick_field: campo do nome (o menu principal manda o seu); null tira a categoria Perfil.
 func _init(nick_field: Control = null) -> void:
+	in_main_menu = nick_field != null
 	add_theme_constant_override("separation", 20)
 	var nav := Ui.vbox(6)
 	nav.custom_minimum_size.x = 220
@@ -39,7 +41,7 @@ func _init(nick_field: Control = null) -> void:
 	var pages: Array = []
 	if nick_field:
 		pages.append(["Perfil", _profile_page(nick_field)])
-	pages.append_array([["Vídeo", _video_page()], ["Áudio", _audio_page()],
+	pages.append_array([["Vídeo", _scrolled(_video_page())], ["Áudio", _audio_page()],
 		["Controles", _controls_page()], ["Créditos", _credits_page()]])
 	for entry in pages:
 		var title: String = entry[0]
@@ -66,6 +68,16 @@ func _open(title: String) -> void:
 	for t in _tabs:
 		_tabs[t][0].set_pressed_no_signal(t == title)
 		_tabs[t][1].visible = t == title
+
+
+## Página mais alta que o painel (Vídeo): rola. A de Controles não passa por aqui porque
+## tem a própria lista rolável.
+func _scrolled(page: Control) -> Control:
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(page)
+	return scroll
 
 
 ## Página com título e uma frase curta embaixo.
@@ -120,11 +132,52 @@ func _video_page() -> Control:
 		hint.text = QUALITY_HINTS[i]))
 	col.add_child(hint)
 	col.add_child(Ui.gap(12))
+	col.add_child(_api_block())
+	col.add_child(Ui.gap(12))
 	var fps := CheckButton.new()
 	fps.text = "Mostrar FPS na partida"
 	fps.button_pressed = GameState.show_fps
 	fps.toggled.connect(GameState.set_show_fps)
 	col.add_child(fps)
+	return col
+
+
+## API gráfica: lista suspensa, o que está em uso e, se a escolha ainda não vale, o aviso
+## de reiniciar (com botão no menu principal; na partida, só o aviso).
+func _api_block() -> Control:
+	var col := Ui.vbox(10)
+	col.add_child(Ui.label("API gráfica", 14, Ui.MUTED))
+	var line := Ui.hbox(10)
+	col.add_child(line)
+	var pick := OptionButton.new()
+	pick.custom_minimum_size = Vector2(260, 42)
+	var ids: Array = GameState.GRAPHICS_APIS.map(func(a): return a[0])
+	for a in GameState.GRAPHICS_APIS:
+		pick.add_item(a[1] + ("  (recomendada)" if a[0] == "compat" else ""))
+	pick.select(ids.find(GameState.chosen_graphics_api()))
+	line.add_child(pick)
+	var restart := Ui.button("Reiniciar agora", GameState.restart_game, 160)
+	restart.custom_minimum_size.y = 42
+	line.add_child(restart)
+	var hint := Ui.label("", 14, Ui.MUTED)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(hint)
+	var refresh := func():
+		var chosen := GameState.chosen_graphics_api()
+		var now := "Em uso agora: %s." % GameState.current_graphics_api()
+		var pending := chosen != GameState.api_at_start
+		var fell_back := not pending and chosen != "compat" 			and RenderingServer.get_current_rendering_driver_name().begins_with("opengl3")
+		if pending:
+			hint.text = now + " A escolha vale ao reiniciar o jogo."
+		elif fell_back:
+			hint.text = now + " Este PC não tem %s; o jogo voltou sozinho para OpenGL." % GameState.GRAPHICS_APIS[ids.find(chosen)][1]
+		else:
+			hint.text = now + " Vulkan e DirectX 12 ficam mais bonitos em placa de vídeo boa e mais pesados em placa integrada."
+		restart.visible = in_main_menu and pending
+	pick.item_selected.connect(func(i):
+		GameState.set_graphics_api(ids[i])
+		refresh.call())
+	refresh.call()
 	return col
 
 
