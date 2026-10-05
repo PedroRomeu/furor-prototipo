@@ -197,8 +197,8 @@ var CARDS := {
 		"mods": [{"stat": "fire_interval", "mul": 0.5}, {"stat": "reload_time", "mul": 1.5}, {"stat": "max_health", "mul": 0.85}]},
 
 	"metralhadora": {"name": "Metralhadora", "cat": "Arma", "rarity": "epico",
-		"desc": "Atira 3x mais rápido e +10 balas no pente, mas -65% de dano. Recarga +0,25 s.",
-		"mods": [{"stat": "fire_interval", "mul": 0.33}, {"stat": "mag_size", "add": 10},
+		"desc": "Automática: segure para atirar. Atira 3x mais rápido e +10 balas no pente, mas -65% de dano. Recarga +0,25 s.",
+		"mods": [{"stat": "auto_fire", "add": 1}, {"stat": "fire_interval", "mul": 0.33}, {"stat": "mag_size", "add": 10},
 			{"stat": "damage", "mul": 0.35}, {"stat": "reload_time", "add": 0.25}]},
 	"canhao_de_vidro": {"name": "Canhão de Vidro", "cat": "Arma", "rarity": "epico",
 		"desc": "+100% de dano, -50% de vida.",

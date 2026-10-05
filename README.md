@@ -16,7 +16,7 @@ Configurações, com até duas teclas por ação.
 | Tecla | Ação |
 |---|---|
 | WASD / mouse | andar / mirar |
-| Clique esquerdo | atirar |
+| Clique esquerdo | atirar (um clique por tiro; com a carta Metralhadora, segure) |
 | E ou clique direito | escudo (reflete balas) |
 | Espaço | pular (toque curto = pulo baixo) |
 | Ctrl | dash: no chão, andando, um tiro curto de velocidade (segurando, vira deslize); no ar, uma corridinha reta, uma vez por pulo |

@@ -2,23 +2,71 @@ class_name Effects
 extends RefCounted
 ## Efeitos visuais simples, sem arquivos de arte. Animados por tween (fora da física),
 ## então ficam de fora da interpolação de física.
+##
+## Desempenho (2026-10-05, builds de muitas balas travavam PCs fracos): malhas e materiais
+## são compartilhados em vez de criados a cada efeito, e cada tipo tem um teto de efeitos
+## ao mesmo tempo (BUDGET). Passou do teto, o efeito novo não aparece: numa chuva de balas
+## ninguém nota um clarão a menos, mas nota o jogo travar. Na qualidade Baixa o teto cai
+## pela metade. Explosões têm teto próprio, separado dos clarões pequenos.
+
+const BUDGET := {"burst": 36, "explosion": 14, "sparks": 16, "number": 20}
+
+static var _live := {}
+static var _sphere: SphereMesh
+static var _cube: BoxMesh
+static var _spark_mats := {}
+
+
+static func _allowed(kind: String) -> bool:
+	var limit: int = BUDGET[kind]
+	if GameState.quality == 0:
+		limit = maxi(1, limit / 2)
+	return _live.get(kind, 0) < limit
+
+
+## Conta o efeito enquanto ele existe (some sozinho ou junto com a arena).
+static func _track(node: Node, kind: String) -> void:
+	_live[kind] = _live.get(kind, 0) + 1
+	node.tree_exiting.connect(func(): _live[kind] = maxi(0, _live.get(kind, 1) - 1))
+
+
+## Solta as malhas e materiais compartilhados e zera as contas (fim da partida).
+static func clear_cache() -> void:
+	_sphere = null
+	_cube = null
+	_spark_mats.clear()
+	_live.clear()
+
+
+## Esfera de poucos polígonos: a padrão do Godot tem 64 x 32 faixas, demais para um clarão.
+static func sphere_mesh() -> SphereMesh:
+	if _sphere == null:
+		_sphere = SphereMesh.new()
+		_sphere.radius = 1.0
+		_sphere.height = 2.0
+		_sphere.radial_segments = 16
+		_sphere.rings = 8
+	return _sphere
 
 
 ## Esfera que cresce até o raio e some. Usada em explosões, onda de choque e Fênix.
+## A partir de 1,5 m conta como explosão (teto próprio).
 static func burst(parent: Node, pos: Vector3, radius: float, color: Color, time := 0.3) -> void:
+	var kind := "explosion" if radius >= 1.5 else "burst"
+	if not _allowed(kind):
+		return
 	var mi := MeshInstance3D.new()
-	var sphere := SphereMesh.new()
-	sphere.radius = 1.0
-	sphere.height = 2.0
+	# O material é de cada clarão porque a transparência anima; a malha é uma só.
 	var mat := StandardMaterial3D.new()
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mat.albedo_color = Color(color, 0.45)
-	sphere.material = mat
-	mi.mesh = sphere
+	mi.mesh = sphere_mesh()
+	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+	_track(mi, kind)
 	parent.add_child(mi)
 	mi.global_position = pos
 	mi.scale = Vector3.ONE * 0.1
@@ -30,6 +78,8 @@ static func burst(parent: Node, pos: Vector3, radius: float, color: Color, time 
 
 ## Número de dano que sobe e some. Crítico: amarelo e maior.
 static func number(parent: Node, pos: Vector3, amount: float, crit := false) -> void:
+	if not _allowed("number"):
+		return
 	var l := Label3D.new()
 	l.text = str(roundi(amount)) + ("!" if crit else "")
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -41,6 +91,7 @@ static func number(parent: Node, pos: Vector3, amount: float, crit := false) -> 
 	l.modulate = Color(1.0, 0.85, 0.2) if crit else Color(1, 1, 1)
 	l.outline_modulate = Color(0, 0, 0, 0.8)
 	l.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+	_track(l, "number")
 	parent.add_child(l)
 	l.global_position = pos + Vector3(randf_range(-0.3, 0.3), 0.3, randf_range(-0.3, 0.3))
 	var tween := l.create_tween().set_parallel()
@@ -52,14 +103,14 @@ static func number(parent: Node, pos: Vector3, amount: float, crit := false) -> 
 
 ## Faíscas que espirram do ponto e caem (impacto de bala em alguém).
 static func sparks(parent: Node, pos: Vector3, color: Color, count := 8, speed := 6.0) -> void:
+	if not _allowed("sparks"):
+		return
+	if _cube == null:
+		_cube = BoxMesh.new()
+		_cube.size = Vector3.ONE * 0.05
 	var p := CPUParticles3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3.ONE * 0.05
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(color.r * 2.0, color.g * 2.0, color.b * 2.0)   # brilha com o glow
-	mesh.material = mat
-	p.mesh = mesh
+	p.mesh = _cube
+	p.material_override = _spark_material(color)
 	p.amount = count
 	p.lifetime = 0.25
 	p.one_shot = true
@@ -71,7 +122,17 @@ static func sparks(parent: Node, pos: Vector3, color: Color, count := 8, speed :
 	p.gravity = Vector3(0, -14, 0)
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	p.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+	_track(p, "sparks")
 	parent.add_child(p)
 	p.global_position = pos
 	p.emitting = true
 	p.get_tree().create_timer(0.5).timeout.connect(p.queue_free)
+
+
+static func _spark_material(color: Color) -> StandardMaterial3D:
+	if not _spark_mats.has(color):
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color = Color(color.r * 2.0, color.g * 2.0, color.b * 2.0)   # brilha com o glow
+		_spark_mats[color] = mat
+	return _spark_mats[color]

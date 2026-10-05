@@ -24,7 +24,18 @@ const VOLUME := {"shot": -8.0, "shield": -6.0, "reflect": -2.0, "hit": -4.0, "hu
 	"explosion": -4.0, "death": -2.0, "pad": -8.0, "dash": -14.0, "pickup": -10.0,
 	"hitmarker": -6.0, "kill": -5.0}
 
+## Vozes ao mesmo tempo por som e no total (2026-10-05): numa chuva de balas cada tiro e
+## cada explosão criavam um tocador de som 3D, e dezenas deles ao mesmo tempo pesavam e
+## só faziam barulho. Passou do teto, o som novo não toca. Tique de acerto e sino de abate
+## ficam fora do teto: dizem algo a quem atirou.
+const VOICES := {"shot": 6, "explosion": 4, "hit": 4, "reflect": 4, "shield": 4, "hurt": 3}
+const DEFAULT_VOICES := 3
+const MAX_VOICES := 24
+const UNLIMITED := ["hitmarker", "kill", "death"]
+
 static var _cache := {}
+static var _live := {}
+static var _live_total := 0
 
 
 static func _stream(sound: String) -> AudioStream:
@@ -38,9 +49,24 @@ static func _stream(sound: String) -> AudioStream:
 	return _cache[file]
 
 
+static func _allowed(sound: String) -> bool:
+	if sound in UNLIMITED:
+		return true
+	return _live_total < MAX_VOICES and _live.get(sound, 0) < VOICES.get(sound, DEFAULT_VOICES)
+
+
+## Conta a voz enquanto toca (o tocador some no fim do som ou junto com quem o tocou).
+static func _track(player: Node, sound: String) -> void:
+	_live[sound] = _live.get(sound, 0) + 1
+	_live_total += 1
+	player.tree_exiting.connect(func():
+		_live[sound] = maxi(0, _live.get(sound, 1) - 1)
+		_live_total = maxi(0, _live_total - 1))
+
+
 ## Som com posição no mundo (fica mais baixo de longe).
 static func at(parent: Node, sound: String, pos: Vector3) -> void:
-	if parent == null or not parent.is_inside_tree():
+	if parent == null or not parent.is_inside_tree() or not _allowed(sound):
 		return
 	var p := AudioStreamPlayer3D.new()
 	p.stream = _stream(sound)
@@ -48,6 +74,7 @@ static func at(parent: Node, sound: String, pos: Vector3) -> void:
 	p.pitch_scale = randf_range(0.93, 1.07)
 	p.unit_size = 12.0
 	p.max_distance = 120.0
+	_track(p, sound)
 	parent.add_child(p)
 	p.global_position = pos
 	p.finished.connect(p.queue_free)
@@ -56,12 +83,13 @@ static func at(parent: Node, sound: String, pos: Vector3) -> void:
 
 ## Som "na cabeça" do jogador local (acerto, dano).
 static func ui(parent: Node, sound: String) -> void:
-	if parent == null or not parent.is_inside_tree():
+	if parent == null or not parent.is_inside_tree() or not _allowed(sound):
 		return
 	var p := AudioStreamPlayer.new()
 	p.stream = _stream(sound)
 	p.volume_db = VOLUME.get(sound, 0.0)
 	p.pitch_scale = randf_range(0.95, 1.05)
+	_track(p, sound)
 	parent.add_child(p)
 	p.finished.connect(p.queue_free)
 	p.play()

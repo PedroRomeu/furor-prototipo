@@ -53,6 +53,8 @@ var autotest := false
 var menu_open := false
 ## Teste: "-- --autotest --mestra=bastiao" troca a carta mestra deste processo.
 var test_master := ""
+## Teste: "--cartas=metralhadora,explosiva" dá essas cartas a todos no começo (mede desempenho).
+var test_cards: Array = []
 ## Teste: "--tema=2" força o tema das arenas (índice em ArenaTheme.THEMES).
 var test_theme := -1
 
@@ -63,6 +65,8 @@ func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--mestra=") and CardDB.is_master(arg.trim_prefix("--mestra=")):
 			test_master = arg.trim_prefix("--mestra=")
+		if arg.begins_with("--cartas="):
+			test_cards = Array(arg.trim_prefix("--cartas=").split(",")).filter(func(c): return CardDB.CARDS.has(c))
 		if arg.begins_with("--tema="):
 			test_theme = int(arg.trim_prefix("--tema="))
 	for n in [2, 3]:

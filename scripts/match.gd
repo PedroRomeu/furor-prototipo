@@ -255,6 +255,8 @@ func _count_death(dead: Player) -> void:
 ## meio-tempo); soltar Tab fecha e prende o mouse de novo se ele estava preso.
 func _process(_delta: float) -> void:
 	_update_spectator()
+	if GameState.autotest:
+		_sample_perf()
 	var want := not GameState.autotest and not draft.visible and not GameState.menu_open 		and Input.is_action_pressed("scoreboard")
 	if want == _board_open:
 		return
@@ -322,6 +324,8 @@ func net_master(node_name: String, card: String) -> void:
 	if CardDB.is_master(card) and not p.cards.any(CardDB.is_master):
 		p.cards.push_front(card)
 		_log("%s tem a carta mestra %s" % [p.player_name, card])
+		if GameState.autotest:
+			p.cards.append_array(GameState.test_cards)
 	hud.refresh_cards()
 
 
@@ -483,6 +487,7 @@ func net_end_match() -> void:
 	hud.show_center("%s\n%s" % [text, hud.score_text(score)])
 	_log("fim: %s %s depois de %d rodadas" % [text, str(_scores()), round_num])
 	if GameState.autotest:
+		_log(_perf_report())
 		await get_tree().create_timer(0.5).timeout
 		_quit()
 		return
@@ -648,6 +653,38 @@ func _on_resumed() -> void:
 func _exit_tree() -> void:
 	GameState.menu_open = false
 	get_tree().paused = false
+	Bullet.clear_cache()
+	Effects.clear_cache()
+
+
+## Autoteste: tempo de CPU por quadro (scripts e física, sem o desenho), separado pelos
+## quadros com muitas balas no ar. Impresso no fim da partida.
+var _perf := {"frames": 0, "proc": 0.0, "phys": 0.0, "heavy": 0, "heavy_proc": 0.0,
+	"heavy_phys": 0.0, "heavy_bullets": 0, "worst": 0.0, "peak_bullets": 0}
+
+
+func _sample_perf() -> void:
+	var proc := Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
+	var phys := Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0
+	var bullets := get_tree().get_node_count_in_group("bullets")
+	_perf["frames"] += 1
+	_perf["proc"] += proc
+	_perf["phys"] += phys
+	_perf["worst"] = maxf(_perf["worst"], proc + phys)
+	_perf["peak_bullets"] = maxi(_perf["peak_bullets"], bullets)
+	if bullets >= 40:
+		_perf["heavy"] += 1
+		_perf["heavy_proc"] += proc
+		_perf["heavy_phys"] += phys
+		_perf["heavy_bullets"] += bullets
+
+
+func _perf_report() -> String:
+	var f := maxi(1, _perf["frames"])
+	var h := maxi(1, _perf["heavy"])
+	return "desempenho: media %.2f ms (process %.2f + fisica %.2f); com 40+ balas (%d quadros) %.2f + %.2f ms; media de %d balas; pior %.1f ms; pico %d balas" % [
+		(_perf["proc"] + _perf["phys"]) / f, _perf["proc"] / f, _perf["phys"] / f, _perf["heavy"],
+		_perf["heavy_proc"] / h, _perf["heavy_phys"] / h, _perf["heavy_bullets"] / h, _perf["worst"], _perf["peak_bullets"]]
 
 
 func _log(msg: String) -> void:

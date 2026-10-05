@@ -63,6 +63,15 @@ const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", 
 	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult"]
 
 static var _counter := 0
+## Desempenho (2026-10-05): malha e materiais são compartilhados (um material por cor), os
+## rastros de todas as balas saem numa malha só (TrailBatch) e a lista de jogadores é
+## buscada uma vez por quadro de física, não três vezes por bala.
+static var _mesh: SphereMesh
+static var _materials := {}
+static var _trail_mat: StandardMaterial3D
+static var _players: Array = []
+static var _barriers: Array = []
+static var _cache_frame := -1
 
 var id := ""
 var shooter: Player
@@ -102,10 +111,8 @@ var age := 0.0
 var waiting := 0.0
 var fuse := 0.0
 var ignore_remote_until := 0.0
-var material: StandardMaterial3D
+var color := Color.WHITE   # cor de base (o rastro usa esta; o núcleo, ela mais brilhante)
 var core: MeshInstance3D
-var trail: ImmediateMesh
-var trail_mat: StandardMaterial3D
 var trail_points: Array = []
 
 
@@ -215,34 +222,20 @@ func _clone(dir: Vector3, overrides := {}) -> void:
 
 func _ready() -> void:
 	add_to_group("bullets")
-	material = StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	if _mesh == null:
+		_mesh = SphereMesh.new()
+		_mesh.radius = 1.0
+		_mesh.height = 2.0
+		_mesh.radial_segments = 10
+		_mesh.rings = 5
 	core = MeshInstance3D.new()
-	var sphere := SphereMesh.new()
-	sphere.radius = 1.0
-	sphere.height = 2.0
-	sphere.radial_segments = 12
-	sphere.rings = 6
-	sphere.material = material
-	core.mesh = sphere
+	core.mesh = _mesh
 	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(core)
 	_resize_core()
-
-	# Rastro: uma fita virada para a câmera, desenhada a cada quadro pelos últimos pontos.
-	trail = ImmediateMesh.new()
-	trail_mat = StandardMaterial3D.new()
-	trail_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	trail_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	trail_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	trail_mat.vertex_color_use_as_albedo = true
-	var trail_node := MeshInstance3D.new()
-	trail_node.mesh = trail
-	trail_node.top_level = true
-	trail_node.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
-	trail_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(trail_node)
-	trail_node.global_transform = Transform3D.IDENTITY
+	# Rastro: desenhado junto com o das outras balas pelo TrailBatch do mesmo nó pai.
+	if not get_parent().has_node(TrailBatch.NODE_NAME):
+		get_parent().add_child(TrailBatch.new())
 
 	var c := shooter.color.lightened(0.45)
 	if pierce:
@@ -271,10 +264,47 @@ func _resize_core() -> void:
 
 ## Cor acima de 1 faz a bala brilhar com o glow do ambiente.
 func _set_color(c: Color) -> void:
-	material.albedo_color = Color(c.r * 2.2, c.g * 2.2, c.b * 2.2)
-	if trail_mat:
-		trail_mat.albedo_color = Color(1.6, 1.6, 1.6)
-	set_meta("trail_color", c)
+	color = c
+	_set_core(Color(c.r * 2.2, c.g * 2.2, c.b * 2.2))
+
+
+func _set_core(albedo: Color) -> void:
+	if not _materials.has(albedo):
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color = albedo
+		_materials[albedo] = mat
+	core.material_override = _materials[albedo]
+
+
+## Solta as malhas e materiais compartilhados (fim da partida).
+static func clear_cache() -> void:
+	_mesh = null
+	_materials.clear()
+	_trail_mat = null
+	_players.clear()
+	_barriers.clear()
+	_cache_frame = -1
+
+
+static func trail_material() -> StandardMaterial3D:
+	if _trail_mat == null:
+		_trail_mat = StandardMaterial3D.new()
+		_trail_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_trail_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_trail_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_trail_mat.vertex_color_use_as_albedo = true
+		_trail_mat.albedo_color = Color(1.6, 1.6, 1.6)
+	return _trail_mat
+
+
+## Jogadores e paredes do Bastião, buscados uma vez por quadro de física para todas as balas.
+func _refresh_cache() -> void:
+	var frame := Engine.get_physics_frames()
+	if frame != _cache_frame:
+		_cache_frame = frame
+		_players = get_tree().get_nodes_in_group("players")
+		_barriers = get_tree().get_nodes_in_group("barriers")
 
 
 func _orient() -> void:
@@ -283,36 +313,6 @@ func _orient() -> void:
 	var dir := velocity.normalized()
 	var up := Vector3.RIGHT if absf(dir.dot(Vector3.UP)) > 0.99 else Vector3.UP
 	look_at(global_position + dir, up)
-
-
-func _process(_delta: float) -> void:
-	_draw_trail()
-
-
-func _draw_trail() -> void:
-	trail.clear_surfaces()
-	var cam := get_viewport().get_camera_3d()
-	if cam == null or trail_points.is_empty() or not visible:
-		return
-	var pts: Array = trail_points.duplicate()
-	pts.append(get_global_transform_interpolated().origin)
-	if pts.size() < 2:
-		return
-	var color: Color = get_meta("trail_color", Color.WHITE)
-	var width := maxf(0.07, radius * 0.8)
-	trail.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP, trail_mat)
-	for i in pts.size():
-		var p: Vector3 = pts[i]
-		var tangent: Vector3 = pts[mini(i + 1, pts.size() - 1)] - pts[maxi(i - 1, 0)]
-		var side := tangent.cross(cam.global_position - p)
-		if side.length_squared() < 0.000001:
-			side = Vector3.UP
-		var t := float(i) / (pts.size() - 1)
-		side = side.normalized() * width * t
-		trail.surface_set_color(Color(color, 0.55 * t))
-		trail.surface_add_vertex(p + side)
-		trail.surface_add_vertex(p - side)
-	trail.surface_end()
 
 
 func _physics_process(delta: float) -> void:
@@ -331,6 +331,7 @@ func _physics_process(delta: float) -> void:
 		if waiting <= 0.0:
 			visible = true   # a outra máquina não respondeu: a bala passou direto
 		return
+	_refresh_cache()
 	_update_flight(delta)
 	var from := global_position
 	var to := from + velocity * delta
@@ -404,7 +405,9 @@ func _update_flight(delta: float) -> void:
 ## Parede do Bastião no caminho: devolve a bala de quem não é o dono dela. Quem decide é a
 ## máquina do dono da parede; as outras escondem a bala e esperam a resposta.
 func _check_barriers(from: Vector3, end: Vector3) -> bool:
-	for node in get_tree().get_nodes_in_group("barriers"):
+	for node in _barriers:
+		if not is_instance_valid(node):
+			continue
 		var wall := node as Barrier
 		var owner_player := wall.owner_player
 		if not is_instance_valid(owner_player) or owner_player == shooter or not owner_player.alive \
@@ -431,9 +434,18 @@ func _check_barriers(from: Vector3, end: Vector3) -> bool:
 func _player_on_segment(from: Vector3, end: Vector3) -> Dictionary:
 	var best := {}
 	var best_dist := INF
-	for node in get_tree().get_nodes_in_group("players"):
+	var mid := (from + end) * 0.5
+	var half := from.distance_to(end) * 0.5
+	for node in _players:
+		if not is_instance_valid(node):
+			continue
 		var p := node as Player
 		if not p.alive or (p == shooter and (not bounced or returning)):
+			continue
+		# Descarte rápido: longe demais do trecho para a cápsula (ou o escudo) alcançar.
+		var body: float = p.height * 0.5 * float(p.stats["body_scale"])
+		var center := p.global_position + Vector3(0.0, body, 0.0)
+		if center.distance_to(mid) > half + body + p.hit_radius() + radius:
 			continue
 		if is_instance_valid(shooter) and shooter.is_ally(p):
 			continue   # 2x2: a bala atravessa o parceiro
@@ -456,8 +468,8 @@ func _player_on_segment(from: Vector3, end: Vector3) -> Dictionary:
 func _enemy() -> Player:
 	var best: Player = null
 	var best_dist := INF
-	for node in get_tree().get_nodes_in_group("players"):
-		if node == shooter or not node.alive or (is_instance_valid(shooter) and shooter.is_ally(node)):
+	for node in _players:
+		if not is_instance_valid(node) or node == shooter or not node.alive or (is_instance_valid(shooter) and shooter.is_ally(node)):
 			continue
 		var d: float = node.global_position.distance_to(global_position)
 		if d < best_dist:
@@ -486,12 +498,12 @@ func _hit_world(hit: Dictionary) -> void:
 		velocity = Vector3.ZERO
 		explosion = maxf(explosion, STICKY_RADIUS)
 		fuse = STICKY_FUSE
-		material.albedo_color = Color(3.0, 0.6, 0.3)
+		_set_core(Color(3.0, 0.6, 0.3))
 		return
 	if explosion > 0.0:
 		_explode(point, null)
 	else:
-		Effects.burst(get_parent(), point, 0.35, material.albedo_color, 0.12)
+		Effects.burst(get_parent(), point, 0.35, Color(color.r * 2.2, color.g * 2.2, color.b * 2.2), 0.12)
 	if bounces <= 0:
 		if split > 0 and is_instance_valid(shooter) and shooter.is_local:
 			_shatter(point, normal)
@@ -587,13 +599,16 @@ func _finish_hit(point: Vector3, skip: Player) -> void:
 func _explode(point: Vector3, skip: Player) -> void:
 	Effects.burst(get_parent(), point, explosion, Color(1.0, 0.6, 0.2))
 	Sfx.at(get_parent(), "explosion", point)
+	_refresh_cache()
 	if is_instance_valid(shooter) and shooter.is_local and shooter.alive and shooter.stats["rocket_jump"] > 0:
 		var d := shooter.chest().distance_to(point)
 		if d < explosion + 1.0:
 			var away := (shooter.chest() - point).normalized()
 			var power := 1.0 - 0.5 * d / (explosion + 1.0)
 			shooter.launch(Vector3(away.x * 13.0, maxf(away.y * 15.0, 8.0), away.z * 13.0) * power)
-	for node in get_tree().get_nodes_in_group("players"):
+	for node in _players:
+		if not is_instance_valid(node):
+			continue
 		var p := node as Player
 		if p == shooter or p == skip or not p.alive or not p.is_local \
 				or (is_instance_valid(shooter) and shooter.is_ally(p)):
@@ -657,3 +672,70 @@ func remote_reflect(point: Vector3, dir: Vector3, owner_name: String, new_damage
 func remote_hit(point: Vector3, dmg: float) -> void:
 	_show_damage(point, dmg)
 	_finish_hit(point, null)
+
+
+## Rastros de todas as balas de um mesmo nó pai numa malha só: uma fita virada para a
+## câmera por bala, pelos últimos pontos dela. Antes cada bala tinha a própria malha,
+## refeita e enviada à placa de vídeo a cada quadro (centenas de envios numa chuva de balas).
+class TrailBatch extends MeshInstance3D:
+	const NODE_NAME := "BulletTrails"
+	var imesh := ImmediateMesh.new()
+
+	func _init() -> void:
+		name = NODE_NAME
+		mesh = imesh
+		top_level = true
+		physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+		cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+	func _ready() -> void:
+		global_transform = Transform3D.IDENTITY
+
+	func _process(_delta: float) -> void:
+		imesh.clear_surfaces()
+		var cam := get_viewport().get_camera_3d()
+		if cam == null:
+			return
+		var eye := cam.global_position
+		var parent := get_parent()
+		var open := false
+		for node in get_tree().get_nodes_in_group("bullets"):
+			var b := node as Bullet
+			if b.get_parent() != parent or not b.visible or b.trail_points.is_empty():
+				continue
+			var pts: Array = b.trail_points.duplicate()
+			pts.append(b.get_global_transform_interpolated().origin)
+			var width := maxf(0.07, b.radius * 0.8)
+			var last := pts.size() - 1
+			var prev_a := Vector3.ZERO
+			var prev_b := Vector3.ZERO
+			for i in pts.size():
+				var p: Vector3 = pts[i]
+				var tangent: Vector3 = pts[mini(i + 1, last)] - pts[maxi(i - 1, 0)]
+				var side := tangent.cross(eye - p)
+				if side.length_squared() < 0.000001:
+					side = Vector3.UP
+				var t := float(i) / last
+				side = side.normalized() * width * t
+				var a := p + side
+				var c := p - side
+				if i > 0:
+					if not open:
+						imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, Bullet.trail_material())
+						open = true
+					var col_prev := Color(b.color, 0.55 * float(i - 1) / last)
+					var col := Color(b.color, 0.55 * t)
+					imesh.surface_set_color(col_prev)
+					imesh.surface_add_vertex(prev_a)
+					imesh.surface_add_vertex(prev_b)
+					imesh.surface_set_color(col)
+					imesh.surface_add_vertex(a)
+					imesh.surface_set_color(col_prev)
+					imesh.surface_add_vertex(prev_b)
+					imesh.surface_set_color(col)
+					imesh.surface_add_vertex(c)
+					imesh.surface_add_vertex(a)
+				prev_a = a
+				prev_b = c
+		if open:
+			imesh.surface_end()

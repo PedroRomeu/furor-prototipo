@@ -69,6 +69,7 @@ const BASE_STATS := {
 	"swap": 0,
 	"blind": 0.0,
 	"lazy": 0,
+	"auto_fire": 0,   # Metralhadora: segurar o botão repete o tiro
 	"shield_duration": 0.35,
 	"shield_cooldown": 2.0,
 	"reflect_mult": 1.0,
@@ -177,6 +178,11 @@ const BLOODLUST_TIME := 3.0
 const RAGE_THRESHOLD := 0.35
 const REGEN_DELAY := 3.0
 const BURST_GAP := 0.07
+## Tiro semiautomático (2026-10-05): cada clique é um tiro; segurar não repete, só com a
+## Metralhadora (auto_fire). Um clique um pouco antes de a arma ficar pronta fica guardado
+## por este tempo e sai assim que der, como nos jogos de tiro com arma semiautomática:
+## sem isso o clique adiantado se perderia e a arma pareceria falhar.
+const SHOT_BUFFER := 0.15
 const ADRENALINE_GAP := 0.4
 const CRIT_MULT := 2.5
 const TELEPORT_RANGE := 7.0
@@ -242,6 +248,9 @@ var ammo := 6
 var alive := true
 var frozen := true
 var fire_timer := 0.0
+var shoot_was := false     # in_shoot no quadro anterior (para achar o clique)
+var shot_queued := 0.0     # clique guardado esperando a arma ficar pronta (SHOT_BUFFER)
+var _clicked := false      # clique visto em _input desde o último passo de física
 var reload_timer := 0.0
 var burst_left := 0
 var burst_timer := 0.0
@@ -300,6 +309,7 @@ var in_jump := false
 var in_jump_held := false
 var in_crouch := false
 var in_shoot := false
+var in_click := false      # clicou neste passo (um clique rápido cabe entre dois passos de física)
 var in_shield := false
 var in_dash := false
 var in_reload := false
@@ -527,6 +537,7 @@ func reset_for_round(spawn: Transform3D) -> void:
 	ammo = stats["mag_size"]
 	ghost_left = stats["ghost"]
 	fire_timer = 0.0
+	shot_queued = 0.0
 	reload_timer = 0.0
 	burst_left = 0
 	shield_timer = 0.0
@@ -567,6 +578,8 @@ func reset_for_round(spawn: Transform3D) -> void:
 func _input(event: InputEvent) -> void:
 	if not is_human or brain != null:
 		return
+	if event.is_action_pressed("shoot") and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		_clicked = true
 	var motion := event as InputEventMouseMotion
 	if motion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		# O giro do corpo vai para look_yaw e é aplicado no passo de física (o corpo é
@@ -586,6 +599,8 @@ func _read_local_input() -> void:
 		in_jump_held = false
 		in_crouch = false
 		in_shoot = false
+		in_click = false
+		_clicked = false
 		in_shield = false
 		in_dash = false
 		in_reload = false
@@ -597,6 +612,8 @@ func _read_local_input() -> void:
 	in_jump_held = Input.is_action_pressed("jump")
 	in_crouch = Input.is_action_pressed("crouch")
 	in_shoot = captured and Input.is_action_pressed("shoot")
+	in_click = _clicked
+	_clicked = false
 	in_shield = Input.is_action_just_pressed("shield")
 	in_dash = Input.is_action_just_pressed("dash")
 	in_reload = Input.is_action_just_pressed("reload")
@@ -1286,8 +1303,14 @@ func _act(delta: float) -> void:
 	if in_shield and shield_cd <= 0.0 and silence_timer <= 0.0:
 		_activate_shield()
 	_shield_bash()
+	shot_queued = maxf(0.0, shot_queued - delta)
+	if in_click or (in_shoot and not shoot_was):
+		shot_queued = SHOT_BUFFER
+	shoot_was = in_shoot
+	var trigger: bool = shot_queued > 0.0 or (in_shoot and stats["auto_fire"] > 0)
 	if bazooka_timer > 0.0:
-		if in_shoot and not is_shielding() and fire_timer <= 0.0 and rockets_left > 0:
+		if trigger and not is_shielding() and fire_timer <= 0.0 and rockets_left > 0:
+			shot_queued = 0.0
 			_fire_rocket()
 		return
 	if in_reload and reload_timer <= 0.0 and ammo < stats["mag_size"] and burst_left == 0:
@@ -1298,7 +1321,8 @@ func _act(delta: float) -> void:
 			burst_left -= 1
 			burst_timer = BURST_GAP
 			_volley()
-	elif in_shoot and not is_shielding() and fire_timer <= 0.0 and reload_timer <= 0.0:
+	elif trigger and not is_shielding() and fire_timer <= 0.0 and reload_timer <= 0.0:
+		shot_queued = 0.0
 		if ammo > 0:
 			_fire()
 		else:

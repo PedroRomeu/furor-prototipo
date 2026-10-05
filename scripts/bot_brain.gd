@@ -9,6 +9,8 @@ const TURN_SPEED := 7.0      # velocidade de giro, rad/s
 const LEAD := 0.7            # quanto antecipa o movimento do alvo (0 a 1)
 const SHIELD_CHANCE := 0.5   # chance de levantar o escudo contra uma bala que vai acertar
 const VOID_SAVE_CHANCE := 0.5  # chance de acertar o escudo ao bater no vazio
+const CLICK_MIN := 0.12      # intervalo entre cliques do bot, em segundos (6 a 8 por segundo)
+const CLICK_MAX := 0.17
 const NEAR := 8.0
 const FAR := 22.0
 const REPATH_TIME := 0.5
@@ -28,6 +30,7 @@ var crouch_time := 0.0
 var target: Player
 var target_timer := 0.0
 var void_save := false
+var click_cd := 0.0   # tempo até o próximo clique (a arma é semiautomática)
 var judged := {}   # id da bala -> decidiu se defende ou não (decide uma vez por bala)
 
 
@@ -176,8 +179,15 @@ func _aim_and_shoot(delta: float, foe: Player, sees: bool, wish: Vector3) -> voi
 		target.y += 0.5 * float(p.stats["bullet_gravity"]) * travel * travel
 	p.look_at_point(target, TURN_SPEED * delta)
 	var forward := -p.head.global_transform.basis.z
+	click_cd -= delta
 	if forward.angle_to(target - eye) < 0.06:
-		p.in_shoot = true
+		# Semiautomática: o bot clica num ritmo de gente (6 a 8 por segundo); segurar só
+		# repete o tiro com a Metralhadora. think() solta o botão a cada quadro.
+		if p.stats["auto_fire"] > 0:
+			p.in_shoot = true
+		elif click_cd <= 0.0:
+			p.in_shoot = true
+			click_cd = randf_range(CLICK_MIN, CLICK_MAX)
 
 
 func _can_see(foe: Player) -> bool:
