@@ -26,6 +26,7 @@ Configurações, com até duas teclas por ação.
 | Q | habilidade da carta mestra (Corrente, Bazuca, Bastião, Perfurante) |
 | Tab (segurar) | placar: rodadas, abates, assistências e mortes de cada um, e as cartas de todos (passe o mouse num ícone para ver o efeito) |
 | Enter | chat (online): Enter manda, Esc cancela |
+| Morto, com a rodada rolando | clique: assistir o próximo vivo; E (ou botão direito): câmera livre (WASD, Espaço sobe, Ctrl desce) |
 | Esc | menu de pausa (continuar, configurações, sair); contra bots o jogo para |
 
 **Personalizar** (no menu ou na sala): escolha o personagem (12) e a arma (5 pistolas e armas
@@ -46,7 +47,8 @@ deslizando. Pulando contra um muro e segurando W, o personagem escala a beirada 
 acima dos pés): caixotes servem de degrau para os andares de cima.
 
 Configurações (no menu): seu nome (o que os amigos veem online; também dá para mudar
-dentro da sala), sensibilidade do mouse, qualidade gráfica (Baixa, Média, Alta), contador
+dentro da sala), volume (Geral, Efeitos, Interface e Música; ao soltar a barra toca um
+exemplo), sensibilidade do mouse, qualidade gráfica (Baixa, Média, Alta), contador
 de FPS e troca de teclas (clique na tecla e aperte a nova; botão direito apaga). Num Intel HD a Alta roda a ~14 FPS; Média e Baixa, a 45-60.
 
 ## Versão para mandar aos amigos (sem instalar nada)

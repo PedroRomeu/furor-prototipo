@@ -18,6 +18,8 @@ var team_scores: Array = [null, null]   # Label do número de cada time
 var team_round: Label
 var chips: Array = []                   # [Player, cartão, barra de vida ou null]
 var spectate_label: Label
+var spectate_hint: Label
+var dead_view := false
 
 var shield_tint: ColorRect
 var damage_fx: DamageFeedback
@@ -79,8 +81,10 @@ func _ready() -> void:
 	master_bar = _bar(Rect2(0.615, 0.905, 0.1, 0.02), Color(1.0, 0.56, 0.22))
 	master_bar.max_value = 1.0
 	status_label = _label("", 18, Rect2(0.25, 0.81, 0.5, 0.04))
-	spectate_label = _label("", 20, Rect2(0.25, 0.75, 0.5, 0.05))
+	spectate_label = _label("", 20, Rect2(0.25, 0.835, 0.5, 0.045))
 	spectate_label.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+	spectate_hint = _label("", 15, Rect2(0.15, 0.88, 0.7, 0.035))
+	spectate_hint.modulate.a = 0.8
 	fps_label = _label("", 14, Rect2(0.005, 0.005, 0.1, 0.03), HORIZONTAL_ALIGNMENT_LEFT)
 	fps_label.visible = GameState.show_fps
 	kill_feed = KillFeed.new()
@@ -237,9 +241,19 @@ func _ui_label(text: String, size: int, color: Color, is_bold := false) -> Label
 	return l
 
 
-## 2x2, morto: mostra quem a câmera está seguindo ("" esconde).
-func set_spectating(text: String) -> void:
+## Morto assistindo (Spectator): some o que é de quem está vivo (mira, escudo, dash,
+## munição, carta mestra); a vida fica, zerada.
+func set_dead_view(on: bool) -> void:
+	dead_view = on
+	for c in [crosshair, shield_label, shield_bar, dash_label, dash_bar, master_label, master_bar,
+			ammo_label, status_label]:
+		c.visible = not on
+
+
+## Morto assistindo: quem a câmera segue (ou "Câmera livre") e as teclas ("" esconde).
+func set_spectating(text: String, hint := "") -> void:
 	spectate_label.text = text
+	spectate_hint.text = hint
 
 
 func _on_me_damaged(amount: float, from: Player) -> void:
@@ -407,8 +421,8 @@ func _process(delta: float) -> void:
 ## Carta mestra: nome e tecla quando pronta, segundos na recarga; passiva só mostra o nome.
 func _update_master() -> void:
 	var id := me.master_id
-	master_label.visible = id != ""
-	master_bar.visible = id != "" and CardDB.CARDS[id].has("cooldown")
+	master_label.visible = id != "" and not dead_view
+	master_bar.visible = id != "" and CardDB.CARDS[id].has("cooldown") and not dead_view
 	if id == "":
 		return
 	var card: Dictionary = CardDB.CARDS[id]

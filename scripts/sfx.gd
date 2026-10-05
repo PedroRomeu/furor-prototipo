@@ -20,9 +20,14 @@ const TONES := {
 	"hitmarker": {"freqs": [2200.0, 4400.0], "gains": [1.0, 0.3], "length": 0.07, "decay": 55.0},
 	"kill": {"freqs": [1320.0, 1980.0, 2640.0], "gains": [1.0, 0.6, 0.25], "length": 0.4, "decay": 9.0},
 }
-const VOLUME := {"shot": -8.0, "shield": -6.0, "reflect": -2.0, "hit": -4.0, "hurt": -3.0,
-	"explosion": -4.0, "death": -2.0, "pad": -8.0, "dash": -14.0, "pickup": -10.0,
-	"hitmarker": -6.0, "kill": -5.0}
+## Volume base de cada som, em dB. Baixado em 2026-10-05 (o usuário achava explosões e
+## efeitos altos demais): explosão -4 -> -11, tiro -8 -> -12, os outros uns 4 dB.
+const VOLUME := {"shot": -12.0, "shield": -10.0, "reflect": -6.0, "hit": -8.0, "hurt": -6.0,
+	"explosion": -11.0, "death": -7.0, "pad": -12.0, "dash": -17.0, "pickup": -13.0,
+	"hitmarker": -7.0, "kill": -6.0}
+## Canal de áudio: sons do mundo vão para Efeitos; os da tela (Sfx.ui) para Interface.
+const BUS_WORLD := "Efeitos"
+const BUS_UI := "Interface"
 
 ## Vozes ao mesmo tempo por som e no total (2026-10-05): numa chuva de balas cada tiro e
 ## cada explosão criavam um tocador de som 3D, e dezenas deles ao mesmo tempo pesavam e
@@ -74,6 +79,7 @@ static func at(parent: Node, sound: String, pos: Vector3) -> void:
 	p.pitch_scale = randf_range(0.93, 1.07)
 	p.unit_size = 12.0
 	p.max_distance = 120.0
+	p.bus = BUS_WORLD
 	_track(p, sound)
 	parent.add_child(p)
 	p.global_position = pos
@@ -89,7 +95,21 @@ static func ui(parent: Node, sound: String) -> void:
 	p.stream = _stream(sound)
 	p.volume_db = VOLUME.get(sound, 0.0)
 	p.pitch_scale = randf_range(0.95, 1.05)
+	p.bus = BUS_UI
 	_track(p, sound)
+	parent.add_child(p)
+	p.finished.connect(p.queue_free)
+	p.play()
+
+
+## Amostra para a barra de volume (Configurações): toca sem posição no canal escolhido.
+static func preview(parent: Node, sound: String, bus: String) -> void:
+	if parent == null or not parent.is_inside_tree():
+		return
+	var p := AudioStreamPlayer.new()
+	p.stream = _stream(sound)
+	p.volume_db = VOLUME.get(sound, 0.0)
+	p.bus = bus
 	parent.add_child(p)
 	p.finished.connect(p.queue_free)
 	p.play()

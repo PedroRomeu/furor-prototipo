@@ -23,8 +23,7 @@ var players: Array = []   # na ordem dos lados; no online o host é sempre o pri
 var score := {}           # nome do nó -> rodadas vencidas (no 2x2, os dois do time somam juntos)
 var teams_on := false     # 2x2: Player.team de cada um é 0 (Azul) ou 1 (Vermelho)
 ## 2x2: morto, assiste o parceiro por uma câmera atrás dele.
-var spectate_cam: Camera3D
-var spectating: Player
+var spectator: Spectator
 var round_num := 0
 var phase := Phase.WAIT
 var arena: Arena
@@ -90,6 +89,9 @@ func _ready() -> void:
 		p.revived.connect(hud.toast.bind("Fênix: %s voltou!" % p.player_name if p != me else "Fênix: você voltou!"))
 	me.died.connect(_on_me_died)
 	me.void_bounced.connect(_on_me_void)
+	spectator = Spectator.new()
+	spectator.game = self
+	add_child(spectator)
 	pause_menu = PauseMenu.new()
 	pause_menu.online = Net.online
 	add_child(pause_menu)
@@ -275,7 +277,6 @@ func _count_death(dead: Player) -> void:
 ## Segurar Tab abre o placar e solta o mouse para passar sobre as cartas (sem atirar nesse
 ## meio-tempo); soltar Tab fecha e prende o mouse de novo se ele estava preso.
 func _process(_delta: float) -> void:
-	_update_spectator()
 	if GameState.autotest:
 		_sample_perf()
 	var want := not GameState.autotest and not draft.visible and not GameState.menu_open 		and not GameState.chat_open and Input.is_action_pressed("scoreboard")
@@ -401,48 +402,10 @@ func _on_me_void(saved: bool) -> void:
 func _on_me_died(_p: Player) -> void:
 	if phase != Phase.FIGHT or players.size() <= 2:
 		return
-	if teams_on and players.any(func(p): return me.is_ally(p) and p.alive):
-		hud.show_center("")   # a câmera passa para o parceiro (_update_spectator)
+	if players.any(func(p): return p != me and p.alive and (not teams_on or me.is_ally(p))):
+		hud.show_center("")   # a câmera passa a seguir quem está vivo (Spectator)
 	else:
 		hud.show_center("Você caiu. Esperando a rodada acabar...")
-
-
-## 2x2: morto no meio da luta, a câmera segue o parceiro vivo, um pouco atrás e acima da
-## cabeça dele, olhando para onde ele olha. Volta para a própria ao fim da luta.
-func _update_spectator() -> void:
-	var target: Player = null
-	if teams_on and me and not me.alive and phase == Phase.FIGHT and not GameState.autotest:
-		for p in players:
-			if me.is_ally(p) and p.alive:
-				target = p
-	if target == null:
-		if spectating:
-			spectating = null
-			me.camera.current = true
-			hud.set_spectating("")
-		return
-	if spectate_cam == null:
-		spectate_cam = Camera3D.new()
-		spectate_cam.fov = Player.BASE_FOV
-		spectate_cam.near = 0.05
-		add_child(spectate_cam)
-	var head: Transform3D = target.head.global_transform
-	var eye := head.origin
-	var forward := -head.basis.z
-	var want := eye - forward * 3.2 + Vector3.UP * 0.9
-	# Parede atrás do parceiro: a câmera chega mais perto em vez de atravessar.
-	var query := PhysicsRayQueryParameters3D.create(eye, want, 1)
-	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-	if not hit.is_empty():
-		want = hit["position"] + (eye - want).normalized() * 0.3
-	if spectating != target:
-		spectating = target
-		spectate_cam.global_position = want
-		spectate_cam.current = true
-		hud.set_spectating("Assistindo %s" % target.player_name)
-	else:
-		spectate_cam.global_position = spectate_cam.global_position.lerp(want, minf(1.0, get_process_delta_time() * 12.0))
-	spectate_cam.look_at(eye + forward * 12.0)
 
 
 @rpc("authority", "call_local", "reliable")

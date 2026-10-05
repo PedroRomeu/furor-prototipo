@@ -57,6 +57,14 @@ static func player_color(slot: int, team := -1) -> Color:
 		return TEAM_COLORS[team][slot % 2]
 	return PLAYER_COLORS[slot % PLAYER_COLORS.size()]
 
+## Volume por tipo de som, de 0 a 100 (Configurações > Som). Cada um é um canal (bus) de
+## áudio criado em _setup_audio: Efeitos são os sons do mundo (tiros, explosões...),
+## Interface os avisos para você (tique de acerto, sino de abate, dano), Música fica para
+## quando houver. Geral é o canal Master, que soma todos.
+const AUDIO_BUSES := [["Master", "Geral"], ["Efeitos", "Efeitos"], ["Interface", "Interface"],
+	["Musica", "Música"]]
+const DEFAULT_VOLUME := {"Master": 80, "Efeitos": 80, "Interface": 80, "Musica": 70}
+var volumes := DEFAULT_VOLUME.duplicate()
 ## Qualidade gráfica: 0 baixa, 1 média, 2 alta (ver match.gd, _apply_quality).
 var quality := 1
 ## Contador de quadros por segundo no canto da tela.
@@ -91,11 +99,14 @@ func _ready() -> void:
 	team_mode = "--2x2" in OS.get_cmdline_user_args()
 	_register_inputs()
 	load_decks()
+	_setup_audio.call_deferred()
 	var cfg := ConfigFile.new()
 	if cfg.load(SETTINGS_PATH) == OK:
 		mouse_sens = cfg.get_value("controles", "sensibilidade", DEFAULT_SENS)
 		quality = cfg.get_value("video", "qualidade", 1)
 		show_fps = cfg.get_value("video", "mostrar_fps", false)
+		for bus in volumes:
+			volumes[bus] = clampi(int(cfg.get_value("audio", bus, volumes[bus])), 0, 100)
 		nick = clean_nick(cfg.get_value("jogador", "nome", ""))
 		var saved := Player.clean_look({"skin": cfg.get_value("jogador", "skin", skin),
 			"gun": cfg.get_value("jogador", "arma", gun_skin)})
@@ -151,6 +162,34 @@ func set_quality(value: int) -> void:
 	quality = value
 	_save_setting("video", "qualidade", value)
 	quality_changed.emit()
+
+
+## Cria os canais de áudio que faltam (só o Master existe de início) e aplica os volumes.
+func _setup_audio() -> void:
+	for b in AUDIO_BUSES:
+		if AudioServer.get_bus_index(b[0]) < 0:
+			AudioServer.add_bus()
+			var i := AudioServer.bus_count - 1
+			AudioServer.set_bus_name(i, b[0])
+			AudioServer.set_bus_send(i, "Master")
+	for bus in volumes:
+		_apply_volume(bus)
+
+
+func set_volume(bus: String, value: int) -> void:
+	volumes[bus] = clampi(value, 0, 100)
+	_apply_volume(bus)
+	_save_setting("audio", bus, volumes[bus])
+
+
+func _apply_volume(bus: String) -> void:
+	var i := AudioServer.get_bus_index(bus)
+	if i < 0:
+		return
+	var v: int = volumes[bus]
+	AudioServer.set_bus_mute(i, v == 0)
+	# Curva ao quadrado: a barra soa mais uniforme (o meio não fica alto demais).
+	AudioServer.set_bus_volume_db(i, linear_to_db(pow(v / 100.0, 2.0)) if v > 0 else -80.0)
 
 
 func set_show_fps(value: bool) -> void:

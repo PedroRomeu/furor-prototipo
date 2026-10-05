@@ -1,6 +1,6 @@
 class_name SettingsPanel
 extends HBoxContainer
-## Configurações em dois painéis: geral (nome, mouse, qualidade, FPS, créditos) e
+## Configurações em dois painéis: geral (nome, mouse, qualidade, som, FPS, créditos) e
 ## controles (troca de teclas). Usado no menu principal e no menu de pausa da partida.
 ## Tudo é salvo na hora pelo GameState.
 
@@ -20,7 +20,16 @@ var rebind_slot := 0
 ## nick_field: campo do nome (o menu principal manda o seu); null esconde o nome.
 func _init(nick_field: Control = null) -> void:
 	add_theme_constant_override("separation", 20)
-	var panel := Ui.panel(self)
+	# Coluna geral rolável: com o som ela passa da altura da tela em 1280x720.
+	var holder := Ui.panel(self)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	holder.add_child(scroll)
+	var panel := Ui.vbox(10)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.add_child(panel)
 	if nick_field:
 		panel.add_child(Ui.label("Seu nome (o que os amigos veem online)", 14, Ui.MUTED))
 		panel.add_child(nick_field)
@@ -35,6 +44,10 @@ func _init(nick_field: Control = null) -> void:
 		GameState.set_quality(i)
 		hint.text = QUALITY_HINTS[i]))
 	panel.add_child(hint)
+	panel.add_child(Ui.gap(8))
+	panel.add_child(Ui.label("Som", 14, Ui.MUTED))
+	for b in GameState.AUDIO_BUSES:
+		panel.add_child(_volume_row(b[0], b[1]))
 	panel.add_child(Ui.gap(8))
 	var fps := CheckButton.new()
 	fps.text = "Mostrar FPS na partida"
@@ -65,6 +78,43 @@ func _sens_row() -> Control:
 	slider.value_changed.connect(func(v):
 		value.text = "%.2fx" % v
 		GameState.set_mouse_sens(v * GameState.DEFAULT_SENS))
+	return row
+
+
+## Barra de volume de um canal: nome, barra e a porcentagem ("Mudo" no zero). Ao soltar a
+## barra toca um som de exemplo naquele canal (Geral usa um tiro).
+const VOLUME_SAMPLE := {"Master": "shot", "Efeitos": "explosion", "Interface": "hitmarker"}
+
+
+func _volume_row(bus: String, title: String) -> Control:
+	var row := Ui.hbox(10)
+	var name_label := Ui.label(title, 16, Ui.TEXT)
+	name_label.custom_minimum_size.x = 92
+	row.add_child(name_label)
+	var slider := HSlider.new()
+	slider.min_value = 0
+	slider.max_value = 100
+	slider.step = 5
+	slider.value = GameState.volumes[bus]
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(slider)
+	var value := Ui.label("", 16, Ui.TEXT)
+	value.custom_minimum_size.x = 56
+	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(value)
+	var show := func(v: float):
+		value.text = "Mudo" if v <= 0.0 else "%d%%" % int(v)
+		value.add_theme_color_override("font_color", Ui.MUTED if v <= 0.0 else Ui.TEXT)
+	show.call(slider.value)
+	slider.value_changed.connect(func(v):
+		show.call(v)
+		GameState.set_volume(bus, int(v)))
+	slider.drag_ended.connect(func(_changed):
+		if VOLUME_SAMPLE.has(bus):
+			Sfx.preview(self, VOLUME_SAMPLE[bus], "Master" if bus == "Master" else bus))
+	if bus == "Musica":
+		slider.tooltip_text = "Ainda não há música no jogo; o ajuste fica salvo para quando houver."
 	return row
 
 
