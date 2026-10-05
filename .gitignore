@@ -1,23 +1,23 @@
-# Cache e importacoes do Godot (refeitos ao abrir o projeto)
+# Godot cache and imports (rebuilt when the project opens)
 .godot/
 
-# Builds (o zip vai como anexo da release, nao no repositorio)
+# Builds (the zip goes as a release asset, not in the repository)
 build/
 *.zip
 export_credentials.cfg
 
-# Prints e testes temporarios
+# Screenshots and temporary tests
 _prints/
 _teste/
 
-# Sistema
+# System
 Thumbs.db
 desktop.ini
 .DS_Store
 
-# Notas do assistente (ficam so neste PC)
+# Assistant notes (kept only on this PC)
 CLAUDE.md
 .claude/
 
-# Escolha de API gráfica (Configurações > Vídeo), gerada pelo jogo
+# Graphics API choice (Settings > Video), written by the game
 override.cfg

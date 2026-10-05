@@ -1,4 +1,4 @@
-# Finais de linha normalizados (padrao do Godot)
+# Normalized line endings (Godot default)
 * text=auto eol=lf
 *.png binary
 *.ogg binary

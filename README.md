@@ -1,215 +1,221 @@
-# Furor (protótipo)
+# Furor (prototype)
 
-FPS com baralho de melhorias, de 2 a 4 jogadores (cada um por si, ou 2x2 com 4), inspirado no Furor do Roblox.
-Godot 4.7.2, GDScript.
+First-person shooter with an upgrade card deck, for 2 to 4 players (free-for-all, or 2v2 with 4),
+inspired by Furor on Roblox. Made with Godot 4.7.2 and GDScript.
 
-## Como abrir
+The game itself is in Brazilian Portuguese; button and card names below are written as they
+appear in the game, with a translation where it helps.
 
-1. Abra o Godot, clique em **Importar**, escolha a pasta `furor_game` e confirme.
-2. Com o projeto aberto, aperte **F5**. O jogo abre no menu.
+## Download and play
 
-## Controles
+Get `Furor.zip` from the [latest release](https://github.com/PedroRomeu/furor-prototipo/releases/latest),
+extract it anywhere and run `Furor.exe`. Nothing to install. Windows may show "Windows
+protected your PC" because the .exe is not signed: click **More info > Run anyway**.
+Everyone playing together needs the **same version**.
 
-Teclas padrão; todas (menos o mouse para mirar e o Esc) podem ser trocadas em
-Configurações, com até duas teclas por ação.
+## Open the project
 
-| Tecla | Ação |
+1. Open Godot, click **Import**, pick the `furor_game` folder and confirm.
+2. With the project open, press **F5**. The game starts at the main menu.
+
+## Controls
+
+Default keys; all of them (except mouse aim and Esc) can be changed in Settings, with up to
+two keys per action.
+
+| Key | Action |
 |---|---|
-| WASD / mouse | andar / mirar |
-| Clique esquerdo | atirar (um clique por tiro; com a carta Metralhadora, segure) |
-| E ou clique direito | escudo (reflete balas) |
-| Espaço | pular (toque curto = pulo baixo) |
-| Ctrl | dash: no chão, andando, um tiro curto de velocidade (segurando, vira deslize); no ar, uma corridinha reta, uma vez por pulo |
-| Shift | dash (sem agachar) |
-| C | agachar |
-| R | recarregar |
-| Q | habilidade da carta mestra (Corrente, Bazuca, Bastião, Perfurante) |
-| Tab (segurar) | placar: rodadas, abates, assistências e mortes de cada um, e as cartas de todos (passe o mouse num ícone para ver o efeito) |
-| Enter | chat (online): Enter manda, Esc cancela |
-| Morto, com a rodada rolando | clique: assistir o próximo vivo; E (ou botão direito): câmera livre (WASD, Espaço sobe, Ctrl desce) |
-| Esc | menu de pausa (continuar, configurações, sair); contra bots o jogo para |
+| WASD / mouse | move / aim |
+| Left click | shoot (one click per shot; hold only with the Metralhadora card) |
+| E or right click | shield (reflects bullets) |
+| Space | jump (short tap = low jump) |
+| Ctrl | dash: on the ground while moving, a short burst of speed (hold to slide); in the air, a straight dash, once per jump |
+| Shift | dash (without crouching) |
+| C | crouch |
+| R | reload |
+| Q | master card ability (Corrente, Bazuca, Bastião, Perfurante) |
+| Tab (hold) | scoreboard: rounds, kills, assists and deaths, and everyone's cards (hover an icon to see its effect) |
+| Enter | chat (online): Enter sends, Esc cancels |
+| Dead, round still going | click: watch the next living player; E (or right click): free camera (WASD, Space up, Ctrl down) |
+| Esc | pause menu (resume, settings, quit); against bots the game pauses |
 
-**Personalizar** (no menu ou na sala): escolha o personagem (12) e a arma (5 pistolas e armas
-pequenas). O modelo aparece no centro; arraste para girar. Só aparência, não muda nada no
-jogo; na sala os outros veem na hora.
+**Personalizar** (customize, from the menu or the lobby): pick your character (12) and gun
+(5 pistols and small guns). The model is shown in the middle; drag to rotate. Cosmetic only;
+in the lobby the others see it right away.
 
-Levou dano: um arco vermelho em volta da mira aponta de onde veio o tiro e as bordas da
-tela avermelham por um instante. Com pouca vida, as bordas pulsam de leve.
+Taking damage: a red arc around the crosshair points to where the shot came from and the
+screen edges flash red. At low health the edges pulse softly.
 
-Na mira: o arco à direita mostra as balas do pente (as gastas apagam; a última fica
-laranja). Recarregando, a mira vira um anel que se fecha quando a recarga termina.
+Crosshair: the arc on the right shows the bullets left in the magazine (spent ones fade,
+the last one turns orange). While reloading, the crosshair becomes a ring that closes when
+the reload ends.
 
-Dicas de movimento: o pulo sobe uns 2,3 m. Encostado num muro, dá para pular nele 2 vezes
-antes de tocar o chão: segurando contra o muro, sobe rente a ele (escala uns 7 m);
-segurando para o outro lado, salta longe. Pular logo depois de deslizar mantém a
-velocidade, e no ar dá para virar sem perder embalo. Dash no ar segurando Ctrl pousa já
-deslizando. Pulando contra um muro e segurando W, o personagem escala a beirada (até 2,2 m
-acima dos pés): caixotes servem de degrau para os andares de cima.
+Movement tips: a jump goes up about 2.3 m. Against a wall you can jump off it twice before
+landing: holding toward the wall climbs it (about 7 m); holding away jumps far. Jumping
+right after a slide keeps the speed, and you can turn in the air without losing momentum.
+An air dash while holding Ctrl lands already sliding. Jumping at a wall while holding W
+climbs the ledge (up to 2.2 m above your feet): crates work as steps to the upper floors.
 
-Configurações (no menu e no Esc da partida), separadas em Perfil, Vídeo, Áudio, Controles e
-Créditos: modo de exibição (janela, tela cheia sem borda, tela cheia) e resolução, seu nome (o que os amigos veem online; também dá para mudar
-dentro da sala), volume (Geral, Efeitos, Interface e Música; ao soltar a barra toca um
-exemplo), sensibilidade do mouse, qualidade gráfica (Baixa, Média, Alta), contador
-de FPS e troca de teclas (clique na tecla e aperte a nova; botão direito apaga). Num Intel HD a Alta roda a ~14 FPS; Média e Baixa, a 45-60.
+Settings (main menu and Esc in a match), split into Perfil (profile), Vídeo, Áudio,
+Controles and Créditos: display mode (window, borderless fullscreen, fullscreen),
+resolution, graphics quality (Low, Medium, High), graphics API (Compatibility/OpenGL,
+Vulkan, DirectX 12), FPS counter, your name (what friends see online; can also be changed
+in the lobby), volume (Master, Effects, Interface, Music; releasing a slider plays a
+sample), mouse sensitivity and key rebinding (click a key and press the new one; right
+click clears it). On an Intel HD GPU, High runs at ~14 FPS; Medium and Low at 45-60.
 
-## Versão para mandar aos amigos (sem instalar nada)
+The graphics API is applied on restart through an `override.cfg` file next to the game.
+If the PC lacks the chosen API, Godot falls back to OpenGL by itself. If the game ever
+fails to start after switching, delete `override.cfg` next to `Furor.exe`.
 
-O arquivo `build/Furor.zip` tem a pasta `Furor` com um único `Furor.exe` (o jogo inteiro
-vai dentro dele). Quem receber só extrai o zip em qualquer lugar e abre o `Furor.exe`.
-O Windows pode avisar "O Windows protegeu o computador" porque o .exe não é assinado:
-clicar em **Mais informações > Executar assim mesmo**. O zip passa do limite do Discord
-grátis; mande por Google Drive, WeTransfer ou parecido.
-
-Para gerar de novo depois de mudar o jogo:
+## Building the release
 
 ```
 Godot_v4.7.2-stable_win64_console.exe --headless --path . --export-release "Windows Desktop" build/Furor/Furor.exe
 ```
 
-e zipar a pasta `build/Furor`. Pelo editor: Projeto > Exportar > Windows Desktop > Exportar Projeto.
-Todos precisam da **mesma versão**: mudou o código, gere e mande o zip de novo.
+This makes a single `Furor.exe` (the whole game is embedded). Zip the `build/Furor` folder
+(with its `LEIA-ME.txt`, the in-game readme) and attach it to a GitHub release. From the
+editor: Project > Export > Windows Desktop > Export Project.
 
-## Jogar com amigos
+## Playing with friends
 
-1. Um abre **Jogar > Online > Criar sala**. A sala mostra o IP dele e quem já entrou.
-2. Os outros abrem **Jogar > Online**, digitam esse IP e clicam em **Entrar**.
-3. Quem criou a sala clica em **Começar** quando quiser: a partida é com quem estiver na
-   sala (2 a 4 jogadores, cada um por si).
-   Com 4, dá para escolher **2x2** em Formato: a sala vira Time Azul e Time Vermelho, quem
-   criou a sala troca as pessoas de time (ou clica em **Sortear times**) e só começa com 2
-   em cada lado.
-   Na sala cada um troca o próprio nome (vale na hora para todos), troca o baralho equipado
-   ou clica em **Editar** para mexer nele sem sair da sala; se a partida começar enquanto
-   você edita, ela abre sozinha. Embaixo da lista de jogadores fica o chat, que continua
-   na partida (Enter abre). Cada nome aparece na cor do jogador.
-4. Na primeira vez que criar uma sala, o Windows pergunta se libera o Godot no firewall: libere
-   (marque também "redes públicas" se for usar VPN).
+1. One player opens **Jogar > Online > Criar sala** (Play > Online > Create room). The
+   lobby shows their IP and who has joined.
+2. The others open **Jogar > Online**, type that IP and click **Entrar** (Join).
+3. The host clicks **Começar** (Start) whenever they want: the match is played with whoever
+   is in the lobby (2 to 4 players, free-for-all). With 4, **2x2** can be picked under
+   Formato: the lobby becomes Blue Team and Red Team, the host moves people between teams
+   (or clicks **Sortear times** to shuffle) and it only starts with 2 on each side.
+   In the lobby everyone can change their name and look (applied right away for everyone),
+   switch the equipped deck or click **Editar** to edit it without leaving; if the match
+   starts while you edit, it opens by itself. The chat sits below the player list and
+   carries on into the match (Enter opens it). Each name shows in that player's color.
+4. The first time a lobby is created, Windows asks whether to allow the game through the
+   firewall: allow it (also tick "public networks" when using a VPN).
 
-**Na mesma casa (mesmo Wi-Fi ou roteador):** funciona direto com o IP que aparece no menu
-(algo como `192.168.0.10`).
+**Same house (same Wi-Fi or router):** works directly with the IP shown in the lobby
+(something like `192.168.0.10`).
 
-**Em casas diferentes:** a internet não deixa um PC entrar direto no outro. O jeito mais fácil
-é uma VPN de jogos, gratuita, que coloca os dois PCs na mesma "rede de mentira":
-- **Radmin VPN** (Windows): um cria uma rede, o outro entra com nome e senha. Use o IP
-  que o Radmin mostra (começa com `26.`).
-- **Tailscale** ou **ZeroTier** funcionam do mesmo jeito.
-- Sem VPN: liberar a porta **UDP 7777** no roteador de quem hospeda (redirecionamento de
-  porta) e o amigo usar o IP público. Dá mais trabalho e depende do roteador.
+**Different houses:** the internet doesn't let one PC connect straight to another. The
+easiest way is a free gaming VPN that puts both PCs on the same virtual network:
+- **Radmin VPN** (Windows): one creates a network, the other joins with name and password.
+  Use the IP Radmin shows (starts with `26.`).
+- **Tailscale** or **ZeroTier** work the same way.
+- Without a VPN: forward **UDP port 7777** on the host's router and have friends use the
+  public IP. More work, and it depends on the router.
 
-**Passar o jogo para o amigo:** o mais simples é ele instalar o Godot 4.7.2, receber a pasta
-do projeto (zip ou GitHub) e abrir igual a você. Para mandar um .exe: no Godot, menu
-Projeto > Exportar > Adicionar > Windows Desktop. Na primeira vez ele pede para baixar os
-"export templates" (botão "Gerenciar modelos de exportação" > Baixar).
+How it works inside: each PC simulates its own player; whoever gets shot decides whether
+they reflected it or took damage (their screen shows the bullet arriving, so the shield
+counts exactly when they press E); the host decides map, cards, score and end. "5 more
+rounds" only continues if everyone votes to continue. If someone's connection drops,
+everyone goes back to the menu.
 
-Como funciona por dentro: cada PC simula o próprio jogador; quem leva o tiro decide se
-refletiu ou tomou dano (é a tela dele que mostra a bala chegando, então o escudo vale
-exatamente quando ele aperta E); o host decide mapa, cartas, placar e fim. "Mais 5
-rodadas" só continua se todos votarem para continuar. Se a conexão de alguém cair, todos
-voltam ao menu.
+## Match rules
 
-## Regras da partida
+- Decks of 30 to 50 cards, up to 3 copies each. More copies = more chance of the card
+  showing up. With 88 cards there are always some left out.
+- **Baralhos** (decks) screen: create as many named decks as you want, starting from a
+  template (Equilibrado, Atirador, Muralha, Acrobata, Caos, Aleatório or Vazio). Click a card
+  to add it, right click to remove; filter by group, by **archetype** (Ricochete, Explosão,
+  Nuke, Espelho, Tanque...: cards that combine well; a card can be in several) and search.
+  The **equipped** deck is the one used in matches.
+- **Master card**: each deck has one, picked at the top of the editor, outside the card
+  count. You start every match with it. One per group: **Bazuca** (Weapon, Q: 6 s of
+  bazooka, 3 rockets), **Perfurante** (Bullets, Q: 3 straight fast shots that go through
+  walls), **Bastião** (Shield, Q: a wall that returns bullets for 4 s), **Último Suspiro**
+  (Body: a fatal hit leaves you at 1 health for 3 s; get a kill in that time and come back
+  with half) and **Corrente** (Movement, Q: an 8 m upward boost, also in the air).
+- Shooting: 4 bullets per magazine, 34 damage (3 hits kill), visible bullets that drop
+  with distance. Aim a bit higher from afar. Reflected bullets fly straight. A bullet's size
+  grows with its damage, also mid-flight (Bola de Neve, Tabelinha): huge bullets are
+  possible. A bullet that already bounced off a wall can hit its shooter.
+- Your character gets a bit bigger with more max health and smaller with less, and the
+  camera height follows.
+- At the start, everyone sees 3 different cards from their own deck and keeps 1.
+- Round: last one standing wins. Only **the losers** pick another card (1 of 3); with more
+  than 2 players, everyone who died.
+- **2x2** (online with 4, or in Treino with 3 bots: you and an allied bot): the team with
+  someone standing wins, and both losers pick a card. Bullets and explosions pass through
+  your teammate. Your teammate has a team-colored outline and an arrow over their name,
+  visible through walls, with their health under the name; the team score is at the top.
+  When dead you watch your teammate (or use the free camera) until the round ends.
+- Cards never leave the deck: you can pick the same one several times and the effects
+  stack. A few (Adrenalina, Radar, Fênix...) can only be picked once.
+- Every 5 rounds the game asks: 5 more rounds or finish. Most rounds wins.
+- Each round rolls a new arena in one of 4 styles: Pátio, Ruínas, Torres and Fábrica, and
+  one of 6 color themes. Each piece repeats rotated around the center, once per player (2
+  to 4 identical sides). Arenas have height: platforms with a second floor, floating slabs,
+  jump pads.
+- Map items (not every map, one of each per player): **purple orb** up high (gives back the
+  air dash, resets the dash cooldown and grants an air jump; respawns in 6 s), **green
+  cross** (30 health; 25 s) and, rarer, **yellow vest** (25 armor, up to 50, absorbs damage
+  before health and resets every round; 30 s).
+- **Void**: some maps have no edge walls and some have holes. Below (1 m under the floor)
+  is the purple void: falling in bounces you and costs 20 health. The bounce is low and
+  short, so far from the edge it takes several (each one hurts). With the **shield (E) up
+  as you hit it**, you lose no health and bounce high. Whoever pushed you in the last 4 s
+  gets credit for the damage.
+- Practice: Jogar > Treino, against 1, 2 or 3 bots.
 
-- Baralho de 30 a 50 cartas, até 3 cópias de cada. Mais cópias = mais chance de a carta
-  aparecer. Como há 88 cartas, sempre fica alguma de fora.
-- Tela **Baralhos** (no menu): crie quantos baralhos quiser, com nome, começando de um
-  modelo (Equilibrado, Atirador, Muralha, Acrobata, Caos, Aleatório ou Vazio). Clique numa
-  carta para pôr, botão direito para tirar; filtros por grupo, por **arquétipo** (Ricochete, Explosão, Nuke, Espelho, Tanque...: as
-cartas que combinam entre si; uma carta pode estar em vários) e busca. O baralho
-  **equipado** é o usado nas partidas; dá para trocar também direto no menu.
-- **Carta mestra**: cada baralho tem uma, escolhida no topo do editor, fora da contagem de
-  cartas. Você começa toda partida com ela. Uma de cada grupo: **Bazuca** (Arma, Q: 6 s de
-  bazuca, 3 foguetes), **Perfurante** (Balas, Q: 3 tiros retos e rápidos que atravessam paredes), **Bastião** (Escudo,
-  Q: parede que devolve balas por 4 s), **Último Suspiro** (Corpo: o golpe fatal te deixa
-  3 s com 1 de vida; abata alguém nesse tempo e volte com metade) e **Corrente**
-  (Movimento, Q: impulso de 8 m para cima, também no ar).
-- Tiro: 4 balas por pente, 34 de dano (3 acertos matam), bala visível que cai com a
-  distância. De longe, mire um pouco acima. Bala refletida volta reta. O tamanho da bala
-  cresce com o dano dela, também durante o voo (Bola de Neve, Tabelinha): dá para fazer
-  balas enormes. Bala que já quicou numa parede pode acertar quem atirou.
-- O personagem fica um pouco maior com mais vida máxima e menor com menos.
-- No começo, todos veem 3 cartas diferentes do próprio baralho e ficam com 1.
-- Rodada: ganha o último vivo. Só **quem perdeu** escolhe mais uma carta (1 de 3); com
-  mais de 2 jogadores, todos os que morreram.
-- **2x2** (online com 4, ou no Treino com 3 bots: você e um bot aliado): ganha o time com
-  alguém de pé, e os dois do time que perdeu escolhem carta. Bala e explosão atravessam o
-  parceiro. O parceiro tem contorno na cor do time e uma seta sobre o nome, visíveis através
-  das paredes, com a vida embaixo do nome; no topo da tela fica o placar dos times. Morto, você assiste o parceiro até a rodada acabar.
-- As cartas nunca saem do baralho: dá para pegar a mesma várias vezes e o efeito soma.
-  Algumas (Adrenalina, Radar, Fênix...) só podem ser pegas uma vez.
-- A cada 5 rodadas o jogo pergunta: mais 5 rodadas ou terminar. Ganha quem tiver mais rodadas.
-- Cada rodada sorteia uma arena nova, em um de 4 estilos: Pátio, Ruínas, Torres e Fábrica.
-  Cada peça se repete girada em volta do centro, uma vez por jogador (2 a 4 lados iguais).
-  As arenas têm altura: plataformas com segundo andar, lajes suspensas, plataformas de salto.
-- Itens no mapa (nem todo mapa tem, um de cada por jogador): **orbe roxo** no alto
-  (devolve o dash no ar, zera a recarga do dash e dá um pulo no ar; volta em 6 s), **cruz
-  verde** (30 de vida; volta em 25 s) e, mais raro, **colete amarelo** (25 de colete, até
-  50, absorve dano antes da vida e zera a cada rodada; volta em 30 s).
-- **Vazio**: alguns mapas não têm muros nas bordas e alguns têm buracos no chão. Lá
-  embaixo (1 m abaixo do chão) fica o vazio roxo: quem cai quica e perde 20 de vida. O
-  quique é baixo e curto, então longe da borda são vários (e cada um fere). Com o
-  **escudo (E) de pé na hora de bater**, não perde vida e quica bem alto. Quem empurrou
-  você nos 4 s antes leva o crédito do dano.
-- Treino: Jogar > Treino, contra 1, 2 ou 3 bots.
+All numbers are provisional, to be tuned by playing.
 
-Todos os números são provisórios, para ajustar jogando.
+## Cards
 
-## As cartas
+88 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst...), **Balas**
+(bullets: ricochet, homing, explosive, poison, freezing...), **Escudo** (shield: what
+happens when raising it or reflecting; Pancada, Escudo Duplo, Couraça and Fortaleza make a
+close-range shield build), **Corpo** (body: health, size, Fênix, Radar...) and **Movimento**
+(movement: double jump, extra air dash, longer dash, Esquiva, Atropelar, Planador...), for
+those who prefer mobility over damage. Furor has no public card list; the ideas come from
+two similar games: OVERKILL (Roblox) and ROUNDS (Landfall), where "the loser picks a card"
+comes from.
 
-88 cartas em 5 grupos: **Arma** (cadência, pente, escopeta, rajada...), **Balas** (ricochete,
-teleguiada, explosiva, veneno, congelante...), **Escudo** (o que acontece ao levantar ou ao
-refletir; Pancada, Escudo Duplo, Couraça e Fortaleza montam um escudo de curta distância),
-**Corpo** (vida, tamanho, Fênix, Radar...) e **Movimento** (pulo duplo, dash extra no ar,
-dash mais longo, Esquiva, Atropelar, Planador...), para quem prefere mobilidade a dano.
-O Furor não tem página pública com as cartas; as ideias vêm de dois jogos parecidos:
-OVERKILL (Roblox) e ROUNDS (Landfall), de onde veio o "quem perde escolhe a carta".
+A card is a list of modifiers on `BASE_STATS` (in `player.gd`): `"add"` adds, `"mul"`
+multiplies. Example: `{"stat": "damage", "mul": 1.35}` is +35% damage. A card that only
+changes numbers just needs an entry in `CARDS` (`card_db.gd`). A card with a new effect
+needs a new attribute in `BASE_STATS` and the code that uses it.
 
-Uma carta é uma lista de modificadores sobre `BASE_STATS` (em `player.gd`):
-`"add"` soma, `"mul"` multiplica. Exemplo: `{"stat": "damage", "mul": 1.35}` é +35% de dano.
-Carta nova que só mexe em número: basta uma entrada em `CARDS` (`card_db.gd`).
-Carta com efeito novo: precisa de um atributo novo em `BASE_STATS` e do código que o usa.
+## Where things are
 
-## Onde mexer
-
-| Arquivo | O que tem |
+| File | Contents |
 |---|---|
-| `scripts/autoload/card_db.gd` | Todas as cartas, tamanho do baralho, limites dos atributos. |
-| `scripts/autoload/game_state.gd` | Rodadas por bloco, teclas, baralho salvo. |
-| `scripts/player.gd` | Atributos base, movimento (constantes no topo), tiro, escudo, efeitos. |
-| `scripts/bullet.gd` | Projétil: reflexo, ricochete, explosão, veneno etc. |
-| `scripts/bot_brain.gd` | IA do oponente. Constantes no topo ajustam a dificuldade. |
-| `scripts/match.gd` | Fluxo da partida: compra, contagem, rodada, blocos de 5, fim. |
-| `scripts/arena/arena.gd` | Gerador de arenas: estilos, tamanho, peças. |
-| `scripts/arena/moving_body.gd` | Peças que se movem (muros deslizantes, barras giratórias, elevadores). |
-| `scripts/arena/jump_pad.gd` | Plataforma de salto. |
-| `scripts/arena/pickup.gd` | Itens do mapa (orbe de movimento, vida, colete). |
-| `scripts/ui/` | HUD, tela de escolha, menu, tela de baralhos (`deck_list.gd`), editor de baralho e o visual comum (`ui_style.gd`). |
-| `scripts/autoload/net.gd` | Conexão em rede: hospedar, entrar, quem está pronto. |
-| `scripts/sfx.gd` | Sons. |
-| `scripts/aim_arm.gd` | Levanta o braço do personagem na direção da mira. |
-| `assets/` | Modelos e sons da Kenney (CC0, uso livre; licenças em cada pasta). Ícones das cartas em `assets/card_icons`, de game-icons.net (CC BY 3.0: exige crédito aos autores, listados no `LICENSE.txt` da pasta e na tela de Configurações). |
+| `scripts/autoload/card_db.gd` | All cards, deck size, attribute limits. |
+| `scripts/autoload/game_state.gd` | Settings (keys, volume, video, look), saved decks. |
+| `scripts/autoload/net.gd` | Networking: hosting, joining, lobby, chat, who is ready. |
+| `scripts/player.gd` | Base attributes, movement (constants at the top), shooting, shield, effects, skins. |
+| `scripts/bullet.gd` | Projectile: reflection, ricochet, explosion, poison etc. |
+| `scripts/bot_brain.gd` | Bot AI. Constants at the top tune the difficulty. |
+| `scripts/match.gd` | Match flow: picks, countdown, round, 5-round blocks, end. |
+| `scripts/spectator.gd` | Camera when dead: follow a living player or fly freely. |
+| `scripts/arena/` | Arena generator, color themes, moving pieces, jump pads, map items. |
+| `scripts/ui/` | HUD, kill feed, chat, damage feedback, scoreboard, pick screen, menu, settings, customization preview, deck screens and the shared look (`ui_style.gd`). |
+| `scripts/sfx.gd`, `effects.gd`, `aim_arm.gd` | Sounds, visual effects, arm pointing at the aim. |
+| `assets/` | Kenney models and sounds (CC0; licenses in each folder). Card icons in `assets/card_icons`, from game-icons.net (CC BY 3.0: credit required, authors listed in that folder's `LICENSE.txt` and in Settings). Character and gun thumbnails in `assets/skins` and `assets/gun_skins`. |
 
-## Teste sem janela
+## Headless test
 
-Roda uma partida de 10 rodadas bot contra bot (passa pela pergunta da rodada 5) e imprime
-as escolhas, os mapas, os reflexos e o placar:
+Runs a 10-round bot-vs-bot match (including the round-5 vote) and prints picks, maps,
+reflections, score and a CPU timing summary:
 
 ```
 Godot_v4.7.2-stable_win64_console.exe --headless --path . res://scenes/match.tscn -- --autotest
 ```
 
-Com mais bots: acrescente `--bots=2` ou `--bots=3`. Teste em rede na mesma máquina (um
-terminal por jogador, um bot em cada; `--host` começa com 1 convidado, `--host3` espera 2 e
-`--host4` espera 3, cada um com seu `--join`):
+Options: `--bots=2` or `--bots=3`, `--2x2` (with 3 bots), `--cartas=a,b,c` (gives those cards
+to everyone), `--mestra=<id>`, `--tema=<n>`, `--nome=<name>`, `--visual=<skin>,<gun>`.
+Network test on one machine (one terminal per player, a bot in each; `--host` starts with 1
+guest, `--host3` waits for 2 and `--host4` for 3, each with its own `--join`):
 
 ```
 Godot_v4.7.2-stable_win64_console.exe --headless --path . -- --autotest --host
 Godot_v4.7.2-stable_win64_console.exe --headless --path . -- --autotest --join
 ```
 
-## Próximos passos
+## Next steps
 
-1. Jogar de novo direto em rede (hoje volta ao menu e reconecta).
-2. Sons de passos, pouso e deslize.
-3. Usar a raridade das cartas (comum, rara, épica, lendária; mítica = mestras): hoje é só etiqueta.
-4. Forma de ganhar cartas (hoje todos têm todas).
-5. Escolher o personagem (há 12 modelos em `assets/characters`).
+1. Card balancing and new cards.
+2. Rematch directly online (today it goes back to the menu and reconnects).
+3. Footstep, landing and slide sounds.
+4. Use card rarity (common, rare, epic, legendary; mythic = master cards): today it is only a label.
+5. A way to earn cards (today everyone has all of them).
