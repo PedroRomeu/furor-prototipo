@@ -141,7 +141,7 @@ shows in a corner during the match.
   matches.
 - **Master card**: each deck has one, picked in its own slot in the editor, outside the
   card count. You start every match with it: **Espada** (Weapon, Q: a big
-  sword for 7 s with a 3-hit combo: slash right, slash left and a lunging thrust; a raised
+  sword for 8 s with a 3-hit combo: slash right, slash left and a lunging thrust; a raised
   shield blocks it), **Sniper** (Weapon, Q: a sniper with ONE laser shot
   that goes through every wall and deals 3x damage; right click to aim with the scope),
   **Bazuca** (Weapon, Q: 6 s of

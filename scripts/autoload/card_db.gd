@@ -87,7 +87,7 @@ const MASTERS := {
 		"mods": [{"stat": "bazooka", "add": 1}]},
 	# Espada (2026-10-06, desenho do usuário: combo de 3; números meus).
 	"espada": {"name": "Espada", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 16.0,
-		"desc": "Q: troca a arma por uma espada por 7 s. Clique ataca num combo de 3: corte para a direita, corte para a esquerda e uma estocada que te lança à frente. Alcance de 3,2 m; cortes com o dano da arma, estocada com 1,6x. Escudo levantado bloqueia. Recarga de 16 s.",
+		"desc": "Q: troca a arma por uma espada por 8 s. Clique ataca num combo de 3: corte para a direita, corte para a esquerda e uma estocada que te lança à frente. Alcance de 3,2 m; cortes com o dano da arma, estocada com 1,6x. Escudo levantado bloqueia. Recarga de 16 s.",
 		"mods": [{"stat": "sword", "add": 1}]},
 	# Sniper (2026-10-06, desenho do usuário; números meus): como a Bazuca, troca de arma no Q.
 	"sniper": {"name": "Sniper", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 15.0,

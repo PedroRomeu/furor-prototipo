@@ -400,7 +400,7 @@ const SCOPE_SPEED := 0.6
 ## THRUST_RANGE num leque estreito, e também quem ela atravessar no avanço. Dano: a arma
 ## (shot_damage) vezes SWORD_DAMAGE[golpe]. Quem leva decide (receive_slash): com o escudo
 ## de pé, bloqueia. Sem golpe por COMBO_RESET, o combo volta ao primeiro.
-const SWORD_TIME := 7.0
+const SWORD_TIME := 8.0
 const SWORD_RANGE := 3.2
 const SWORD_ARC := 65.0          # graus para cada lado
 const THRUST_RANGE := 3.6
