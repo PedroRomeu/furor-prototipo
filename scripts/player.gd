@@ -176,20 +176,26 @@ static func clean_look(look) -> Dictionary:
 static func gun_front(id: String) -> Vector3:
 	if not _gun_fronts.has(id):
 		var root: Node3D = load(gun_model(id)).instantiate()
-		var box := AABB()
-		var first := true
-		for mi in root.find_children("*", "MeshInstance3D", true, false):
-			var xf := Transform3D.IDENTITY
-			var n: Node = mi
-			while n != root:
-				xf = (n as Node3D).transform * xf
-				n = n.get_parent()
-			var b: AABB = xf * (mi as MeshInstance3D).get_aabb()
-			box = b if first else box.merge(b)
-			first = false
+		var box := model_box(root)
 		root.free()
 		_gun_fronts[id] = Vector3(box.get_center().x, box.get_center().y, box.position.z)
 	return _gun_fronts[id]
+
+
+## Caixa que envolve as peças de um modelo, no espaço dele (sem a escala do próprio nó).
+static func model_box(root: Node3D) -> AABB:
+	var box := AABB()
+	var first := true
+	for mi in root.find_children("*", "MeshInstance3D", true, false):
+		var xf := Transform3D.IDENTITY
+		var n: Node = mi
+		while n != root:
+			xf = (n as Node3D).transform * xf
+			n = n.get_parent()
+		var b: AABB = xf * (mi as MeshInstance3D).get_aabb()
+		box = b if first else box.merge(b)
+		first = false
+	return box
 
 
 ## Quanto o cano desta arma fica à frente (ou atrás) do da arma padrão, no espaço do modelo.
@@ -216,6 +222,9 @@ static func skin_model(id: String) -> String:
 static func skin_thumb(id: String) -> Texture2D:
 	return load("res://assets/skins/%s.png" % id)
 const MODEL_SCALE := 2.6
+## Arma na mão, no espaço do osso "arm-right" (ver AimArm): o braço vai de 0 a -0,28 em X.
+const HAND_POS := Vector3(-0.25, -0.02, 0.0)
+const HAND_ROT := Vector3(0, PI / 2.0, 0)
 const LOOPING_ANIMS := ["idle", "walk", "sprint", "fall", "crouch"]
 
 # Movimento
@@ -759,8 +768,9 @@ func _build_body() -> void:
 	skeleton.add_child(hand)
 	gun = load(gun_model(gun_skin)).instantiate()
 	gun.scale = Vector3.ONE * (1.3 / MODEL_SCALE)
-	gun.rotation.x = -PI / 2.0
-	gun.position = Vector3(0, -0.13, 0.04)
+	# Na ponta do braço (o osso sai para -X), com o cano ao longo dele (AimArm).
+	gun.rotation = HAND_ROT
+	gun.position = HAND_POS
 	hand.add_child(gun)
 	bazooka = _make_bazooka()
 	bazooka.scale = Vector3.ONE * (3.0 / MODEL_SCALE)
@@ -771,7 +781,11 @@ func _build_body() -> void:
 	sniper = load(SNIPER_MODEL).instantiate()
 	sniper.scale = gun.scale
 	sniper.rotation = gun.rotation
-	sniper.position = gun.position
+	# A origem da sniper é a ponta do cano e o corpo vai para +Z: a mão segura a 35% do
+	# comprimento, de trás para a frente (no osso, +Z do modelo vira +X).
+	var sniper_box := model_box(sniper)
+	var grip_z := sniper_box.end.z - 0.35 * sniper_box.size.z
+	sniper.position = gun.position - Vector3(sniper.scale.x * grip_z, 0, 0)
 	sniper.visible = false
 	hand.add_child(sniper)
 	sword = _make_sword()
