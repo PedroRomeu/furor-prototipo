@@ -57,9 +57,11 @@ An air dash while holding Ctrl lands already sliding. Jumping at a wall while ho
 climbs the ledge (up to 2.2 m above your feet): crates work as steps to the upper floors.
 
 Settings (main menu and Esc in a match), split into Perfil (profile), Vídeo, Áudio,
-Controles and Créditos: display mode (window, borderless fullscreen, fullscreen),
-resolution, graphics quality (Low, Medium, High), graphics API (Compatibility/OpenGL,
-Vulkan, DirectX 12), FPS counter, your name (what friends see online; can also be changed
+Controles and Créditos: display mode (window, borderless fullscreen, fullscreen), window
+size (the game always renders at the real window size, so maximizing stays sharp;
+fullscreen uses the monitor resolution), interface size (100%, 125%, 150%), graphics
+quality (Low, Medium, High), graphics API (Compatibility/OpenGL, Vulkan, DirectX 12), FPS
+counter, your name (what friends see online; can also be changed
 in the lobby), volume (Master, Effects, Interface, Music; releasing a slider plays a
 sample), mouse sensitivity and key rebinding (click a key and press the new one; right
 click clears it). On an Intel HD GPU, High runs at ~14 FPS; Medium and Low at 45-60.

@@ -222,6 +222,45 @@ static func segmented(options: Array, selected: int, on_pick: Callable) -> HBoxC
 	return row
 
 
+## Botões colados, só um marcado (abas compactas do editor de baralhos e das
+## configurações). colors: cor de cada opção quando marcada (vazio: laranja).
+static func tabs(options: Array, selected: int, on_pick: Callable, colors: Array = []) -> HBoxContainer:
+	var row := hbox(0)
+	var group := ButtonGroup.new()
+	for i in options.size():
+		var b := Button.new()
+		b.text = options[i]
+		b.toggle_mode = true
+		b.button_group = group
+		b.button_pressed = i == selected
+		b.custom_minimum_size = Vector2(0, 38)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.add_theme_font_size_override("font_size", 14)
+		segment_style(b, i == 0, i == options.size() - 1, colors[i] if i < colors.size() else ACCENT)
+		b.pressed.connect(on_pick.bind(i))
+		row.add_child(b)
+	return row
+
+
+## Visual de um botão de abas compactas: só as pontas arredondadas; o marcado ganha a cor.
+static func segment_style(b: Button, first: bool, last: bool, color: Color) -> void:
+	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+		var on: bool = state == "pressed" or state == "hover_pressed"
+		var s := box(SURFACE_HI if on or state == "hover" else SURFACE, 8, color.darkened(0.1) if on else LINE, 1)
+		s.content_margin_left = 12
+		s.content_margin_right = 12
+		s.corner_radius_top_left = 8 if first else 0
+		s.corner_radius_bottom_left = 8 if first else 0
+		s.corner_radius_top_right = 8 if last else 0
+		s.corner_radius_bottom_right = 8 if last else 0
+		if on:
+			s.border_width_bottom = 2
+		b.add_theme_stylebox_override(state, s)
+	b.add_theme_color_override("font_pressed_color", color.lerp(Color.WHITE, 0.25))
+	b.add_theme_color_override("font_hover_pressed_color", color.lerp(Color.WHITE, 0.25))
+	b.add_theme_color_override("font_color", MUTED)
+
+
 static func gap(h: float) -> Control:
 	var c := Control.new()
 	c.custom_minimum_size.y = h

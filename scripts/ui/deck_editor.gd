@@ -101,7 +101,7 @@ func _build_collection() -> Control:
 		b.button_pressed = cat == FILTER_ALL
 		b.custom_minimum_size = Vector2(0, 40)
 		b.add_theme_font_size_override("font_size", 14)
-		_segment_style(b, i == 0, i == cats.size() - 1,
+		Ui.segment_style(b, i == 0, i == cats.size() - 1,
 			Ui.ACCENT if cat == FILTER_ALL else CardDB.CATEGORY_COLORS[cat])
 		b.pressed.connect(func(): category = cat; _apply_filter())
 		segs.add_child(b)
@@ -132,26 +132,6 @@ func _build_collection() -> Control:
 	empty_grid.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	inner.add_child(empty_grid)
 	return col
-
-
-## Botões de grupo colados: só as pontas arredondadas; o marcado ganha a cor do grupo.
-func _segment_style(b: Button, first: bool, last: bool, color: Color) -> void:
-	for state in ["normal", "hover", "pressed", "hover_pressed"]:
-		var on: bool = state == "pressed" or state == "hover_pressed"
-		var s := Ui.box(Ui.SURFACE_HI if on or state == "hover" else Ui.SURFACE, 8,
-			color.darkened(0.1) if on else Ui.LINE, 1)
-		s.content_margin_left = 12
-		s.content_margin_right = 12
-		s.corner_radius_top_left = 8 if first else 0
-		s.corner_radius_bottom_left = 8 if first else 0
-		s.corner_radius_top_right = 8 if last else 0
-		s.corner_radius_bottom_right = 8 if last else 0
-		if on:
-			s.border_width_bottom = 2
-		b.add_theme_stylebox_override(state, s)
-	b.add_theme_color_override("font_pressed_color", color.lerp(Color.WHITE, 0.25))
-	b.add_theme_color_override("font_hover_pressed_color", color.lerp(Color.WHITE, 0.25))
-	b.add_theme_color_override("font_color", Ui.MUTED)
 
 
 func _build_filter_popup() -> void:
@@ -270,7 +250,7 @@ func _tile(id: String) -> Control:
 	names.add_child(title)
 	var sub := CardDB.rarity_name(id)
 	if card.has("max"):
-		sub += "  ·  máx. %d" % card["max"]
+		sub += "  ·  " + CardDB.limit_short(id)
 	# Raridade e, à direita, as cópias no baralho (fora da linha do nome, que fica inteira).
 	var sub_row := Ui.hbox(6)
 	sub_row.mouse_filter = Control.MOUSE_FILTER_IGNORE

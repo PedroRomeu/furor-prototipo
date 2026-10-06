@@ -472,6 +472,11 @@ var _icons := {}
 
 
 func _init() -> void:
+	# Toda carta comum diz no fim quantas vezes dá para pegá-la na partida (2026-10-06,
+	# pedido do usuário: "máx." no editor parecia falar do baralho). Cópias no baralho só
+	# aumentam a chance de ela aparecer; o limite é da partida.
+	for id in CARDS:
+		CARDS[id]["desc"] += " " + limit_text(id)
 	CARDS.merge(MASTERS)
 
 
@@ -482,6 +487,21 @@ func all_ids() -> Array:
 
 func master_ids() -> Array:
 	return MASTERS.keys()
+
+
+## "Sem limite na partida.", "Só 1 vez na partida." ou "Até 2 vezes na partida."
+func limit_text(id: String) -> String:
+	var card: Dictionary = CARDS[id]
+	if not card.has("max"):
+		return "Sem limite na partida."
+	if card["max"] == 1:
+		return "Só 1 vez na partida."
+	return "Até %d vezes na partida." % card["max"]
+
+
+## Versão curta para o editor: "" sem limite, "1 por partida", "2 por partida".
+func limit_short(id: String) -> String:
+	return "%d por partida" % CARDS[id]["max"] if CARDS[id].has("max") else ""
 
 
 func is_master(id: String) -> bool:

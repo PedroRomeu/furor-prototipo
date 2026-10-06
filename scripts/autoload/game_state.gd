@@ -71,16 +71,24 @@ const AUDIO_BUSES := [["Master", "Geral"], ["Efeitos", "Efeitos"], ["Interface",
 	["Musica", "Música"]]
 const DEFAULT_VOLUME := {"Master": 80, "Efeitos": 80, "Interface": 80, "Musica": 70}
 var volumes := DEFAULT_VOLUME.duplicate()
-## Tela (Configurações > Vídeo): modo de exibição e resolução em que o jogo é desenhado.
-## O jogo é sempre desenhado na resolução escolhida e esticado para a janela ou a tela
-## (content_scale VIEWPORT): em tela cheia num monitor maior, 1280x720 pesa o mesmo que a
-## janela, o que importa nas placas integradas. Modos: 0 janela, 1 tela cheia sem borda
-## (janela do tamanho da tela; trocar de programa é instantâneo), 2 tela cheia exclusiva.
+## Tela (Configurações > Vídeo). Refeito em 2026-10-06 (o usuário achou confuso: com
+## resolução baixa e a janela maximizada, tudo ficava pixelizado, porque o jogo era
+## desenhado na resolução escolhida e esticado). Agora a resolução é o tamanho da janela, e
+## o jogo é desenhado no tamanho real dela: maximizar ou ir para a tela cheia fica nítido
+## (e pesa mais, pela quantidade de pixels). A interface não estica junto: fica no tamanho
+## em pixels (o usuário preferiu a HUD menor nas telas grandes), com a opção "Tamanho da
+## interface" para aumentar. Modos: 0 janela, 1 tela cheia sem borda (Alt+Tab
+## instantâneo), 2 tela cheia exclusiva.
 const WINDOW_MODES := ["Janela", "Sem borda", "Tela cheia"]
 const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1366, 768), Vector2i(1600, 900),
 	Vector2i(1920, 1080), Vector2i(2560, 1440)]
 var window_mode := 0
 var resolution := Vector2i(1280, 720)
+## Tamanho da interface: 100% é o tamanho em pixels (padrão). Nunca passa do que cabe:
+## a tela foi desenhada para pelo menos 1280 x 720 (ver _apply_ui_scale).
+const UI_SCALES := [1.0, 1.25, 1.5]
+const UI_BASE := Vector2(1280, 720)
+var ui_scale := 0
 ## API gráfica (Configurações > Vídeo, 2026-10-05). O projeto usa Compatibilidade (OpenGL;
 ## no Windows com driver fraco o Godot passa sozinho para ANGLE sobre Direct3D 11), que é
 ## o que roda no PC do usuário (sem Vulkan nem D3D12). Vulkan e DirectX 12 usam o
@@ -162,6 +170,7 @@ func _ready() -> void:
 		var saved_res = cfg.get_value("video", "resolucao", resolution)
 		if saved_res is Vector2i and saved_res in RESOLUTIONS:
 			resolution = saved_res
+		ui_scale = clampi(int(cfg.get_value("video", "interface", 0)), 0, UI_SCALES.size() - 1)
 		for bus in volumes:
 			volumes[bus] = clampi(int(cfg.get_value("audio", bus, volumes[bus])), 0, 100)
 		nick = clean_nick(cfg.get_value("jogador", "nome", ""))
@@ -273,23 +282,41 @@ func available_resolutions() -> Array:
 	return out
 
 
+func set_ui_scale(value: int) -> void:
+	ui_scale = clampi(value, 0, UI_SCALES.size() - 1)
+	_save_setting("video", "interface", ui_scale)
+	_apply_ui_scale()
+
+
 func _apply_display() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
 	var win := get_window()
-	win.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
-	win.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
-	win.content_scale_size = resolution
+	win.content_scale_mode = Window.CONTENT_SCALE_MODE_DISABLED
+	if not win.size_changed.is_connected(_apply_ui_scale):
+		win.size_changed.connect(_apply_ui_scale)
+	var screen := DisplayServer.screen_get_size()
+	if screen.x >= UI_BASE.x and screen.y >= UI_BASE.y:
+		win.min_size = Vector2i(UI_BASE)
 	match window_mode:
 		0:
-			if win.mode != Window.MODE_WINDOWED:
-				win.mode = Window.MODE_WINDOWED
-				win.size = RESOLUTIONS[0]
-				win.move_to_center()
+			# Janela do tamanho da resolução, no centro. Maximizar depois é com o Windows.
+			win.mode = Window.MODE_WINDOWED
+			win.size = resolution
+			win.move_to_center()
 		1:
 			win.mode = Window.MODE_FULLSCREEN
 		2:
 			win.mode = Window.MODE_EXCLUSIVE_FULLSCREEN
+	_apply_ui_scale()
+
+
+## Interface no tamanho escolhido, mas sem deixar a área útil menor que 1280 x 720 (numa
+## janela pequena, 150% cortaria as telas).
+func _apply_ui_scale() -> void:
+	var win := get_window()
+	var room := minf(win.size.x / UI_BASE.x, win.size.y / UI_BASE.y)
+	win.content_scale_factor = clampf(UI_SCALES[ui_scale], 1.0, maxf(1.0, room))
 
 
 func override_path() -> String:
