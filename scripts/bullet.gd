@@ -60,7 +60,8 @@ const GUIDED_LEAD := 4.0       # ...mirando este tanto à frente da bala, na lin
 const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", "poison",
 	"slow", "push", "shield_break", "target_bounce", "execute", "reflected", "gravity",
 	"boomerang", "returning", "bounce_damage", "sticky", "split", "grow", "swap", "blind",
-	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls"]
+	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls",
+	"toxic", "hole"]
 ## Bala Fantasma: só paredes contam (superfície quase em pé); no chão e no topo das peças a
 ## bala para ou quica como as outras.
 const GHOST_WALL_NORMAL_Y := 0.7
@@ -108,6 +109,8 @@ var split := 0
 var grow := 0.0
 var swap := false
 var blind := 0.0
+var toxic := 0   # Nuvem Tóxica: cópias (AreaField)
+var hole := 0    # Buraco Negro: cópias (AreaField)
 var lazy_top := 0.0
 var crit := false
 var bounced := false   # já quicou numa parede: pode acertar quem atirou (como no Furor)
@@ -156,6 +159,8 @@ static func fire(from: Player, pos: Vector3, dir: Vector3, damage_mult := 1.0, w
 	b.grow = s["grow"]
 	b.swap = s["swap"] > 0
 	b.blind = s["blind"]
+	b.toxic = s["toxic"]
+	b.hole = s["black_hole"]
 	b.guided = s["guided"] > 0
 	if b.guided:
 		b.gravity = 0.0
@@ -510,6 +515,7 @@ func _hit_world(hit: Dictionary) -> void:
 	var normal: Vector3 = hit["normal"]
 	if normal.is_zero_approx():
 		normal = -velocity.normalized()   # o raio começou dentro de uma parede
+	_impact_fields(point, normal)
 	if bounces <= 0 and sticky:
 		# Detonação: gruda e explode depois (todas as máquinas fazem o mesmo).
 		global_position = point + normal * 0.05
@@ -601,6 +607,7 @@ func _show_damage(point: Vector3, dmg: float) -> void:
 
 ## Fim de uma bala que acertou alguém: explosão (se tiver) e some.
 func _finish_hit(point: Vector3, skip: Player) -> void:
+	_impact_fields(point, -velocity.normalized() if not velocity.is_zero_approx() else Vector3.UP)
 	if explosion > 0.0:
 		_explode(point, skip)
 	else:
@@ -608,6 +615,12 @@ func _finish_hit(point: Vector3, skip: Player) -> void:
 		Effects.burst(get_parent(), point, maxf(0.45, radius * 3.0), Color(1, 1, 1), 0.1)
 		Effects.sparks(get_parent(), point, Color(1.0, 0.35, 0.3))
 	queue_free()
+
+
+## Nuvem Tóxica e Buraco Negro onde a bala bateu (em todas as máquinas, sem rede).
+func _impact_fields(point: Vector3, normal: Vector3) -> void:
+	if (toxic > 0 or hole > 0) and is_instance_valid(shooter):
+		AreaField.on_impact(shooter, point, normal, toxic, hole, damage)
 
 
 ## Dano em área. Só fere jogadores desta máquina; nunca o dono da bala; quem levou

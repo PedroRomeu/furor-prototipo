@@ -8,6 +8,8 @@ const AMMO_RADIUS := 26.0       # arco do pente, à direita da mira (px)
 const AMMO_SPAN := 80.0         # graus que o arco ocupa
 const AMMO_SEGMENTS_MAX := 24   # acima disso vira barra contínua
 const RELOAD_RING := 11.0       # anel da recarga no lugar da mira (px)
+const DOWN_RING := 46.0         # caído: anel do prazo (vermelho) no lugar da mira...
+const DOWN_REVIVE_RING := 36.0  # ...e o do reviver (verde) por dentro
 
 var me: Player
 var players: Array = []
@@ -20,6 +22,9 @@ var chips: Array = []                   # [Player, cartão, barra de vida ou nul
 var spectate_label: Label
 var spectate_hint: Label
 var dead_view := false
+var downed_view := false
+var reviving_who: Player = null   # parceiro caído que você está revivendo (anel verde na mira)
+var down_label: Label
 
 var shield_tint: ColorRect
 var damage_fx: DamageFeedback
@@ -93,6 +98,8 @@ func _ready() -> void:
 	spectate_label.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	spectate_hint = _label("", 15, Rect2(0.15, 0.88, 0.7, 0.035))
 	spectate_hint.modulate.a = 0.8
+	down_label = _label("", 26, Rect2(0.2, 0.56, 0.6, 0.1))
+	down_label.add_theme_color_override("font_color", Color(1.0, 0.75, 0.7))
 	mode_label = _label("", 14, Rect2(0.006, 0.005, 0.3, 0.03), HORIZONTAL_ALIGNMENT_LEFT)
 	mode_label.modulate.a = 0.6
 	fps_label = _label("", 14, Rect2(0.006, 0.035, 0.1, 0.03), HORIZONTAL_ALIGNMENT_LEFT)
@@ -316,10 +323,17 @@ func _chip(p: Player, ally: bool) -> Control:
 func _update_team_bar() -> void:
 	for c in chips:
 		var p: Player = c[0]
-		c[1].modulate.a = 1.0 if p.alive else 0.35
+		if p.downed:
+			# Caído: pisca, e a barra mostra o prazo que falta.
+			c[1].modulate.a = 0.55 + 0.35 * absf(sin(Time.get_ticks_msec() * 0.008))
+		else:
+			c[1].modulate.a = 1.0 if p.alive else 0.35
 		if c[2]:
 			c[2].max_value = p.stats["max_health"]
-			c[2].value = p.health if p.alive else 0.0
+			if p.downed:
+				c[2].value = p.stats["max_health"] * p.bleed_timer / maxf(0.01, p.bleed_total)
+			else:
+				c[2].value = p.health if p.alive else 0.0
 
 
 func _ui_label(text: String, size: int, color: Color, is_bold := false) -> Label:
@@ -334,9 +348,36 @@ func _ui_label(text: String, size: int, color: Color, is_bold := false) -> Label
 ## munição, carta mestra); a vida fica, zerada.
 func set_dead_view(on: bool) -> void:
 	dead_view = on
-	for c in [crosshair, shield_label, shield_bar, perk_label, dash_label, dash_bar, master_label, master_bar,
+	crosshair.visible = not on
+	_hide_combat(on or downed_view)
+
+
+## O que só serve a quem está de pé e lutando.
+func _hide_combat(on: bool) -> void:
+	for c in [shield_label, shield_bar, perk_label, dash_label, dash_bar, master_label, master_bar,
 			ammo_label, status_label]:
 		c.visible = not on
+
+
+## Caído no 2x2: some o que é de luta; a mira vira o anel do prazo e do reviver.
+func _update_downed() -> void:
+	reviving_who = null
+	if me.alive:
+		for p in players:
+			if p.downed and me.is_ally(p) and p.global_position.distance_to(me.global_position) < Player.REVIVE_RADIUS:
+				reviving_who = p
+	if reviving_who:
+		down_label.text = "Revivendo %s..." % reviving_who.player_name
+		return
+	if me.downed != downed_view:
+		downed_view = me.downed
+		_hide_combat(downed_view or dead_view)
+	if downed_view:
+		var reviving := me.revive_progress > 0.0
+		down_label.text = "CAÍDO   %d s\n%s" % [ceili(me.bleed_timer),
+			"Revivendo..." if reviving else "Seu parceiro revive você ficando perto por %d s" % roundi(Player.REVIVE_TIME)]
+	else:
+		down_label.text = ""
 
 
 ## Morto assistindo: quem a câmera segue (ou "Câmera livre") e as teclas ("" esconde).
@@ -370,6 +411,11 @@ func _on_damage_dealt(amount: float, lethal: bool) -> void:
 ## Metralhadora custava ~26 ms por quadro (medido com janela, _teste/).
 func _draw_crosshair() -> void:
 	var white := Color(1, 1, 1, 0.9)
+	if me != null and me.downed:
+		_draw_down_rings()
+		return
+	if reviving_who:
+		_draw_revive_ring()
 	var reloading := me != null and me.alive and me.reload_timer > 0.0 and me.bazooka_timer <= 0.0
 	if reloading:
 		var total: float = maxf(0.01, me.stats["reload_time"])
@@ -419,6 +465,38 @@ func _draw_crosshair() -> void:
 			x.append(d.normalized() * 16.0 * pop)
 		crosshair.draw_multiline(x, shadow, 5.0)
 		crosshair.draw_multiline(x, color, 2.5)
+
+
+## Caído: anel vermelho do prazo (esvazia) e, por dentro, o verde do reviver (enche). Duas
+## chamadas de desenho para tudo, como a mira.
+func _draw_down_rings() -> void:
+	var pts := PackedVector2Array()
+	var cols := PackedColorArray()
+	var bleed := clampf(me.bleed_timer / maxf(0.01, me.bleed_total), 0.0, 1.0)
+	var revive := clampf(me.revive_progress / Player.REVIVE_TIME, 0.0, 1.0)
+	for k in 48:
+		var f0 := float(k) / 48.0
+		var f1 := float(k + 1) / 48.0
+		var a0 := -PI / 2.0 + TAU * f0
+		var a1 := -PI / 2.0 + TAU * f1
+		_arc_piece(pts, cols, DOWN_RING, a0, a1, Color(1.0, 0.3, 0.25, 0.95) if f1 <= bleed + 0.001 else Color(1, 1, 1, 0.15))
+		if revive > 0.0:
+			_arc_piece(pts, cols, DOWN_REVIVE_RING, a0, a1, Color(0.4, 1.0, 0.5, 0.95) if f1 <= revive + 0.001 else Color(1, 1, 1, 0.12))
+	crosshair.draw_multiline(pts, Color(0, 0, 0, 0.45), 6.0, true)
+	crosshair.draw_multiline_colors(pts, cols, 4.0, true)
+
+
+## Revivendo o parceiro: anel verde em volta da mira, enchendo com o progresso dele.
+func _draw_revive_ring() -> void:
+	var pts := PackedVector2Array()
+	var cols := PackedColorArray()
+	var done := clampf(reviving_who.revive_progress / Player.REVIVE_TIME, 0.0, 1.0)
+	for k in 40:
+		var f1 := float(k + 1) / 40.0
+		_arc_piece(pts, cols, DOWN_REVIVE_RING, -PI / 2.0 + TAU * k / 40.0, -PI / 2.0 + TAU * f1,
+			Color(0.4, 1.0, 0.5, 0.95) if f1 <= done + 0.001 else Color(1, 1, 1, 0.15))
+	crosshair.draw_multiline(pts, Color(0, 0, 0, 0.45), 6.0, true)
+	crosshair.draw_multiline_colors(pts, cols, 4.0, true)
 
 
 ## Arco do pente: até AMMO_SEGMENTS_MAX balas, um segmento cada; mais que isso, uma barra
@@ -523,6 +601,7 @@ func _process(delta: float) -> void:
 	dash_label.text = "Dash [%s]   no ar: %d" % [GameState.key_text("dash"), me.air_dashes_left]
 	dash_label.modulate.a = 1.0 if me.dash_cd <= 0.0 else 0.6
 	_update_master()
+	_update_downed()
 	if team_bar:
 		_update_team_bar()
 	if fps_label.visible:
@@ -553,8 +632,8 @@ func _process(delta: float) -> void:
 ## Carta mestra: nome e tecla quando pronta, segundos na recarga; passiva só mostra o nome.
 func _update_master() -> void:
 	var id := me.master_id
-	master_label.visible = id != "" and not dead_view
-	master_bar.visible = id != "" and CardDB.CARDS[id].has("cooldown") and not dead_view
+	master_label.visible = id != "" and not dead_view and not downed_view
+	master_bar.visible = id != "" and CardDB.CARDS[id].has("cooldown") and not dead_view and not downed_view
 	if id == "":
 		return
 	var card: Dictionary = CardDB.CARDS[id]

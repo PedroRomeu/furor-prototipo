@@ -17,6 +17,8 @@ signal damage_dealt(amount: float, lethal: bool)
 signal reflected
 signal revived
 signal void_bounced(saved: bool)
+signal went_down    # caiu no 2x2 (pode ser revivido)
+signal got_up       # foi revivido
 
 ## Atributos sem nenhuma carta. As cartas (CardDB) alteram estes valores.
 const BASE_STATS := {
@@ -89,6 +91,13 @@ const BASE_STATS := {
 	"shield_charges": 1,
 	"shield_bash": 0.0,
 	"shield_armor": 0.0,
+	"shield_saw": 0,      # Serra, Chamas, Geada e Mina (AreaField): áreas que nascem do escudo
+	"shield_flames": 0,
+	"shield_frost": 0,
+	"shield_mine": 0,
+	"toxic": 0,           # Nuvem Tóxica e Buraco Negro: nascem onde a bala bate (AreaField)
+	"black_hole": 0,
+	"stomp": 0,           # Pisão
 	"bloodlust": 0.0,
 	"rage": 0.0,
 	"revives": 0,
@@ -304,6 +313,33 @@ const SLAM_SPEED := 32.0
 const SLAM_MIN_HEIGHT := 2.5
 const SLAM_RANGE := 5.0
 const SLAM_DAMAGE := 25.0
+## Pisão (2026-10-06, ideia do usuário; números meus): cair na cabeça de um inimigo, pulando
+## ou no dash pelo ar, fere e quica para cima, devolvendo o dash e os pulos no ar (escolha
+## dele) para emendar outro pisão. No dash a área é mais generosa: de lado é difícil
+## acertar a cabeça. A mesma pessoa só leva outro pisão depois de STOMP_REPEAT.
+const STOMP_DAMAGE := 25.0
+const STOMP_DAMAGE_STEP := 15.0   # por cópia a mais
+const STOMP_BOUNCE := 14.0        # sobe ~3,3 m com GRAVITY_RISE
+const STOMP_REPEAT := 0.5
+## Caído no 2x2 (2026-10-06, pedido do usuário; números meus, com base no Apex, que revive
+## em 5 s e encolhe o prazo a cada queda, e no Fortnite, 10 s): com o parceiro de pé, o golpe
+## fatal derruba em vez de matar. Caído, se arrasta devagar, não atira nem usa nada, e NINGUÉM
+## pode finalizá-lo (escolha do usuário): só o prazo acabando mata. O parceiro revive ficando
+## REVIVE_TIME perto (pode atirar enquanto isso); fora do círculo o progresso volta devagar.
+## O prazo encolhe a cada queda na rodada, para não abusarem.
+const DOWN_BLEED := [10.0, 6.0, 3.0]   # 1a, 2a e da 3a queda em diante
+const DOWN_CRAWL := 0.25               # fração da velocidade
+const DOWN_HEIGHT := 0.8
+const DOWN_EYE := 0.5
+const DOWN_LIE := 1.35        # caído: quanto o modelo deita para a frente (rad)
+const DOWN_LIE_LIFT := 0.2    # ...e quanto sobe, para o corpo não entrar no chão
+const REVIVE_RADIUS := 2.5
+const REVIVE_TIME := 3.0
+const REVIVE_HEALTH := 0.3             # da vida máxima
+const REVIVE_PROTECT := 1.0            # segundos sem levar dano depois de levantar
+## Chamas: a queimadura sai em pedaços deste tamanho (um aviso de dano a cada meio segundo,
+## em vez de um por quadro).
+const BURN_CHUNK := 6.0
 # Cartas mestras
 const UPDRAFT_SPEED := 21.9      # Corrente: sobe ~8 m em ~0,7 s
 const BAZOOKA_TIME := 6.0        # Bazuca: quanto tempo dura...
@@ -326,7 +362,7 @@ const RECOIL_KICK := 0.03
 const HIT_FLASH_TIME := 0.14   # o modelo atingido pisca em branco por este tempo
 ## Métodos que a outra máquina pode chamar neste jogador (ver remote_call).
 const ASSIST_TIME := 10.0   # placar: dano nos últimos 10 s antes da morte conta assistência
-const REMOTE_METHODS := ["receive_shockwave", "credit_damage", "teleport_to", "swap_to"]
+const REMOTE_METHODS := ["receive_shockwave", "credit_damage", "teleport_to", "swap_to", "receive_stomp"]
 ## Carta mestra que este jogador tem (a primeira de cards; "" se nenhuma).
 var master_id := ""
 var master_cd := 0.0
@@ -415,6 +451,24 @@ var echo_timer := 0.0
 var glided := false       # Planador: planou neste salto (vale até tocar o chão)
 var heal_cd := 0.0        # Restauração: falta quanto para curar de novo
 var armor_cd := 0.0       # Couraça: falta quanto para dar colete de novo
+var area_cd := {}         # Serra, Chamas, Geada, Mina: bit (AreaField.SHIELD_*) -> recarga própria
+var stomp_hits := {}      # Pisão: inimigo -> quando levou o último (ms)
+var burn_timer := 0.0     # Chamas: queimando por mais quanto tempo
+var burn_dps := 0.0
+var burn_acc := 0.0
+var burn_from: Player = null
+## Caído (2x2). Enquanto caído, alive é falso: balas, áreas, bots e o fim da rodada já o
+## tratam como fora. Só a máquina dona decide cair, levantar e morrer; as outras só contam
+## o tempo para mostrar.
+static var downs_enabled := false   # a partida liga no 2x2
+var downed := false
+var bleed_timer := 0.0
+var bleed_total := 1.0
+var revive_progress := 0.0
+var downs := 0                # quedas nesta rodada
+var protect_timer := 0.0
+var down_credit: Array = ["", []]   # abate e assistências de quando caiu (vale se o prazo acabar)
+var down_marker: Node3D
 var swap_timer := 0.0     # Troca-Troca: falta quanto para a troca (na máquina de quem levou o tiro)
 var swap_lock := 0.0      # Troca-Troca: não começa outra troca enquanto for maior que zero
 var swap_partner: Player = null
@@ -698,6 +752,17 @@ func reset_for_round(spawn: Transform3D) -> void:
 	echo_timer = 0.0
 	heal_cd = 0.0
 	armor_cd = 0.0
+	area_cd.clear()
+	stomp_hits.clear()
+	downed = false
+	downs = 0
+	bleed_timer = 0.0
+	revive_progress = 0.0
+	protect_timer = 0.0
+	_clear_down_marker()
+	burn_timer = 0.0
+	burn_acc = 0.0
+	burn_from = null
 	glided = false
 	swap_timer = 0.0
 	swap_lock = 0.0
@@ -712,6 +777,8 @@ func reset_for_round(spawn: Transform3D) -> void:
 	shield_mesh.scale = Vector3.ONE * maxf(body_scale, 1.0) * float(stats["shield_size"])
 	if model:
 		model.scale = Vector3.ONE * MODEL_SCALE * body_scale
+		model.rotation.x = 0.0
+		model.position.y = 0.0
 		model.visible = true
 		ring.visible = true
 		anim.play("idle")
@@ -783,18 +850,37 @@ func _process(delta: float) -> void:
 		if ally != _ally_look:
 			_set_ally_look(ally)
 		tag.no_depth_test = ally or (viewer != null and viewer != self and viewer.stats["radar"] > 0)
-		if tag.visible:
+		if tag.visible and downed:
+			tag.text = "%s\nCAÍDO" % player_name
+		elif tag.visible:
 			tag.text = "%s\n%d" % [player_name, ceili(health)] + (" +%d" % ceili(armor) if armor > 0.0 else "")
+		if ally_arrow:
+			# Parceiro caído: a seta pisca para chamar atenção.
+			ally_arrow.modulate.a = (0.35 + 0.65 * absf(sin(Time.get_ticks_msec() * 0.008))) if downed else 1.0
 	if model:
 		_update_animation()
 		_update_hit_flash(delta)
 	if is_human:
 		_camera_feel(delta)
+		if viewmodel:
+			viewmodel.visible = not downed   # caído não segura a arma
 
 
 func _update_animation() -> void:
 	aim_arm.pitch = head.rotation.x
 	aim_arm.active = alive
+	# Caído: o modelo deita de bruços (gira para a frente sobre os pés) e "nada" no chão.
+	var lie := DOWN_LIE if downed else 0.0
+	if not is_equal_approx(model.rotation.x, lie):
+		model.rotation.x = move_toward(model.rotation.x, lie, get_process_delta_time() * 8.0)
+		model.position.y = DOWN_LIE_LIFT * model.rotation.x / DOWN_LIE
+	if downed:
+		var crawl := Vector2(velocity.x, velocity.z).length()
+		var pose := "walk" if crawl > 0.3 else "idle"
+		if anim.current_animation != pose:
+			anim.play(pose, 0.2)
+		anim.speed_scale = 0.6
+		return
 	if not alive:
 		return
 	var hspeed := Vector2(velocity.x, velocity.z).length()
@@ -918,7 +1004,7 @@ func reveal() -> void:
 func _camera_feel(delta: float) -> void:
 	eye_dip = move_toward(eye_dip, 0.0, delta * 1.2)
 	var size := 1.0 + (float(stats["body_scale"]) - 1.0) * EYE_SIZE_FOLLOW
-	var eye := (CROUCH_EYE if crouching else STAND_EYE) * size - eye_dip
+	var eye := (DOWN_EYE if downed else (CROUCH_EYE if crouching else STAND_EYE)) * size - eye_dip
 	if size > 1.0:
 		eye = minf(eye, _ceiling_room(eye))
 	head.position.y = lerpf(head.position.y, eye, minf(1.0, delta * 14.0))
@@ -965,6 +1051,8 @@ func _place_camera() -> void:
 func _physics_process(delta: float) -> void:
 	if not is_local:
 		_follow_network(delta)
+		if downed:
+			_update_down(delta)
 		return
 	if brain:
 		brain.think(delta)
@@ -972,6 +1060,11 @@ func _physics_process(delta: float) -> void:
 		_read_local_input()
 		rotation.y = look_yaw
 	_tick(delta)
+	if downed:
+		_downed_move(delta)
+		_update_down(delta)
+		_send_state()
+		return
 	if not alive:
 		return
 	if frozen:
@@ -993,6 +1086,8 @@ func _physics_process(delta: float) -> void:
 	if is_on_floor() and not was_on_floor:
 		_on_landed(fall_speed)
 	was_on_floor = is_on_floor()
+	if stats["stomp"] > 0:
+		_check_stomp(fall_speed)
 	if global_position.y < Arena.VOID_Y and velocity.y <= 0.0:
 		_void_bounce()
 	_send_state()
@@ -1015,6 +1110,9 @@ func _tick(delta: float) -> void:
 			_lethal()   # ninguém abatido a tempo
 	heal_cd = maxf(0.0, heal_cd - delta)
 	armor_cd = maxf(0.0, armor_cd - delta)
+	protect_timer = maxf(0.0, protect_timer - delta)
+	for bit in area_cd:
+		area_cd[bit] = maxf(0.0, area_cd[bit] - delta)
 	swap_lock = maxf(0.0, swap_lock - delta)
 	if swap_timer > 0.0:
 		swap_timer -= delta
@@ -1045,6 +1143,14 @@ func _tick(delta: float) -> void:
 		p["time"] -= delta
 		take_damage(p["dps"] * delta, p["from"], false)
 	poisons = poisons.filter(func(p): return p["time"] > 0.0)
+	if burn_timer > 0.0:
+		burn_timer -= delta
+		burn_acc += burn_dps * delta
+		if burn_acc >= BURN_CHUNK or burn_timer <= 0.0:
+			var who := burn_from if is_instance_valid(burn_from) else null
+			var amount := burn_acc
+			burn_acc = 0.0
+			take_damage(amount, who)
 	if stats["regen"] > 0.0 and since_damage > REGEN_DELAY:
 		heal(stats["regen"] * delta)
 
@@ -1295,6 +1401,67 @@ func _dash_hits() -> void:
 		dash_hits.append(enemy)
 		enemy.remote_call("receive_shockwave", [global_position, float(stats["dash_hit"]), String(name)])
 		Effects.burst(get_parent(), enemy.chest(), 1.2, Color(1.0, 0.8, 0.3), 0.2)
+
+
+## Pisão: os pés na altura da cabeça de um inimigo, caindo ou no dash pelo ar. Vale também
+## quem pousou em cima dele (a colisão entre jogadores segura os pés ali).
+func _check_stomp(fall_speed: float) -> void:
+	var air_dash := dash_timer > 0.0 and dash_air
+	if is_on_floor() and not _standing_on_player():
+		return
+	if fall_speed > 0.5 and not air_dash:
+		return
+	var now := Time.get_ticks_msec()
+	var my_scale: float = stats["body_scale"]
+	for enemy in enemies():
+		if now - int(stomp_hits.get(enemy, -100000)) < STOMP_REPEAT * 1000.0:
+			continue
+		var their_scale: float = enemy.stats["body_scale"]
+		var top: float = enemy.global_position.y + enemy.height * their_scale
+		var dy := global_position.y - top
+		var flat := Vector2(global_position.x - enemy.global_position.x, global_position.z - enemy.global_position.z).length()
+		var reach := RADIUS * (my_scale + their_scale) * (1.4 if air_dash else 1.1)
+		var low := -0.8 * their_scale if air_dash else -0.4 * their_scale
+		if flat < reach and dy > low and dy < 0.35:
+			_stomp(enemy, now)
+			return
+
+
+func _standing_on_player() -> bool:
+	for i in get_slide_collision_count():
+		var c := get_slide_collision(i)
+		if c.get_collider() is Player and c.get_normal().y > 0.5:
+			return true
+	return false
+
+
+func _stomp(enemy: Player, now: int) -> void:
+	stomp_hits[enemy] = now
+	var dmg := STOMP_DAMAGE + STOMP_DAMAGE_STEP * (int(stats["stomp"]) - 1)
+	enemy.remote_call("receive_stomp", [dmg, String(name)])
+	velocity.y = STOMP_BOUNCE
+	jump_rising = false
+	slamming = false
+	if dash_timer > 0.0 and dash_air:
+		dash_timer = 0.0
+		_end_dash()
+	# Devolve o dash e os pulos no ar, como tocar o chão (escolha do usuário).
+	air_dashes_left = stats["air_dashes"]
+	jumps_left = stats["extra_jumps"]
+	wall_jumps_left = stats["wall_jumps"]
+	dash_cd = 0.0
+	eye_dip = 0.2
+	var head_pos := enemy.global_position + Vector3.UP * enemy.height * float(enemy.stats["body_scale"])
+	Effects.burst(get_parent(), head_pos, 1.2, Color(1.0, 0.85, 0.3), 0.2)
+	Sfx.at(self, "hit", head_pos)
+	reveal()
+
+
+## Levou um pisão: dano e um tranco para baixo.
+func receive_stomp(dmg: float, from_name: String) -> void:
+	velocity.y = minf(velocity.y, -6.0)
+	jump_rising = false
+	take_damage(dmg, get_parent().get_node_or_null(from_name) as Player)
 
 
 ## Bateu no vazio: quica e leva dano, ou, com o escudo de pé, quica alto sem dano. O
@@ -1796,6 +1963,28 @@ func _activate_shield() -> void:
 		echo_timer = stats["shield_duration"] + ECHO_DELAY
 	if stats["shield_teleport"] > 0:
 		_teleport_forward()
+	var mask := _shield_area_mask()
+	if mask != 0:
+		AreaField.shield(self, mask, global_position)
+		if Net.online:
+			_net_shield_area.rpc(mask, global_position)
+
+
+## Quais áreas do escudo saem agora: as cartas que tem e cuja recarga própria acabou.
+func _shield_area_mask() -> int:
+	var mask := 0
+	for pair in [[AreaField.SHIELD_SAW, "shield_saw"], [AreaField.SHIELD_FLAMES, "shield_flames"],
+			[AreaField.SHIELD_FROST, "shield_frost"], [AreaField.SHIELD_MINE, "shield_mine"]]:
+		var bit: int = pair[0]
+		if stats[pair[1]] > 0 and area_cd.get(bit, 0.0) <= 0.0:
+			mask |= bit
+			area_cd[bit] = AreaField.SHIELD_COOLDOWNS[bit]
+	return mask
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_shield_area(mask: int, pos: Vector3) -> void:
+	AreaField.shield(self, mask, pos)
 
 
 ## Teleporte: TELEPORT_RANGE para onde a mira aponta, atravessando paredes e peças. Se o
@@ -1935,9 +2124,16 @@ func heal(amount: float) -> void:
 	health = minf(stats["max_health"], health + amount)
 
 
-func apply_slow(amount: float) -> void:
+func apply_slow(amount: float, time := SLOW_TIME) -> void:
 	slow_amount = clampf(maxf(slow_amount if slow_timer > 0.0 else 0.0, amount), 0.0, 0.7)
-	slow_timer = SLOW_TIME
+	slow_timer = maxf(slow_timer, time)
+
+
+## Chamas: queima por time segundos (renovado enquanto estiver no fogo).
+func apply_burn(dps: float, time: float, from: Player) -> void:
+	burn_dps = dps
+	burn_timer = maxf(burn_timer, time)
+	burn_from = from
 
 
 func apply_poison(total: float, from: Player) -> void:
@@ -1956,7 +2152,7 @@ func silence() -> void:
 
 ## Só é chamado na máquina dona deste jogador.
 func take_damage(amount: float, from: Player, flash := true) -> void:
-	if not alive or amount <= 0.0:
+	if not alive or amount <= 0.0 or protect_timer > 0.0:
 		return
 	if from and from != self:
 		last_attacker = from
@@ -1997,10 +2193,15 @@ func _lethal() -> void:
 		revived.emit()
 	else:
 		health = 0.0
-		_die()
+		if _can_go_down():
+			_go_down()
+		else:
+			_die()
 
 
-func _die() -> void:
+## Abate e assistências: o último que causou dano nos ASSIST_TIME s antes leva o abate, os
+## outros, assistência.
+func _death_credit() -> Array:
 	var now := Time.get_ticks_msec()
 	var window := int(ASSIST_TIME * 1000.0)
 	var killer := ""
@@ -2010,9 +2211,15 @@ func _die() -> void:
 	for p in recent_hits:
 		if is_instance_valid(p) and String(p.name) != killer and now - int(recent_hits[p]) < window:
 			assists.append(String(p.name))
+	return [killer, assists]
+
+
+func _die(credit: Array = []) -> void:
+	if credit.is_empty():
+		credit = _death_credit()
 	if Net.online:
-		_net_die.rpc(killer, assists)
-	_apply_death(killer, assists)
+		_net_die.rpc(credit[0], credit[1])
+	_apply_death(credit[0], credit[1])
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -2021,8 +2228,10 @@ func _net_die(killer: String, assists: Array) -> void:
 
 
 func _apply_death(killer := "", assists: Array = []) -> void:
-	if not alive:
+	if not alive and not downed:
 		return
+	downed = false
+	_clear_down_marker()
 	death_killer = killer
 	death_assists = assists
 	alive = false
@@ -2034,6 +2243,130 @@ func _apply_death(killer := "", assists: Array = []) -> void:
 		anim.play("die")
 	Sfx.at(self, "death", chest())
 	died.emit(self)
+
+
+# ---------------------------------------------------------------- caído (2x2)
+
+func _can_go_down() -> bool:
+	if not downs_enabled or team < 0 or frozen:
+		return false
+	return get_tree().get_nodes_in_group("players").any(func(p): return is_ally(p) and p.alive)
+
+
+## Só na máquina dona: guarda quem derrubou (se o prazo acabar, o abate é dele, mesmo que
+## já tenham passado os ASSIST_TIME s) e avisa as outras.
+func _go_down() -> void:
+	down_credit = _death_credit()
+	var bleed: float = DOWN_BLEED[mini(downs, DOWN_BLEED.size() - 1)]
+	if Net.online:
+		_net_down.rpc(bleed)
+	_apply_down(bleed)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_down(bleed: float) -> void:
+	_apply_down(bleed)
+
+
+func _apply_down(bleed: float) -> void:
+	if not alive:
+		return
+	alive = false
+	downed = true
+	downs += 1
+	bleed_timer = bleed
+	bleed_total = bleed
+	revive_progress = 0.0
+	health = 0.0
+	shield_timer = 0.0
+	dash_timer = 0.0
+	burst_left = 0
+	sliding = false
+	slamming = false
+	poisons.clear()
+	burn_timer = 0.0
+	slow_timer = 0.0
+	swap_timer = 0.0
+	echo_timer = 0.0
+	crouching = true
+	_set_height(DOWN_HEIGHT)
+	if bazooka_timer > 0.0:
+		bazooka_timer = 0.0
+		_show_bazooka(false)
+	_clear_down_marker()
+	down_marker = DownedMarker.new()
+	down_marker.player = self
+	add_child(down_marker)
+	Effects.burst(get_parent(), chest(), 1.5, Color(1.0, 0.35, 0.3), 0.25)
+	went_down.emit()
+
+
+## Arrastando: só anda devagar no chão (sem pulo, dash nem deslize) e cai com a gravidade.
+func _downed_move(delta: float) -> void:
+	var h := Vector3(velocity.x, 0.0, velocity.z)
+	var wish := _wish_dir() if not frozen else Vector3.ZERO
+	var speed: float = stats["move_speed"] * DOWN_CRAWL
+	if is_on_floor():
+		h = _friction(h, FRICTION, delta)
+		h = _accelerate(h, wish, speed, GROUND_ACCEL, delta)
+	else:
+		h = _accelerate(h, wish, speed, AIR_ACCEL, delta)
+		velocity.y = maxf(velocity.y - GRAVITY_FALL * delta, -MAX_FALL_SPEED)
+	velocity.x = h.x
+	velocity.z = h.z
+	move_and_slide()
+	if global_position.y < Arena.VOID_Y and velocity.y <= 0.0:
+		_void_bounce()   # caído não leva dano: só quica
+
+
+## Prazo e reviver, em todas as máquinas (as outras só para mostrar o anel). O progresso
+## sobe com um parceiro de pé dentro do círculo e volta devagar sem ninguém.
+func _update_down(delta: float) -> void:
+	if frozen:
+		return   # rodada acabou ou ainda não começou
+	bleed_timer = maxf(0.0, bleed_timer - delta)
+	var helped := false
+	for node in get_tree().get_nodes_in_group("players"):
+		var p := node as Player
+		if is_ally(p) and p.alive and p.global_position.distance_to(global_position) < REVIVE_RADIUS:
+			helped = true
+			break
+	revive_progress = clampf(revive_progress + (delta if helped else -delta), 0.0, REVIVE_TIME)
+	if not is_local:
+		return
+	if revive_progress >= REVIVE_TIME:
+		if Net.online:
+			_net_revive.rpc()
+		_apply_revive()
+	elif bleed_timer <= 0.0:
+		_die(down_credit)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_revive() -> void:
+	_apply_revive()
+
+
+func _apply_revive() -> void:
+	if not downed:
+		return
+	downed = false
+	alive = true
+	health = stats["max_health"] * REVIVE_HEALTH
+	protect_timer = REVIVE_PROTECT
+	revive_progress = 0.0
+	crouching = false
+	_set_height(STAND_HEIGHT)
+	_clear_down_marker()
+	Effects.burst(get_parent(), chest(), 2.0, Color(0.5, 1.0, 0.6), 0.3)
+	Sfx.at(self, "pickup", chest())
+	got_up.emit()
+
+
+func _clear_down_marker() -> void:
+	if is_instance_valid(down_marker):
+		down_marker.queue_free()
+	down_marker = null
 
 
 ## Duelos: quem espera a vez fica fora da luta (invisível, sem colisão, sem levar nem dar

@@ -128,7 +128,7 @@ shows in a corner during the match.
 ## Match rules
 
 - Decks of 30 to 50 cards, up to 3 copies each. More copies = more chance of the card
-  showing up. With 88 cards there are always some left out.
+  showing up. With 95 cards there are always some left out.
 - **Baralhos** (decks) screen: create as many named decks as you want, starting from a
   template (Equilibrado, Atirador, Muralha, Acrobata, Caos, Aleatório or Vazio). Click a card
   to add it, right click to remove; filter by group, by **archetype** (Ricochete, Explosão,
@@ -153,6 +153,11 @@ shows in a corner during the match.
   someone standing wins, and both losers pick a card. Bullets and explosions pass through
   your teammate. Your teammate has a team-colored outline and an arrow over their name,
   visible through walls, with their health under the name; the team score is at the top.
+  **Downed:** if you take a fatal hit while your teammate is still standing, you go down
+  instead of dying. You crawl slowly and can't shoot, and nobody can finish you off. Your
+  teammate revives you by staying inside the circle around you for 3 s (they can shoot
+  meanwhile); you get up with 30% health. You have 10 s to be revived, then 6 s on the
+  second fall in the same round and 3 s after that. Downed counts as out for the round.
   When dead you watch your teammate (or use the free camera) until the round ends.
 - Cards never leave the deck: you can pick the same one several times and the effects
   stack. A few (Adrenalina, Radar, Fênix...) can only be picked once.
@@ -182,12 +187,14 @@ All numbers are provisional, to be tuned by playing.
 
 ## Cards
 
-88 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst...), **Balas**
-(bullets: ricochet, homing, explosive, poison, freezing...), **Escudo** (shield: what
-happens when raising it or reflecting; Pancada, Escudo Duplo, Couraça and Fortaleza make a
-close-range shield build), **Corpo** (body: health, size, Fênix, Radar...) and **Movimento**
-(movement: double jump, extra air dash, longer dash, Esquiva, Atropelar, Planador...), for
-those who prefer mobility over damage. Furor has no public card list; the ideas come from
+95 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst...), **Balas**
+(bullets: ricochet, homing, explosive, poison, freezing, a toxic cloud or a short black hole
+where the bullet lands...), **Escudo** (shield: what happens when raising it or reflecting;
+Pancada, Escudo Duplo, Couraça and Fortaleza make a close-range shield build, and Serra,
+Chamas, Geada and Mina add a spinning saw, a ring of fire, a frost wave or a mine), **Corpo**
+(body: health, size, Fênix, Radar...) and **Movimento** (movement: double jump, extra air
+dash, longer dash, Esquiva, Atropelar, Planador, Pisão to bounce on heads...), for those who
+prefer mobility over damage. Furor has no public card list; the ideas come from
 two similar games: OVERKILL (Roblox) and ROUNDS (Landfall), where "the loser picks a card"
 comes from.
 

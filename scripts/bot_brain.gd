@@ -15,6 +15,7 @@ const NEAR := 8.0
 const FAR := 22.0
 const REPATH_TIME := 0.5
 const TARGET_TIME := 1.0
+const REVIVE_SAFE := 12.0    # 2x2: vai reviver o parceiro se o inimigo visível está mais longe que isto
 
 var player: Player
 var strafe_dir := 1.0
@@ -45,15 +46,53 @@ func think(delta: float) -> void:
 	p.in_dash = false
 	p.in_reload = false
 	p.in_master = false
+	if p.downed and not p.frozen:
+		_crawl_to_ally(delta)
+		return
 	var foe := _pick_target()
 	if p.frozen or not p.alive or foe == null:
 		return
 	var sees := _can_see(foe)
 	unseen_time = 0.0 if sees else unseen_time + delta
+	var hurt := _downed_ally()
+	if hurt and (not sees or p.global_position.distance_to(foe.global_position) > REVIVE_SAFE):
+		# Parceiro caído e nenhum inimigo perto: vai até ele e fica ali (atirando, se vir alguém).
+		var go := Vector3.ZERO
+		if p.global_position.distance_to(hurt.global_position) > Player.REVIVE_RADIUS * 0.5:
+			go = _follow_path(delta, hurt.global_position)
+		_set_move(go)
+		_aim_and_shoot(delta, foe, sees, go)
+		_defend()
+		return
 	var wish := _movement(delta, foe, sees)
 	_aim_and_shoot(delta, foe, sees, wish)
 	_defend()
 	_master(foe, sees)
+
+
+## 2x2: o parceiro caído (ou null).
+func _downed_ally() -> Player:
+	for node in player.get_tree().get_nodes_in_group("players"):
+		var other := node as Player
+		if other.downed and player.is_ally(other):
+			return other
+	return null
+
+
+## Caído: se arrasta na direção do parceiro de pé, para encurtar o caminho dele.
+func _crawl_to_ally(delta: float) -> void:
+	for node in player.get_tree().get_nodes_in_group("players"):
+		var other := node as Player
+		if other.alive and player.is_ally(other):
+			if player.global_position.distance_to(other.global_position) > 1.5:
+				_set_move(_follow_path(delta, other.global_position))
+			return
+
+
+## Converte uma direção no mundo para in_move (relativo para onde o corpo olha).
+func _set_move(wish: Vector3) -> void:
+	var local := player.global_transform.basis.inverse() * wish
+	player.in_move = Vector2(local.x, -local.z).limit_length(1.0)
 
 
 ## Carta mestra: Corrente de vez em quando na luta, Bazuca e Perfurante com o alvo à vista.

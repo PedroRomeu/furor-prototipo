@@ -30,7 +30,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	var me: Player = game.me
-	var want: bool = me != null and not me.alive and game.phase == game.Phase.FIGHT and not GameState.autotest \
+	var want: bool = me != null and not me.alive and not me.downed and game.phase == game.Phase.FIGHT and not GameState.autotest \
 		and not _candidates().is_empty()
 	if not want:
 		if active:

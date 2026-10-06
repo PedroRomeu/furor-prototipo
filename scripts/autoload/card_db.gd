@@ -6,7 +6,7 @@ extends Node
 ##          entre si e pioras multiplicam (ver compute_stats)
 ## "max": quantas vezes a mesma carta pode ser escolhida na partida (sem "max", sem limite).
 ## Ideias tiradas de OVERKILL (Roblox) e ROUNDS (Landfall), os jogos que inspiraram o Furor.
-## São 88 cartas para um baralho de no máximo 50: é preciso deixar algumas de fora.
+## São 95 cartas para um baralho de no máximo 50: é preciso deixar algumas de fora.
 ##
 ## Cartas mestras ("master": true, em MASTERS): uma por baralho, fora da contagem, e o
 ## jogador começa toda partida com ela. Trazem uma mecânica própria, mais forte que a de
@@ -116,7 +116,8 @@ const ARCHETYPES := {
 	"Ricochete": {"desc": "Balas que quicam nas paredes ou voltam.",
 		"cards": ["ricochete", "quique_certeiro", "tabelinha", "fragmentacao", "bumerangue"]},
 	"Explosão": {"desc": "Dano em área.",
-		"cards": ["explosiva", "morteiro", "detonacao", "fragmentacao", "pulo_foguete", "chuva_de_bombas", "meteoro"]},
+		"cards": ["explosiva", "morteiro", "detonacao", "fragmentacao", "pulo_foguete", "chuva_de_bombas", "meteoro",
+			"mina", "buraco_negro"]},
 	"Nuke": {"desc": "Poucas balas enormes, cada uma com muito dano.",
 		"cards": ["calibre_pesado", "combinar", "bala_gigante", "bala_de_canhao", "canhao_de_vidro", "fragil",
 			"ultima_bala", "sortudo", "bola_de_neve", "tabelinha", "preguicosa", "executor", "furia"]},
@@ -126,24 +127,27 @@ const ARCHETYPES := {
 	"Atirador": {"desc": "Acertar de longe e por trás das paredes.",
 		"cards": ["polvora_extra", "olho_de_aguia", "fantasma", "teleguiada", "sortudo", "preguicosa", "radar", "camuflagem"]},
 	"Controle": {"desc": "Atrapalhar o inimigo: lento, cego, envenenado, empurrado.",
-		"cards": ["veneno", "congelante", "flash", "atordoante", "propulsao", "troca_troca", "onda_de_choque"]},
+		"cards": ["veneno", "congelante", "flash", "atordoante", "propulsao", "troca_troca", "onda_de_choque",
+			"geada", "nuvem_toxica", "buraco_negro", "chamas"]},
 	"Espelho": {"desc": "Refletir as balas do inimigo com o escudo.",
 		"cards": ["escudo_firme", "reflexos", "espelho_cortante", "adrenalina", "espelho_duplo",
 			"espelho_perseguidor", "espelho_gigante", "escudo_duplo", "eco"]},
 	"Escudo de ataque": {"desc": "O escudo como arma, de perto.",
 		"cards": ["pancada", "onda_de_choque", "investida", "nova", "chuva_de_bombas", "teleporte",
-			"couraca", "fortaleza", "restauracao", "recarga_tatica", "ultima_defesa"]},
+			"couraca", "fortaleza", "restauracao", "recarga_tatica", "ultima_defesa",
+			"serra", "chamas", "geada", "mina"]},
 	"Corpo a corpo": {"desc": "Encostar no inimigo e bater.",
 		"cards": ["escopeta", "atropelar", "cacador", "sede_de_sangue", "meteoro", "troca_troca",
-			"pancada", "investida", "cacada"]},
+			"pancada", "investida", "cacada", "serra", "pisao"]},
 	"Tanque": {"desc": "Vida, cura e colete.",
 		"cards": ["vigor", "tanque", "defensor", "sanguessuga", "regeneracao", "fenix", "gigantao",
 			"fortaleza", "couraca", "restauracao", "eco"]},
 	"Aéreo": {"desc": "Ficar no alto: pulos, parede, planar.",
-		"cards": ["pulo_duplo", "impulso", "escalador", "pena", "molas", "planador", "embalo", "meteoro", "pulo_foguete"]},
+		"cards": ["pulo_duplo", "impulso", "escalador", "pena", "molas", "planador", "embalo", "meteoro", "pulo_foguete",
+			"pisao"]},
 	"Dash": {"desc": "Dash mais vezes, mais longe e com efeito.",
 		"cards": ["impulso", "folego", "dash_longo", "deslize_turbo", "esquiva", "atropelar", "saque_rapido",
-			"cacada", "botas_leves"]},
+			"cacada", "botas_leves", "pisao"]},
 	"Tudo ou nada": {"desc": "Troca vida por poder.",
 		"cards": ["fragil", "canhao_de_vidro", "imprudente", "nanico", "furia", "fenix", "molas"]},
 }
@@ -277,6 +281,14 @@ var CARDS := {
 	"preguicosa": {"name": "Bala Preguiçosa", "cat": "Balas", "rarity": "raro", "max": 1,
 		"desc": "As balas saem devagar e aceleram até 2,5x a velocidade. +25% de dano.",
 		"mods": [{"stat": "lazy", "add": 1}, {"stat": "damage", "mul": 1.25}]},
+	# Nuvem Tóxica e Buraco Negro (2026-10-06, cartas do Furor lembradas pelo usuário; números
+	# meus). Desenho e limites em AreaField.
+	"nuvem_toxica": {"name": "Nuvem Tóxica", "cat": "Balas", "rarity": "epico", "max": 3,
+		"desc": "Onde a bala bate fica uma nuvem de veneno (2,5 m, 3 s): quem estiver dentro perde 30% do dano da bala por segundo. Nuvens suas não somam no mesmo alvo. Mais cópias: +0,75 m e +1 s. Atira 15% mais devagar.",
+		"mods": [{"stat": "toxic", "add": 1}, {"stat": "fire_interval", "mul": 1.15}]},
+	"buraco_negro": {"name": "Buraco Negro", "cat": "Balas", "rarity": "epico", "max": 2,
+		"desc": "Onde a bala bate surge por 0,6 s um buraco negro que puxa os inimigos a até 5 m para o centro. Com 2 cópias puxa mais forte e de 6 m. -10% de dano.",
+		"mods": [{"stat": "black_hole", "add": 1}, {"stat": "damage", "mul": 0.9}]},
 
 	# Escudo
 	"escudo_firme": {"name": "Escudo Firme", "cat": "Escudo", "rarity": "comum",
@@ -344,6 +356,20 @@ var CARDS := {
 	"espelho_gigante": {"name": "Espelho Gigante", "cat": "Escudo", "rarity": "raro",
 		"desc": "O escudo pega balas 50% mais longe de você e dura +0,1 s.",
 		"mods": [{"stat": "shield_size", "mul": 1.5}, {"stat": "shield_duration", "add": 0.1}]},
+	# Áreas do escudo (2026-10-06, cartas do Furor lembradas pelo usuário; números meus, dano
+	# fixo por escolha dele). Cada uma tem recarga própria (AreaField.SHIELD_COOLDOWNS).
+	"serra": {"name": "Serra", "cat": "Escudo", "rarity": "epico", "max": 3,
+		"desc": "O escudo faz uma serra girar em volta de você por 2 s: 24 de dano por segundo em quem estiver perto. Raio de 2,5 m, +1 m por cópia. No máximo a cada 3 s. Escudo +0,3 s de recarga.",
+		"mods": [{"stat": "shield_saw", "add": 1}, {"stat": "shield_cooldown", "add": 0.3}]},
+	"chamas": {"name": "Chamas", "cat": "Escudo", "rarity": "epico", "max": 3,
+		"desc": "O escudo acende um círculo de fogo em volta de você por 3 s, que te acompanha: quem estiver dentro queima (12 por segundo) e segue queimando 1 s depois de sair. Raio de 4 m, +1 m por cópia. No máximo a cada 4 s. Escudo +0,3 s de recarga.",
+		"mods": [{"stat": "shield_flames", "add": 1}, {"stat": "shield_cooldown", "add": 0.3}]},
+	"geada": {"name": "Geada", "cat": "Escudo", "rarity": "epico", "max": 3,
+		"desc": "O escudo solta uma onda de gelo de 5 m: 8 de dano e 45% mais lento por 2 s. Mais cópias: +1,5 m e +0,5 s. No máximo a cada 3 s. Escudo +0,3 s de recarga.",
+		"mods": [{"stat": "shield_frost", "add": 1}, {"stat": "shield_cooldown", "add": 0.3}]},
+	"mina": {"name": "Mina", "cat": "Escudo", "rarity": "epico", "max": 3,
+		"desc": "O escudo larga uma bomba no chão que pisca e explode 1 s depois: 40 de dano (metade na borda), raio de 4 m. Mais cópias: +20 de dano e +0,5 m. No máximo a cada 2,5 s. Escudo +0,3 s de recarga.",
+		"mods": [{"stat": "shield_mine", "add": 1}, {"stat": "shield_cooldown", "add": 0.3}]},
 
 	# Corpo
 	"vigor": {"name": "Vigor", "cat": "Corpo", "rarity": "comum",
@@ -435,6 +461,10 @@ var CARDS := {
 	"molas": {"name": "Molas", "cat": "Movimento", "rarity": "comum",
 		"desc": "Pula 20% mais alto. -10% de vida.",
 		"mods": [{"stat": "jump_velocity", "mul": 1.2}, {"stat": "max_health", "mul": 0.9}]},
+	# Pisão (2026-10-06, ideia do usuário; números meus). Código em Player._check_stomp.
+	"pisao": {"name": "Pisão", "cat": "Movimento", "rarity": "raro", "max": 3,
+		"desc": "Cair na cabeça de um inimigo (pulando ou no dash pelo ar) causa 25 de dano e te quica para cima, devolvendo o dash e os pulos no ar. +15 de dano por cópia.",
+		"mods": [{"stat": "stomp", "add": 1}]},
 }
 
 

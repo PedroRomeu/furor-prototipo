@@ -56,6 +56,7 @@ func _ready() -> void:
 	if GameModes.blocked_reason(mode, (Net.match_peers.size() if Net.online else GameState.bot_count + 1)) != "":
 		mode = "ffa"
 	teams_on = mode == "teams"
+	Player.downs_enabled = teams_on   # caído e reviver: só no 2x2
 	var start_lives: int = Net.lives if Net.online else GameState.lives
 	if Net.online:
 		# No 2x2 o lado vem do time (Azul nasce nos lados 0 e 1, vizinhos; Vermelho no 2 e 3).
@@ -155,6 +156,8 @@ func _spawn_player(peer: int, side: int, pname: String, team := -1) -> Player:
 	p.set_multiplayer_authority(peer)
 	add_child(p)
 	p.died.connect(_on_player_died)
+	p.went_down.connect(_on_player_down.bind(p))
+	p.got_up.connect(_on_player_up.bind(p))
 	p.reflected.connect(func(): _log("%s refletiu uma bala" % p.player_name))
 	players.append(p)
 	score[String(p.name)] = 0
@@ -239,6 +242,25 @@ func _host_start_round() -> void:
 			duel_pair = [duel_queue.pop_front(), duel_queue.pop_front()]
 		duel = {"pair": duel_pair, "lives": lives, "queue": duel_queue}
 	_all("net_start_round", [round_num + 1, map_index, randi(), duel])
+
+
+## Caído no 2x2: avisos para o time (a rodada só olha quem morreu; caído já conta como fora).
+func _on_player_down(p: Player) -> void:
+	_log("%s caiu (prazo de %d s)" % [p.player_name, roundi(p.bleed_total)])
+	if phase != Phase.FIGHT:
+		return
+	if p == me:
+		hud.toast("Você caiu! Seu parceiro pode te reviver")
+	elif me.is_ally(p):
+		hud.toast("%s caiu: fique perto dele por %d s para reviver" % [p.player_name, roundi(Player.REVIVE_TIME)])
+
+
+func _on_player_up(p: Player) -> void:
+	_log("%s foi revivido" % p.player_name)
+	if p == me:
+		hud.toast("Você foi revivido!")
+	elif me.is_ally(p):
+		hud.toast("%s voltou à luta" % p.player_name)
 
 
 ## A rodada acaba quando sobra no máximo um vivo (no 2x2, um time com alguém de pé).
@@ -710,6 +732,9 @@ func _clear_bullets() -> void:
 	for b in get_tree().get_nodes_in_group("bullets"):
 		b.remove_from_group("bullets")
 		b.queue_free()
+	for f in get_tree().get_nodes_in_group("fields"):
+		f.remove_from_group("fields")
+		f.queue_free()
 
 
 func _capture_mouse() -> void:
@@ -771,6 +796,7 @@ func _exit_tree() -> void:
 	get_tree().paused = false
 	Bullet.clear_cache()
 	Effects.clear_cache()
+	AreaField.clear_cache()
 
 
 ## Autoteste: tempo de CPU por quadro (scripts e física, sem o desenho), separado pelos
