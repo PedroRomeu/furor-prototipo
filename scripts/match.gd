@@ -138,6 +138,20 @@ func _apply_quality() -> void:
 	env.ssao_enabled = q >= 2
 	env.fog_enabled = q >= 2
 	get_viewport().msaa_3d = Viewport.MSAA_2X if q >= 2 else Viewport.MSAA_DISABLED
+	_apply_sky()
+
+
+## Céu (2026-10-06, check-up de desempenho): na qualidade Baixa vira uma cor lisa, a do
+## horizonte do tema puxada para o alto. O céu procedural custava ~4 ms por quadro a
+## 1080p na Intel HD. A luz do ambiente é cor fixa, então a iluminação não muda.
+func _apply_sky() -> void:
+	var env: Environment = $WorldEnvironment.environment
+	if GameState.quality > 0:
+		env.background_mode = Environment.BG_SKY
+		return
+	var sky := env.sky.sky_material as ProceduralSkyMaterial
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = sky.sky_horizon_color.lerp(sky.sky_top_color, 0.35) if sky else Color(0.6, 0.68, 0.78)
 
 
 func _spawn_player(peer: int, side: int, pname: String, team := -1) -> Player:
@@ -677,6 +691,7 @@ func _build_arena(map_index: int, seed_value: int, count := -1) -> void:
 	add_child(arena)
 	arena.build(map_index, seed_value, players.size() if count < 0 else count)
 	ArenaTheme.apply_environment(arena.palette, $WorldEnvironment.environment, $Sun)
+	_apply_sky()
 	for item in arena.pickups:
 		item.taken.connect(_on_pickup_taken)
 

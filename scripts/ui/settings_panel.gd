@@ -170,10 +170,15 @@ func _video_page() -> Control:
 		Ui.tabs(GameState.WINDOW_MODES, GameState.window_mode, func(i):
 			GameState.set_window_mode(i)
 			_refresh_video(i, refs)))
-	var options := GameState.available_resolutions()
-	refs["res_pick"] = _dropdown(options.map(func(r): return "%d x %d" % [r.x, r.y]), options.find(GameState.resolution))
-	refs["res_pick"].item_selected.connect(func(i): GameState.set_resolution(options[i]))
-	refs["res_hint"] = _row(col, "Resolução da janela", "", refs["res_pick"])
+	refs["res_pick"] = _dropdown([], -1)
+	refs["res_pick"].item_selected.connect(func(i):
+		var options: Array = refs["res_options"]
+		if GameState.window_mode == 0:
+			GameState.set_resolution(options[i])
+		else:
+			GameState.set_fullscreen_res(options[i])
+		_refresh_video(GameState.window_mode, refs))
+	refs["res_hint"] = _row(col, "Resolução", "", refs["res_pick"])
 	_refresh_video(GameState.window_mode, refs)
 	_row(col, "Tamanho da interface", "Menus e HUD. Aumente em telas grandes.",
 		Ui.tabs(GameState.UI_SCALES.map(func(f): return "%d%%" % roundi(f * 100.0)), GameState.ui_scale,
@@ -184,18 +189,40 @@ func _video_page() -> Control:
 		Ui.tabs(QUALITY_NAMES, GameState.quality, func(i):
 			GameState.set_quality(i)
 			refs["quality_hint"].text = QUALITY_HINTS[i]))
+	_row(col, "VSync", "Ligado evita imagem rasgada. Desligado, o FPS não trava em 30.",
+		_switch(GameState.vsync, GameState.set_vsync))
 	_api_row(col)
 	_row(col, "Mostrar FPS", "Contador de quadros no canto da partida.", _switch(GameState.show_fps, GameState.set_show_fps))
 	return col
 
 
-## Resolução só vale em janela; na tela cheia o jogo usa a do monitor.
+## Resolução: na janela, o tamanho dela; na tela cheia, a do monitor (padrão) ou uma menor,
+## mais leve, esticada até o monitor. A lista muda com o modo.
 func _refresh_video(mode: int, refs: Dictionary) -> void:
 	refs["mode_hint"].text = MODE_HINTS[mode]
-	refs["res_pick"].disabled = mode != 0
-	refs["res_hint"].text = "Tamanho da janela ao abrir. Maximizada, o jogo acompanha." if mode == 0 \
-		else "Na tela cheia, o jogo usa a resolução do monitor."
-	refs["res_hint"].visible = true
+	var pick: OptionButton = refs["res_pick"]
+	pick.clear()
+	var options: Array
+	var chosen: Vector2i
+	if mode == 0:
+		options = GameState.available_resolutions()
+		chosen = GameState.resolution
+	else:
+		options = GameState.fullscreen_resolutions()
+		chosen = GameState.fullscreen_res
+	var screen := DisplayServer.screen_get_size()
+	for r: Vector2i in options:
+		pick.add_item("Do monitor  (%d x %d)" % [screen.x, screen.y] if r == Vector2i.ZERO else "%d x %d" % [r.x, r.y])
+	pick.select(maxi(0, options.find(chosen)))
+	refs["res_options"] = options
+	var hint: Label = refs["res_hint"]
+	hint.visible = true
+	if mode == 0:
+		hint.text = "Tamanho da janela ao abrir. Maximizada, o jogo acompanha."
+	elif chosen == Vector2i.ZERO:
+		hint.text = "Nítida e mais pesada. Uma menor deixa o jogo mais leve."
+	else:
+		hint.text = "Mais leve: o jogo é desenhado menor e esticado até o monitor."
 
 
 ## API gráfica: lista suspensa; a frase diz a que está em uso e se falta reiniciar (no menu

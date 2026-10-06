@@ -84,6 +84,13 @@ const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1366, 768), Vector2i(1600, 9
 	Vector2i(1920, 1080), Vector2i(2560, 1440)]
 var window_mode := 0
 var resolution := Vector2i(1280, 720)
+## Tela cheia numa resolução menor que a do monitor (2026-10-06, check-up de desempenho):
+## o jogo é desenhado nela e esticado até o monitor. Medido no PC do usuário (Intel HD,
+## 1080p): ~25% mais rápido em 1280 x 720. ZERO = a do monitor (padrão, nítido).
+var fullscreen_res := Vector2i.ZERO
+## VSync (2026-10-06): ligado evita imagem rasgada, mas com o quadro passando de 16,7 ms o
+## FPS cai direto para 30 (e para 20 passando de 33 ms). Padrão ligado, como era.
+var vsync := true
 ## Tamanho da interface: 100% é o tamanho em pixels (padrão). Nunca passa do que cabe:
 ## a tela foi desenhada para pelo menos 1280 x 720 (ver _apply_ui_scale).
 const UI_SCALES := [1.0, 1.25, 1.5]
@@ -171,6 +178,10 @@ func _ready() -> void:
 		if saved_res is Vector2i and saved_res in RESOLUTIONS:
 			resolution = saved_res
 		ui_scale = clampi(int(cfg.get_value("video", "interface", 0)), 0, UI_SCALES.size() - 1)
+		var saved_full = cfg.get_value("video", "resolucao_tela_cheia", Vector2i.ZERO)
+		if saved_full is Vector2i and saved_full in RESOLUTIONS:
+			fullscreen_res = saved_full
+		vsync = bool(cfg.get_value("video", "vsync", true))
 		for bus in volumes:
 			volumes[bus] = clampi(int(cfg.get_value("audio", bus, volumes[bus])), 0, 100)
 		nick = clean_nick(cfg.get_value("jogador", "nome", ""))
@@ -282,6 +293,29 @@ func available_resolutions() -> Array:
 	return out
 
 
+## Opções da tela cheia: a do monitor (Vector2i.ZERO) e as menores que ela.
+func fullscreen_resolutions() -> Array:
+	var screen := DisplayServer.screen_get_size()
+	return [Vector2i.ZERO] + RESOLUTIONS.filter(func(r): return r.x < screen.x and r.y < screen.y)
+
+
+func set_fullscreen_res(value: Vector2i) -> void:
+	fullscreen_res = value if value in RESOLUTIONS else Vector2i.ZERO
+	_save_setting("video", "resolucao_tela_cheia", fullscreen_res)
+	_apply_display()
+
+
+func set_vsync(on: bool) -> void:
+	vsync = on
+	_save_setting("video", "vsync", vsync)
+	_apply_vsync()
+
+
+func _apply_vsync() -> void:
+	if DisplayServer.get_name() != "headless":
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED)
+
+
 func set_ui_scale(value: int) -> void:
 	ui_scale = clampi(value, 0, UI_SCALES.size() - 1)
 	_save_setting("video", "interface", ui_scale)
@@ -308,6 +342,13 @@ func _apply_display() -> void:
 			win.mode = Window.MODE_FULLSCREEN
 		2:
 			win.mode = Window.MODE_EXCLUSIVE_FULLSCREEN
+	# Tela cheia em resolução menor: desenha nela e estica até o monitor.
+	var screen_size := DisplayServer.screen_get_size()
+	if window_mode != 0 and fullscreen_res != Vector2i.ZERO and fullscreen_res.x < screen_size.x:
+		win.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+		win.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+		win.content_scale_size = fullscreen_res
+	_apply_vsync()
 	_apply_ui_scale()
 
 
@@ -315,7 +356,10 @@ func _apply_display() -> void:
 ## janela pequena, 150% cortaria as telas).
 func _apply_ui_scale() -> void:
 	var win := get_window()
-	var room := minf(win.size.x / UI_BASE.x, win.size.y / UI_BASE.y)
+	var area := Vector2(win.size)
+	if win.content_scale_mode == Window.CONTENT_SCALE_MODE_VIEWPORT:
+		area = Vector2(win.content_scale_size)   # desenhada menor e esticada: conta o tamanho dela
+	var room := minf(area.x / UI_BASE.x, area.y / UI_BASE.y)
 	win.content_scale_factor = clampf(UI_SCALES[ui_scale], 1.0, maxf(1.0, room))
 
 
