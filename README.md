@@ -130,7 +130,7 @@ shows in a corner during the match.
 ## Match rules
 
 - Decks of 30 to 50 cards, up to 3 copies each. More copies = more chance of the card
-  showing up. With 95 cards there are always some left out.
+  showing up. With 94 cards there are always some left out.
 - **Baralhos** (decks) screen: create as many named decks as you want, starting from a
   template (Equilibrado, Atirador, Muralha, Acrobata, Caos, Aleatório or Vazio). The editor
   has the card collection on the left and your deck on the right. Click a card to add it,
@@ -139,12 +139,14 @@ shows in a corner during the match.
   well; a card can be in several), rarity and "only cards in the deck". The master card sits
   in its own slot; click it to choose another. The **equipped** deck is the one used in
   matches.
-- **Master card**: each deck has one, picked at the top of the editor, outside the card
-  count. You start every match with it. One per group: **Bazuca** (Weapon, Q: 6 s of
+- **Master card**: each deck has one, picked in its own slot in the editor, outside the
+  card count. You start every match with it: **Bazuca** (Weapon, Q: 6 s of
   bazooka, 3 rockets), **Perfurante** (Bullets, Q: 3 straight fast shots that go through
   walls), **Bastião** (Shield, Q: a wall that returns bullets for 4 s), **Último Suspiro**
   (Body: a fatal hit leaves you at 1 health for 3 s; get a kill in that time and come back
-  with half) and **Corrente** (Movement, Q: an 8 m upward boost, also in the air).
+  with half), **Camuflagem** (Body: stand still 0.6 s to vanish, crouch-walk while hidden;
+  showing up after 1 s hidden gives Ambush, 3 s of +40% shot damage and +20% speed) and
+  **Corrente** (Movement, Q: an 8 m upward boost, also in the air).
 - Shooting: 4 bullets per magazine, 34 damage (3 hits kill), visible bullets that drop
   with distance. Aim a bit higher from afar. Reflected bullets fly straight. A bullet's size
   grows with its damage, also mid-flight (Bola de Neve, Tabelinha): huge bullets are
@@ -192,7 +194,7 @@ All numbers are provisional, to be tuned by playing.
 
 ## Cards
 
-95 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst...), **Balas**
+94 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst...), **Balas**
 (bullets: ricochet, homing, explosive, poison, freezing, a toxic cloud or a short black hole
 where the bullet lands...), **Escudo** (shield: what happens when raising it or reflecting;
 Pancada, Escudo Duplo, Couraça and Fortaleza make a close-range shield build, and Serra,

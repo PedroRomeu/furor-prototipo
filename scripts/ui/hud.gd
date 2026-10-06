@@ -618,6 +618,8 @@ func _process(delta: float) -> void:
 		status.append("ESCUDO BLOQUEADO")
 	if me.is_hidden():
 		status.append("INVISÍVEL")
+	if me.ambush_timer > 0.0:
+		status.append("EMBOSCADA %.1f s" % me.ambush_timer)
 	if me.last_stand_timer > 0.0:
 		status.append("ÚLTIMO SUSPIRO: abata alguém! %.1f" % me.last_stand_timer)
 	status_label.text = "   ".join(status)

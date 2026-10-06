@@ -308,7 +308,18 @@ const SWAP_COOLDOWN := 2.0
 ## o alto e ficava subindo sem parar, carregado como numa plataforma.
 const SWAP_GHOST := 0.5
 const ECHO_DELAY := 0.5
-const CAMO_DELAY := 1.0
+## Camuflagem (carta mestra desde 2026-10-06): parado por CAMO_DELAY, some. Invisível,
+## anda sem aparecer até CAMO_SNEAK da velocidade (agachado cabe). Aparecer depois de
+## AMBUSH_MIN_HIDDEN invisível dá a Emboscada: AMBUSH_TIME com mais dano nos tiros e mais
+## velocidade, no máximo a cada AMBUSH_COOLDOWN (senão ficaria ligada sem parar).
+const CAMO_DELAY := 0.6
+const CAMO_SNEAK := 0.55
+const AMBUSH_MIN_HIDDEN := 1.0
+const AMBUSH_TIME := 3.0
+const AMBUSH_COOLDOWN := 6.0
+const AMBUSH_DAMAGE := 0.4
+const AMBUSH_SPEED := 0.2
+const AMBUSH_COLOR := Color(0.72, 0.4, 1.0)
 const SLAM_SPEED := 32.0
 const SLAM_MIN_HEIGHT := 2.5
 const SLAM_RANGE := 5.0
@@ -473,6 +484,9 @@ var swap_timer := 0.0     # Troca-Troca: falta quanto para a troca (na máquina 
 var swap_lock := 0.0      # Troca-Troca: não começa outra troca enquanto for maior que zero
 var swap_partner: Player = null
 var still_time := 0.0     # parado há quanto tempo (Camuflagem)
+var ambush_timer := 0.0   # Emboscada ligada por mais quanto tempo (todas as máquinas, para o brilho)
+var ambush_cd := 0.0      # falta quanto para poder ganhar outra Emboscada (só a máquina dona)
+var ambush_mat: ShaderMaterial
 var slamming := false     # despencando com o Meteoro
 var shot_mult := 1.0      # dano extra do disparo atual (Última Bala)
 
@@ -534,6 +548,7 @@ void fragment() {
 }
 """
 static var _rim_shader: Shader
+static var _ambush_shader: Shader
 static var _arrow_tex: ImageTexture
 var ally_mat: ShaderMaterial
 var ally_arrow: Sprite3D
@@ -768,6 +783,9 @@ func reset_for_round(spawn: Transform3D) -> void:
 	swap_lock = 0.0
 	swap_partner = null
 	still_time = 0.0
+	ambush_timer = 0.0
+	ambush_cd = 0.0
+	_restore_overlay()
 	slamming = false
 	alive = true
 	shape.disabled = false
@@ -923,9 +941,7 @@ func _set_ally_look(on: bool) -> void:
 		tag.add_child(ally_arrow)
 	if ally_arrow:
 		ally_arrow.visible = on
-	if hit_flash <= 0.0:
-		for m in body_meshes:
-			m.material_overlay = ally_mat if on else null
+	_restore_overlay()
 
 
 ## Seta para baixo, branca com borda escura (a cor vem do modulate), feita em código.
@@ -970,19 +986,26 @@ func _update_hit_flash(delta: float) -> void:
 	var squash := Vector3(1.0 + 0.05 * hit_flash, 1.0 - 0.07 * hit_flash, 1.0 + 0.05 * hit_flash)
 	model.scale = squash * MODEL_SCALE * float(stats["body_scale"])
 	if hit_flash <= 0.0:
-		for m in body_meshes:
-			m.material_overlay = ally_mat if _ally_look else null
+		_restore_overlay()
 
 
 ## Camuflagem: parado por CAMO_DELAY some da vista dos outros (o próprio jogador vê a
 ## tela escurecer nas bordas pelo HUD). Atirar ou levar dano revela (reveal).
 func _update_camo(delta: float) -> void:
+	if ambush_timer > 0.0:
+		ambush_timer -= delta
+		if ambush_timer <= 0.0:
+			_restore_overlay()
 	if stats["camo"] <= 0 or not alive:
 		still_time = 0.0
-	elif velocity.length() < 0.6 and not is_shielding():
+		return
+	var hspeed := Vector2(velocity.x, velocity.z).length()
+	var still := velocity.length() < 0.6
+	var sneaking := is_hidden() and hspeed <= float(stats["move_speed"]) * CAMO_SNEAK and absf(velocity.y) < 2.0
+	if (still or sneaking) and not is_shielding():
 		still_time += delta
-	else:
-		still_time = 0.0
+	elif still_time > 0.0:
+		reveal()
 	if model and alive:
 		var show := not is_hidden() or (viewer != null and viewer.is_ally(self))
 		model.visible = show
@@ -995,7 +1018,50 @@ func is_hidden() -> bool:
 
 
 func reveal() -> void:
+	if is_local and alive and stats["camo"] > 0 and ambush_cd <= 0.0 \
+			and still_time >= CAMO_DELAY + AMBUSH_MIN_HIDDEN:
+		ambush_cd = AMBUSH_COOLDOWN
+		if Net.online:
+			_net_ambush.rpc()
+		_start_ambush()
 	still_time = 0.0
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_ambush() -> void:
+	_start_ambush()
+
+
+## Emboscada: o bônus vale na máquina dona (dano do tiro e velocidade); em todas, o modelo
+## ganha um contorno roxo, para quem leva o ataque entender o que aconteceu.
+func _start_ambush() -> void:
+	ambush_timer = AMBUSH_TIME
+	Effects.burst(get_parent(), chest(), 1.4, AMBUSH_COLOR, 0.25)
+	if is_human:
+		Sfx.ui(self, "dash")
+	if model == null:
+		return
+	if ambush_mat == null:
+		# O mesmo contorno do aliado, mas atrás das paredes não aparece (o do aliado
+		# aparece de propósito; aqui entregaria a posição de quem atacou).
+		if _ambush_shader == null:
+			_ambush_shader = Shader.new()
+			_ambush_shader.code = ALLY_RIM_SHADER.replace("depth_test_disabled, ", "")
+		ambush_mat = ShaderMaterial.new()
+		ambush_mat.shader = _ambush_shader
+		ambush_mat.set_shader_parameter("rim_color", Color(AMBUSH_COLOR, 0.8))
+	if hit_flash <= 0.0:
+		for m in body_meshes:
+			m.material_overlay = ambush_mat
+
+
+## Camada por cima do modelo quando nada pisca: roxo na Emboscada, contorno de aliado ou nada.
+func _restore_overlay() -> void:
+	if model == null or hit_flash > 0.0:
+		return
+	var mat: Material = ambush_mat if ambush_timer > 0.0 else (ally_mat if _ally_look else null)
+	for m in body_meshes:
+		m.material_overlay = mat
 
 
 ## Câmera: abaixa ao agachar, afunda ao pousar, inclina de leve no deslize, abre o FOV
@@ -1111,6 +1177,7 @@ func _tick(delta: float) -> void:
 	heal_cd = maxf(0.0, heal_cd - delta)
 	armor_cd = maxf(0.0, armor_cd - delta)
 	protect_timer = maxf(0.0, protect_timer - delta)
+	ambush_cd = maxf(0.0, ambush_cd - delta)
 	for bit in area_cd:
 		area_cd[bit] = maxf(0.0, area_cd[bit] - delta)
 	swap_lock = maxf(0.0, swap_lock - delta)
@@ -1163,6 +1230,8 @@ func _target_speed() -> float:
 		speed *= 1.0 - slow_amount
 	if bloodlust_timer > 0.0:
 		speed *= 1.0 + stats["bloodlust"]
+	if ambush_timer > 0.0:
+		speed *= 1.0 + AMBUSH_SPEED
 	if stats["chase"] > 0.0 and _toward_enemy():
 		speed *= 1.0 + stats["chase"]
 	return speed
@@ -1915,6 +1984,8 @@ func shot_damage() -> float:
 	var dmg: float = stats["damage"]
 	if health < stats["max_health"] * RAGE_THRESHOLD:
 		dmg *= 1.0 + stats["rage"]
+	if ambush_timer > 0.0:
+		dmg *= 1.0 + AMBUSH_DAMAGE
 	return dmg
 
 

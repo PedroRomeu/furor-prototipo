@@ -6,7 +6,7 @@ extends Node
 ##          entre si e pioras multiplicam (ver compute_stats)
 ## "max": quantas vezes a mesma carta pode ser escolhida na partida (sem "max", sem limite).
 ## Ideias tiradas de OVERKILL (Roblox) e ROUNDS (Landfall), os jogos que inspiraram o Furor.
-## São 95 cartas para um baralho de no máximo 50: é preciso deixar algumas de fora.
+## São 94 cartas comuns para um baralho de no máximo 50: é preciso deixar algumas de fora.
 ##
 ## Cartas mestras ("master": true, em MASTERS): uma por baralho, fora da contagem, e o
 ## jogador começa toda partida com ela. Trazem uma mecânica própria, mais forte que a de
@@ -94,6 +94,11 @@ const MASTERS := {
 	"ultimo_suspiro": {"name": "Último Suspiro", "cat": "Corpo", "rarity": "mitico", "master": true,
 		"desc": "Uma vez por rodada, o golpe fatal te deixa com 1 de vida e sem morrer por 3 s. Abata alguém nesse tempo e volte com metade da vida.",
 		"mods": [{"stat": "last_stand", "add": 1}]},
+	# Camuflagem virou mestra em 2026-10-06 (pedido do usuário; números meus, aprovados):
+	# some mais rápido, anda agachada sem aparecer e, ao aparecer, ganha a Emboscada.
+	"camuflagem": {"name": "Camuflagem", "cat": "Corpo", "rarity": "mitico", "master": true,
+		"desc": "Parado por 0,6 s, você some. Invisível, dá para andar agachado sem aparecer; atirar, correr, pular, dash, escudo ou levar dano te revelam. Depois de 1 s invisível, aparecer dá Emboscada: 3 s com +40% de dano nos tiros e +20% de velocidade (no máximo a cada 6 s).",
+		"mods": [{"stat": "camo", "add": 1}]},
 	"corrente": {"name": "Corrente", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 8.0,
 		"desc": "Q: impulso reto para cima, de uns 8 m. Funciona também no ar. Recarga de 8 s.",
 		"mods": [{"stat": "updraft", "add": 1}]},
@@ -125,7 +130,7 @@ const ARCHETYPES := {
 		"cards": ["gatilho_leve", "pente_estendido", "maos_rapidas", "cano_duplo", "escopeta", "rajada",
 			"transbordar", "imprudente", "metralhadora", "saque_rapido", "recarga_tatica"]},
 	"Atirador": {"desc": "Acertar de longe e por trás das paredes.",
-		"cards": ["polvora_extra", "olho_de_aguia", "fantasma", "teleguiada", "sortudo", "preguicosa", "radar", "camuflagem"]},
+		"cards": ["polvora_extra", "olho_de_aguia", "fantasma", "teleguiada", "sortudo", "preguicosa", "radar"]},
 	"Controle": {"desc": "Atrapalhar o inimigo: lento, cego, envenenado, empurrado.",
 		"cards": ["veneno", "congelante", "flash", "atordoante", "propulsao", "troca_troca", "onda_de_choque",
 			"geada", "nuvem_toxica", "buraco_negro", "chamas"]},
@@ -402,9 +407,6 @@ var CARDS := {
 	"gigantao": {"name": "Gigantão", "cat": "Corpo", "rarity": "epico",
 		"desc": "Você fica 40% maior e ganha +80% de vida. 10% mais lento.",
 		"mods": [{"stat": "body_scale", "mul": 1.4}, {"stat": "max_health", "mul": 1.8}, {"stat": "move_speed", "mul": 0.9}]},
-	"camuflagem": {"name": "Camuflagem", "cat": "Corpo", "rarity": "epico", "max": 1,
-		"desc": "Parado por 1 s, você fica invisível até se mexer ou atirar.",
-		"mods": [{"stat": "camo", "add": 1}]},
 
 	# Movimento
 	"pulo_duplo": {"name": "Pulo Duplo", "cat": "Movimento", "rarity": "raro",
@@ -558,7 +560,7 @@ const TEMPLATES := [
 		"ids": ["bumerangue", "troca_troca", "bola_de_neve", "preguicosa", "fragmentacao", "tabelinha",
 			"detonacao", "morteiro", "metralhadora", "escopeta", "bala_gigante", "teleguiada",
 			"quique_certeiro", "espelho_duplo", "nova", "chuva_de_bombas", "teleporte", "nanico",
-			"gigantao", "pulo_foguete", "meteoro", "camuflagem", "flash", "pena", "escalador",
+			"gigantao", "pulo_foguete", "meteoro", "flash", "pena", "escalador",
 			"sortudo", "ultima_bala", "canhao_de_vidro", "fenix", "explosiva", "propulsao", "eco",
 			"atropelar", "planador"]},
 	{"name": "Aleatório", "desc": "sorteado", "random": true},
