@@ -78,6 +78,7 @@ var hit_time := 0.0
 var hit_size := 1.0
 var kill_time := 0.0
 var toast_time := 0.0
+var ended := false        # fim da partida: só o placar final na tela
 
 
 func _ready() -> void:
@@ -598,7 +599,7 @@ func _arc_piece(pts: PackedVector2Array, cols: PackedColorArray, radius: float, 
 
 
 func _process(delta: float) -> void:
-	if me == null:
+	if me == null or ended:
 		return
 	fps_label.visible = GameState.show_fps   # pode mudar no menu de pausa
 	hp_bar.max_value = me.stats["max_health"]
@@ -779,22 +780,25 @@ func refresh_cards() -> void:
 	scoreboard.rebuild()
 
 
-## Botões do fim da partida: {"texto": Callable}.
-func show_end_buttons(buttons: Dictionary) -> void:
-	var box := HBoxContainer.new()
-	box.anchor_left = 0.25
-	box.anchor_right = 0.75
-	box.anchor_top = 0.55
-	box.anchor_bottom = 0.63
-	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_theme_constant_override("separation", 20)
-	add_child(box)
-	for text in buttons:
-		var b := Button.new()
-		b.text = text
-		b.custom_minimum_size = Vector2(200, 50)
-		b.pressed.connect(buttons[text])
-		box.add_child(b)
+## Fim da partida: o placar final com o resultado em cima e os botões embaixo.
+## buttons: {"texto": Callable}, o primeiro é o principal.
+func show_end(result: String, color: Color, buttons: Dictionary) -> void:
+	show_center("")
+	scoreboard.close()
+	var board := Scoreboard.new()
+	board.result_text = result
+	board.result_color = color
+	board.buttons = buttons
+	add_child(board)
+	board.setup(me, players)
+	board.kda = scoreboard.kda
+	board.score = round_score
+	board.round_text = round_text
+	board.open()
+	# Some o resto da HUD (fica só o chat, online).
+	ended = true
+	for c in get_children():
+		c.visible = c == board or (chat != null and c == chat.get_parent())
 
 
 func _rect(c: Color) -> ColorRect:

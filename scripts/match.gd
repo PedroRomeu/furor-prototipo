@@ -118,7 +118,7 @@ func _ready() -> void:
 	_reset_players()
 	hud.show_center("Esperando os outros jogadores..." if Net.online else "")
 	if Net.is_host():
-		Net.everyone_ready.connect(_host_draft.bind(players, "Escolha sua carta inicial"), CONNECT_ONE_SHOT)
+		Net.everyone_ready.connect(_host_draft.bind(players, "Começo da partida"), CONNECT_ONE_SHOT)
 	Net.announce_ready()
 
 
@@ -332,8 +332,8 @@ func _duel_over(winner: Player) -> void:
 		_all("net_end_match", [])
 	elif loser_name != "" and lives[loser_name] > 0:
 		var last: bool = lives[loser_name] == 1
-		_host_draft([_player(loser_name)], "Última vida! Escolha uma entre 4 cartas" if last
-			else "Você perdeu o duelo. Escolha uma carta", GameModes.LAST_CHANCE_CARDS if last else DRAFT_SIZE)
+		_host_draft([_player(loser_name)], "Última vida: uma carta a mais para escolher" if last
+			else "Você perdeu o duelo", GameModes.LAST_CHANCE_CARDS if last else DRAFT_SIZE)
 	else:
 		_host_start_round()
 
@@ -382,7 +382,7 @@ func _count_death(dead: Player) -> void:
 func _process(_delta: float) -> void:
 	if GameState.autotest:
 		_sample_perf()
-	var want := not GameState.autotest and not draft.visible and not GameState.menu_open 		and not GameState.chat_open and Input.is_action_pressed("scoreboard")
+	var want := not GameState.autotest and phase != Phase.MATCH_OVER and not draft.visible and not GameState.menu_open 		and not GameState.chat_open and Input.is_action_pressed("scoreboard")
 	if want == _board_open:
 		return
 	_board_open = want
@@ -396,7 +396,7 @@ func _process(_delta: float) -> void:
 
 
 func _draft_losers() -> void:
-	var title := "Seu time perdeu a rodada. Escolha uma carta" if teams_on else "Você perdeu a rodada. Escolha uma carta"
+	var title := "Seu time perdeu a rodada" if teams_on else "Você perdeu a rodada"
 	_host_draft(last_losers.map(func(n): return _player(n)), title)
 
 
@@ -404,13 +404,25 @@ func _draft_losers() -> void:
 func net_vote(keep_going: bool) -> void:
 	if not Net.is_host():
 		return
-	votes[multiplayer.get_remote_sender_id()] = keep_going
-	if votes.size() < (Net.match_peers.size() if Net.online else 1):
+	var sender := multiplayer.get_remote_sender_id()
+	votes["P%d" % sender if Net.online else String(me.name)] = keep_going
+	var done := votes.size() >= (Net.match_peers.size() if Net.online else 1)
+	_all("net_votes", [votes, done])
+	if not done:
 		return
 	if votes.values().all(func(v): return v):
 		_draft_losers()
 	else:
 		_all("net_end_match", [])
+
+
+## Votos que já chegaram (nome do nó -> continuar), para a tela da votação. Todos votaram:
+## a tela fecha (quem perdeu a rodada abre a escolha de carta logo depois).
+@rpc("authority", "call_local", "reliable")
+func net_votes(current: Dictionary, done: bool) -> void:
+	draft.set_votes(current)
+	if done:
+		draft.close()
 
 
 # ---------------------------------------------------------------- fluxo (todos)
@@ -559,15 +571,9 @@ func net_ask_continue() -> void:
 	hud.show_center("")
 	var keep_going := round_num < AUTOTEST_ROUNDS
 	if not GameState.autotest:
-		var title := "Fim do bloco: %s" % hud.score_text(score)
-		var subtitle := "Jogar mais %d rodadas ou terminar a partida agora?" % GameState.ROUNDS_PER_BLOCK
-		if Net.online:
-			subtitle += "\nSó continua se todos quiserem."
-		var choice: int = await draft.ask(title, subtitle,
-			["Mais %d rodadas" % GameState.ROUNDS_PER_BLOCK, "Terminar"])
-		keep_going = choice == 0
-		if keep_going and Net.online:
-			hud.show_center("Esperando a resposta dos outros...")
+		var voters := players.filter(func(p): return p.brain == null)
+		keep_going = await draft.vote(round_num, GameState.ROUNDS_PER_BLOCK, hud.score_text(score),
+			voters, Net.online)
 	_to_host("net_vote", [keep_going])
 
 
@@ -588,18 +594,26 @@ func net_end_match() -> void:
 		text = "VITÓRIA"
 	elif best_other > mine:
 		text = "DERROTA"
-	hud.show_center("%s\n%s" % [text, hud.score_text(score)])
+	var color := Ui.TEXT
+	if text != "EMPATE":
+		color = Ui.OK if text == "VITÓRIA" else Ui.DANGER
 	_log("fim: %s %s depois de %d rodadas" % [text, str(_scores()), round_num])
 	if GameState.autotest:
 		_log(_perf_report())
 		await get_tree().create_timer(0.5).timeout
 		_quit()
 		return
+	_show_end(text, color, "%d rodadas  ·  %s" % [round_num, GameModes.label(mode, GameState.lives)])
+
+
+## Placar final com o resultado; contra bots dá para jogar de novo direto.
+func _show_end(result: String, color: Color, detail: String) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	hud.round_text = detail
 	if Net.online:
-		hud.show_end_buttons({"Menu": _to_menu})
+		hud.show_end(result, color, {"Voltar ao menu": _to_menu})
 	else:
-		hud.show_end_buttons({"Jogar de novo": get_tree().reload_current_scene, "Menu": _to_menu})
+		hud.show_end(result, color, {"Jogar de novo": get_tree().reload_current_scene, "Voltar ao menu": _to_menu})
 
 
 ## Fim do Duelos: vence quem sobrou com vida; a classificação segue a ordem de saída.
@@ -613,7 +627,6 @@ func _end_duels() -> void:
 	for i in ranking.size():
 		lines.append("%dº %s" % [i + 1, _player(ranking[i]).player_name])
 	var text := "VITÓRIA" if winner == me else "%s VENCEU" % winner.player_name.to_upper()
-	hud.show_center("%s\n%s" % [text, "   ".join(lines)])
 	_log("fim: %s venceu os duelos; ordem %s depois de %d duelos" % [winner.player_name,
 		", ".join(ranking.map(func(n): return _player(n).player_name)), round_num])
 	if GameState.autotest:
@@ -621,11 +634,7 @@ func _end_duels() -> void:
 		await get_tree().create_timer(0.5).timeout
 		_quit()
 		return
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	if Net.online:
-		hud.show_end_buttons({"Menu": _to_menu})
-	else:
-		hud.show_end_buttons({"Jogar de novo": get_tree().reload_current_scene, "Menu": _to_menu})
+	_show_end(text, Ui.OK if winner == me else Ui.TEXT, "   ".join(lines))
 
 
 # ---------------------------------------------------------------- balas em rede

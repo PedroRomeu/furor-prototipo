@@ -13,6 +13,10 @@ var players: Array = []
 var score := {}        # nome do nó -> rodadas vencidas
 var kda := {}          # nome do nó -> [abates, assistências, mortes]
 var round_text := ""
+## Fim da partida (Hud.show_end): resultado no lugar de "PLACAR" e botões embaixo.
+var result_text := ""
+var result_color := Ui.TEXT
+var buttons := {}            # texto -> Callable; o primeiro é o principal
 var _rows: VBoxContainer
 var _round_label: Label
 
@@ -22,7 +26,7 @@ func _ready() -> void:
 	theme = Ui.theme()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.35)
+	dim.color = Color(0, 0, 0, 0.35 if result_text == "" else 0.7)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)
@@ -43,9 +47,16 @@ func _ready() -> void:
 
 	var header := Ui.hbox(12)
 	col.add_child(header)
-	header.add_child(Ui.label("PLACAR", 15, Ui.TEXT, true))
+	if result_text == "":
+		header.add_child(Ui.label("PLACAR", 15, Ui.TEXT, true))
+	else:
+		var result := Ui.vbox(0)
+		result.add_child(Ui.label("FIM DA PARTIDA", 12, Ui.MUTED, true))
+		result.add_child(Ui.label(result_text, 34, result_color, true))
+		header.add_child(result)
 	header.add_child(Ui.spacer())
 	_round_label = Ui.label("", 14, Ui.MUTED)
+	_round_label.size_flags_vertical = Control.SIZE_SHRINK_END
 	header.add_child(_round_label)
 
 	# Títulos das colunas, alinhados com os números das linhas.
@@ -65,7 +76,24 @@ func _ready() -> void:
 	_rows = Ui.vbox(6)
 	_rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(_rows)
-	col.add_child(Ui.label("Passe o mouse numa carta para ver o efeito.", 13, Ui.MUTED))
+	if buttons.is_empty():
+		col.add_child(Ui.label("Passe o mouse numa carta para ver o efeito.", 13, Ui.MUTED))
+	else:
+		col.add_child(HSeparator.new())
+		var foot := Ui.hbox(10)
+		col.add_child(foot)
+		foot.add_child(Ui.label("Passe o mouse numa carta para ver o efeito.", 13, Ui.MUTED))
+		foot.add_child(Ui.spacer())
+		var first := true
+		for text in buttons:
+			var b := Ui.button(text, buttons[text], 170)
+			b.custom_minimum_size.y = 44
+			if first:
+				Ui.accent(b)
+			else:
+				Ui.flat(b)
+			foot.add_child(b)
+			first = false
 	visible = false
 
 

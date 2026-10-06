@@ -278,32 +278,9 @@ func _tile(id: String) -> Control:
 	return panel
 
 
-## Área de descrição de altura fixa; rola quando o texto é maior. O clique passa para a
-## carta (PASS), só a roda do mouse e a barra ficam com a área.
+## Área de descrição de altura fixa; rola quando o texto é maior (Ui.scroll_text).
 func _desc_box(text: String) -> ScrollContainer:
-	var box := ScrollContainer.new()
-	box.custom_minimum_size.y = DESC_HEIGHT
-	box.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	box.mouse_filter = Control.MOUSE_FILTER_PASS
-	var bar := box.get_v_scroll_bar()
-	var track := StyleBoxFlat.new()
-	track.bg_color = Color(1, 1, 1, 0.04)
-	track.set_corner_radius_all(2)
-	track.content_margin_left = 3
-	track.content_margin_right = 3
-	bar.add_theme_stylebox_override("scroll", track)
-	for state in ["grabber", "grabber_highlight", "grabber_pressed"]:
-		var g := StyleBoxFlat.new()
-		g.bg_color = Ui.MUTED if state == "grabber" else Ui.TEXT
-		g.bg_color.a = 0.55 if state == "grabber" else 0.85
-		g.set_corner_radius_all(2)
-		bar.add_theme_stylebox_override(state, g)
-	var desc := Ui.label(text, 13, Ui.MUTED)
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(desc)
-	return box
+	return Ui.scroll_text(text, DESC_HEIGHT)
 
 
 func _style_tile(id: String) -> void:

@@ -31,18 +31,14 @@ func _init(p_mode: String, p_lives: int) -> void:
 		var b := _card(m)
 		grid.add_child(b)
 		_cards[m["id"]] = b
-	_lives_row = Ui.hbox(10)
-	var lives_label := Ui.label("Vidas", 14, Ui.MUTED)
-	lives_label.custom_minimum_size.x = 60
-	lives_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_lives_row.add_child(lives_label)
-	var seg := Ui.segmented(GameModes.LIVES_OPTIONS.map(func(n): return str(n)),
+	# Vidas (só no Duelos): linha de opção com abas compactas, como nas configurações.
+	_lives_row = Ui.vbox(0)
+	var tabs := Ui.tabs(GameModes.LIVES_OPTIONS.map(func(n): return str(n)),
 		GameModes.LIVES_OPTIONS.find(lives), func(i):
 			lives = GameModes.LIVES_OPTIONS[i]
 			changed.emit(mode, lives))
-	_lives_buttons = seg.get_children()
-	seg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_lives_row.add_child(seg)
+	_lives_buttons = tabs.get_children()
+	Ui.option_row(_lives_row, "Vidas", "Quem perde todas sai do rodízio.", tabs, 200, 8)
 	add_child(_lives_row)
 	note = Ui.label("", 13, Ui.MUTED)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -68,28 +64,28 @@ func _card(m: Dictionary) -> Button:
 	var b := Button.new()
 	b.focus_mode = Control.FOCUS_NONE
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	b.custom_minimum_size = Vector2(0, 102)
+	b.custom_minimum_size = Vector2(0, 112)
 	b.pressed.connect(func():
 		if editable and mode != m["id"]:
 			mode = m["id"]
 			_refresh()
 			changed.emit(mode, lives))
-	var col := Ui.vbox(3)
+	var col := Ui.vbox(4)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	col.offset_left = 12
-	col.offset_right = -10
-	col.offset_top = 9
-	col.offset_bottom = -8
+	col.offset_left = 14
+	col.offset_right = -12
+	col.offset_top = 11
+	col.offset_bottom = -10
 	b.add_child(col)
-	var title := Ui.label(m["name"], 17, Ui.TEXT, true)
+	var title := Ui.label(m["name"], 16, Ui.TEXT, true)
 	title.name = "Title"
 	col.add_child(title)
 	var desc := Ui.label(m["desc"], 12, Ui.MUTED)
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(desc)
-	col.add_child(Ui.label(m["players"], 12, Ui.MUTED.darkened(0.15)))
+	col.add_child(Ui.label(m["players"], 11, Ui.MUTED.darkened(0.2), true))
 	for c in col.get_children():
 		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return b
@@ -99,10 +95,14 @@ func _refresh() -> void:
 	for id in _cards:
 		var b: Button = _cards[id]
 		var chosen: bool = id == mode
-		var normal := Ui.box(Ui.SURFACE_HI if chosen else Ui.BG, 10, Ui.ACCENT if chosen else Ui.LINE, 2 if chosen else 1)
+		var normal := Ui.box(Ui.SURFACE_HI if chosen else Ui.BG, 10, Ui.ACCENT if chosen else Ui.LINE, 1)
+		if chosen:
+			normal.border_width_bottom = 3
 		b.add_theme_stylebox_override("normal", normal)
 		b.add_theme_stylebox_override("disabled", normal)
-		b.add_theme_stylebox_override("hover", Ui.box(Ui.SURFACE_HI, 10, Ui.ACCENT if chosen else Ui.LINE.lightened(0.3), 2 if chosen else 1))
+		var hover := Ui.box(Ui.SURFACE_HI, 10, Ui.ACCENT if chosen else Ui.LINE.lightened(0.3), 1)
+		hover.border_width_bottom = normal.border_width_bottom
+		b.add_theme_stylebox_override("hover", hover)
 		b.add_theme_stylebox_override("pressed", normal)
 		b.disabled = not editable
 		b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if editable else Control.CURSOR_ARROW

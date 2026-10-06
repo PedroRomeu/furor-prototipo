@@ -30,8 +30,8 @@ func _init() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(center)
 	var frame := PanelContainer.new()
-	var style := Ui.box(Ui.SURFACE, 12, Ui.LINE)
-	style.set_content_margin_all(24)
+	var style := Ui.box(Ui.BG, 14, Ui.LINE)
+	style.set_content_margin_all(26)
 	frame.add_theme_stylebox_override("panel", style)
 	frame.custom_minimum_size = Vector2(620, 0)
 	center.add_child(frame)
@@ -45,7 +45,7 @@ func _init() -> void:
 	_count.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(_count)
 	col.add_child(head)
-	var filters := Ui.segmented(["Todos"] + Arena.STYLES, 0, func(i):
+	var filters := Ui.tabs(["Todos"] + Arena.STYLES, 0, func(i):
 		_filter = i - 1
 		_refresh())
 	_filter_buttons = filters.get_children()
@@ -53,9 +53,9 @@ func _init() -> void:
 
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size.y = 380
+	scroll.custom_minimum_size.y = 400
 	col.add_child(scroll)
-	_list = Ui.vbox(6)
+	_list = Ui.vbox(0)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_list)
 
@@ -64,8 +64,8 @@ func _init() -> void:
 	col.add_child(_note)
 	var row := Ui.hbox(10)
 	_bottom = Ui.hbox(10)
-	_bottom.add_child(Ui.button("Ligar todos", func(): Net.set_all_maps(true), 140))
-	_bottom.add_child(Ui.button("Automático", func(): Net.set_all_maps(false), 140))
+	_bottom.add_child(Ui.button("Ligar todos", func(): Net.set_all_maps(true), 130))
+	_bottom.add_child(Ui.flat(Ui.button("Voltar ao automático", func(): Net.set_all_maps(false))))
 	row.add_child(_bottom)
 	row.add_child(Ui.spacer())
 	row.add_child(Ui.accent(Ui.button("Fechar", close, 120)))
@@ -104,9 +104,7 @@ func _refresh() -> void:
 	for s in Arena.STYLES.size():
 		if _filter >= 0 and s != _filter:
 			continue
-		if _list.get_child_count() > 0:
-			_list.add_child(Ui.gap(2))
-		_list.add_child(Ui.label(Arena.STYLES[s], 14, Ui.MUTED))
+		Ui.section(_list, Arena.STYLES[s].to_upper(), null, 4 if _list.get_child_count() == 0 else 18)
 		for z in MapList.SIZES.size():
 			_list.add_child(_row(s * MapList.SIZES.size() + z, players, host))
 	_count.text = summary().trim_prefix("Mapas  ·  ") + " ligados"
@@ -117,59 +115,44 @@ func _refresh() -> void:
 		_note.text = "A cada rodada sai um dos ligados, com um desenho novo. Automático: os grandes ficam desligados com 2 na arena (1x1 e Duelos) e ligados com 3 ou 4."
 
 
+const SIZE_HINTS := ["Encontros rápidos.", "Mais espaço e mais peças.", "Muros dividem a arena. Melhor com 3 ou 4."]
+
+
+## Um tamanho do estilo: nome, frase curta, "automático" e o interruptor.
 func _row(index: int, players: int, host: bool) -> Control:
 	var on := MapList.is_on(Net.maps, index, players)
 	var auto := not Net.maps.has(MapList.id(index))
-	var line := PanelContainer.new()
-	var bg := Ui.box(Ui.BG, 8, Ui.LINE)
-	bg.content_margin_left = 14
-	bg.content_margin_right = 8
-	bg.content_margin_top = 6
-	bg.content_margin_bottom = 6
-	line.add_theme_stylebox_override("panel", bg)
-	var row := Ui.hbox(10)
-	line.add_child(row)
 	var z := MapList.size_of(index)
-	var style_label := Ui.label(Arena.STYLES[MapList.style_of(index)], 16, Ui.TEXT if on else Ui.MUTED)
-	style_label.custom_minimum_size.x = 110
-	style_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(style_label)
-	row.add_child(_size_tag(z, on))
-	row.add_child(Ui.spacer())
+	var line := Ui.hbox(12)
+	var texts := Ui.vbox(0)
+	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.add_child(texts)
+	texts.add_child(Ui.label(String(MapList.SIZES[z]["name"]).capitalize(), 15, Ui.TEXT if on else Ui.MUTED, on))
+	texts.add_child(Ui.label(SIZE_HINTS[z], 12, Ui.MUTED if on else Ui.MUTED.darkened(0.25)))
 	if auto:
 		var a := Ui.label("automático", 12, Ui.MUTED.darkened(0.1))
 		a.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		row.add_child(a)
-	var toggle := Button.new()
-	toggle.text = "Ligado" if on else "Desligado"
-	toggle.custom_minimum_size = Vector2(120, 36)
-	toggle.focus_mode = Control.FOCUS_NONE
-	var color: Color = Ui.OK if on else Ui.MUTED
-	var normal := Ui.box(Ui.SURFACE_HI if on else Ui.SURFACE, 8, color.darkened(0.2) if on else Ui.LINE)
-	toggle.add_theme_stylebox_override("normal", normal)
-	toggle.add_theme_stylebox_override("disabled", normal)
-	toggle.add_theme_stylebox_override("pressed", normal)
-	toggle.add_theme_stylebox_override("hover", Ui.box(Ui.SURFACE_HI, 8, color))
-	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_disabled_color"]:
-		toggle.add_theme_color_override(c, color)
-	toggle.disabled = not host
-	toggle.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if host else Control.CURSOR_ARROW
-	toggle.pressed.connect(func(): Net.set_map(index, not on))
-	row.add_child(toggle)
-	return line
-
-
-## Etiqueta do tamanho: mais clara quanto maior o mapa.
-func _size_tag(z: int, on: bool) -> Control:
-	var tag := PanelContainer.new()
-	var shade: Color = [Ui.LINE, Ui.LINE.lightened(0.15), Ui.LINE.lightened(0.3)][z]
-	var box := Ui.box(shade, 6)
-	box.content_margin_left = 10
-	box.content_margin_right = 10
-	box.content_margin_top = 2
-	box.content_margin_bottom = 2
-	tag.add_theme_stylebox_override("panel", box)
-	tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	tag.add_child(Ui.label(MapList.SIZES[z]["name"], 13, Ui.TEXT if on else Ui.MUTED))
-	tag.modulate.a = 1.0 if on else 0.6
-	return tag
+		a.tooltip_text = "O jogo decide pelo número de jogadores até você mudar."
+		a.mouse_filter = Control.MOUSE_FILTER_STOP
+		line.add_child(a)
+	var sw := CheckButton.new()
+	sw.button_pressed = on
+	sw.disabled = not host
+	sw.focus_mode = Control.FOCUS_NONE
+	sw.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	sw.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if host else Control.CURSOR_ARROW
+	sw.toggled.connect(func(v):
+		Net.set_map(index, v)
+		_refresh.call_deferred())   # o último ligado não desliga: o interruptor volta
+	line.add_child(sw)
+	var pad := MarginContainer.new()
+	pad.add_theme_constant_override("margin_top", 8)
+	pad.add_theme_constant_override("margin_bottom", 8)
+	pad.add_theme_constant_override("margin_right", 10)
+	pad.add_child(line)
+	var box := Ui.vbox(0)
+	box.add_child(pad)
+	var sep := HSeparator.new()
+	sep.modulate.a = 0.5
+	box.add_child(sep)
+	return box

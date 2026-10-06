@@ -27,9 +27,12 @@ var start_button: Button
 var deck_picks: Array = []   # OptionButton do baralho em Jogar e na Sala, sempre iguais
 var solo_modes: ModePicker   # modo do treino
 var solo_bots: Array = []    # botões de 1, 2 e 3 bots
+var bots_hint: Label         # frase da linha dos bots: que tamanhos de mapa saem
 var start_solo: Button
 var lobby_modes: ModePicker  # modo da sala (só o anfitrião mexe)
 var maps_button: Button      # abre a lista de mapas da sala (MapPicker)
+var maps_hint: Label         # "8 de 12 ligados" na linha dos mapas
+const LOBBY_CONTROL := 300.0 # coluna dos controles na Sala
 var map_picker: MapPicker
 var shuffle_button: Button
 var nick_edits: Array = []   # o campo de nome aparece na Sala e em Configurações
@@ -163,8 +166,8 @@ func _play_page() -> Control:
 	var solo := Ui.panel(row)
 	solo.add_child(Ui.label("Treino", 26, Ui.TEXT, true))
 	solo.add_child(Ui.label("Contra bots, no seu computador.", 15, Ui.MUTED))
-	solo.add_child(Ui.gap(8))
-	solo.add_child(Ui.label("Modo de jogo", 14, Ui.MUTED))
+	Ui.section(solo, "MODO DE JOGO", null, 14)
+	solo.add_child(Ui.gap(4))
 	solo_modes = ModePicker.new(GameState.mode, GameState.lives)
 	solo_modes.changed.connect(func(m, n):
 		GameState.set_mode(m, n)
@@ -172,40 +175,44 @@ func _play_page() -> Control:
 			_set_bots(3)   # 2x2 no treino é você e um bot contra dois
 		_refresh_solo())
 	solo.add_child(solo_modes)
-	solo.add_child(Ui.gap(4))
-	solo.add_child(Ui.label("Adversários", 14, Ui.MUTED))
-	var bots := Ui.segmented(["1 bot", "2 bots", "3 bots"], bot_count - 1, func(i):
+	Ui.section(solo, "ADVERSÁRIOS", null, 14)
+	var bots := Ui.tabs(["1 bot", "2 bots", "3 bots"], bot_count - 1, func(i):
 		bot_count = i + 1
 		_refresh_solo())
 	solo_bots = bots.get_children()
-	solo.add_child(bots)
+	bots_hint = Ui.option_row(solo, "Bots", "", bots, 260)
 	solo.add_child(Ui.grow())
 	start_solo = Ui.accent(Ui.button("Começar treino", _play_bots))
 	start_solo.custom_minimum_size.y = 48
+	start_solo.add_theme_font_size_override("font_size", 18)
 	solo.add_child(start_solo)
 	_refresh_solo()
 
 	var online := Ui.panel(row)
 	online.add_child(Ui.label("Online", 26, Ui.TEXT, true))
 	online.add_child(Ui.label("Com amigos: até 4 jogadores na sala.", 15, Ui.MUTED))
-	online.add_child(Ui.gap(8))
+	Ui.section(online, "CRIAR SALA", null, 14)
 	host_button = Ui.accent(Ui.button("Criar sala", _host))
-	host_button.custom_minimum_size.y = 48
-	online.add_child(host_button)
+	host_button.custom_minimum_size.y = 42
+	Ui.option_row(online, "Você é o anfitrião", "Escolhe o modo e os mapas. Seu IP aparece na sala para passar aos amigos.",
+		host_button, 180)
+	Ui.section(online, "ENTRAR NUMA SALA", null, 14)
 	online.add_child(Ui.gap(8))
-	online.add_child(Ui.label("Entrar numa sala", 14, Ui.MUTED))
 	var join_row := Ui.hbox(8)
 	online.add_child(join_row)
 	ip_edit = LineEdit.new()
 	ip_edit.placeholder_text = "IP do anfitrião (ex.: 192.168.0.10)"
 	ip_edit.text = _load_ip()
 	ip_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ip_edit.custom_minimum_size.y = 44
+	ip_edit.custom_minimum_size.y = 42
 	ip_edit.text_submitted.connect(func(_t): _join())
 	join_row.add_child(ip_edit)
-	join_button = Ui.button("Entrar", _join, 110)
-	join_button.custom_minimum_size.y = 44
+	join_button = Ui.button("Entrar", _join, 120)
+	join_button.custom_minimum_size.y = 42
 	join_row.add_child(join_button)
+	var how := Ui.label("Peça o IP a quem criou a sala: ele aparece na tela da sala.", 13, Ui.MUTED)
+	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	online.add_child(how)
 	play_status = Ui.label("", 15, Ui.WARN)
 	play_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	online.add_child(play_status)
@@ -218,7 +225,7 @@ func _lobby_page() -> Control:
 	var root := Ui.vbox(24)
 	var header := Ui.hbox(16)
 	root.add_child(header)
-	header.add_child(Ui.flat(Ui.button("< Sair da sala", _leave_lobby)))
+	header.add_child(Ui.flat(Ui.button("‹  Sair da sala", _leave_lobby)))
 	lobby_title = Ui.label("Sala", 32, Ui.TEXT, true)
 	header.add_child(lobby_title)
 	var body := Ui.hbox(20)
@@ -230,15 +237,16 @@ func _lobby_page() -> Control:
 	shuffle_button = Ui.button("Sortear times", func(): Net.shuffle_teams())
 	shuffle_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	left.add_child(shuffle_button)
+	Ui.section(left, "CHAT", null, 14)
 	left.add_child(Ui.gap(4))
-	left.add_child(Ui.label("Chat", 14, Ui.MUTED))
 	var chat := ChatBox.new(false)
 	chat.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left.add_child(chat)
 	var right := Ui.panel(body)
-	right.add_child(Ui.label("Seu nome", 14, Ui.MUTED))
+	Ui.section(right, "VOCÊ", null, 0)
 	var nick := _nick_edit()
 	nick.placeholder_text = "Como os outros vão te ver"
+	nick.custom_minimum_size.y = 38
 	nick_timer = Timer.new()
 	nick_timer.one_shot = true
 	nick_timer.wait_time = 0.5
@@ -249,45 +257,51 @@ func _lobby_page() -> Control:
 		nick_timer.stop()
 		Net.change_nick(t)
 		nick.release_focus())
-	right.add_child(nick)
-	right.add_child(Ui.gap(6))
-	right.add_child(Ui.label("Seu visual", 14, Ui.MUTED))
+	Ui.option_row(right, "Nome", "Como os outros te veem.", nick, LOBBY_CONTROL, 8)
 	var look_line := Ui.hbox(10)
 	var thumb := TextureRect.new()
-	thumb.custom_minimum_size = Vector2(34, 42)
+	thumb.custom_minimum_size = Vector2(30, 38)
 	thumb.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	thumb.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	look_line.add_child(Ui.spacer())
 	look_line.add_child(thumb)
-	var look_text := Ui.label("", 16, Ui.TEXT)
-	look_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	look_text.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	look_text.clip_text = true
-	look_line.add_child(look_text)
-	look_line.add_child(Ui.button("Personalizar", _open_custom, 130))
-	right.add_child(look_line)
+	var custom := Ui.button("Personalizar", _open_custom, 140)
+	custom.custom_minimum_size.y = 38
+	look_line.add_child(custom)
+	var look_text := Ui.option_row(right, "Visual", "", look_line, LOBBY_CONTROL, 8)
+	look_text.visible = true
 	lobby_look = [thumb, look_text]
 	_refresh_lobby_look()
-	right.add_child(Ui.gap(6))
-	right.add_child(Ui.label("Seu baralho", 14, Ui.MUTED))
 	var deck_line := Ui.hbox(8)
 	var pick := _deck_picker()
 	pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	pick.custom_minimum_size.x = 0
+	pick.custom_minimum_size = Vector2(0, 38)
 	deck_line.add_child(pick)
-	deck_line.add_child(Ui.button("Editar", _open_decks_from_lobby, 100))
-	right.add_child(deck_line)
+	var edit := Ui.button("Editar", _open_decks_from_lobby, 80)
+	edit.custom_minimum_size.y = 38
+	deck_line.add_child(edit)
+	Ui.option_row(right, "Baralho", "O equipado vai para a partida.", deck_line, LOBBY_CONTROL, 8)
+
+	Ui.section(right, "PARTIDA", null, 20)
 	right.add_child(Ui.gap(6))
-	right.add_child(Ui.label("Modo de jogo", 14, Ui.MUTED))
 	lobby_modes = ModePicker.new("ffa", GameModes.DEFAULT_LIVES)
 	lobby_modes.changed.connect(func(m, n): Net.set_mode(m, n))
 	right.add_child(lobby_modes)
-	maps_button = Ui.button("Mapas", func(): map_picker.open())
-	right.add_child(maps_button)
-	right.add_child(Ui.gap(6))
-	lobby_info = Ui.label("", 16, Ui.TEXT)
-	lobby_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	right.add_child(lobby_info)
+	maps_button = Ui.button("Escolher", func(): map_picker.open(), 140)
+	maps_button.custom_minimum_size.y = 38
+	maps_hint = Ui.option_row(right, "Mapas", "", maps_button, 140, 8)
+	maps_hint.visible = true
 	right.add_child(Ui.grow())
+	# IP do anfitrião (ou a espera do convidado) numa faixa discreta acima do botão.
+	var info_box := PanelContainer.new()
+	var info_style := Ui.box(Ui.BG, 8, Ui.LINE)
+	info_style.set_content_margin_all(12)
+	info_box.add_theme_stylebox_override("panel", info_style)
+	right.add_child(info_box)
+	lobby_info = Ui.label("", 14, Ui.TEXT)
+	lobby_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info_box.add_child(lobby_info)
+	right.add_child(Ui.gap(4))
 	start_button = Ui.accent(Ui.button("Começar", func(): Net.start_match()))
 	start_button.custom_minimum_size.y = 52
 	start_button.add_theme_font_size_override("font_size", 20)
@@ -548,6 +562,8 @@ func _refresh_solo() -> void:
 	else:
 		solo_modes.set_note("")
 	start_solo.disabled = reason != ""
+	bots_hint.visible = true
+	bots_hint.text = ["Só mapas pequenos.", "Mapas pequenos e médios.", "Mapas de todos os tamanhos."][bot_count - 1]
 
 
 func _play_bots() -> void:
@@ -602,7 +618,7 @@ func _refresh_lobby() -> void:
 		for t in 2:
 			_team_column(t, host)
 	else:
-		lobby_slots.add_child(Ui.label("Jogadores", 14, Ui.MUTED))
+		lobby_slots.add_child(Ui.label("JOGADORES", 12, Ui.MUTED, true))
 		var ids := Net.lobby_ids()
 		for i in Net.MAX_GUESTS + 1:
 			if i < count and i < ids.size():
@@ -611,7 +627,8 @@ func _refresh_lobby() -> void:
 				lobby_slots.add_child(_empty_slot())
 	shuffle_button.visible = host and Net.team_mode
 	lobby_modes.set_state(Net.mode, Net.lives, host)
-	maps_button.text = MapPicker.summary() + ("" if host else "  (ver)")
+	maps_button.text = "Escolher" if host else "Ver"
+	maps_hint.text = MapPicker.summary().trim_prefix("Mapas  ·  ") + " ligados. A cada rodada sai um deles."
 	var reason := GameModes.blocked_reason(Net.mode, count)
 	if not host:
 		lobby_modes.set_note("Só o anfitrião escolhe o modo.")
@@ -626,7 +643,7 @@ func _refresh_lobby() -> void:
 	lobby_title.text = "Sala  ·  %d de %d" % [count, Net.MAX_GUESTS + 1]
 	if host:
 		var ips := Net.local_ips()
-		lobby_info.text = "Seu IP: %s   ·   porta %d\nOs amigos abrem Jogar > Online, digitam esse IP e clicam em Entrar." % [
+		lobby_info.text = "Seu IP: %s  ·  porta %d\nOs amigos abrem Jogar > Online e digitam esse IP." % [
 			", ".join(ips) if not ips.is_empty() else "não encontrado", Net.PORT]
 		start_button.visible = true
 		var blocked := reason != "" or (Net.team_mode and not Net.teams_ready())

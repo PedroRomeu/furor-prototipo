@@ -1,11 +1,20 @@
 class_name DraftScreen
 extends CanvasLayer
-## Tela de escolha. choose() mostra cartas e devolve (com await) a escolhida;
-## ask() mostra botões de texto e devolve o índice do escolhido.
+## Telas entre as rodadas. choose() mostra cartas e devolve (com await) a escolhida;
+## vote() mostra a votação do fim do bloco e devolve o voto, ficando aberta com os votos
+## dos outros (set_votes) até a partida seguir ou acabar (close).
 
 signal picked(index: int)
 
+const CARD_SIZE := Vector2(250, 372)
+const DESC_HEIGHT := 112.0    # ~6 linhas; descrição maior rola dentro da carta
+const VOTE_WIDTH := 560.0
+
 var _count := 0
+var _voting := false
+var _vote_rows := {}          # nome do nó -> [Label do estado, Player]
+var _vote_buttons: Array = []
+var _cards: Array = []        # [PanelContainer, cor] de cada carta, para o realce
 
 
 func _ready() -> void:
@@ -13,120 +22,253 @@ func _ready() -> void:
 	visible = false
 
 
+## title: o que aconteceu ("Você perdeu a rodada"); a linha de baixo pede a escolha.
 func choose(options: Array, title: String, owned: Array) -> String:
-	var keys := "1, 2 ou 3" if options.size() == 3 else "1 a %d" % options.size()
-	var row := _open(title, "Clique numa carta ou aperte " + keys)
+	var col := _open()
+	col.add_child(_heading(title, "Escolha uma carta para o seu baralho da partida"))
+	var row := Ui.hbox(18)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_child(row)
+	_cards.clear()
 	for i in options.size():
 		row.add_child(_card(options[i], i, owned.count(options[i])))
+	var keys := "1, 2 ou 3" if options.size() == 3 else "1 a %d" % options.size()
+	var hint := Ui.label("Clique numa carta ou aperte %s" % keys, 14, Ui.MUTED)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(hint)
 	var index: int = await _wait(options.size())
 	return options[index]
 
 
-func ask(title: String, subtitle: String, labels: Array) -> int:
-	var row := _open(title, subtitle)
-	for i in labels.size():
-		var b := Button.new()
-		b.text = "[%d]  %s" % [i + 1, labels[i]]
-		b.custom_minimum_size = Vector2(260, 60)
-		b.add_theme_font_size_override("font_size", 22)
-		b.pressed.connect(func(): picked.emit(i))
-		row.add_child(b)
-	return await _wait(labels.size())
+## Votação do fim do bloco. voters: os jogadores que votam (todos em rede; só você
+## contra bots). Devolve true para continuar. A tela fica aberta depois do voto.
+func vote(round_num: int, extra: int, score_text: String, voters: Array, online: bool) -> bool:
+	var col := _open()
+	var panel := PanelContainer.new()
+	var style := Ui.box(Color(Ui.BG, 0.97), 14, Ui.LINE)
+	style.set_content_margin_all(28)
+	panel.add_theme_stylebox_override("panel", style)
+	panel.custom_minimum_size.x = VOTE_WIDTH
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	col.add_child(panel)
+	var inner := Ui.vbox(18)
+	panel.add_child(inner)
+
+	var top := Ui.label("FIM DO BLOCO  ·  RODADA %d" % round_num, 13, Ui.ACCENT, true)
+	top.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	inner.add_child(top)
+	var score := Ui.label(score_text, 26, Ui.TEXT, true)
+	score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	score.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	inner.add_child(score)
+	var ask := Ui.label("Jogar mais %d rodadas ou terminar a partida?" % extra, 15, Ui.MUTED)
+	ask.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	inner.add_child(ask)
+
+	var buttons := Ui.hbox(12)
+	inner.add_child(buttons)
+	_vote_buttons.clear()
+	var labels := ["Mais %d rodadas" % extra, "Terminar"]
+	for i in 2:
+		var b := Ui.button("%s   %d" % [labels[i], i + 1], func(): picked.emit(i))
+		b.custom_minimum_size.y = 50
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.add_theme_font_size_override("font_size", 17)
+		if i == 0:
+			Ui.accent(b)
+		buttons.add_child(b)
+		_vote_buttons.append(b)
+
+	_vote_rows.clear()
+	if online:
+		inner.add_child(HSeparator.new())
+		var head := Ui.hbox(8)
+		inner.add_child(head)
+		head.add_child(Ui.label("VOTOS", 12, Ui.MUTED, true))
+		head.add_child(Ui.spacer())
+		head.add_child(Ui.label("Só continua se todos quiserem", 12, Ui.MUTED))
+		var list := Ui.vbox(6)
+		inner.add_child(list)
+		for p in voters:
+			var line := Ui.hbox(10)
+			var swatch := ColorRect.new()
+			swatch.color = p.color
+			swatch.custom_minimum_size = Vector2(4, 20)
+			swatch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			line.add_child(swatch)
+			line.add_child(Ui.label(p.player_name, 15, Ui.TEXT, true))
+			line.add_child(Ui.spacer())
+			var state := Ui.label("", 14, Ui.MUTED)
+			line.add_child(state)
+			list.add_child(line)
+			_vote_rows[String(p.name)] = [state, p]
+		set_votes({})
+
+	_voting = true
+	var choice: int = await _wait(2, false)
+	for i in 2:
+		_vote_buttons[i].disabled = true
+		if i == choice:
+			_vote_buttons[i].text = "%s  ✓" % labels[i]
+			_vote_buttons[i].disabled = false
+			_vote_buttons[i].mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_voting = false
+	return choice == 0
 
 
-func _open(title: String, subtitle: String) -> HBoxContainer:
+## Votos que já chegaram (nome do nó -> true para continuar).
+func set_votes(votes: Dictionary) -> void:
+	for n in _vote_rows:
+		var state: Label = _vote_rows[n][0]
+		if not votes.has(n):
+			state.text = "votando..."
+			state.add_theme_color_override("font_color", Ui.MUTED)
+		elif votes[n]:
+			state.text = "Continuar"
+			state.add_theme_color_override("font_color", Ui.OK)
+		else:
+			state.text = "Terminar"
+			state.add_theme_color_override("font_color", Ui.DANGER)
+
+
+## Fecha a tela sem resposta (a partida seguiu, acabou ou a conexão caiu).
+func close() -> void:
+	visible = false
+	_count = 0
+	_voting = false
+
+
+## Fundo escuro e uma coluna centralizada; devolve a coluna.
+func _open() -> VBoxContainer:
 	for child in get_children():
 		child.queue_free()
 	var bg := ColorRect.new()
-	bg.color = Color(0, 0, 0, 0.75)
+	bg.color = Color(0.02, 0.025, 0.035, 0.82)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	center.theme = Ui.theme()
 	add_child(center)
-	var column := VBoxContainer.new()
-	column.custom_minimum_size.x = 760   # sem largura mínima o texto quebraria a cada palavra
-	column.add_theme_constant_override("separation", 24)
+	var column := Ui.vbox(22)
 	center.add_child(column)
-	column.add_child(_text(title, 36))
-	column.add_child(_text(subtitle, 18))
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 20)
-	column.add_child(row)
-	return row
+	return column
 
 
-## Fecha a tela sem resposta (a partida acabou ou a conexão caiu).
-func close() -> void:
-	visible = false
-	_count = 0
+func _heading(title: String, subtitle: String) -> Control:
+	var col := Ui.vbox(4)
+	var t := Ui.label(title, 30, Ui.TEXT, true)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(t)
+	var s := Ui.label(subtitle, 15, Ui.MUTED)
+	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(s)
+	return col
 
 
-func _wait(count: int) -> int:
+func _wait(count: int, hide_after := true) -> int:
 	_count = count
 	visible = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var index: int = await picked
-	visible = false
+	_count = 0
+	if hide_after:
+		visible = false
 	return index
 
 
-func _card(id: String, index: int, owned: int) -> Button:
+## Carta da escolha, no visual do editor: faixa da cor do grupo no topo, tecla e cópias,
+## ícone, nome, grupo e raridade, e a descrição numa área fixa que rola.
+func _card(id: String, index: int, owned: int) -> Control:
 	var card: Dictionary = CardDB.CARDS[id]
-	var button := Button.new()
-	button.custom_minimum_size = Vector2(240, 400)
-	button.pressed.connect(func(): picked.emit(index))
 	var color: Color = CardDB.CATEGORY_COLORS[card["cat"]]
-	button.add_theme_stylebox_override("normal", Ui.box(Ui.SURFACE, 14, color.darkened(0.3), 2))
-	button.add_theme_stylebox_override("hover", Ui.box(Ui.SURFACE_HI, 14, color, 3))
-	button.add_theme_stylebox_override("pressed", Ui.box(Ui.SURFACE_HI, 14, Color.WHITE, 3))
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = CARD_SIZE
+	panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	panel.gui_input.connect(func(e: InputEvent):
+		var mb := e as InputEventMouseButton
+		if mb and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT and _count > 0:
+			picked.emit(index))
+	panel.mouse_entered.connect(_style_card.bind(index, true))
+	panel.mouse_exited.connect(_style_card.bind(index, false))
+	_cards.append([panel, color])
+	_style_card(index, false)
+	var col := Ui.vbox(8)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(col)
 
-	var column := VBoxContainer.new()
-	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 16)
-	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_theme_constant_override("separation", 10)
-	button.add_child(column)
-	column.add_child(_text("[%d]" % (index + 1), 18))
-	var tags := HBoxContainer.new()
-	tags.alignment = BoxContainer.ALIGNMENT_CENTER
-	tags.add_theme_constant_override("separation", 10)
-	tags.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_child(tags)
-	var cat := _text(card["cat"], 15)
-	cat.add_theme_color_override("font_color", CardDB.CATEGORY_COLORS[card["cat"]])
-	cat.autowrap_mode = TextServer.AUTOWRAP_OFF
-	tags.add_child(cat)
-	var rarity := _text(CardDB.rarity_name(id), 15)
-	rarity.add_theme_color_override("font_color", CardDB.rarity_color(id))
-	rarity.autowrap_mode = TextServer.AUTOWRAP_OFF
-	tags.add_child(rarity)
-	var icon := CardIcon.make(id, 72, 1, false)
-	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	column.add_child(icon)
-	column.add_child(_text(card["name"], 26))
-	column.add_child(_text(card["desc"], 16))
+	var top := Ui.hbox(6)
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(top)
+	top.add_child(_chip(str(index + 1), Ui.SURFACE_HI, Ui.MUTED))
+	top.add_child(Ui.spacer())
 	if owned > 0:
-		var stack := _text("Você já tem %d" % owned, 16)
-		stack.add_theme_color_override("font_color", Color(1, 0.85, 0.4))
-		column.add_child(stack)
-	return button
+		var have := _chip("você tem x%d" % owned, color, Ui.BG)
+		have.tooltip_text = "Pegar de novo soma o efeito"
+		top.add_child(have)
+
+	var icon := CardIcon.make(id, 76, 1, false)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(icon)
+	var name_label := Ui.label(card["name"], 21, Ui.TEXT, true)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(name_label)
+	var tags := Ui.hbox(8)
+	tags.alignment = BoxContainer.ALIGNMENT_CENTER
+	tags.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(tags)
+	for t in [[card["cat"], color.lerp(Color.WHITE, 0.15)], ["·", Ui.LINE.lightened(0.3)],
+			[CardDB.rarity_name(id), CardDB.rarity_color(id)]]:
+		var l := Ui.label(t[0], 13, t[1], true)
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tags.add_child(l)
+	col.add_child(HSeparator.new())
+	var desc := Ui.scroll_text(card["desc"], DESC_HEIGHT, 14, Ui.TEXT.darkened(0.15))
+	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(desc)
+	return panel
 
 
-func _text(text: String, size: int) -> Label:
+func _style_card(index: int, hot: bool) -> void:
+	if index >= _cards.size():
+		return
+	var panel: PanelContainer = _cards[index][0]
+	var color: Color = _cards[index][1]
+	# Borda na cor do grupo, mais grossa no topo; com o mouse em cima acende e cresce um pouco.
+	var style := Ui.box(Ui.SURFACE_HI if hot else Ui.SURFACE, 12, color if hot else color.darkened(0.5), 2 if hot else 1)
+	style.border_width_top = 4
+	style.set_content_margin_all(16)
+	style.content_margin_top = 14
+	if hot:
+		style.shadow_color = Color(color, 0.22)
+		style.shadow_size = 16
+	panel.add_theme_stylebox_override("panel", style)
+	panel.pivot_offset = CARD_SIZE / 2.0
+	panel.scale = Vector2.ONE * (1.03 if hot else 1.0)
+
+
+## Etiqueta pequena com fundo (tecla da carta, cópias que você já tem).
+func _chip(text: String, bg: Color, fg: Color) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.add_theme_font_size_override("font_size", size)
-	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_override("font", Ui.bold())
+	l.add_theme_color_override("font_color", fg)
+	var s := Ui.box(bg, 6)
+	s.content_margin_left = 8
+	s.content_margin_right = 8
+	s.content_margin_top = 1
+	s.content_margin_bottom = 1
+	l.add_theme_stylebox_override("normal", s)
 	return l
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
-	if not visible or GameState.menu_open or GameState.chat_open or key == null or not key.pressed or key.echo:
+	if not visible or _count == 0 or GameState.menu_open or GameState.chat_open or key == null \
+			or not key.pressed or key.echo:
 		return
 	var index := key.physical_keycode - KEY_1
 	if index >= 0 and index < _count:

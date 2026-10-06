@@ -121,48 +121,13 @@ func _page(title: String) -> VBoxContainer:
 	return col
 
 
-## Título de seção (letras pequenas) com uma linha fina embaixo.
+## Título de seção e linha de opção: os mesmos do resto do jogo (Ui.section, Ui.option_row).
 func _section(col: VBoxContainer, title: String, extra: Control = null) -> void:
-	col.add_child(Ui.gap(26))
-	var head := Ui.hbox(8)
-	col.add_child(head)
-	var label := Ui.label(title, 12, Ui.MUTED, true)
-	label.size_flags_vertical = Control.SIZE_SHRINK_END
-	head.add_child(label)
-	head.add_child(Ui.spacer())
-	if extra:
-		head.add_child(extra)
-	col.add_child(Ui.gap(6))
-	var line := HSeparator.new()
-	col.add_child(line)
+	Ui.section(col, title, extra)
 
 
-## Linha de opção: nome e frase curta à esquerda, controle à direita. Devolve o rótulo da
-## frase (para quem precisa trocar o texto).
 func _row(col: VBoxContainer, title: String, hint: String, control: Control) -> Label:
-	var row := Ui.hbox(24)
-	var texts := Ui.vbox(2)
-	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	texts.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_child(texts)
-	texts.add_child(Ui.label(title, 16, Ui.TEXT))
-	var hint_label := Ui.label(hint, 13, Ui.MUTED)
-	hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint_label.visible = hint != ""
-	texts.add_child(hint_label)
-	control.custom_minimum_size.x = maxf(control.custom_minimum_size.x, CONTROL_WIDTH)
-	control.size_flags_horizontal = Control.SIZE_SHRINK_END
-	control.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(control)
-	var pad := MarginContainer.new()
-	pad.add_theme_constant_override("margin_top", 12)
-	pad.add_theme_constant_override("margin_bottom", 12)
-	pad.add_child(row)
-	col.add_child(pad)
-	var line := HSeparator.new()
-	line.modulate.a = 0.5
-	col.add_child(line)
-	return hint_label
+	return Ui.option_row(col, title, hint, control, CONTROL_WIDTH)
 
 
 func _dropdown(items: Array, selected: int) -> OptionButton:

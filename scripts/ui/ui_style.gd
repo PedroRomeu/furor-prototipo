@@ -36,6 +36,9 @@ static func theme() -> Theme:
 		t.set_color("font_hover_pressed_color", type, ACCENT.lightened(0.3))
 		t.set_color("font_focus_color", type, TEXT)
 		t.set_color("font_disabled_color", type, MUTED.darkened(0.3))
+	# Interruptor sem a caixa de botão em volta (só o desenho do interruptor).
+	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
+		t.set_stylebox(state, "CheckButton", StyleBoxEmpty.new())
 	t.set_stylebox("normal", "LineEdit", box(SURFACE, 8, LINE))
 	t.set_stylebox("focus", "LineEdit", box(SURFACE, 8, ACCENT, 2))
 	t.set_stylebox("read_only", "LineEdit", box(SURFACE, 8))
@@ -272,3 +275,81 @@ static func grow() -> Control:
 	var c := Control.new()
 	c.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	return c
+
+
+## Texto de altura fixa que rola quando é maior (descrição das cartas no editor e na
+## escolha). O clique passa para quem está embaixo (PASS); só a roda do mouse e a barra
+## ficam com a área.
+static func scroll_text(text: String, height: float, size := 13, color := MUTED) -> ScrollContainer:
+	var box := ScrollContainer.new()
+	box.custom_minimum_size.y = height
+	box.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.mouse_filter = Control.MOUSE_FILTER_PASS
+	var bar := box.get_v_scroll_bar()
+	var track := StyleBoxFlat.new()
+	track.bg_color = Color(1, 1, 1, 0.04)
+	track.set_corner_radius_all(2)
+	track.content_margin_left = 3
+	track.content_margin_right = 3
+	bar.add_theme_stylebox_override("scroll", track)
+	for state in ["grabber", "grabber_highlight", "grabber_pressed"]:
+		var g := StyleBoxFlat.new()
+		g.bg_color = MUTED if state == "grabber" else TEXT
+		g.bg_color.a = 0.55 if state == "grabber" else 0.85
+		g.set_corner_radius_all(2)
+		bar.add_theme_stylebox_override(state, g)
+	var desc := label(text, size, color)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(desc)
+	return box
+
+
+## Título de seção (letras pequenas) com uma linha fina embaixo; extra vai à direita.
+static func section(col: VBoxContainer, title: String, extra: Control = null, top := 26.0) -> void:
+	# Num bloco próprio: o espaçamento da coluna de quem chama não abre a linha do título.
+	var block := vbox(0)
+	col.add_child(block)
+	block.add_child(gap(top))
+	var head := hbox(8)
+	block.add_child(head)
+	var l := label(title, 12, MUTED, true)
+	l.size_flags_vertical = Control.SIZE_SHRINK_END
+	head.add_child(l)
+	head.add_child(spacer())
+	if extra:
+		head.add_child(extra)
+	block.add_child(gap(6))
+	block.add_child(HSeparator.new())
+
+
+## Linha de opção (configurações, treino, sala): nome e frase curta à esquerda, controle à
+## direita, linha fina embaixo. Devolve o rótulo da frase (para quem troca o texto).
+static func option_row(col: VBoxContainer, title: String, hint: String, control: Control,
+		control_width := 300.0, pad := 12) -> Label:
+	var row := hbox(24)
+	var texts := vbox(2)
+	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	texts.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(texts)
+	texts.add_child(label(title, 16, TEXT))
+	var hint_label := label(hint, 13, MUTED)
+	hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint_label.visible = hint != ""
+	texts.add_child(hint_label)
+	control.custom_minimum_size.x = maxf(control.custom_minimum_size.x, control_width)
+	control.size_flags_horizontal = Control.SIZE_SHRINK_END
+	control.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(control)
+	var block := vbox(0)
+	col.add_child(block)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_top", pad)
+	margin.add_theme_constant_override("margin_bottom", pad)
+	margin.add_child(row)
+	block.add_child(margin)
+	var line := HSeparator.new()
+	line.modulate.a = 0.5
+	block.add_child(line)
+	return hint_label
