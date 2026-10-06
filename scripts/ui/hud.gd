@@ -48,19 +48,17 @@ var blind_tint: ColorRect
 var crosshair: Control
 var center_label: Label
 var toast_label: Label
-var score_label: Label
-var hp_label: Label
-var hp_bar: ProgressBar
-var armor_bar: ProgressBar
+var score_label: Label     # placar no topo (cada um por si), dentro de score_box
+var score_round: Label     # "RODADA 3 DE 5" acima do placar
+var score_box: Control
+var toast_box: Control     # aviso rápido ("Fulano escolheu: ...") numa pílula no topo
+var vitals: Vitals         # canto inferior esquerdo: mestra, vida, escudo e dash
+var ammo_box: Control      # canto inferior direito: munição e a arma especial
 var ammo_label: Label
-var shield_label: Label
-var perk_label: Label   # Restauração e Couraça: prontas ou quanto falta (acima da vida)
-var shield_bar: ProgressBar
-var status_label: Label
-var dash_label: Label
-var dash_bar: ProgressBar
-var master_label: Label
-var master_bar: ProgressBar
+var ammo_max: Label
+var ammo_sub: Label
+var status_row: HBoxContainer   # estados (lento, envenenado...) em selos acima da vida
+var _status_key := ""
 var fps_label: Label
 var scoreboard: Scoreboard
 var mode := "ffa"
@@ -99,35 +97,30 @@ func _ready() -> void:
 	_place(crosshair, Rect2(0.5, 0.5, 0, 0))
 	crosshair.draw.connect(_draw_crosshair)
 	add_child(crosshair)
-	score_label = _label("", 28, Rect2(0, 0.01, 1, 0.06))
-	toast_label = _label("", 22, Rect2(0, 0.08, 1, 0.06))
-	center_label = _label("", 52, Rect2(0, 0.15, 1, 0.3))
-	tab_hint = _label("", 14, Rect2(0.79, 0.005, 0.2, 0.03), HORIZONTAL_ALIGNMENT_RIGHT)
-	tab_hint.modulate.a = 0.6
-	hp_label = _label("", 22, Rect2(0.02, 0.87, 0.25, 0.05), HORIZONTAL_ALIGNMENT_LEFT)
-	perk_label = _label("", 15, Rect2(0.02, 0.84, 0.25, 0.03), HORIZONTAL_ALIGNMENT_LEFT)
-	hp_bar = _bar(Rect2(0.02, 0.92, 0.25, 0.03), Color(0.3, 0.85, 0.4))
-	armor_bar = _bar(Rect2(0.02, 0.955, 0.25, 0.012), Color(1.0, 0.8, 0.3))
-	armor_bar.max_value = Player.ARMOR_MAX
-	ammo_label = _label("", 32, Rect2(0.73, 0.87, 0.25, 0.08), HORIZONTAL_ALIGNMENT_RIGHT)
-	shield_label = _label("", 20, Rect2(0.4, 0.86, 0.2, 0.04))
-	shield_bar = _bar(Rect2(0.4, 0.905, 0.2, 0.02), Color(0.4, 0.9, 1.0))
-	shield_bar.max_value = 1.0
-	dash_label = _label("", 16, Rect2(0.4, 0.925, 0.2, 0.035))
-	dash_bar = _bar(Rect2(0.43, 0.962, 0.14, 0.012), Color(0.75, 0.6, 1.0))
-	dash_bar.max_value = 1.0
-	master_label = _label("", 18, Rect2(0.6, 0.86, 0.13, 0.04))
-	master_bar = _bar(Rect2(0.615, 0.905, 0.1, 0.02), Color(1.0, 0.56, 0.22))
-	master_bar.max_value = 1.0
-	status_label = _label("", 18, Rect2(0.25, 0.81, 0.5, 0.04))
+	_build_score_box()
+	_build_toast()
+	center_label = _label("", 46, Rect2(0, 0.15, 1, 0.3))
+	center_label.add_theme_font_override("font", Ui.bold())
+	tab_hint = _label("", 13, Rect2(0.79, 0.008, 0.2, 0.03), HORIZONTAL_ALIGNMENT_RIGHT)
+	tab_hint.add_theme_constant_override("outline_size", 3)
+	tab_hint.modulate.a = 0.55
+	vitals = Vitals.new()
+	_corner(vitals, false, Vector2(28, 26))
+	add_child(vitals)
+	_build_ammo()
+	status_row = HBoxContainer.new()
+	status_row.add_theme_constant_override("separation", 6)
+	_corner(status_row, false, Vector2(28, 132))
+	add_child(status_row)
 	spectate_label = _label("", 20, Rect2(0.25, 0.835, 0.5, 0.045))
 	spectate_label.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	spectate_hint = _label("", 15, Rect2(0.15, 0.88, 0.7, 0.035))
 	spectate_hint.modulate.a = 0.8
 	down_label = _label("", 26, Rect2(0.2, 0.56, 0.6, 0.1))
 	down_label.add_theme_color_override("font_color", Color(1.0, 0.75, 0.7))
-	mode_label = _label("", 14, Rect2(0.006, 0.005, 0.3, 0.03), HORIZONTAL_ALIGNMENT_LEFT)
-	mode_label.modulate.a = 0.6
+	mode_label = _label("", 13, Rect2(0.008, 0.008, 0.3, 0.03), HORIZONTAL_ALIGNMENT_LEFT)
+	mode_label.add_theme_constant_override("outline_size", 3)
+	mode_label.modulate.a = 0.55
 	fps_label = _label("", 14, Rect2(0.006, 0.035, 0.1, 0.03), HORIZONTAL_ALIGNMENT_LEFT)
 	fps_label.visible = GameState.show_fps
 	kill_feed = KillFeed.new()
@@ -153,19 +146,20 @@ func setup(p_me: Player, all_players: Array, p_teams := false, p_mode := "ffa", 
 	mode_label.text = GameModes.label(mode, start_lives)
 	me.damaged.connect(_on_me_damaged)
 	me.damage_dealt.connect(_on_damage_dealt)
+	vitals.me = me
 	scoreboard.setup(me, players)
 	kill_feed.me = me
 	damage_fx.me = me
 	tab_hint.text = "[%s] placar e cartas" % GameState.key_text("scoreboard")
 	if teams_on:
 		_build_team_bar()
-		score_label.visible = false
-		_place(toast_label, Rect2(0, 0.115, 1, 0.06))
+		score_box.visible = false
+		_place_toast(96)
 		_place(kill_feed, Rect2(0.55, 0.13, 0.435, 0.35))   # abaixo da barra dos times
 	if mode == "duels":
 		_build_duel_bar()
-		score_label.visible = false
-		_place(toast_label, Rect2(0, 0.115, 1, 0.06))
+		score_box.visible = false
+		_place_toast(96)
 
 
 ## Duelos, no topo: [nome] [vidas]  x  [vidas] [nome], e embaixo a fila de quem vem depois.
@@ -380,9 +374,9 @@ func set_dead_view(on: bool) -> void:
 
 ## O que só serve a quem está de pé e lutando.
 func _hide_combat(on: bool) -> void:
-	for c in [shield_label, shield_bar, perk_label, dash_label, dash_bar, master_label, master_bar,
-			ammo_label, status_label]:
-		c.visible = not on
+	vitals.combat = not on
+	ammo_box.visible = not on
+	status_row.visible = not on
 
 
 ## Caído no 2x2: some o que é de luta; a mira vira o anel do prazo e do reviver.
@@ -602,116 +596,119 @@ func _process(delta: float) -> void:
 	if me == null or ended:
 		return
 	fps_label.visible = GameState.show_fps   # pode mudar no menu de pausa
-	hp_bar.max_value = me.stats["max_health"]
-	hp_bar.value = me.health
-	hp_label.text = "Vida %d" % ceili(me.health)
-	armor_bar.value = me.armor
-	armor_bar.visible = me.armor > 0.0
-	if me.armor > 0.0:
-		hp_label.text += "   Colete %d" % ceili(me.armor)
+	vitals.tick(delta)
 	scope.visible = me.scoping
 	if scope.visible:
 		(scope.material as ShaderMaterial).set_shader_parameter("screen", scope.size)
 	crosshair.visible = not me.scoping and not dead_view
-	if me.sword_timer > 0.0:
-		ammo_label.text = "Espada  %s" % ["corte →", "corte ←", "estocada"][me.combo_step]
-	elif me.sniper_timer > 0.0:
-		ammo_label.text = "Sniper  %d" % me.sniper_shots
-	elif me.bazooka_timer > 0.0:
-		ammo_label.text = "Foguetes %d" % me.rockets_left
-	elif me.reload_timer > 0.0:
-		ammo_label.text = "Recarregando..."
-	else:
-		ammo_label.text = "%d / %d" % [me.ammo, me.stats["mag_size"]]
-	if me.pierce_left > 0 and me.bazooka_timer <= 0.0:
-		ammo_label.text += "   Perfurantes %d" % me.pierce_left
-
-	var total: float = me.stats["shield_duration"] + me.stats["shield_cooldown"]
-	if me.is_shielding():
-		shield_label.text = "ESCUDO ATIVO"
-		shield_bar.value = 1.0
-	elif me.shield_cd > 0.0:
-		shield_label.text = "Escudo [%s]" % GameState.key_text("shield")
-		shield_bar.value = 1.0 - me.shield_cd / total
-	else:
-		shield_label.text = "Escudo pronto [%s]" % GameState.key_text("shield") + ("  x%d" % (me.shield_extra + 1) if me.shield_extra > 0 else "")
-		shield_bar.value = 1.0
+	_update_ammo()
 	shield_tint.visible = me.alive and me.is_shielding()
-	# Restauração e Couraça têm recarga própria: diz quando o escudo volta a curar.
-	var perks: Array = []
-	if me.stats["shield_heal"] > 0.0:
-		perks.append(_perk_text("Cura", "pronta", me.heal_cd))
-	if me.stats["shield_armor"] > 0.0:
-		perks.append(_perk_text("Colete", "pronto", me.armor_cd))
-	perk_label.text = "   ".join(perks)
-
-	# Dash: a barra enche com a recarga; ao lado, quantos dashes no ar ainda restam.
-	var dash_total: float = me.stats["dash_cooldown"]
-	dash_bar.value = 1.0 - me.dash_cd / dash_total if dash_total > 0.0 else 1.0
-	dash_label.text = "Dash [%s]   no ar: %d" % [GameState.key_text("dash"), me.air_dashes_left]
-	dash_label.modulate.a = 1.0 if me.dash_cd <= 0.0 else 0.6
-	_update_master()
 	_update_downed()
 	if team_bar:
 		_update_team_bar()
 	if fps_label.visible:
 		fps_label.text = "%d FPS" % Engine.get_frames_per_second()
 
-	var status := PackedStringArray()
-	if me.revives_left > 0:
-		status.append("Fênix: %d" % me.revives_left)
-	if me.slow_timer > 0.0:
-		status.append("LENTO")
-	if not me.poisons.is_empty():
-		status.append("ENVENENADO")
-	if me.silence_timer > 0.0:
-		status.append("ESCUDO BLOQUEADO")
-	if me.is_hidden():
-		status.append("INVISÍVEL")
-	if me.ambush_timer > 0.0:
-		status.append("EMBOSCADA %.1f s" % me.ambush_timer)
-	if me.shrink_timer > 0.0:
-		status.append("FORMIGA %.1f s  [%s] volta" % [me.shrink_timer, GameState.key_text("master")])
-	if me.air_bonus() > 0.0:
-		status.append("NO AR +%d%% de dano" % roundi(me.air_bonus() * 100.0))
-	if me.last_stand_timer > 0.0:
-		status.append("ÚLTIMO SUSPIRO: abata alguém! %.1f" % me.last_stand_timer)
-	status_label.text = "   ".join(status)
+	_update_status()
 	blind_tint.color.a = clampf(me.blind_timer / 0.3, 0.0, 1.0) * 0.97
 	hit_time = maxf(0.0, hit_time - delta)
 	kill_time = maxf(0.0, kill_time - delta)
 	crosshair.queue_redraw()
 	toast_time -= delta
-	toast_label.modulate.a = clampf(toast_time, 0.0, 1.0)
+	toast_box.modulate.a = clampf(toast_time * 2.0, 0.0, 1.0)
 
 
-## Carta mestra: nome e tecla quando pronta, segundos na recarga; passiva só mostra o nome.
-func _update_master() -> void:
-	var id := me.master_id
-	master_label.visible = id != "" and not dead_view and not downed_view
-	master_bar.visible = id != "" and CardDB.CARDS[id].has("cooldown") and not dead_view and not downed_view
-	if id == "":
+## Munição no canto direito: número grande e o pente; embaixo, a arma especial ou o estado.
+func _update_ammo() -> void:
+	var big := str(me.ammo)
+	var small := "/ %d" % me.stats["mag_size"]
+	var sub := ""
+	var sub_color := Ui.MUTED
+	if me.sword_timer > 0.0:
+		big = ["→", "←", "↑"][me.combo_step]
+		small = ""
+		sub = "ESPADA  %.0f s" % ceilf(me.sword_timer)
+		sub_color = Ui.ACCENT
+	elif me.sniper_timer > 0.0:
+		big = str(me.sniper_shots)
+		small = "/ 1"
+		sub = "SNIPER  %.0f s" % ceilf(me.sniper_timer)
+		sub_color = Ui.ACCENT
+	elif me.bazooka_timer > 0.0:
+		big = str(me.rockets_left)
+		small = "/ %d" % Player.BAZOOKA_ROCKETS
+		sub = "BAZUCA  %.0f s" % ceilf(me.bazooka_timer)
+		sub_color = Ui.ACCENT
+	elif me.reload_timer > 0.0:
+		sub = "RECARREGANDO"
+		sub_color = Color(1, 1, 1, 0.75)
+	if me.pierce_left > 0 and me.bazooka_timer <= 0.0:
+		sub = ("%s  ·  " % sub if sub != "" else "") + "PERFURANTES %d" % me.pierce_left
+		sub_color = Bullet.PIERCE_COLOR.lerp(Color.WHITE, 0.3)
+	ammo_label.text = big
+	ammo_max.text = small
+	ammo_sub.text = sub
+	ammo_sub.add_theme_color_override("font_color", sub_color)
+	var empty: bool = me.ammo <= 1 and me.reload_timer <= 0.0 and me.bazooka_timer <= 0.0 \
+		and me.sniper_timer <= 0.0 and me.sword_timer <= 0.0
+	ammo_label.add_theme_color_override("font_color", Ui.ACCENT if empty else Color.WHITE)
+
+
+## Estados do jogador em selos acima da vida; só refaz quando a lista muda.
+func _update_status() -> void:
+	var items := []
+	if me.revives_left > 0:
+		items.append(["FÊNIX %d" % me.revives_left, Color(1.0, 0.6, 0.25)])
+	if me.slow_timer > 0.0:
+		items.append(["LENTO", Color(0.55, 0.8, 1.0)])
+	if not me.poisons.is_empty():
+		items.append(["ENVENENADO", Color(0.55, 0.95, 0.35)])
+	if me.silence_timer > 0.0:
+		items.append(["ESCUDO BLOQUEADO", Ui.DANGER])
+	if me.is_hidden():
+		items.append(["INVISÍVEL", Color(0.75, 0.6, 1.0)])
+	if me.ambush_timer > 0.0:
+		items.append(["EMBOSCADA %.1f" % me.ambush_timer, Color(0.8, 0.55, 1.0)])
+	if me.shrink_timer > 0.0:
+		items.append(["FORMIGA %.1f  ·  [%s] volta" % [me.shrink_timer, GameState.key_text("master")], Color(0.78, 0.64, 1.0)])
+	if me.air_bonus() > 0.0:
+		items.append(["NO AR +%d%% DE DANO" % roundi(me.air_bonus() * 100.0), Ui.ACCENT])
+	if me.last_stand_timer > 0.0:
+		items.append(["ÚLTIMO SUSPIRO %.1f: ABATA ALGUÉM" % me.last_stand_timer, Ui.DANGER])
+	var key := str(items)
+	if key == _status_key:
 		return
-	var card: Dictionary = CardDB.CARDS[id]
-	master_label.add_theme_color_override("font_color", CardDB.CATEGORY_COLORS[card["cat"]].lerp(Color.WHITE, 0.3))
-	if not card.has("cooldown"):
-		master_label.text = card["name"]
-		master_label.modulate.a = 0.7
-		return
-	var total: float = card["cooldown"]
-	master_bar.value = 1.0 - me.master_cd / total
-	if me.master_cd > 0.0:
-		master_label.text = "%s  %d" % [card["name"], ceili(me.master_cd)]
-		master_label.modulate.a = 0.6
-	else:
-		master_label.text = "%s [%s]" % [card["name"], GameState.key_text("master")]
-		master_label.modulate.a = 1.0
+	_status_key = key
+	for c in status_row.get_children():
+		c.queue_free()
+	for it in items:
+		status_row.add_child(_status_chip(it[0], it[1]))
+
+
+## Selo de estado: texto em negrito na cor, fundo escuro e um traço da cor à esquerda.
+func _status_chip(text: String, color: Color) -> Control:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_override("font", Ui.bold())
+	l.add_theme_color_override("font_color", color.lerp(Color.WHITE, 0.2))
+	var box := Ui.box(Color(0.05, 0.06, 0.08, 0.8), 6)
+	box.border_color = color
+	box.border_width_left = 3
+	box.content_margin_left = 9
+	box.content_margin_right = 9
+	box.content_margin_top = 3
+	box.content_margin_bottom = 3
+	l.add_theme_stylebox_override("normal", box)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return l
 
 
 func set_score(p_score: Dictionary, round_num: int, block_end: int) -> void:
 	round_score = p_score
 	round_text = "Rodada %d de %d" % [round_num, block_end]
-	score_label.text = "%s     (rodada %d de %d)" % [score_text(round_score), round_num, block_end]
+	score_label.text = score_text(round_score)
+	score_round.text = "RODADA %d DE %d" % [round_num, block_end]
 	if team_bar:
 		for t in 2:
 			team_scores[t].text = str(_team_score(t))
@@ -732,7 +729,7 @@ func _sync_scoreboard() -> void:
 
 
 func show_scoreboard(on: bool) -> void:
-	for l in [center_label, toast_label, score_label, spectate_label]:
+	for l in [center_label, toast_box, score_box, spectate_label]:
 		l.self_modulate.a = 0.0 if on else 1.0   # o placar já mostra isso; texto solto atrapalha
 	if team_bar:
 		team_bar.visible = not on
@@ -775,6 +772,97 @@ func toast(text: String) -> void:
 	toast_time = 3.0
 
 
+## Placar do topo (cada um por si): pílula com a rodada pequena em cima e o placar.
+func _build_score_box() -> void:
+	var holder := CenterContainer.new()
+	_place(holder, Rect2(0, 0, 1, 0))
+	holder.offset_top = 12
+	add_child(holder)
+	score_box = holder
+	var pill := PanelContainer.new()
+	var style := Ui.box(Color(0.05, 0.06, 0.08, 0.72), 10)
+	style.content_margin_left = 18
+	style.content_margin_right = 18
+	style.content_margin_top = 4
+	style.content_margin_bottom = 6
+	pill.add_theme_stylebox_override("panel", style)
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(pill)
+	var col := Ui.vbox(0)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.add_child(col)
+	score_round = _ui_label("", 11, Color(1, 1, 1, 0.55), true)
+	score_round.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(score_round)
+	score_label = _ui_label("", 20, Color.WHITE, true)
+	score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(score_label)
+
+
+func _build_toast() -> void:
+	var holder := CenterContainer.new()
+	add_child(holder)
+	toast_box = holder
+	_place_toast(78)
+	var pill := PanelContainer.new()
+	var style := Ui.box(Color(0.05, 0.06, 0.08, 0.72), 8)
+	style.content_margin_left = 14
+	style.content_margin_right = 14
+	style.content_margin_top = 5
+	style.content_margin_bottom = 6
+	pill.add_theme_stylebox_override("panel", style)
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(pill)
+	toast_label = _ui_label("", 15, Color(1, 1, 1, 0.9))
+	pill.add_child(toast_label)
+	holder.modulate.a = 0.0
+
+
+func _place_toast(top: float) -> void:
+	_place(toast_box, Rect2(0, 0, 1, 0))
+	toast_box.offset_top = top
+
+
+## Munição no canto inferior direito: o número grande, o pente ao lado e uma linha embaixo.
+func _build_ammo() -> void:
+	var col := Ui.vbox(0)
+	col.alignment = BoxContainer.ALIGNMENT_END
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.custom_minimum_size = Vector2(220, 70)
+	_corner(col, true, Vector2(28, 22))
+	add_child(col)
+	ammo_box = col
+	var row := Ui.hbox(6)
+	row.alignment = BoxContainer.ALIGNMENT_END
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(row)
+	ammo_label = _ui_label("", 40, Color.WHITE, true)
+	row.add_child(ammo_label)
+	ammo_max = _ui_label("", 16, Color(1, 1, 1, 0.5))
+	ammo_max.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	ammo_max.size_flags_vertical = Control.SIZE_FILL
+	ammo_max.custom_minimum_size.y = 46
+	row.add_child(ammo_max)
+	ammo_sub = _ui_label("", 12, Ui.MUTED, true)
+	ammo_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	col.add_child(ammo_sub)
+
+
+## Prende um controle num canto de baixo, a "margin" px das bordas, crescendo para cima.
+func _corner(c: Control, right: bool, margin: Vector2) -> void:
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.anchor_left = 1.0 if right else 0.0
+	c.anchor_right = c.anchor_left
+	c.anchor_top = 1.0
+	c.anchor_bottom = 1.0
+	c.grow_horizontal = Control.GROW_DIRECTION_BEGIN if right else Control.GROW_DIRECTION_END
+	c.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	c.offset_left = -margin.x if right else margin.x
+	c.offset_right = c.offset_left
+	c.offset_bottom = -margin.y
+	c.offset_top = -margin.y
+
+
 ## As cartas agora ficam no placar (Tab); com ele aberto, atualiza na hora.
 func refresh_cards() -> void:
 	scoreboard.rebuild()
@@ -811,10 +899,6 @@ func _rect(c: Color) -> ColorRect:
 
 
 ## Label esticado sobre uma região da tela (em frações: 0 a 1), com o texto alinhado dentro dela.
-func _perk_text(what: String, ready_word: String, cd: float) -> String:
-	return "%s no escudo: %s" % [what, ready_word] if cd <= 0.0 else "%s no escudo: %.1f s" % [what, cd]
-
-
 func _label(text: String, size: int, area: Rect2,
 		h := HORIZONTAL_ALIGNMENT_CENTER, v := VERTICAL_ALIGNMENT_CENTER) -> Label:
 	var l := Label.new()
@@ -827,17 +911,6 @@ func _label(text: String, size: int, area: Rect2,
 	l.add_theme_color_override("font_outline_color", Color.BLACK)
 	add_child(l)
 	return l
-
-
-func _bar(area: Rect2, fill: Color) -> ProgressBar:
-	var bar := ProgressBar.new()
-	_place(bar, area)
-	bar.show_percentage = false
-	var style := StyleBoxFlat.new()
-	style.bg_color = fill
-	bar.add_theme_stylebox_override("fill", style)
-	add_child(bar)
-	return bar
 
 
 func _place(c: Control, area: Rect2) -> void:

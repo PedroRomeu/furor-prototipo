@@ -111,6 +111,8 @@ func _ready() -> void:
 	pause_menu.online = Net.online
 	add_child(pause_menu)
 	pause_menu.resumed.connect(_on_resumed)
+	# A pausa mostra o placar; a HUD por trás só atrapalharia (aparecia cortada pelo painel).
+	pause_menu.visibility_changed.connect(func(): hud.visible = not pause_menu.visible)
 	pause_menu.leave_requested.connect(_to_menu)
 	pause_menu.quit_requested.connect(_quit)
 	# Arena provisória (igual em todas as máquinas) até a primeira rodada.
