@@ -400,6 +400,7 @@ const SHRINK_SCALE := 0.4
 const SHRINK_SPEED := 0.6
 const SHRINK_SLAM_RANGE := 4.0
 const SHRINK_SLAM_DAMAGE := 20.0
+const SHRINK_SLAM_PUSH := 1.45    # empurrão 1,45x o da Onda de Choque: ~10 m em vez de ~5,5 (pedido do usuário: forte, sem exagero)
 const PIERCE_SHOTS := 3          # Perfurante: tiros por uso...
 const PIERCE_SPEED := 3.0        # ...quantas vezes mais rápidos
 # Câmera e arma em primeira pessoa
@@ -1867,10 +1868,11 @@ func _net_call(method: String, args: Array) -> void:
 		callv(method, args)
 
 
-func receive_shockwave(from_pos: Vector3, dmg: float, from_name: String) -> void:
+## power: força do empurrão (1 = Onda de Choque, Pancada, Meteoro; a Formiga empurra mais).
+func receive_shockwave(from_pos: Vector3, dmg: float, from_name: String, power := 1.0) -> void:
 	var push := global_position - from_pos
 	push.y = 0.0
-	knockback(push.normalized() * 14.0 + Vector3.UP * 5.0)
+	knockback(push.normalized() * 14.0 * power + Vector3.UP * 5.0 * power)
 	take_damage(dmg, get_parent().get_node_or_null(from_name) as Player)
 
 
@@ -2097,7 +2099,7 @@ func _end_shrink(slam: bool) -> void:
 	if slam and alive:
 		for enemy in enemies():
 			if global_position.distance_to(enemy.global_position) < SHRINK_SLAM_RANGE:
-				enemy.remote_call("receive_shockwave", [global_position, SHRINK_SLAM_DAMAGE, String(name)])
+				enemy.remote_call("receive_shockwave", [global_position, SHRINK_SLAM_DAMAGE, String(name), SHRINK_SLAM_PUSH])
 
 
 @rpc("authority", "call_remote", "reliable")
