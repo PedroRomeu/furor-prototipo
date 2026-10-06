@@ -85,6 +85,10 @@ const MASTERS := {
 	"bazuca": {"name": "Bazuca", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 18.0,
 		"desc": "Q: troca a arma por uma bazuca por 6 s. 3 foguetes retos, com o dobro do dano, que explodem (4 m). Recarga de 18 s.",
 		"mods": [{"stat": "bazooka", "add": 1}]},
+	# Sniper (2026-10-06, desenho do usuário; números meus): como a Bazuca, troca de arma no Q.
+	"sniper": {"name": "Sniper", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 15.0,
+		"desc": "Q: troca a arma por uma sniper com UM tiro, por até 8 s. O tiro é um laser: reto, quase instantâneo, atravessa todas as paredes e causa 3x o dano. Botão direito mira com zoom. Recarga de 15 s.",
+		"mods": [{"stat": "sniper", "add": 1}]},
 	"perfurante": {"name": "Perfurante", "cat": "Balas", "rarity": "mitico", "master": true, "cooldown": 12.0,
 		"desc": "Q: os próximos 3 tiros vão retos, sem queda, 3x mais rápidos e atravessando paredes. Recarga de 12 s.",
 		"mods": [{"stat": "pierce", "add": 1}]},

@@ -76,6 +76,73 @@ static func burst(parent: Node, pos: Vector3, radius: float, color: Color, time 
 	tween.chain().tween_callback(mi.queue_free)
 
 
+## Feixe reto que some rápido (o tiro da Sniper): uma fita virada para a câmera, como os
+## rastros das balas, para aparecer de qualquer ângulo (um cilindro fino visto de ponta,
+## na direção da mira, quase sumia).
+static func beam(parent: Node, from: Vector3, to: Vector3, color: Color, width := 0.07, time := 0.45) -> void:
+	if from.distance_to(to) < 0.01:
+		return
+	var b := Beam.new()
+	b.a = from
+	b.b = to
+	b.width = width
+	b.total = time
+	b.life = time
+	b.color = color
+	parent.add_child(b)
+
+
+class Beam extends MeshInstance3D:
+	var a := Vector3.ZERO
+	var b := Vector3.ZERO
+	var width := 0.07
+	var total := 0.45
+	var life := 0.45
+	var color := Color.WHITE
+	var im := ImmediateMesh.new()
+	var mat := StandardMaterial3D.new()
+
+	func _ready() -> void:
+		mesh = im
+		top_level = true
+		global_transform = Transform3D.IDENTITY
+		cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		_draw_ribbon()
+
+	func _process(delta: float) -> void:
+		life -= delta
+		if life <= 0.0:
+			queue_free()
+			return
+		_draw_ribbon()
+
+	func _draw_ribbon() -> void:
+		var cam := get_viewport().get_camera_3d()
+		if cam == null:
+			return
+		var k := clampf(life / total, 0.0, 1.0)
+		var eye := cam.global_position
+		var dir := b - a
+		var side_a := dir.cross(eye - a)
+		var side_b := dir.cross(eye - b)
+		if side_a.length_squared() < 0.000001 or side_b.length_squared() < 0.000001:
+			return
+		# Mais fina na saída: perto da câmera a perspectiva a deixaria larga demais.
+		side_a = side_a.normalized() * width * 0.25 * (0.4 + 0.6 * k)
+		side_b = side_b.normalized() * width * (0.4 + 0.6 * k)
+		mat.albedo_color = Color(color, 0.95 * k)
+		im.clear_surfaces()
+		im.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
+		for v in [a + side_a, a - side_a, b + side_b, a - side_a, b - side_b, b + side_b]:
+			im.surface_add_vertex(v)
+		im.surface_end()
+
+
 ## Número de dano que sobe e some. Crítico: amarelo e maior.
 static func number(parent: Node, pos: Vector3, amount: float, crit := false) -> void:
 	if not _allowed("number"):

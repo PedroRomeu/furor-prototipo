@@ -61,7 +61,7 @@ const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", 
 	"slow", "push", "shield_break", "target_bounce", "execute", "reflected", "gravity",
 	"boomerang", "returning", "bounce_damage", "sticky", "split", "grow", "swap", "blind",
 	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls",
-	"toxic", "hole"]
+	"toxic", "hole", "laser"]
 ## Bala Fantasma: só paredes contam (superfície quase em pé); no chão e no topo das peças a
 ## bala para ou quica como as outras.
 const GHOST_WALL_NORMAL_Y := 0.7
@@ -109,6 +109,7 @@ var split := 0
 var grow := 0.0
 var swap := false
 var blind := 0.0
+var laser := false   # tiro da Sniper: deixa um feixe reto ao nascer (em todas as máquinas)
 var toxic := 0   # Nuvem Tóxica: cópias (AreaField)
 var hole := 0    # Buraco Negro: cópias (AreaField)
 var lazy_top := 0.0
@@ -177,6 +178,8 @@ static func fire(from: Player, pos: Vector3, dir: Vector3, damage_mult := 1.0, w
 	b.velocity = dir * speed
 	b.sound = with_sound
 	b._launch(from.get_parent(), pos)
+	if b.laser:
+		b._laser_beam()
 	return b
 
 
@@ -196,6 +199,8 @@ static func from_data(parent: Node, data: Dictionary) -> void:
 	b.global_position = data["pos"]
 	b.reset_physics_interpolation()
 	b._orient()
+	if b.laser:
+		b._laser_beam()
 	owner_player.reveal()
 
 
@@ -615,6 +620,15 @@ func _finish_hit(point: Vector3, skip: Player) -> void:
 		Effects.burst(get_parent(), point, maxf(0.45, radius * 3.0), Color(1, 1, 1), 0.1)
 		Effects.sparks(get_parent(), point, Color(1.0, 0.35, 0.3))
 	queue_free()
+
+
+## Sniper: o feixe vai do cano até onde a bala chega em 0,4 s (atravessa as paredes).
+## Desenhado no disparo (e ao chegar pela rede): a 400 m/s a bala pode acertar e sumir no
+## primeiro quadro.
+func _laser_beam() -> void:
+	var dir := velocity.normalized()
+	Effects.beam(get_parent(), global_position, global_position + dir * minf(160.0, velocity.length() * 0.4),
+		Player.SNIPER_COLOR)
 
 
 ## Nuvem Tóxica e Buraco Negro onde a bala bateu (em todas as máquinas, sem rede).

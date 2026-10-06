@@ -105,6 +105,8 @@ func _master(foe: Player, sees: bool) -> void:
 		p.in_master = true
 	elif p.stats["bazooka"] > 0:
 		p.in_master = true
+	elif p.stats["sniper"] > 0 and p.global_position.distance_to(foe.global_position) > NEAR:
+		p.in_master = true
 	elif p.stats["pierce"] > 0 and p.pierce_left == 0:
 		p.in_master = true
 
@@ -207,8 +209,9 @@ func _aim_and_shoot(delta: float, foe: Player, sees: bool, wish: Vector3) -> voi
 		var error := AIM_ERROR * (6.0 if p.blind_timer > 0.0 else 1.0)
 		aim_offset = Vector3(randf_range(-1, 1), randf_range(-0.6, 0.6), randf_range(-1, 1)) * error
 	var rocket := p.bazooka_timer > 0.0
-	var straight: bool = rocket or p.pierce_left > 0 or p.stats["guided"] > 0
-	var speed: float = Player.ROCKET_SPEED if rocket else p.stats["bullet_speed"]
+	var sniping := p.sniper_timer > 0.0
+	var straight: bool = rocket or sniping or p.pierce_left > 0 or p.stats["guided"] > 0
+	var speed: float = Player.ROCKET_SPEED if rocket else (Player.SNIPER_SPEED if sniping else p.stats["bullet_speed"])
 	if not rocket and p.pierce_left > 0:
 		speed *= Player.PIERCE_SPEED
 	var travel := eye.distance_to(foe.global_position) / speed

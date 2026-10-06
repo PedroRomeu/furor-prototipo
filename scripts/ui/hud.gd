@@ -23,6 +23,22 @@ var spectate_label: Label
 var spectate_hint: Label
 var dead_view := false
 var downed_view := false
+var scope: ColorRect      # luneta da Sniper: tela escura com um círculo e a cruz fina
+## Luneta num shader só (um retângulo na tela toda): fora do círculo, preto; dentro, a
+## cruz fina com um vão no meio e uma borda escura. Uma chamada de desenho, como a mira.
+const SCOPE_SHADER := """
+shader_type canvas_item;
+uniform vec2 screen = vec2(1280.0, 720.0);
+void fragment() {
+	vec2 p = (UV - 0.5) * screen;
+	float r = length(p) / (screen.y * 0.46);
+	float outside = smoothstep(0.985, 1.0, r);
+	float rim = smoothstep(0.9, 1.0, r) * 0.6;
+	float line = (abs(p.x) < 1.0 || abs(p.y) < 1.0) && length(p) > 18.0 ? 0.85 : 0.0;
+	float a = max(max(outside, rim), line);
+	COLOR = vec4(0.0, 0.0, 0.0, a);
+}
+"""
 var reviving_who: Player = null   # parceiro caído que você está revivendo (anel verde na mira)
 var down_label: Label
 
@@ -69,6 +85,15 @@ func _ready() -> void:
 	damage_fx = DamageFeedback.new()
 	add_child(damage_fx)
 	blind_tint = _rect(Color(1, 1, 1, 0))
+	scope = ColorRect.new()
+	scope.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scope.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var scope_mat := ShaderMaterial.new()
+	scope_mat.shader = Shader.new()
+	scope_mat.shader.code = SCOPE_SHADER
+	scope.material = scope_mat
+	scope.visible = false
+	add_child(scope)
 	crosshair = Control.new()
 	_place(crosshair, Rect2(0.5, 0.5, 0, 0))
 	crosshair.draw.connect(_draw_crosshair)
@@ -518,6 +543,9 @@ func _draw_ammo_arc() -> void:
 	if me.bazooka_timer > 0.0:
 		count = Player.BAZOOKA_ROCKETS
 		left = me.rockets_left
+	elif me.sniper_timer > 0.0:
+		count = 1
+		left = me.sniper_shots
 	if count <= 0:
 		return
 	var span := deg_to_rad(AMMO_SPAN)
@@ -578,7 +606,13 @@ func _process(delta: float) -> void:
 	armor_bar.visible = me.armor > 0.0
 	if me.armor > 0.0:
 		hp_label.text += "   Colete %d" % ceili(me.armor)
-	if me.bazooka_timer > 0.0:
+	scope.visible = me.scoping
+	if scope.visible:
+		(scope.material as ShaderMaterial).set_shader_parameter("screen", scope.size)
+	crosshair.visible = not me.scoping and not dead_view
+	if me.sniper_timer > 0.0:
+		ammo_label.text = "Sniper  %d" % me.sniper_shots
+	elif me.bazooka_timer > 0.0:
 		ammo_label.text = "Foguetes %d" % me.rockets_left
 	elif me.reload_timer > 0.0:
 		ammo_label.text = "Recarregando..."

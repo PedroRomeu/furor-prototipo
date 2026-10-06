@@ -140,7 +140,9 @@ shows in a corner during the match.
   in its own slot; click it to choose another. The **equipped** deck is the one used in
   matches.
 - **Master card**: each deck has one, picked in its own slot in the editor, outside the
-  card count. You start every match with it: **Bazuca** (Weapon, Q: 6 s of
+  card count. You start every match with it: **Sniper** (Weapon, Q: a sniper with ONE laser shot
+  that goes through every wall and deals 3x damage; right click to aim with the scope),
+  **Bazuca** (Weapon, Q: 6 s of
   bazooka, 3 rockets), **Perfurante** (Bullets, Q: 3 straight fast shots that go through
   walls), **Bastião** (Shield, Q: a wall that returns bullets for 4 s), **Último Suspiro**
   (Body: a fatal hit leaves you at 1 health for 3 s; get a kill in that time and come back

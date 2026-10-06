@@ -112,6 +112,7 @@ const BASE_STATS := {
 	# Cartas mestras (CardDB.MASTERS)
 	"updraft": 0,
 	"bazooka": 0,
+	"sniper": 0,
 	"barrier": 0,
 	"pierce": 0,
 	"guided": 0,   # Piloto, mestra guardada (CardDB.SHELVED_MASTERS)
@@ -372,6 +373,23 @@ const ROCKET_SPEED := 30.0
 const ROCKET_DAMAGE := 2.0       # vezes o dano da arma
 const ROCKET_EXPLOSION := 4.0
 const LAST_STAND_TIME := 3.0     # Último Suspiro
+## Sniper (2026-10-06, desenho do usuário; números meus): Q dá a sniper por SNIPER_TIME
+## ou até o único tiro. O tiro é um laser: reto, SNIPER_SPEED (quase instantâneo),
+## atravessa todas as paredes e causa SNIPER_DAMAGE x o dano da arma (3x 34 = 102: mata
+## quem tem a vida base). Botão direito mira com zoom (campo de visão SCOPE_FOV, mouse
+## mais lento na mesma proporção, anda a SCOPE_SPEED).
+const SNIPER_TIME := 8.0
+const SNIPER_DAMAGE := 3.0
+const SNIPER_SPEED := 400.0
+const SNIPER_DRAW := 0.35        # tempo para sacar a sniper antes de poder atirar
+const SNIPER_COLOR := Color(1.0, 0.35, 0.3)
+const SNIPER_MODEL := "res://assets/blasters/blaster-e.glb"
+const SCOPE_FOV := 24.0
+## O modelo da sniper (blaster-e) tem a origem na ponta do cano e 1,39 m para trás: nessa
+## escala e posição a coronha fica logo à frente da câmera e o cano aponta para a mira.
+const SNIPER_VIEW_SCALE := 0.33
+const SNIPER_VIEW_POS := Vector3(0.02, 0.0, -0.15)
+const SCOPE_SPEED := 0.6
 const PIERCE_SHOTS := 3          # Perfurante: tiros por uso...
 const PIERCE_SPEED := 3.0        # ...quantas vezes mais rápidos
 # Câmera e arma em primeira pessoa
@@ -391,6 +409,10 @@ var master_id := ""
 var master_cd := 0.0
 var bazooka_timer := 0.0
 var rockets_left := 0
+var sniper_timer := 0.0    # Sniper na mão por mais quanto tempo
+var sniper_shots := 0
+var scoping := false       # mirando com a luneta (botão direito com a Sniper)
+var in_aim := false
 var pierce_left := 0       # Perfurante: tiros carregados
 var pierce_shot := false   # o disparo atual (com a rajada) é perfurante
 var last_stand_timer := 0.0
@@ -536,6 +558,7 @@ var anim: AnimationPlayer
 var aim_arm: AimArm
 var gun: Node3D
 var bazooka: Node3D     # aparece no lugar da arma enquanto a Bazuca dura
+var sniper: Node3D      # idem, com a Sniper
 var ring: MeshInstance3D
 var viewmodel: Node3D
 var shield_mesh: MeshInstance3D
@@ -647,6 +670,13 @@ func _build_viewmodel() -> void:
 	bazooka.position = Vector3(0.06, -0.02, 0.0)
 	bazooka.visible = false
 	viewmodel.add_child(bazooka)
+	sniper = load(SNIPER_MODEL).instantiate()
+	_no_shadows(sniper)
+	sniper.scale = Vector3.ONE * SNIPER_VIEW_SCALE
+	sniper.rotation.y = 0.06
+	sniper.position = SNIPER_VIEW_POS
+	sniper.visible = false
+	viewmodel.add_child(sniper)
 	muzzle = Marker3D.new()
 	muzzle.position = Vector3(-0.01, 0.025, -0.17) + _muzzle_shift() * VIEWMODEL_SCALE
 	viewmodel.add_child(muzzle)
@@ -687,6 +717,12 @@ func _build_body() -> void:
 	bazooka.position = gun.position
 	bazooka.visible = false
 	hand.add_child(bazooka)
+	sniper = load(SNIPER_MODEL).instantiate()
+	sniper.scale = gun.scale
+	sniper.rotation = gun.rotation
+	sniper.position = gun.position
+	sniper.visible = false
+	hand.add_child(sniper)
 	muzzle = Marker3D.new()
 	muzzle.position = Vector3(0, 0.04, -0.3) + _muzzle_shift()
 	gun.add_child(muzzle)
@@ -743,6 +779,9 @@ func reset_for_round(spawn: Transform3D) -> void:
 	rockets_left = 0
 	pierce_left = 0
 	pierce_shot = false
+	sniper_timer = 0.0
+	sniper_shots = 0
+	scoping = false
 	_show_bazooka(false)
 	last_stand_timer = 0.0
 	last_stand_used = false
@@ -833,6 +872,8 @@ func _input(event: InputEvent) -> void:
 		# O giro do corpo vai para look_yaw e é aplicado no passo de física (o corpo é
 		# interpolado); a câmera já usa look_yaw no quadro seguinte.
 		var sens := GameState.mouse_sens
+		if scoping:
+			sens *= camera.fov / BASE_FOV   # com zoom, o mouse anda na mesma proporção
 		look_yaw = wrapf(look_yaw - motion.relative.x * sens, -PI, PI)
 		head.rotate_x(-motion.relative.y * sens)
 		head.rotation.x = clampf(head.rotation.x, -1.5, 1.5)
@@ -863,6 +904,10 @@ func _read_local_input() -> void:
 	in_click = _clicked
 	_clicked = false
 	in_shield = Input.is_action_just_pressed("shield")
+	# Com a Sniper na mão, o botão direito é a luneta (fixo), mesmo que o escudo use ele.
+	in_aim = captured and sniper_timer > 0.0 and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
+	if sniper_timer > 0.0 and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+		in_shield = false
 	in_dash = Input.is_action_just_pressed("dash")
 	in_reload = Input.is_action_just_pressed("reload")
 	in_master = Input.is_action_just_pressed("master")
@@ -902,8 +947,6 @@ func _process(delta: float) -> void:
 		_update_hit_flash(delta)
 	if is_human:
 		_camera_feel(delta)
-		if viewmodel:
-			viewmodel.visible = not downed   # caído não segura a arma
 
 
 func _update_animation() -> void:
@@ -1123,7 +1166,11 @@ func _camera_feel(delta: float) -> void:
 	head.position.y = lerpf(head.position.y, eye, minf(1.0, delta * 14.0))
 	var hspeed := Vector2(velocity.x, velocity.z).length()
 	var fov := BASE_FOV + clampf((hspeed - 9.0) / 10.0, 0.0, 1.0) * SPEED_FOV
-	camera.fov = lerpf(camera.fov, fov, minf(1.0, delta * 6.0))
+	if scoping:
+		fov = SCOPE_FOV
+	camera.fov = lerpf(camera.fov, fov, minf(1.0, delta * (18.0 if scoping else 6.0)))
+	if viewmodel:
+		viewmodel.visible = not downed and not scoping
 	var roll := -in_move.x * 0.012 + (0.04 if sliding else 0.0)
 	cam_roll = lerpf(cam_roll, roll, minf(1.0, delta * 8.0))
 	recoil = move_toward(recoil, 0.0, delta * 6.0)
@@ -1217,6 +1264,13 @@ func _tick(delta: float) -> void:
 		if bazooka_timer <= 0.0 or (rockets_left <= 0 and fire_timer <= 0.0):
 			bazooka_timer = 0.0
 			_show_bazooka(false)
+	if sniper_timer > 0.0:
+		sniper_timer -= delta
+		if sniper_timer <= 0.0 or (sniper_shots <= 0 and fire_timer <= 0.0):
+			sniper_timer = 0.0
+			scoping = false
+			_show_weapon(0)
+	scoping = sniper_timer > 0.0 and sniper_shots > 0 and in_aim and alive
 	if last_stand_timer > 0.0:
 		last_stand_timer -= delta
 		if last_stand_timer <= 0.0 and alive:
@@ -1279,6 +1333,8 @@ func _target_speed() -> float:
 		speed *= 1.0 + stats["bloodlust"]
 	if ambush_timer > 0.0:
 		speed *= 1.0 + AMBUSH_SPEED
+	if scoping:
+		speed *= SCOPE_SPEED
 	if stats["chase"] > 0.0 and _toward_enemy():
 		speed *= 1.0 + stats["chase"]
 	return speed
@@ -1840,6 +1896,11 @@ func _act(delta: float) -> void:
 			shot_queued = 0.0
 			_fire_rocket()
 		return
+	if sniper_timer > 0.0:
+		if trigger and not is_shielding() and fire_timer <= 0.0 and sniper_shots > 0:
+			shot_queued = 0.0
+			_fire_sniper()
+		return
 	if in_reload and reload_timer <= 0.0 and ammo < stats["mag_size"] and burst_left == 0:
 		_start_reload()
 	if burst_left > 0:
@@ -1878,6 +1939,13 @@ func _use_master() -> void:
 		burst_left = 0
 		fire_timer = 0.25
 		_show_bazooka(true)
+		Sfx.at(self, "pickup", chest())
+	if stats["sniper"] > 0:
+		sniper_timer = SNIPER_TIME
+		sniper_shots = 1
+		burst_left = 0
+		fire_timer = SNIPER_DRAW
+		_show_weapon(2)
 		Sfx.at(self, "pickup", chest())
 	if stats["pierce"] > 0:
 		pierce_left = PIERCE_SHOTS
@@ -1937,18 +2005,29 @@ func _make_bazooka() -> Node3D:
 
 
 func _show_bazooka(on: bool) -> void:
-	if bazooka:
-		bazooka.visible = on
-		gun.visible = not on
+	_show_weapon(1 if on else 0)
+
+
+## Arma na mão: 0 a de sempre, 1 Bazuca, 2 Sniper. Avisa as outras máquinas.
+func _show_weapon(kind: int) -> void:
+	_set_weapon(kind)
 	if Net.online and is_local and is_inside_tree() and Net.all_ready():
-		_net_bazooka.rpc(on)
+		_net_weapon.rpc(kind)
 
 
 @rpc("authority", "call_remote", "reliable")
-func _net_bazooka(on: bool) -> void:
+func _net_weapon(kind: int) -> void:
+	_set_weapon(kind)
+
+
+func _set_weapon(kind: int) -> void:
+	if gun == null:
+		return
+	gun.visible = kind == 0
 	if bazooka:
-		bazooka.visible = on
-		gun.visible = not on
+		bazooka.visible = kind == 1
+	if sniper:
+		sniper.visible = kind == 2
 
 
 ## Bastião: a parede existe em todas as máquinas; quem decide o reflexo é a do dono.
@@ -1964,6 +2043,27 @@ func _make_barrier(pos: Vector3, yaw: float) -> void:
 @rpc("authority", "call_remote", "reliable")
 func _net_barrier(pos: Vector3, yaw: float) -> void:
 	_make_barrier(pos, yaw)
+
+
+## Sniper: um tiro que é um laser. Mira no que está sob a mira (atravessando o cenário: o
+## raio só procura jogadores) e sai do cano nessa direção.
+func _fire_sniper() -> void:
+	sniper_shots -= 1
+	fire_timer = 0.5   # a arma fica na mão um instante depois do tiro
+	var origin := head.global_position
+	var aim := -head.global_transform.basis.z
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + aim * 300.0, 2, [get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	var target: Vector3 = hit["position"] if not hit.is_empty() else origin + aim * 300.0
+	shot_mult = 1.0
+	Bullet.fire(self, muzzle.global_position, (target - muzzle.global_position).normalized(), SNIPER_DAMAGE, true,
+		{"speed": SNIPER_SPEED, "gravity": 0.0, "ghost": true, "pierce": true, "laser": true, "bounces": 0,
+		"split": 0, "sticky": false, "boomerang": false, "guided": false, "seek": 0.0, "homing": 0.0,
+		"target_bounce": 0.0, "lazy_top": 0.0})
+	recoil = 2.5
+	shake = maxf(shake, 0.25)
+	scoping = false
+	reveal()
 
 
 ## Bazuca: foguete reto, lento, com o dobro do dano e explosão grande.
@@ -2439,9 +2539,11 @@ func _apply_down(bleed: float) -> void:
 	echo_timer = 0.0
 	crouching = true
 	_set_height(DOWN_HEIGHT)
-	if bazooka_timer > 0.0:
+	if bazooka_timer > 0.0 or sniper_timer > 0.0:
 		bazooka_timer = 0.0
-		_show_bazooka(false)
+		sniper_timer = 0.0
+		scoping = false
+		_show_weapon(0)
 	_clear_down_marker()
 	down_marker = DownedMarker.new()
 	down_marker.player = self
