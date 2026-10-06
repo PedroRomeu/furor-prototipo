@@ -400,7 +400,7 @@ const SHRINK_SCALE := 0.4
 const SHRINK_SPEED := 0.6
 const SHRINK_SLAM_RANGE := 4.0
 const SHRINK_SLAM_DAMAGE := 20.0
-const SHRINK_SLAM_PUSH := 1.45    # empurrão 1,45x o da Onda de Choque: ~10 m em vez de ~5,5 (pedido do usuário: forte, sem exagero)
+const SHRINK_SLAM_PUSH := 1.25    # empurrão um pouco maior que o da Onda de Choque (pedido do usuário: nada exagerado)
 const PIERCE_SHOTS := 3          # Perfurante: tiros por uso...
 const PIERCE_SPEED := 3.0        # ...quantas vezes mais rápidos
 # Câmera e arma em primeira pessoa
