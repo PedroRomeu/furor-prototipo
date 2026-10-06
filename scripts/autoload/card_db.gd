@@ -108,6 +108,11 @@ const MASTERS := {
 	"bota_foguete": {"name": "Bota Foguete", "cat": "Movimento", "rarity": "mitico", "master": true,
 		"desc": "Cada segundo no ar dá +10% de dano nos tiros, até +40%; tocar o chão zera. Sem pulos no ar sobrando, aperte e segure pular para um jato curto (0,7 s) que freia a queda e te empurra para cima. O jato volta ao tocar o chão.",
 		"mods": [{"stat": "rocket_boots", "add": 1}]},
+	# Formiga (2026-10-06, ideia do usuário; números meus, aprovados; cancelar no Q e o
+	# impacto ao crescer foram sugestões minhas aceitas).
+	"formiga": {"name": "Formiga", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 16.0,
+		"desc": "Q: por 6 s você fica com 40% do tamanho (mais difícil de acertar) e 60% mais rápido. Q de novo volta antes. Ao voltar ao tamanho, um impacto empurra quem estiver a até 4 m e causa 20 de dano. Recarga de 16 s.",
+		"mods": [{"stat": "shrink", "add": 1}]},
 	"corrente": {"name": "Corrente", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 8.0,
 		"desc": "Q: impulso reto para cima, de uns 8 m. Funciona também no ar. Recarga de 8 s.",
 		"mods": [{"stat": "updraft", "add": 1}]},

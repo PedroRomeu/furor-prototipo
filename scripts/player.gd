@@ -113,6 +113,7 @@ const BASE_STATS := {
 	"updraft": 0,
 	"bazooka": 0,
 	"sniper": 0,
+	"shrink": 0,    # Formiga
 	"barrier": 0,
 	"pierce": 0,
 	"guided": 0,   # Piloto, mestra guardada (CardDB.SHELVED_MASTERS)
@@ -390,6 +391,15 @@ const SCOPE_FOV := 24.0
 const SNIPER_VIEW_SCALE := 0.33
 const SNIPER_VIEW_POS := Vector3(0.02, 0.0, -0.15)
 const SCOPE_SPEED := 0.6
+## Formiga (2026-10-06): Q encolhe por SHRINK_TIME (tamanho x SHRINK_SCALE, junto com a área
+## que as balas acertam; a colisão com o cenário não muda, para não prender ninguém na
+## parede ao crescer) e dá SHRINK_SPEED de velocidade. Q de novo volta antes. Ao crescer,
+## impacto de SHRINK_SLAM_RANGE com SHRINK_SLAM_DAMAGE e empurrão.
+const SHRINK_TIME := 6.0
+const SHRINK_SCALE := 0.4
+const SHRINK_SPEED := 0.6
+const SHRINK_SLAM_RANGE := 4.0
+const SHRINK_SLAM_DAMAGE := 20.0
 const PIERCE_SHOTS := 3          # Perfurante: tiros por uso...
 const PIERCE_SPEED := 3.0        # ...quantas vezes mais rápidos
 # Câmera e arma em primeira pessoa
@@ -409,6 +419,7 @@ var master_id := ""
 var master_cd := 0.0
 var bazooka_timer := 0.0
 var rockets_left := 0
+var shrink_timer := 0.0    # Formiga: pequeno por mais quanto tempo
 var sniper_timer := 0.0    # Sniper na mão por mais quanto tempo
 var sniper_shots := 0
 var scoping := false       # mirando com a luneta (botão direito com a Sniper)
@@ -782,6 +793,8 @@ func reset_for_round(spawn: Transform3D) -> void:
 	sniper_timer = 0.0
 	sniper_shots = 0
 	scoping = false
+	shrink_timer = 0.0
+	set_meta("shrunk", false)
 	_show_bazooka(false)
 	last_stand_timer = 0.0
 	last_stand_used = false
@@ -850,16 +863,25 @@ func reset_for_round(spawn: Transform3D) -> void:
 	alive = true
 	shape.disabled = false
 	tag.visible = not is_human
-	var body_scale: float = stats["body_scale"]
-	tag.position.y = height * body_scale + 0.5
-	shield_mesh.scale = Vector3.ONE * maxf(body_scale, 1.0) * float(stats["shield_size"])
+	_apply_body_scale()
 	if model:
-		model.scale = Vector3.ONE * MODEL_SCALE * body_scale
 		model.rotation.x = 0.0
 		model.position.y = 0.0
 		model.visible = true
 		ring.visible = true
 		anim.play("idle")
+
+
+## Tamanho do corpo (cartas, vida e a Formiga) no modelo, no nome e no escudo.
+func _apply_body_scale() -> void:
+	var body_scale: float = stats["body_scale"]
+	tag.position.y = height * body_scale + 0.5
+	shield_mesh.scale = Vector3.ONE * maxf(body_scale, 1.0) * float(stats["shield_size"])
+	if model:
+		model.scale = Vector3.ONE * MODEL_SCALE * body_scale
+	if ring:
+		# O disco do chão acompanha só quando encolhe (Formiga, Nanico); maior, fica igual.
+		ring.scale = Vector3.ONE * minf(body_scale, 1.0)
 
 
 func _input(event: InputEvent) -> void:
@@ -1264,6 +1286,11 @@ func _tick(delta: float) -> void:
 		if bazooka_timer <= 0.0 or (rockets_left <= 0 and fire_timer <= 0.0):
 			bazooka_timer = 0.0
 			_show_bazooka(false)
+	if shrink_timer > 0.0:
+		shrink_timer -= delta
+		if shrink_timer <= 0.0:
+			shrink_timer = 0.001
+			_end_shrink(true)
 	if sniper_timer > 0.0:
 		sniper_timer -= delta
 		if sniper_timer <= 0.0 or (sniper_shots <= 0 and fire_timer <= 0.0):
@@ -1335,6 +1362,8 @@ func _target_speed() -> float:
 		speed *= 1.0 + AMBUSH_SPEED
 	if scoping:
 		speed *= SCOPE_SPEED
+	if shrink_timer > 0.0:
+		speed *= 1.0 + SHRINK_SPEED
 	if stats["chase"] > 0.0 and _toward_enemy():
 		speed *= 1.0 + stats["chase"]
 	return speed
@@ -1881,7 +1910,9 @@ func credit_damage(amount: float, lethal := false) -> void:
 # ---------------------------------------------------------------- combate
 
 func _act(delta: float) -> void:
-	if in_master and master_cd <= 0.0 and master_id != "" and CardDB.CARDS[master_id].has("cooldown"):
+	if in_master and shrink_timer > 0.0:
+		_end_shrink(true)   # Formiga: Q de novo volta ao tamanho antes do tempo
+	elif in_master and master_cd <= 0.0 and master_id != "" and CardDB.CARDS[master_id].has("cooldown"):
 		_use_master()
 	if in_shield and shield_cd <= 0.0 and silence_timer <= 0.0:
 		_activate_shield()
@@ -1940,6 +1971,8 @@ func _use_master() -> void:
 		fire_timer = 0.25
 		_show_bazooka(true)
 		Sfx.at(self, "pickup", chest())
+	if stats["shrink"] > 0:
+		_start_shrink()
 	if stats["sniper"] > 0:
 		sniper_timer = SNIPER_TIME
 		sniper_shots = 1
@@ -2043,6 +2076,49 @@ func _make_barrier(pos: Vector3, yaw: float) -> void:
 @rpc("authority", "call_remote", "reliable")
 func _net_barrier(pos: Vector3, yaw: float) -> void:
 	_make_barrier(pos, yaw)
+
+
+## Formiga: só a máquina dona decide; as outras recebem o tamanho pelo _net_shrink.
+func _start_shrink() -> void:
+	shrink_timer = SHRINK_TIME
+	_set_shrunk(true)
+	if Net.online:
+		_net_shrink.rpc(true)
+
+
+## Volta ao tamanho; slam: com o impacto (fim do tempo ou Q de novo), não quando cai ou morre.
+func _end_shrink(slam: bool) -> void:
+	if shrink_timer <= 0.0:
+		return
+	shrink_timer = 0.0
+	_set_shrunk(false)
+	if Net.online:
+		_net_shrink.rpc(false)
+	if slam and alive:
+		for enemy in enemies():
+			if global_position.distance_to(enemy.global_position) < SHRINK_SLAM_RANGE:
+				enemy.remote_call("receive_shockwave", [global_position, SHRINK_SLAM_DAMAGE, String(name)])
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_shrink(on: bool) -> void:
+	_set_shrunk(on)
+
+
+func _set_shrunk(on: bool) -> void:
+	var was: bool = has_meta("shrunk") and get_meta("shrunk")
+	if on == was:
+		return
+	set_meta("shrunk", on)
+	stats["body_scale"] = float(stats["body_scale"]) * (SHRINK_SCALE if on else 1.0 / SHRINK_SCALE)
+	_apply_body_scale()
+	if on:
+		Effects.burst(get_parent(), chest(), 1.0, Color(0.75, 0.6, 1.0), 0.2)
+		Sfx.at(self, "dash", global_position)
+	else:
+		Effects.burst(get_parent(), global_position + Vector3.UP * 0.3, SHRINK_SLAM_RANGE, Color(0.75, 0.6, 1.0), 0.3)
+		Sfx.at(self, "explosion", global_position)
+		eye_dip = 0.3
 
 
 ## Sniper: um tiro que é um laser. Mira no que está sob a mira (atravessando o cenário: o
@@ -2481,6 +2557,9 @@ func _apply_death(killer := "", assists: Array = []) -> void:
 		return
 	downed = false
 	_clear_down_marker()
+	if shrink_timer > 0.0:
+		shrink_timer = 0.0
+		_set_shrunk(false)
 	death_killer = killer
 	death_assists = assists
 	alive = false
@@ -2539,6 +2618,7 @@ func _apply_down(bleed: float) -> void:
 	echo_timer = 0.0
 	crouching = true
 	_set_height(DOWN_HEIGHT)
+	_end_shrink(false)
 	if bazooka_timer > 0.0 or sniper_timer > 0.0:
 		bazooka_timer = 0.0
 		sniper_timer = 0.0

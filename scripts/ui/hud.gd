@@ -665,6 +665,8 @@ func _process(delta: float) -> void:
 		status.append("INVISÍVEL")
 	if me.ambush_timer > 0.0:
 		status.append("EMBOSCADA %.1f s" % me.ambush_timer)
+	if me.shrink_timer > 0.0:
+		status.append("FORMIGA %.1f s  [%s] volta" % [me.shrink_timer, GameState.key_text("master")])
 	if me.air_bonus() > 0.0:
 		status.append("NO AR +%d%% de dano" % roundi(me.air_bonus() * 100.0))
 	if me.last_stand_timer > 0.0:

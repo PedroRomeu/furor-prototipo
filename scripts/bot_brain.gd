@@ -109,6 +109,9 @@ func _master(foe: Player, sees: bool) -> void:
 		p.in_master = true
 	elif p.stats["pierce"] > 0 and p.pierce_left == 0:
 		p.in_master = true
+	elif p.stats["shrink"] > 0 and p.shrink_timer <= 0.0 \
+			and (p.health < p.stats["max_health"] * 0.4 or randf() < 0.01):
+		p.in_master = true   # Formiga: para fugir com pouca vida ou, de vez em quando, para chegar perto
 
 
 ## Devolve a direção de movimento no mundo e já preenche in_move, pulo e deslize.

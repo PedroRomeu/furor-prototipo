@@ -148,9 +148,11 @@ shows in a corner during the match.
   (Body: a fatal hit leaves you at 1 health for 3 s; get a kill in that time and come back
   with half), **Camuflagem** (Body: stand still 0.6 s to vanish, crouch-walk while hidden;
   showing up after 1 s hidden gives Ambush, 3 s of +40% shot damage and +20% speed),
-  **Corrente** (Movement, Q: an 8 m upward boost, also in the air) and **Bota Foguete**
+  **Corrente** (Movement, Q: an 8 m upward boost, also in the air), **Bota Foguete**
   (Movement: +10% shot damage per second in the air, up to +40%; with no air jumps left,
-  hold jump for a short rocket burst, refilled on landing).
+  hold jump for a short rocket burst, refilled on landing) and **Formiga** (Movement, Q:
+  6 s at 40% size and +60% speed; Q again to grow back early; growing back knocks away
+  and hurts whoever is within 4 m).
 - Shooting: 4 bullets per magazine, 34 damage (3 hits kill), visible bullets that drop
   with distance. Aim a bit higher from afar. Reflected bullets fly straight. A bullet's size
   grows with its damage, also mid-flight (Bola de Neve, Tabelinha): huge bullets are
