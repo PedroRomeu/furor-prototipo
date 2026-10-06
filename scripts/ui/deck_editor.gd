@@ -1,32 +1,49 @@
 extends Control
-## Editor de um baralho (GameState.editing). Grade de cartas filtrada por categoria,
-## arquétipo (CardDB.ARCHETYPES) e busca; clique põe uma cópia, botão direito tira. De CardDB.DECK_MIN a DECK_MAX cartas,
-## até MAX_COPIES cópias de cada: mais cópias, mais chance de a carta aparecer.
-## Em cima, a carta mestra: uma por baralho, escolhida entre CardDB.MASTERS.
-## Cada mudança é salva na hora.
+## Editor de um baralho (GameState.editing), refeito em 2026-10-06 (pedido do usuário: menos
+## botões e informação de uma vez, minimalista e profissional; layout de duas colunas como
+## nos editores de Hearthstone e Marvel Snap).
+##
+## Esquerda: a coleção. Uma barra só (voltar, busca, grupos e "Filtros", que guarda
+## arquétipo, raridade e "só as do baralho") e a grade de cartas: clique põe uma cópia,
+## botão direito tira. Direita: o baralho. Nome, contagem, a carta mestra numa vaga (clicar
+## abre a escolha, que cabe quantas mestras houver) e a lista do que está nele, por grupo;
+## clicar numa linha tira uma cópia. Cada mudança é salva na hora.
 
-const TILE_WIDTH := 250.0
+const TILE_WIDTH := 216.0
+const TILE_HEIGHT := 138.0
+## Descrição numa área fixa (pedido do usuário, como nos Yu-Gi-Oh online): texto que não
+## cabe ganha uma barra de rolagem fina à direita, em vez de esticar ou vazar da carta.
+const DESC_HEIGHT := 62.0   # 3 linhas inteiras
+const GAP := 10
 const FILTER_ALL := "Todas"
+const RARITY_FILTERS := ["comum", "raro", "epico", "lendario"]
 
 var index := 0
 var deck: Array = []
 var master := ""
-var master_tiles := {}   # id -> PanelContainer
-var master_desc: Label
+var tiles := {}   # id -> {panel, badge, color}
+var hovered := ""
+
 var name_edit: LineEdit
 var count_label: Label
 var status_label: Label
 var count_bar: HBoxContainer
+var master_slot: PanelContainer
+var deck_list: VBoxContainer
+var deck_empty: Label
 var grid: GridContainer
 var scroll: ScrollContainer
 var search: LineEdit
+var cat_buttons := {}
+var category := FILTER_ALL
+var filter_button: Button
+var filter_popup: PopupPanel
+var arch_buttons := {}
+var rarity_buttons := {}
 var only_deck: CheckButton
-var filter_buttons := {}
-var filter := FILTER_ALL
-var archetype_buttons := {}
-var archetype := ""   # "" = qualquer arquétipo
-var archetype_desc: Label
-var tiles := {}   # id -> {panel, pips, minus, plus}
+var empty_grid: Label
+var picker: Control   # escolha da carta mestra (por cima de tudo)
+var side_panel: PanelContainer
 
 
 func _ready() -> void:
@@ -39,268 +56,287 @@ func _ready() -> void:
 		Net.match_starting.connect(_on_match_starting)
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side in ["left", "right"]:
-		margin.add_theme_constant_override("margin_" + side, 40)
-	for side in ["top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 26)
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 24)
 	add_child(margin)
-	var column := Ui.vbox(14)
-	margin.add_child(column)
+	var row := Ui.hbox(20)
+	margin.add_child(row)
+	row.add_child(_build_collection())
+	side_panel = _build_deck_panel()
+	row.add_child(side_panel)
+	_build_picker()
+	resized.connect(_fit)
+	_refresh()
+	_fit()
 
-	# Cabeçalho: voltar, nome, contagem.
-	var header := Ui.hbox(16)
-	column.add_child(header)
-	header.add_child(Ui.flat(Ui.button("< Baralhos", _back)))
-	name_edit = LineEdit.new()
-	name_edit.text = GameState.decks[index]["name"]
-	name_edit.max_length = 24
-	name_edit.custom_minimum_size = Vector2(300, 44)
-	name_edit.add_theme_font_size_override("font_size", 22)
-	name_edit.add_theme_font_override("font", Ui.bold())
-	name_edit.tooltip_text = "Clique para mudar o nome"
-	name_edit.text_changed.connect(func(_t): _save())
-	header.add_child(name_edit)
-	header.add_child(Ui.spacer())
-	var counter := Ui.vbox(2)
-	counter.alignment = BoxContainer.ALIGNMENT_CENTER
-	header.add_child(counter)
-	count_label = Ui.label("", 24, Ui.TEXT, true)
-	count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	counter.add_child(count_label)
-	status_label = Ui.label("", 14, Ui.MUTED)
-	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	counter.add_child(status_label)
-	var more := MenuButton.new()
-	more.text = "..."
-	more.flat = false
-	more.custom_minimum_size = Vector2(44, 44)
-	more.get_popup().add_item("Completar com cartas aleatórias", 0)
-	more.get_popup().add_item("Tirar todas as cartas", 1)
-	more.get_popup().id_pressed.connect(_menu)
-	header.add_child(more)
 
-	count_bar = HBoxContainer.new()
-	column.add_child(count_bar)
-	column.add_child(_master_row())
+# ---------------------------------------------------------------- coleção (esquerda)
 
-	# Filtros: categoria, só as do baralho, busca.
-	var filters := Ui.hbox(8)
-	column.add_child(filters)
-	var group := ButtonGroup.new()
-	for cat in [FILTER_ALL] + CardDB.CATEGORY_COLORS.keys():
-		var b := Button.new()
-		b.toggle_mode = true
-		b.button_group = group
-		b.custom_minimum_size = Vector2(96, 38)
-		b.button_pressed = cat == FILTER_ALL
-		if cat != FILTER_ALL:
-			b.add_theme_color_override("font_color", CardDB.CATEGORY_COLORS[cat].lerp(Ui.TEXT, 0.35))
-		b.pressed.connect(func(): filter = cat; _apply_filter())
-		filters.add_child(b)
-		filter_buttons[cat] = b
-	filters.add_child(Ui.spacer())
-	only_deck = CheckButton.new()
-	only_deck.text = "Só as do baralho"
-	only_deck.toggled.connect(func(_on): _apply_filter())
-	filters.add_child(only_deck)
+func _build_collection() -> Control:
+	var col := Ui.vbox(14)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var bar := Ui.hbox(8)
+	col.add_child(bar)
+	var back := Ui.flat(Ui.button("‹  Baralhos", _back))
+	bar.add_child(back)
 	search = LineEdit.new()
-	search.placeholder_text = "Buscar carta..."
-	search.custom_minimum_size = Vector2(230, 38)
+	search.placeholder_text = "Buscar carta"
+	search.custom_minimum_size = Vector2(170, 40)
+	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	search.clear_button_enabled = true
 	search.text_changed.connect(func(_t): _apply_filter())
-	filters.add_child(search)
-
-	# Arquétipos: clicar de novo no marcado desmarca.
-	var arch_row := Ui.hbox(10)
-	column.add_child(arch_row)
-	var arch_title := Ui.label("ARQUÉTIPO", 13, Ui.MUTED, true)
-	arch_title.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	arch_title.custom_minimum_size.y = 30
-	arch_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	arch_row.add_child(arch_title)
-	var arch_col := Ui.vbox(4)
-	arch_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	arch_row.add_child(arch_col)
-	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 6)
-	flow.add_theme_constant_override("v_separation", 6)
-	arch_col.add_child(flow)
-	var arch_group := ButtonGroup.new()
-	arch_group.allow_unpress = true
-	for a in CardDB.ARCHETYPES:
+	bar.add_child(search)
+	# Grupos: botões colados, só um marcado.
+	var segs := Ui.hbox(0)
+	bar.add_child(segs)
+	var group := ButtonGroup.new()
+	var cats: Array = [FILTER_ALL] + CardDB.CATEGORY_COLORS.keys()
+	for i in cats.size():
+		var cat: String = cats[i]
 		var b := Button.new()
+		b.text = cat
 		b.toggle_mode = true
-		b.button_group = arch_group
-		b.custom_minimum_size.y = 30
-		b.add_theme_font_size_override("font_size", 13)
-		b.tooltip_text = CardDB.ARCHETYPES[a]["desc"] + "\nO número é quantas você já tem no baralho."
-		b.toggled.connect(func(_on): _pick_archetype())
-		flow.add_child(b)
-		archetype_buttons[a] = b
-	archetype_desc = Ui.label("", 13, Ui.MUTED)
-	arch_col.add_child(archetype_desc)
+		b.button_group = group
+		b.button_pressed = cat == FILTER_ALL
+		b.custom_minimum_size = Vector2(0, 40)
+		b.add_theme_font_size_override("font_size", 14)
+		_segment_style(b, i == 0, i == cats.size() - 1,
+			Ui.ACCENT if cat == FILTER_ALL else CardDB.CATEGORY_COLORS[cat])
+		b.pressed.connect(func(): category = cat; _apply_filter())
+		segs.add_child(b)
+		cat_buttons[cat] = b
+	filter_button = Ui.button("Filtros", _open_filters)
+	filter_button.custom_minimum_size = Vector2(96, 40)
+	filter_button.add_theme_font_size_override("font_size", 14)
+	bar.add_child(filter_button)
+	_build_filter_popup()
 
 	scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	column.add_child(scroll)
+	col.add_child(scroll)
+	var inner := Ui.vbox(0)
+	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(inner)
 	grid = GridContainer.new()
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 12)
-	scroll.add_child(grid)
+	grid.add_theme_constant_override("h_separation", GAP)
+	grid.add_theme_constant_override("v_separation", GAP)
+	inner.add_child(grid)
 	for id in CardDB.all_ids():
 		grid.add_child(_tile(id))
-	scroll.resized.connect(_fit_columns)
-
-	column.add_child(Ui.label("Clique numa carta para pôr no baralho, botão direito para tirar. "
-		+ "Até %d cópias de cada: mais cópias, mais chance de ela aparecer na partida." % CardDB.MAX_COPIES,
-		14, Ui.MUTED))
-	_pick_archetype()
-	_refresh()
-	_fit_columns()
+	empty_grid = Ui.label("Nenhuma carta com esses filtros.", 15, Ui.MUTED)
+	empty_grid.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	empty_grid.custom_minimum_size.y = 120
+	empty_grid.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	inner.add_child(empty_grid)
+	return col
 
 
-## Carta mestra: cinco botões lado a lado (grupo, nome, tecla) e, embaixo, o texto da escolhida.
-func _master_row() -> Control:
-	var box := Ui.vbox(8)
-	var title := Ui.hbox(10)
-	box.add_child(title)
-	title.add_child(Ui.label("CARTA MESTRA", 13, Ui.MUTED, true))
-	title.add_child(Ui.label("Uma por baralho. Você começa toda partida com ela.", 13, Ui.MUTED))
-	var row := Ui.hbox(10)
-	box.add_child(row)
-	for id in CardDB.master_ids():
-		var card: Dictionary = CardDB.CARDS[id]
-		var panel := PanelContainer.new()
-		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		panel.tooltip_text = card["desc"]
-		panel.gui_input.connect(func(event: InputEvent):
-			var mb := event as InputEventMouseButton
-			if mb and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
-				master = id
-				_save()
-				_refresh_master())
-		var col := Ui.vbox(2)
-		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		panel.add_child(col)
-		var top := Ui.hbox(6)
-		top.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		col.add_child(top)
-		var cat := Ui.label(card["cat"].to_upper(), 11, CardDB.CATEGORY_COLORS[card["cat"]], true)
-		cat.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		top.add_child(cat)
-		var rar := Ui.label(CardDB.rarity_name(id).to_upper(), 11, CardDB.rarity_color(id), true)
-		rar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		top.add_child(rar)
-		top.add_child(Ui.spacer())
-		var key := Ui.label("%s  %d s" % [GameState.key_text("master"), card["cooldown"]] if card.has("cooldown") else "passiva", 11, Ui.MUTED)
-		key.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		top.add_child(key)
-		var name_label := Ui.label(card["name"], 17, Ui.TEXT, true)
-		name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		col.add_child(name_label)
-		row.add_child(panel)
-		master_tiles[id] = panel
-	master_desc = Ui.label("", 14, Ui.TEXT)
-	master_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(master_desc)
-	_refresh_master()
-	return box
+## Botões de grupo colados: só as pontas arredondadas; o marcado ganha a cor do grupo.
+func _segment_style(b: Button, first: bool, last: bool, color: Color) -> void:
+	for state in ["normal", "hover", "pressed", "hover_pressed"]:
+		var on: bool = state == "pressed" or state == "hover_pressed"
+		var s := Ui.box(Ui.SURFACE_HI if on or state == "hover" else Ui.SURFACE, 8,
+			color.darkened(0.1) if on else Ui.LINE, 1)
+		s.content_margin_left = 12
+		s.content_margin_right = 12
+		s.corner_radius_top_left = 8 if first else 0
+		s.corner_radius_bottom_left = 8 if first else 0
+		s.corner_radius_top_right = 8 if last else 0
+		s.corner_radius_bottom_right = 8 if last else 0
+		if on:
+			s.border_width_bottom = 2
+		b.add_theme_stylebox_override(state, s)
+	b.add_theme_color_override("font_pressed_color", color.lerp(Color.WHITE, 0.25))
+	b.add_theme_color_override("font_hover_pressed_color", color.lerp(Color.WHITE, 0.25))
+	b.add_theme_color_override("font_color", Ui.MUTED)
 
 
-func _refresh_master() -> void:
-	for id in master_tiles:
-		var chosen: bool = id == master
-		var color: Color = CardDB.CATEGORY_COLORS[CardDB.CARDS[id]["cat"]]
-		var style := Ui.box(Ui.SURFACE_HI if chosen else Ui.BG.lightened(0.02), 10,
-			color if chosen else Ui.LINE, 2 if chosen else 1)
-		style.content_margin_left = 12
-		style.content_margin_right = 12
-		style.content_margin_top = 8
-		style.content_margin_bottom = 8
-		master_tiles[id].add_theme_stylebox_override("panel", style)
-		master_tiles[id].modulate = Color.WHITE if chosen else Color(1, 1, 1, 0.6)
-	master_desc.text = CardDB.CARDS[master]["desc"]
+func _build_filter_popup() -> void:
+	filter_popup = PopupPanel.new()
+	var style := Ui.box(Ui.SURFACE_HI, 10, Ui.LINE)
+	style.set_content_margin_all(18)
+	filter_popup.add_theme_stylebox_override("panel", style)
+	add_child(filter_popup)
+	var col := Ui.vbox(10)
+	col.custom_minimum_size.x = 420
+	filter_popup.add_child(col)
+
+	col.add_child(_section_title("ARQUÉTIPO"))
+	# Grade de colunas fixas (um HFlowContainer mede a altura antes de saber a largura e
+	# deixava a janela comprida demais).
+	var flow := GridContainer.new()
+	flow.columns = 3
+	flow.add_theme_constant_override("h_separation", 6)
+	flow.add_theme_constant_override("v_separation", 6)
+	col.add_child(flow)
+	var arch_group := ButtonGroup.new()
+	arch_group.allow_unpress = true
+	for a in CardDB.ARCHETYPES:
+		var b := _chip(a, arch_group)
+		b.tooltip_text = CardDB.ARCHETYPES[a]["desc"]
+		flow.add_child(b)
+		arch_buttons[a] = b
+
+	col.add_child(Ui.gap(4))
+	col.add_child(_section_title("RARIDADE"))
+	var rar_row := Ui.hbox(6)
+	col.add_child(rar_row)
+	var rar_group := ButtonGroup.new()
+	rar_group.allow_unpress = true
+	for r in RARITY_FILTERS:
+		var b := _chip(CardDB.RARITIES[r]["name"], rar_group)
+		b.add_theme_color_override("font_color", CardDB.RARITIES[r]["color"])
+		rar_row.add_child(b)
+		rarity_buttons[r] = b
+
+	col.add_child(Ui.gap(2))
+	var sep := HSeparator.new()
+	col.add_child(sep)
+	var bottom := Ui.hbox(8)
+	col.add_child(bottom)
+	only_deck = CheckButton.new()
+	only_deck.text = "Só cartas do baralho"
+	only_deck.toggled.connect(func(_on): _apply_filter())
+	bottom.add_child(only_deck)
+	bottom.add_child(Ui.spacer())
+	bottom.add_child(Ui.flat(Ui.button("Limpar filtros", _clear_filters)))
 
 
-func _fit_columns() -> void:
-	grid.columns = maxi(2, int((scroll.size.x - 16.0) / (TILE_WIDTH + 12.0)))
+func _section_title(text: String) -> Label:
+	return Ui.label(text, 12, Ui.MUTED, true)
+
+
+func _chip(text: String, group: ButtonGroup) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.toggle_mode = true
+	b.button_group = group
+	b.custom_minimum_size.y = 32
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.add_theme_font_size_override("font_size", 13)
+	b.toggled.connect(func(_on): _apply_filter())
+	return b
+
+
+func _open_filters() -> void:
+	var r := filter_button.get_global_rect()
+	var content := filter_popup.get_child(0) as Control
+	var height := int(content.get_combined_minimum_size().y) + 36   # + margens do painel
+	filter_popup.popup(Rect2i(Vector2i(int(r.end.x - 456), int(r.end.y + 6)), Vector2i(456, height)))
+
+
+func _clear_filters() -> void:
+	for b in arch_buttons.values() + rarity_buttons.values():
+		b.set_pressed_no_signal(false)
+	only_deck.set_pressed_no_signal(false)
+	_apply_filter()
 
 
 func _tile(id: String) -> Control:
 	var card: Dictionary = CardDB.CARDS[id]
 	var color: Color = CardDB.CATEGORY_COLORS[card["cat"]]
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(TILE_WIDTH, 184)
+	panel.custom_minimum_size = Vector2(TILE_WIDTH, TILE_HEIGHT)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	panel.tooltip_text = card["desc"]
+	var tip: String = CardIcon._wrap(card["desc"], 52)
+	var archs := CardDB.archetypes_of(id)
+	if not archs.is_empty():
+		tip += "\n\nArquétipos: " + ", ".join(archs)
+	panel.tooltip_text = tip + "\n\nClique: põe uma cópia   ·   Botão direito: tira"
 	panel.gui_input.connect(_on_tile_input.bind(id))
+	panel.mouse_entered.connect(func(): hovered = id; _style_tile(id))
+	panel.mouse_exited.connect(func(): if hovered == id: hovered = ""; _style_tile(id))
 	var col := Ui.vbox(6)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(col)
 
-	var top := Ui.hbox(6)
-	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_child(top)
-	var cat := Ui.label(card["cat"].to_upper(), 12, color, true)
-	top.add_child(cat)
-	top.add_child(Ui.label(CardDB.rarity_name(id).to_upper(), 12, CardDB.rarity_color(id), true))
-	top.add_child(Ui.spacer())
-	if card.has("max"):
-		top.add_child(Ui.label("pega 1 vez" if card["max"] == 1 else "até %d vezes" % card["max"], 12, Ui.MUTED))
 	var head := Ui.hbox(10)
 	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(head)
-	head.add_child(CardIcon.make(id, 44, 1, false))
-	var names := Ui.vbox(2)
+	head.add_child(CardIcon.make(id, 38, 1, false))
+	var names := Ui.vbox(0)
 	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	names.alignment = BoxContainer.ALIGNMENT_CENTER
 	names.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	head.add_child(names)
-	var title := Ui.label(card["name"], 18, Ui.TEXT, true)
+	var title := Ui.label(card["name"], 16, Ui.TEXT, true)
+	title.clip_text = true
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	names.add_child(title)
-	var tags := Ui.label("  ·  ".join(CardDB.archetypes_of(id)), 12, Ui.ACCENT.lerp(Ui.MUTED, 0.45))
-	tags.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	names.add_child(tags)
-	var desc := Ui.label(card["desc"], 14, Ui.MUTED)
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	col.add_child(desc)
+	var sub := CardDB.rarity_name(id)
+	if card.has("max"):
+		sub += "  ·  máx. %d" % card["max"]
+	# Raridade e, à direita, as cópias no baralho (fora da linha do nome, que fica inteira).
+	var sub_row := Ui.hbox(6)
+	sub_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	names.add_child(sub_row)
+	var rarity := Ui.label(sub, 12, CardDB.rarity_color(id))
+	rarity.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sub_row.add_child(rarity)
+	sub_row.add_child(Ui.spacer())
+	var badge := Label.new()
+	badge.add_theme_font_size_override("font_size", 12)
+	badge.add_theme_font_override("font", Ui.bold())
+	badge.add_theme_color_override("font_color", Ui.BG)
+	var badge_style := Ui.box(color, 10)
+	badge_style.content_margin_left = 8
+	badge_style.content_margin_right = 8
+	badge_style.content_margin_top = 0
+	badge_style.content_margin_bottom = 0
+	badge.add_theme_stylebox_override("normal", badge_style)
+	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sub_row.add_child(badge)
 
-	var bottom := Ui.hbox(6)
-	bottom.mouse_filter = Control.MOUSE_FILTER_PASS
-	col.add_child(bottom)
-	var pips := Ui.hbox(4)
-	pips.alignment = BoxContainer.ALIGNMENT_CENTER
-	pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for k in CardDB.MAX_COPIES:
-		var pip := ColorRect.new()
-		pip.custom_minimum_size = Vector2(16, 6)
-		pip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		pips.add_child(pip)
-	bottom.add_child(pips)
-	bottom.add_child(Ui.spacer())
-	var minus := _small_button("-", func(): _change(id, -1))
-	var plus := _small_button("+", func(): _change(id, 1))
-	bottom.add_child(minus)
-	bottom.add_child(plus)
-	for l in [cat, title, tags, desc]:
-		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tiles[id] = {"panel": panel, "pips": pips, "minus": minus, "plus": plus, "color": color}
+	col.add_child(_desc_box(card["desc"]))
+	tiles[id] = {"panel": panel, "badge": badge, "color": color}
 	return panel
 
 
-func _small_button(text: String, action: Callable) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.custom_minimum_size = Vector2(36, 32)
-	b.add_theme_font_size_override("font_size", 20)
-	b.pressed.connect(action)
-	return b
+## Área de descrição de altura fixa; rola quando o texto é maior. O clique passa para a
+## carta (PASS), só a roda do mouse e a barra ficam com a área.
+func _desc_box(text: String) -> ScrollContainer:
+	var box := ScrollContainer.new()
+	box.custom_minimum_size.y = DESC_HEIGHT
+	box.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.mouse_filter = Control.MOUSE_FILTER_PASS
+	var bar := box.get_v_scroll_bar()
+	var track := StyleBoxFlat.new()
+	track.bg_color = Color(1, 1, 1, 0.04)
+	track.set_corner_radius_all(2)
+	track.content_margin_left = 3
+	track.content_margin_right = 3
+	bar.add_theme_stylebox_override("scroll", track)
+	for state in ["grabber", "grabber_highlight", "grabber_pressed"]:
+		var g := StyleBoxFlat.new()
+		g.bg_color = Ui.MUTED if state == "grabber" else Ui.TEXT
+		g.bg_color.a = 0.55 if state == "grabber" else 0.85
+		g.set_corner_radius_all(2)
+		bar.add_theme_stylebox_override(state, g)
+	var desc := Ui.label(text, 13, Ui.MUTED)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(desc)
+	return box
+
+
+func _style_tile(id: String) -> void:
+	var t: Dictionary = tiles[id]
+	var copies := deck.count(id)
+	var color: Color = t["color"]
+	var hot := id == hovered
+	var border: Color = color.darkened(0.15) if copies > 0 else (Ui.LINE.lightened(0.25) if hot else Ui.LINE)
+	var style := Ui.box(Ui.SURFACE_HI if hot else Ui.SURFACE, 10, border, 2 if copies > 0 else 1)
+	style.set_content_margin_all(12)
+	t["panel"].add_theme_stylebox_override("panel", style)
+	t["badge"].visible = copies > 0
+	t["badge"].text = "x%d" % copies
 
 
 func _on_tile_input(event: InputEvent, id: String) -> void:
@@ -311,6 +347,331 @@ func _on_tile_input(event: InputEvent, id: String) -> void:
 		_change(id, 1)
 	elif mb.button_index == MOUSE_BUTTON_RIGHT:
 		_change(id, -1)
+
+
+func _apply_filter() -> void:
+	var text := search.text.strip_edges().to_lower()
+	var arch := ""
+	for a in arch_buttons:
+		if arch_buttons[a].button_pressed:
+			arch = a
+	var rarity := ""
+	for r in rarity_buttons:
+		if rarity_buttons[r].button_pressed:
+			rarity = r
+	var shown := 0
+	for id in tiles:
+		var card: Dictionary = CardDB.CARDS[id]
+		var show: bool = category == FILTER_ALL or card["cat"] == category
+		if arch != "" and not id in CardDB.ARCHETYPES[arch]["cards"]:
+			show = false
+		if rarity != "" and card["rarity"] != rarity:
+			show = false
+		if only_deck.button_pressed and not deck.has(id):
+			show = false
+		if text != "" and not (card["name"].to_lower().contains(text) or card["desc"].to_lower().contains(text)
+				or " ".join(CardDB.archetypes_of(id)).to_lower().contains(text)):
+			show = false
+		tiles[id]["panel"].visible = show
+		shown += 1 if show else 0
+	empty_grid.visible = shown == 0
+	# O botão mostra quantos filtros estão ligados (e fica laranja).
+	var active := (1 if arch != "" else 0) + (1 if rarity != "" else 0) + (1 if only_deck.button_pressed else 0)
+	filter_button.text = "Filtros" if active == 0 else "Filtros  %d" % active
+	if active > 0:
+		filter_button.add_theme_stylebox_override("normal", Ui.box(Ui.SURFACE, 8, Ui.ACCENT))
+		filter_button.add_theme_color_override("font_color", Ui.ACCENT.lightened(0.2))
+	else:
+		filter_button.remove_theme_stylebox_override("normal")
+		filter_button.remove_theme_color_override("font_color")
+
+
+# ---------------------------------------------------------------- baralho (direita)
+
+func _build_deck_panel() -> PanelContainer:
+	var panel := PanelContainer.new()
+	var style := Ui.box(Ui.SURFACE.darkened(0.15), 14, Ui.LINE)
+	style.set_content_margin_all(18)
+	panel.add_theme_stylebox_override("panel", style)
+	var col := Ui.vbox(14)
+	panel.add_child(col)
+
+	var head := Ui.hbox(6)
+	col.add_child(head)
+	name_edit = LineEdit.new()
+	name_edit.text = GameState.decks[index]["name"]
+	name_edit.max_length = 24
+	name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_edit.custom_minimum_size.y = 40
+	name_edit.add_theme_font_size_override("font_size", 20)
+	name_edit.add_theme_font_override("font", Ui.bold())
+	var plain := Ui.box(Color.TRANSPARENT, 8)
+	plain.content_margin_left = 6
+	name_edit.add_theme_stylebox_override("normal", plain)
+	var editing := Ui.box(Ui.SURFACE, 8, Ui.ACCENT)
+	editing.content_margin_left = 6
+	name_edit.add_theme_stylebox_override("focus", editing)
+	name_edit.tooltip_text = "Clique para mudar o nome"
+	name_edit.text_changed.connect(func(_t): _save())
+	head.add_child(name_edit)
+	var more := MenuButton.new()
+	more.text = "⋯"
+	more.flat = false
+	more.custom_minimum_size = Vector2(40, 40)
+	more.tooltip_text = "Mais opções"
+	more.get_popup().add_item("Completar com cartas aleatórias", 0)
+	more.get_popup().add_item("Tirar todas as cartas", 1)
+	more.get_popup().id_pressed.connect(_menu)
+	head.add_child(more)
+
+	var counter := Ui.vbox(6)
+	col.add_child(counter)
+	var count_row := Ui.hbox(8)
+	counter.add_child(count_row)
+	count_label = Ui.label("", 26, Ui.TEXT, true)
+	count_row.add_child(count_label)
+	status_label = Ui.label("", 14, Ui.MUTED)
+	status_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	count_row.add_child(Ui.spacer())
+	count_row.add_child(status_label)
+	count_bar = HBoxContainer.new()
+	count_bar.add_theme_constant_override("separation", 0)
+	counter.add_child(count_bar)
+
+	col.add_child(_section_title("CARTA MESTRA"))
+	master_slot = PanelContainer.new()
+	master_slot.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	master_slot.tooltip_text = "Clique para trocar"
+	master_slot.gui_input.connect(func(event: InputEvent):
+		var mb := event as InputEventMouseButton
+		if mb and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
+			_open_picker())
+	col.add_child(master_slot)
+
+	var list_head := Ui.hbox(8)
+	col.add_child(list_head)
+	list_head.add_child(_section_title("CARTAS"))
+	var list_scroll := ScrollContainer.new()
+	list_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	list_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(list_scroll)
+	deck_list = Ui.vbox(2)
+	deck_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list_scroll.add_child(deck_list)
+	deck_empty = Ui.label("Clique nas cartas à esquerda para montar o baralho.", 14, Ui.MUTED)
+	deck_empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(deck_empty)
+	return panel
+
+
+func _refresh_master() -> void:
+	for c in master_slot.get_children():
+		c.queue_free()
+	var card: Dictionary = CardDB.CARDS[master]
+	var color: Color = CardDB.CATEGORY_COLORS[card["cat"]]
+	var style := Ui.box(Ui.SURFACE, 10, color.darkened(0.2))
+	style.set_content_margin_all(10)
+	master_slot.add_theme_stylebox_override("panel", style)
+	var row := Ui.hbox(10)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	master_slot.add_child(row)
+	row.add_child(CardIcon.make(master, 40, 1, false))
+	var names := Ui.vbox(0)
+	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	names.alignment = BoxContainer.ALIGNMENT_CENTER
+	names.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(names)
+	var title := Ui.label(card["name"], 16, Ui.TEXT, true)
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	names.add_child(title)
+	var sub := Ui.label(_master_sub(master), 12, Ui.MUTED)
+	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	names.add_child(sub)
+	var change := Ui.label("Trocar  ›", 13, Ui.MUTED)
+	change.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(change)
+
+
+## "Arma  ·  Q, 18 s" ou "Corpo  ·  passiva".
+func _master_sub(id: String) -> String:
+	var card: Dictionary = CardDB.CARDS[id]
+	if card.has("cooldown"):
+		return "%s  ·  %s, recarga %d s" % [card["cat"], GameState.key_text("master"), card["cooldown"]]
+	return "%s  ·  passiva" % card["cat"]
+
+
+func _refresh_list() -> void:
+	for c in deck_list.get_children():
+		c.queue_free()
+	deck_empty.visible = deck.is_empty()
+	for cat in CardDB.CATEGORY_COLORS:
+		var ids: Array = []
+		for id in CardDB.all_ids():
+			if CardDB.CARDS[id]["cat"] == cat and deck.has(id):
+				ids.append(id)
+		if ids.is_empty():
+			continue
+		var n := deck.filter(func(id): return CardDB.CARDS[id]["cat"] == cat).size()
+		var head := Ui.hbox(6)
+		if deck_list.get_child_count() > 0:
+			deck_list.add_child(Ui.gap(8))
+		deck_list.add_child(head)
+		head.add_child(Ui.label(cat.to_upper(), 12, CardDB.CATEGORY_COLORS[cat].lerp(Ui.MUTED, 0.3), true))
+		head.add_child(Ui.spacer())
+		head.add_child(Ui.label(str(n), 12, Ui.MUTED, true))
+		for id in ids:
+			deck_list.add_child(_deck_row(id))
+
+
+## Linha do baralho: ícone, nome e cópias. Clique (ou botão direito) tira uma cópia.
+func _deck_row(id: String) -> Control:
+	var row := PanelContainer.new()
+	row.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	row.tooltip_text = "Clique para tirar uma cópia"
+	var normal := Ui.box(Color.TRANSPARENT, 6)
+	normal.set_content_margin_all(4)
+	normal.content_margin_left = 6
+	normal.content_margin_right = 8
+	var hot := Ui.box(Ui.SURFACE_HI, 6)
+	hot.set_content_margin_all(4)
+	hot.content_margin_left = 6
+	hot.content_margin_right = 8
+	row.add_theme_stylebox_override("panel", normal)
+	var line := Ui.hbox(10)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(line)
+	line.add_child(CardIcon.make(id, 24, 1, false))
+	var name_label := Ui.label(CardDB.card_name(id), 14, Ui.TEXT)
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.clip_text = true
+	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	line.add_child(name_label)
+	var copies := Ui.label("x%d" % deck.count(id), 14, Ui.MUTED, true)
+	copies.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	line.add_child(copies)
+	row.mouse_entered.connect(func():
+		row.add_theme_stylebox_override("panel", hot)
+		copies.text = "−"
+		copies.add_theme_color_override("font_color", Ui.DANGER))
+	row.mouse_exited.connect(func():
+		row.add_theme_stylebox_override("panel", normal)
+		copies.text = "x%d" % deck.count(id)
+		copies.add_theme_color_override("font_color", Ui.MUTED))
+	row.gui_input.connect(func(event: InputEvent):
+		var mb := event as InputEventMouseButton
+		if mb and mb.pressed and (mb.button_index == MOUSE_BUTTON_LEFT or mb.button_index == MOUSE_BUTTON_RIGHT):
+			_change(id, -1))
+	return row
+
+
+# ---------------------------------------------------------------- escolha da mestra
+
+func _build_picker() -> void:
+	picker = Control.new()
+	picker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	picker.visible = false
+	add_child(picker)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.6)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed:
+			picker.visible = false)
+	picker.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	picker.add_child(center)
+	var box := PanelContainer.new()
+	var style := Ui.box(Ui.SURFACE, 14, Ui.LINE)
+	style.set_content_margin_all(24)
+	box.add_theme_stylebox_override("panel", style)
+	center.add_child(box)
+	var col := Ui.vbox(16)
+	box.add_child(col)
+	var head := Ui.hbox(10)
+	col.add_child(head)
+	var titles := Ui.vbox(2)
+	head.add_child(titles)
+	titles.add_child(Ui.label("Carta mestra", 22, Ui.TEXT, true))
+	titles.add_child(Ui.label("Uma por baralho. Você começa toda partida com ela.", 14, Ui.MUTED))
+	head.add_child(Ui.spacer())
+	var close := Ui.flat(Ui.button("Fechar", func(): picker.visible = false))
+	close.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	head.add_child(close)
+	var options := GridContainer.new()
+	options.name = "Options"
+	options.columns = 3
+	options.add_theme_constant_override("h_separation", 12)
+	options.add_theme_constant_override("v_separation", 12)
+	col.add_child(options)
+
+
+func _open_picker() -> void:
+	var options: GridContainer = picker.find_child("Options", true, false)
+	for c in options.get_children():
+		c.queue_free()
+	for id in CardDB.master_ids():
+		options.add_child(_master_option(id))
+	picker.visible = true
+
+
+func _master_option(id: String) -> Control:
+	var card: Dictionary = CardDB.CARDS[id]
+	var color: Color = CardDB.CATEGORY_COLORS[card["cat"]]
+	var chosen := id == master
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(250, 0)
+	panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var style := Ui.box(Ui.SURFACE_HI if chosen else Ui.BG.lightened(0.03), 10,
+		color if chosen else Ui.LINE, 2 if chosen else 1)
+	style.set_content_margin_all(14)
+	panel.add_theme_stylebox_override("panel", style)
+	panel.gui_input.connect(func(event: InputEvent):
+		var mb := event as InputEventMouseButton
+		if mb and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
+			master = id
+			_save()
+			_refresh_master()
+			picker.visible = false)
+	var col := Ui.vbox(8)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(col)
+	var head := Ui.hbox(10)
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(head)
+	head.add_child(CardIcon.make(id, 40, 1, false))
+	var names := Ui.vbox(0)
+	names.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(names)
+	var title := Ui.label(card["name"], 16, Ui.TEXT, true)
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	names.add_child(title)
+	var sub := Ui.label(_master_sub(id), 12, color.lerp(Ui.MUTED, 0.4))
+	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	names.add_child(sub)
+	if chosen:
+		var tag := Ui.label("Equipada", 12, Ui.OK, true)
+		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tag.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		head.add_child(tag)
+	var desc := Ui.label(card["desc"], 13, Ui.MUTED)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.custom_minimum_size.x = 222
+	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(desc)
+	return panel
+
+
+# ---------------------------------------------------------------- comum
+
+func _fit() -> void:
+	# Painel do baralho: um quarto da largura (entre 300 e 400 px); a grade usa o resto.
+	side_panel.custom_minimum_size.x = clampf(size.x * 0.25, 300.0, 400.0)
+	await get_tree().process_frame
+	grid.columns = maxi(2, int((scroll.size.x - 14.0 + GAP) / (TILE_WIDTH + GAP)))
 
 
 func _change(id: String, delta: int) -> void:
@@ -362,13 +723,10 @@ func _refresh() -> void:
 	var n := deck.size()
 	count_label.text = "%d / %d" % [n, CardDB.DECK_MAX]
 	if n < CardDB.DECK_MIN:
-		status_label.text = "Faltam %d para o mínimo de %d" % [CardDB.DECK_MIN - n, CardDB.DECK_MIN]
+		status_label.text = "Faltam %d" % (CardDB.DECK_MIN - n)
 		status_label.add_theme_color_override("font_color", Ui.WARN)
-	elif n == CardDB.DECK_MAX:
-		status_label.text = "Baralho cheio"
-		status_label.add_theme_color_override("font_color", Ui.OK)
 	else:
-		status_label.text = "Pronto para jogar"
+		status_label.text = "Baralho cheio" if n == CardDB.DECK_MAX else "Pronto para jogar"
 		status_label.add_theme_color_override("font_color", Ui.OK)
 	for c in count_bar.get_children():
 		c.queue_free()
@@ -378,62 +736,25 @@ func _refresh() -> void:
 	count_bar.add_child(bar)
 	if n < CardDB.DECK_MAX:
 		var rest := ColorRect.new()
-		rest.color = Ui.SURFACE
+		rest.color = Ui.LINE
+		rest.custom_minimum_size.y = 6
 		rest.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		rest.size_flags_stretch_ratio = CardDB.DECK_MAX - n
 		count_bar.add_child(rest)
-
-	for cat in filter_buttons:
-		var in_cat: int = deck.size() if cat == FILTER_ALL else deck.filter(func(id): return CardDB.CARDS[id]["cat"] == cat).size()
-		filter_buttons[cat].text = "%s  %d" % [cat, in_cat]
-	for a in archetype_buttons:
-		var cards: Array = CardDB.ARCHETYPES[a]["cards"]
-		archetype_buttons[a].text = "%s  %d" % [a, deck.filter(func(id): return id in cards).size()]
 	for id in tiles:
-		var t: Dictionary = tiles[id]
-		var copies := deck.count(id)
-		var color: Color = t["color"]
-		var style := Ui.box(Ui.SURFACE if copies > 0 else Ui.BG.lightened(0.02), 10,
-			color if copies > 0 else Ui.LINE, 2 if copies > 0 else 1)
-		style.set_content_margin_all(14)
-		t["panel"].add_theme_stylebox_override("panel", style)
-		t["panel"].modulate = Color.WHITE if copies > 0 else Color(1, 1, 1, 0.6)
-		for k in CardDB.MAX_COPIES:
-			t["pips"].get_child(k).color = color if k < copies else Ui.LINE
-		t["minus"].disabled = copies == 0
-		t["plus"].disabled = copies >= CardDB.MAX_COPIES or n >= CardDB.DECK_MAX
-	_apply_filter()
-
-
-func _apply_filter() -> void:
-	var text := search.text.strip_edges().to_lower()
-	for id in tiles:
-		var card: Dictionary = CardDB.CARDS[id]
-		var show: bool = filter == FILTER_ALL or card["cat"] == filter
-		if archetype != "" and not id in CardDB.ARCHETYPES[archetype]["cards"]:
-			show = false
-		if only_deck.button_pressed and not deck.has(id):
-			show = false
-		if text != "" and not (card["name"].to_lower().contains(text) or card["desc"].to_lower().contains(text)
-				or " ".join(CardDB.archetypes_of(id)).to_lower().contains(text)):
-			show = false
-		tiles[id]["panel"].visible = show
-
-
-func _pick_archetype() -> void:
-	archetype = ""
-	for a in archetype_buttons:
-		if archetype_buttons[a].button_pressed:
-			archetype = a
-	archetype_desc.visible = archetype != ""
-	if archetype != "":
-		archetype_desc.text = "%s: %s  Clique de novo para tirar o filtro." % [archetype, CardDB.ARCHETYPES[archetype]["desc"]]
+		_style_tile(id)
+	_refresh_master()
+	_refresh_list()
 	_apply_filter()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		_back()
+		if picker.visible:
+			picker.visible = false
+		else:
+			_back()
+		get_viewport().set_input_as_handled()
 
 
 ## Na sala online: o anfitrião começou enquanto você editava.

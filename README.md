@@ -130,10 +130,13 @@ shows in a corner during the match.
 - Decks of 30 to 50 cards, up to 3 copies each. More copies = more chance of the card
   showing up. With 95 cards there are always some left out.
 - **Baralhos** (decks) screen: create as many named decks as you want, starting from a
-  template (Equilibrado, Atirador, Muralha, Acrobata, Caos, Aleatório or Vazio). Click a card
-  to add it, right click to remove; filter by group, by **archetype** (Ricochete, Explosão,
-  Nuke, Espelho, Tanque...: cards that combine well; a card can be in several) and search.
-  The **equipped** deck is the one used in matches.
+  template (Equilibrado, Atirador, Muralha, Acrobata, Caos, Aleatório or Vazio). The editor
+  has the card collection on the left and your deck on the right. Click a card to add it,
+  right click to remove (or click it in the deck list); search, pick a group, or open
+  **Filtros** for archetype (Ricochete, Explosão, Nuke, Espelho, Tanque...: cards that combine
+  well; a card can be in several), rarity and "only cards in the deck". The master card sits
+  in its own slot; click it to choose another. The **equipped** deck is the one used in
+  matches.
 - **Master card**: each deck has one, picked at the top of the editor, outside the card
   count. You start every match with it. One per group: **Bazuca** (Weapon, Q: 6 s of
   bazooka, 3 rockets), **Perfurante** (Bullets, Q: 3 straight fast shots that go through
