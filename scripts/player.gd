@@ -19,6 +19,7 @@ signal revived
 signal void_bounced(saved: bool)
 signal went_down    # caiu no 2x2 (pode ser revivido)
 signal got_up       # foi revivido
+signal chaos_drawn(id: String)   # Caos sorteou outra mestra (a HUD avisa)
 
 ## Atributos sem nenhuma carta. As cartas (CardDB) alteram estes valores.
 const BASE_STATS := {
@@ -110,6 +111,7 @@ const BASE_STATS := {
 	"rocket_boots": 0,   # Bota Foguete (carta mestra)
 	"ground_slam": 0,
 	# Cartas mestras (CardDB.MASTERS)
+	"chaos": 0,     # Caos: sorteia outra mestra (_chaos_draw)
 	"updraft": 0,
 	"bazooka": 0,
 	"sniper": 0,
@@ -452,8 +454,15 @@ const ASSIST_TIME := 10.0   # placar: dano nos últimos 10 s antes da morte cont
 const REMOTE_METHODS := ["receive_shockwave", "credit_damage", "teleport_to", "swap_to", "receive_stomp",
 	"receive_slash"]
 ## Carta mestra que este jogador tem (a primeira de cards; "" se nenhuma).
-var master_id := ""
+var master_id := ""      # mestra da vez (com o Caos, a sorteada)
 var master_cd := 0.0
+## Caos: espera depois de usar a ativa sorteada e duração da passiva sorteada.
+const CHAOS_WAIT := 8.0
+const CHAOS_PASSIVE_TIME := 15.0
+var chaos := false        # tem a mestra Caos
+var chaos_used := false   # a ativa sorteada já foi usada (esperando a próxima)
+var chaos_timer := 0.0    # passiva sorteada: quanto falta para trocar
+var _chaos_last := ""     # último sorteio recebido pela rede (ver reset_for_round)
 var bazooka_timer := 0.0
 var rockets_left := 0
 var shrink_timer := 0.0    # Formiga: pequeno por mais quanto tempo
@@ -940,6 +949,14 @@ func reset_for_round(spawn: Transform3D) -> void:
 	var masters := cards.filter(CardDB.is_master)
 	master_id = masters[0] if not masters.is_empty() else ""
 	master_cd = 0.0
+	chaos = master_id == "caos"
+	if chaos:
+		master_id = ""
+		if is_local:
+			_chaos_draw()
+		elif _chaos_last != "":
+			# O sorteio desta rodada pode ter chegado antes deste reinício: reaplica.
+			_chaos_set(_chaos_last)
 	bazooka_timer = 0.0
 	rockets_left = 0
 	pierce_left = 0
@@ -1444,6 +1461,8 @@ func _tick(delta: float) -> void:
 	shield_cd = maxf(0.0, shield_cd - delta)
 	dash_cd = maxf(0.0, dash_cd - delta)
 	master_cd = maxf(0.0, master_cd - delta)
+	if chaos and is_local and alive:
+		_chaos_tick(delta)
 	speed_orb_timer = maxf(0.0, speed_orb_timer - delta)
 	if bazooka_timer > 0.0:
 		bazooka_timer -= delta
@@ -2151,9 +2170,74 @@ func _act(delta: float) -> void:
 		_start_reload()
 
 
+# ---------------------------------------------------------------- Caos
+
+## Sorteia outra mestra (nunca o próprio Caos nem a da vez) e liga os atributos dela no
+## lugar dos da anterior. Só na máquina dona; as outras recebem pelo _net_chaos.
+func _chaos_draw() -> void:
+	var pool := CardDB.master_ids().filter(func(id): return id != "caos" and id != master_id)
+	if pool.is_empty():
+		return
+	var id: String = pool.pick_random()
+	_chaos_set(id)
+	chaos_used = false
+	master_cd = 0.0
+	chaos_timer = 0.0 if CardDB.CARDS[id].has("cooldown") else CHAOS_PASSIVE_TIME
+	chaos_drawn.emit(id)
+	if Net.online and is_inside_tree():
+		_net_chaos.rpc(id)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_chaos(id: String) -> void:
+	if CardDB.is_master(id):
+		_chaos_last = id
+		if chaos:
+			_chaos_set(id)
+
+
+func _chaos_set(id: String) -> void:
+	for m in CardDB.master_ids():
+		if m == "caos":
+			continue
+		for mod in CardDB.CARDS[m]["mods"]:
+			stats[mod["stat"]] = 0
+	for mod in CardDB.CARDS[id]["mods"]:
+		stats[mod["stat"]] = mod["add"]
+	master_id = id
+
+
+## Passiva: troca quando o tempo acaba. Ativa usada: a espera (master_cd) fica parada
+## enquanto o efeito dura e, quando zera, vem a próxima.
+func _chaos_tick(delta: float) -> void:
+	if master_id == "":
+		return
+	if chaos_timer > 0.0:
+		chaos_timer -= delta
+		if chaos_timer <= 0.0:
+			_chaos_draw()
+		return
+	if not chaos_used:
+		return
+	if bazooka_timer > 0.0 or sniper_timer > 0.0 or sword_timer > 0.0 or shrink_timer > 0.0 or pierce_left > 0:
+		master_cd = CHAOS_WAIT
+	elif master_cd <= 0.0:
+		_chaos_draw()
+
+
+## Recarga total mostrada na HUD (com o Caos, a espera até a próxima).
+func master_cd_total() -> float:
+	if chaos:
+		return CHAOS_WAIT
+	return float(CardDB.CARDS[master_id].get("cooldown", 1.0)) if master_id != "" else 1.0
+
+
 ## Habilidade da carta mestra (tecla Q).
 func _use_master() -> void:
 	master_cd = CardDB.CARDS[master_id]["cooldown"]
+	if chaos:
+		master_cd = CHAOS_WAIT
+		chaos_used = true
 	reveal()
 	if stats["updraft"] > 0:
 		# Corrente: impulso reto para cima, também no ar (como o da Jett, de Valorant).

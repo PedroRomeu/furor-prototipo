@@ -27,6 +27,7 @@ const SHIELD_COLOR := Color(0.4, 0.88, 1.0)
 const DASH_COLOR := Color(0.78, 0.64, 1.0)
 const ARMOR_COLOR := Color(0.3, 0.55, 1.0)   # a mesma do item (Pickup.COLORS)
 const HEAL_COLOR := Color(0.45, 0.9, 0.55)
+const CHAOS_COLOR := Color(1.0, 0.45, 0.4)   # cor do grupo Balas
 const SHADOW := Color(0, 0, 0, 0.45)
 
 ## Pedaços da textura única (posição na imagem).
@@ -187,7 +188,7 @@ func _draw_master_top() -> void:
 		tint.a = 1.0 if ready else 0.4
 		draw_texture_rect(tex, rect.grow(-14), false, tint)
 	if has_cd and me.master_cd > 0.0:
-		var left: float = clampf(me.master_cd / float(card["cooldown"]), 0.0, 1.0)
+		var left: float = clampf(me.master_cd / me.master_cd_total(), 0.0, 1.0)
 		_blit(R_FRAME, rect, Color(0, 0, 0, 0.45), left, true)
 		var secs := str(ceili(me.master_cd))
 		_text(_bold, rect.get_center() + Vector2(-_width(_bold, secs, 24) / 2.0, 9), secs, 24, Color.WHITE)
@@ -195,6 +196,12 @@ func _draw_master_top() -> void:
 	var lit := ready and has_cd
 	_chip(Vector2(rect.get_center().x, rect.end.y - 10), key,
 		Ui.ACCENT if lit else Color(0.08, 0.09, 0.11, 0.95), Color(0.1, 0.07, 0.04) if lit else Color(1, 1, 1, 0.7))
+	if me.chaos:
+		# Caos: selo no topo da moldura e, na passiva sorteada, a barra do tempo que falta.
+		_chip(Vector2(rect.get_center().x, rect.position.y - 9), "CAOS", CHAOS_COLOR, Color(0.1, 0.07, 0.04))
+		if me.chaos_timer > 0.0:
+			var bar := Rect2(rect.position.x + 10, rect.end.y - 16, (rect.size.x - 20) * clampf(me.chaos_timer / Player.CHAOS_PASSIVE_TIME, 0, 1), 3)
+			_rect(bar, CHAOS_COLOR)
 
 
 # ---------------------------------------------------------------- escudo e dash

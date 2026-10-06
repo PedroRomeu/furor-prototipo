@@ -146,6 +146,7 @@ func setup(p_me: Player, all_players: Array, p_teams := false, p_mode := "ffa", 
 	mode_label.text = GameModes.label(mode, start_lives)
 	me.damaged.connect(_on_me_damaged)
 	me.damage_dealt.connect(_on_damage_dealt)
+	me.chaos_drawn.connect(func(id): toast("Caos: " + CardDB.card_name(id)))
 	vitals.me = me
 	scoreboard.setup(me, players)
 	kill_feed.me = me

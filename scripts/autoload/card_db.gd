@@ -117,6 +117,12 @@ const MASTERS := {
 	"formiga": {"name": "Formiga", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 16.0,
 		"desc": "Q: por 6 s você fica com 40% do tamanho (mais difícil de acertar) e 60% mais rápido. Q de novo volta antes. Ao voltar ao tamanho, um impacto empurra quem estiver a até 4 m e causa 20 de dano. Recarga de 16 s.",
 		"mods": [{"stat": "shrink", "add": 1}]},
+	# Caos (2026-10-06, ideia do usuário; ritmo meu, aprovado; grupo Balas, escolha minha
+	# com o voto dele de manter os 5 grupos): sorteia outra mestra. Entram todas as de
+	# MASTERS, inclusive as futuras, menos ela mesma. Lógica em Player._chaos_*.
+	"caos": {"name": "Caos", "cat": "Balas", "rarity": "mitico", "master": true,
+		"desc": "Você recebe uma mestra sorteada. Ativa: use uma vez; 8 s depois do efeito acabar, vem outra. Passiva: dura 15 s e troca. Nunca repete a anterior; cada rodada começa com um sorteio novo.",
+		"mods": [{"stat": "chaos", "add": 1}]},
 	"corrente": {"name": "Corrente", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 8.0,
 		"desc": "Q: impulso reto para cima, de uns 8 m. Funciona também no ar. Recarga de 8 s.",
 		"mods": [{"stat": "updraft", "add": 1}]},
@@ -574,7 +580,7 @@ const TEMPLATES := [
 	{"name": "Acrobata", "desc": "movimento e mobilidade", "cats": ["Movimento"], "copies": 2,
 		"master": "corrente",
 		"ids": ["investida", "teleporte", "sede_de_sangue", "nanico"]},
-	{"name": "Caos", "desc": "só as cartas mais malucas", "master": "perfurante",
+	{"name": "Caos", "desc": "só as cartas mais malucas", "master": "caos",
 		"ids": ["bumerangue", "troca_troca", "bola_de_neve", "preguicosa", "fragmentacao", "tabelinha",
 			"detonacao", "morteiro", "metralhadora", "escopeta", "bala_gigante", "teleguiada",
 			"quique_certeiro", "espelho_duplo", "nova", "chuva_de_bombas", "teleporte", "nanico",
