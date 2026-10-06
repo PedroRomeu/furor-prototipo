@@ -25,7 +25,7 @@ const TRAIL_SPEED := 90.0     # vida por segundo
 const LOW := 0.3              # abaixo disso a barra fica vermelha e pulsa
 const SHIELD_COLOR := Color(0.4, 0.88, 1.0)
 const DASH_COLOR := Color(0.78, 0.64, 1.0)
-const ARMOR_COLOR := Color(1.0, 0.8, 0.3)
+const ARMOR_COLOR := Color(0.3, 0.55, 1.0)   # a mesma do item (Pickup.COLORS)
 const HEAL_COLOR := Color(0.45, 0.9, 0.55)
 const SHADOW := Color(0, 0, 0, 0.45)
 

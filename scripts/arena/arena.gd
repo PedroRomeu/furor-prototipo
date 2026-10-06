@@ -349,13 +349,21 @@ func _floating(n: int) -> void:
 		high_spots.append(Vector3(spot.x, y + 0.25, spot.y))
 
 
-## Itens: nem todo mapa tem. O orbe de movimento flutua acima de um ponto alto (pega-se
-## no meio de um pulo; parado em cima o chão já devolveria tudo); a vida fica no chão.
-## Um de cada por jogador, nas cópias giradas. O colete é o mais raro.
+## Itens: nem todo mapa tem. Um de cada por jogador, nas cópias giradas.
+## Impulso (2026-10-06): flutua a 1,5 m num lugar aberto, para pegar andando ou num pulo
+## curto no meio da luta (o orbe de reset antigo ficava no alto das peças e quase ninguém
+## usava). Velocidade e vida ficam no chão; o colete é o mais raro.
 func _pickups() -> void:
-	if not high_spots.is_empty() and rng.randf() < 0.75:
-		var top: Vector3 = high_spots[rng.randi() % high_spots.size()]
-		_pickup_pair(top + Vector3.UP * 1.6, Pickup.Kind.MOVE)
+	if rng.randf() < 0.75:
+		var spot := _find_spot(1.4)
+		if spot != Vector2.INF:
+			_reserve(spot.x, spot.y, 1.4)
+			_pickup_pair(Vector3(spot.x, Pickup.LAUNCH_HEIGHT, spot.y), Pickup.Kind.LAUNCH)
+	if rng.randf() < 0.5:
+		var spot := _find_spot(1.2)
+		if spot != Vector2.INF:
+			_reserve(spot.x, spot.y, 1.2)
+			_pickup_pair(Vector3(spot.x, 0.8, spot.y), Pickup.Kind.SPEED)
 	if rng.randf() < 0.5:
 		var spot := _find_spot(1.2)
 		if spot != Vector2.INF:

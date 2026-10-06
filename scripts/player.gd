@@ -343,6 +343,12 @@ const AMBUSH_TIME := 3.0
 const AMBUSH_COOLDOWN := 6.0
 const AMBUSH_DAMAGE := 0.4
 const AMBUSH_SPEED := 0.2
+## Orbes do mapa (2026-10-06, no lugar do orbe de reset; ideia do usuário, números meus,
+## aprovados): Velocidade dá +30% de velocidade por 4 s; Impulso lança uns 6 m para cima
+## (com GRAVITY_RISE 30) e devolve dash, pulos e jato no ar.
+const SPEED_ORB := 0.3
+const SPEED_ORB_TIME := 4.0
+const LAUNCH_ORB_SPEED := 19.0
 const AMBUSH_COLOR := Color(0.72, 0.4, 1.0)
 const SLAM_SPEED := 32.0
 const SLAM_MIN_HEIGHT := 2.5
@@ -573,6 +579,7 @@ var swap_timer := 0.0     # Troca-Troca: falta quanto para a troca (na máquina 
 var swap_lock := 0.0      # Troca-Troca: não começa outra troca enquanto for maior que zero
 var swap_partner: Player = null
 var still_time := 0.0     # parado há quanto tempo (Camuflagem)
+var speed_orb_timer := 0.0   # orbe de Velocidade ligado por mais quanto tempo
 var ambush_timer := 0.0   # Emboscada ligada por mais quanto tempo (todas as máquinas, para o brilho)
 var ambush_cd := 0.0      # falta quanto para poder ganhar outra Emboscada (só a máquina dona)
 var ambush_mat: ShaderMaterial
@@ -1007,6 +1014,7 @@ func reset_for_round(spawn: Transform3D) -> void:
 	swap_lock = 0.0
 	swap_partner = null
 	still_time = 0.0
+	speed_orb_timer = 0.0
 	ambush_timer = 0.0
 	ambush_cd = 0.0
 	_restore_overlay()
@@ -1436,6 +1444,7 @@ func _tick(delta: float) -> void:
 	shield_cd = maxf(0.0, shield_cd - delta)
 	dash_cd = maxf(0.0, dash_cd - delta)
 	master_cd = maxf(0.0, master_cd - delta)
+	speed_orb_timer = maxf(0.0, speed_orb_timer - delta)
 	if bazooka_timer > 0.0:
 		bazooka_timer -= delta
 		if bazooka_timer <= 0.0 or (rockets_left <= 0 and fire_timer <= 0.0):
@@ -1525,6 +1534,8 @@ func _target_speed() -> float:
 		speed *= 1.0 + stats["bloodlust"]
 	if ambush_timer > 0.0:
 		speed *= 1.0 + AMBUSH_SPEED
+	if speed_orb_timer > 0.0:
+		speed *= 1.0 + SPEED_ORB
 	if scoping:
 		speed *= SCOPE_SPEED
 	if shrink_timer > 0.0:
@@ -1881,7 +1892,24 @@ func refresh_movement() -> void:
 	dash_cd = 0.0
 	jumps_left = maxi(jumps_left, maxi(int(stats["extra_jumps"]), 1))
 	wall_jumps_left = stats["wall_jumps"]
-	Effects.burst(get_parent(), chest(), 1.0, Pickup.COLORS[Pickup.Kind.MOVE], 0.2)
+	Effects.burst(get_parent(), chest(), 1.0, Pickup.COLORS[Pickup.Kind.LAUNCH], 0.2)
+
+
+## Orbe de Velocidade: +SPEED_ORB de velocidade por SPEED_ORB_TIME segundos.
+func speed_boost() -> void:
+	speed_orb_timer = SPEED_ORB_TIME
+	Effects.burst(get_parent(), chest(), 1.0, Pickup.COLORS[Pickup.Kind.SPEED], 0.2)
+
+
+## Orbe de Impulso: para cima sem perder o embalo de lado, e o movimento no ar renovado.
+func launch_up() -> void:
+	if not is_local:
+		return
+	refresh_movement()
+	velocity.y = maxf(velocity.y, LAUNCH_ORB_SPEED)
+	jump_rising = false
+	coyote = 0.0
+	sliding = false
 
 
 func is_dodging() -> bool:
