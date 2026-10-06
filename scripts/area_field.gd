@@ -419,6 +419,32 @@ static func _ring_mesh() -> TorusMesh:
 func _build_flames() -> void:
 	_visual = _add_mesh(_ring_mesh(), _mat("flame_ring", Color(FLAME_COLOR, 0.7)))
 	_visual.scale = Vector3(radius, 1.0, radius)
+	var p := flame_particles()
+	p.amount = 24 if GameState.quality == 0 else 48
+	p.lifetime = 0.55
+	p.local_coords = false
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
+	p.emission_ring_axis = Vector3.UP
+	p.emission_ring_radius = radius
+	p.emission_ring_inner_radius = radius * 0.15
+	p.emission_ring_height = 0.1
+	p.direction = Vector3.UP
+	p.spread = 15.0
+	p.gravity = Vector3(0, 2.0, 0)
+	p.initial_velocity_min = 1.0
+	p.initial_velocity_max = 2.5
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.3
+	add_child(p)
+	p.emitting = true
+	_extra = p
+	Sfx.at(self, "pad", global_position)
+
+
+## Partículas de fogo (quadrados esfumados somando luz, laranja para vermelho), com malha,
+## material e cores compartilhados. Quem usa ajusta a forma e a quantidade. Chamas e a
+## Bota Foguete.
+static func flame_particles() -> CPUParticles3D:
 	var p := CPUParticles3D.new()
 	if not _meshes.has("flame"):
 		var q := QuadMesh.new()
@@ -439,26 +465,8 @@ func _build_flames() -> void:
 	p.mesh = _meshes["flame"]
 	p.material_override = _mats["flame"]
 	p.color_ramp = _meshes["flame_ramp"]
-	p.amount = 24 if GameState.quality == 0 else 48
-	p.lifetime = 0.55
-	p.local_coords = false
-	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
-	p.emission_ring_axis = Vector3.UP
-	p.emission_ring_radius = radius
-	p.emission_ring_inner_radius = radius * 0.15
-	p.emission_ring_height = 0.1
-	p.direction = Vector3.UP
-	p.spread = 15.0
-	p.gravity = Vector3(0, 2.0, 0)
-	p.initial_velocity_min = 1.0
-	p.initial_velocity_max = 2.5
-	p.scale_amount_min = 0.6
-	p.scale_amount_max = 1.3
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(p)
-	p.emitting = true
-	_extra = p
-	Sfx.at(self, "pad", global_position)
+	return p
 
 
 ## Círculo branco esfumado (64 px), usado nas chamas. Feito uma vez em código.

@@ -99,6 +99,11 @@ const MASTERS := {
 	"camuflagem": {"name": "Camuflagem", "cat": "Corpo", "rarity": "mitico", "master": true,
 		"desc": "Parado por 0,6 s, você some. Invisível, dá para andar agachado sem aparecer; atirar, correr, pular, dash, escudo ou levar dano te revelam. Depois de 1 s invisível, aparecer dá Emboscada: 3 s com +40% de dano nos tiros e +20% de velocidade (no máximo a cada 6 s).",
 		"mods": [{"stat": "camo", "add": 1}]},
+	# Bota Foguete (2026-10-06, desenho do usuário a partir da minha proposta; números meus):
+	# passiva. Bônus por estar no ar e um jato curto como a bota foguete do Terraria.
+	"bota_foguete": {"name": "Bota Foguete", "cat": "Movimento", "rarity": "mitico", "master": true,
+		"desc": "Cada segundo no ar dá +10% de dano nos tiros, até +40%; tocar o chão zera. Sem pulos no ar sobrando, aperte e segure pular para um jato curto (0,7 s) que freia a queda e te empurra para cima. O jato volta ao tocar o chão.",
+		"mods": [{"stat": "rocket_boots", "add": 1}]},
 	"corrente": {"name": "Corrente", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 8.0,
 		"desc": "Q: impulso reto para cima, de uns 8 m. Funciona também no ar. Recarga de 8 s.",
 		"mods": [{"stat": "updraft", "add": 1}]},

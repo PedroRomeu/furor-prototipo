@@ -444,6 +444,7 @@ func _draw_crosshair() -> void:
 		crosshair.draw_multiline(ticks, white, 2.0)
 		if me != null and me.alive:
 			_draw_ammo_arc()
+			_draw_boot_fuel()
 	crosshair.draw_circle(Vector2.ZERO, 1.6, white)
 	var color := Color.WHITE
 	var size := 0.0
@@ -465,6 +466,16 @@ func _draw_crosshair() -> void:
 			x.append(d.normalized() * 16.0 * pop)
 		crosshair.draw_multiline(x, shadow, 5.0)
 		crosshair.draw_multiline(x, color, 2.5)
+
+
+## Bota Foguete: barra fina sob a mira, só enquanto o jato não está cheio.
+func _draw_boot_fuel() -> void:
+	if me.stats["rocket_boots"] <= 0 or me.boot_fuel >= Player.BOOT_FUEL:
+		return
+	var w := 64.0
+	var top := Vector2(-w / 2.0, 30.0)
+	crosshair.draw_rect(Rect2(top - Vector2(1, 1), Vector2(w + 2, 7)), Color(0, 0, 0, 0.5))
+	crosshair.draw_rect(Rect2(top, Vector2(w * me.boot_fuel / Player.BOOT_FUEL, 5)), Color(1.0, 0.6, 0.25, 0.95))
 
 
 ## Caído: anel vermelho do prazo (esvazia) e, por dentro, o verde do reviver (enche). Duas
@@ -620,6 +631,8 @@ func _process(delta: float) -> void:
 		status.append("INVISÍVEL")
 	if me.ambush_timer > 0.0:
 		status.append("EMBOSCADA %.1f s" % me.ambush_timer)
+	if me.air_bonus() > 0.0:
+		status.append("NO AR +%d%% de dano" % roundi(me.air_bonus() * 100.0))
 	if me.last_stand_timer > 0.0:
 		status.append("ÚLTIMO SUSPIRO: abata alguém! %.1f" % me.last_stand_timer)
 	status_label.text = "   ".join(status)

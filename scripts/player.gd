@@ -107,6 +107,7 @@ const BASE_STATS := {
 	"chase": 0.0,
 	"camo": 0,
 	"rocket_jump": 0,
+	"rocket_boots": 0,   # Bota Foguete (carta mestra)
 	"ground_slam": 0,
 	# Cartas mestras (CardDB.MASTERS)
 	"updraft": 0,
@@ -251,6 +252,17 @@ const GLIDE_FALL := 3.0     # Planador: velocidade máxima de queda segurando o 
 ## gira a velocidade para ela a este tanto por segundo (radianos; 90 graus em ~0,25 s),
 ## sem perder velocidade.
 const GLIDE_TURN := 6.0
+## Bota Foguete (carta mestra, 2026-10-06; como a bota foguete do Terraria): sem pulos no ar
+## sobrando, apertar e segurar pular liga um jato que acelera para cima (BOOT_THRUST, contra
+## a gravidade: caindo, primeiro freia; depois sobe até BOOT_MAX_UP). Dura BOOT_FUEL no
+## total, em quantos toques quiser, e enche ao tocar o chão. Curto de propósito (pedido do
+## usuário): é um controle breve no ar; voar de verdade continua com as cartas comuns.
+## No ar, os tiros ganham AIR_DAMAGE_RATE por segundo, até AIR_DAMAGE_MAX.
+const BOOT_FUEL := 0.7
+const BOOT_THRUST := 72.0
+const BOOT_MAX_UP := 4.5
+const AIR_DAMAGE_RATE := 0.1
+const AIR_DAMAGE_MAX := 0.4
 const SLAM_LOOK := -0.6      # Meteoro: olhando mais para baixo que isto (uns 35 graus)
 # Corpo
 const RADIUS := 0.4
@@ -460,6 +472,11 @@ var revives_left := 0
 var blind_timer := 0.0
 var echo_timer := 0.0
 var glided := false       # Planador: planou neste salto (vale até tocar o chão)
+var boot_fuel := BOOT_FUEL   # Bota Foguete: jato que sobra (s)
+var boot_armed := false   # apertou pular no ar sem pulos sobrando; vale enquanto segurar
+var boosting := false     # jato ligado neste quadro (vai para as outras máquinas no estado)
+var air_time := 0.0       # há quanto tempo está no ar (bônus de dano da Bota Foguete)
+var boot_fx: CPUParticles3D
 var heal_cd := 0.0        # Restauração: falta quanto para curar de novo
 var armor_cd := 0.0       # Couraça: falta quanto para dar colete de novo
 var area_cd := {}         # Serra, Chamas, Geada, Mina: bit (AreaField.SHIELD_*) -> recarga própria
@@ -779,6 +796,10 @@ func reset_for_round(spawn: Transform3D) -> void:
 	burn_acc = 0.0
 	burn_from = null
 	glided = false
+	boot_fuel = BOOT_FUEL
+	boot_armed = false
+	boosting = false
+	air_time = 0.0
 	swap_timer = 0.0
 	swap_lock = 0.0
 	swap_partner = null
@@ -862,6 +883,7 @@ func _process(delta: float) -> void:
 		# Luz apagada fica invisível: no OpenGL cada luz ligada custa um passe a mais.
 		muzzle_light.visible = muzzle_light.light_energy > 0.0
 	_update_camo(delta)
+	_update_boot_fx()
 	if not is_human:
 		# Aliado: nome e vida sempre à vista, através das paredes, na cor do time.
 		var ally := viewer != null and viewer.is_ally(self)
@@ -1011,6 +1033,31 @@ func _update_camo(delta: float) -> void:
 		model.visible = show
 		ring.visible = show
 		tag.visible = show
+
+
+## Fogo e som do jato da Bota Foguete, em todas as máquinas (as outras sabem pelo estado).
+func _update_boot_fx() -> void:
+	if not boosting and boot_fx == null:
+		return
+	if boot_fx == null:
+		boot_fx = AreaField.flame_particles()
+		boot_fx.amount = 12 if GameState.quality == 0 else 24
+		boot_fx.lifetime = 0.3
+		boot_fx.local_coords = false
+		boot_fx.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+		boot_fx.emission_sphere_radius = 0.15
+		boot_fx.direction = Vector3.DOWN
+		boot_fx.spread = 20.0
+		boot_fx.gravity = Vector3.ZERO
+		boot_fx.initial_velocity_min = 4.0
+		boot_fx.initial_velocity_max = 7.0
+		boot_fx.scale_amount_min = 0.4
+		boot_fx.scale_amount_max = 0.8
+		boot_fx.position.y = 0.1
+		add_child(boot_fx)
+	if boosting and not boot_fx.emitting:
+		Sfx.at(self, "dash", global_position)
+	boot_fx.emitting = boosting
 
 
 func is_hidden() -> bool:
@@ -1322,6 +1369,9 @@ func _move(delta: float) -> void:
 	var on_floor := is_on_floor()
 	if on_floor:
 		coyote = COYOTE_TIME
+		boot_fuel = BOOT_FUEL
+		boot_armed = false
+		air_time = 0.0
 		jumps_left = stats["extra_jumps"]
 		wall_jumps_left = stats["wall_jumps"]
 		if dash_timer <= 0.0:
@@ -1350,6 +1400,9 @@ func _move(delta: float) -> void:
 			if wish != Vector3.ZERO:
 				h = wish.normalized() * maxf(h.length(), target)
 			jumped = true
+	# Bota Foguete: o aperto que não virou pulo (sem pulos sobrando) arma o jato.
+	if stats["rocket_boots"] > 0 and in_jump and not jumped and not on_floor:
+		boot_armed = true
 	if jumped:
 		velocity.y = stats["jump_velocity"]
 		jump_buffer = 0.0
@@ -1408,10 +1461,21 @@ func _move(delta: float) -> void:
 		jump_rising = false
 	if velocity.y <= 0.0:
 		jump_rising = false
+	var was_boosting := boosting
+	boosting = false
 	if not on_floor:
+		air_time += delta
+		if boot_armed and in_jump_held and boot_fuel > 0.0 and not slamming and dash_timer <= 0.0:
+			boosting = true
+			boot_fuel = maxf(0.0, boot_fuel - delta)
+			jump_rising = false
+			if velocity.y < BOOT_MAX_UP:
+				velocity.y = minf(velocity.y + BOOT_THRUST * delta, BOOT_MAX_UP)
+		elif not in_jump_held:
+			boot_armed = false   # soltou: o próximo toque arma de novo
 		if not (dash_timer > 0.0 and dash_air):
 			velocity.y = maxf(velocity.y - _gravity() * delta, -MAX_FALL_SPEED)
-		if stats["glide"] > 0 and in_jump_held and not slamming and velocity.y < -GLIDE_FALL:
+		if stats["glide"] > 0 and in_jump_held and not boosting and not slamming and velocity.y < -GLIDE_FALL:
 			velocity.y = move_toward(velocity.y, -GLIDE_FALL, 60.0 * delta)
 			glided = true
 
@@ -1518,6 +1582,7 @@ func _stomp(enemy: Player, now: int) -> void:
 	air_dashes_left = stats["air_dashes"]
 	jumps_left = stats["extra_jumps"]
 	wall_jumps_left = stats["wall_jumps"]
+	boot_fuel = BOOT_FUEL
 	dash_cd = 0.0
 	eye_dip = 0.2
 	var head_pos := enemy.global_position + Vector3.UP * enemy.height * float(enemy.stats["body_scale"])
@@ -1545,6 +1610,7 @@ func _void_bounce() -> void:
 	air_dashes_left = stats["air_dashes"]
 	jumps_left = stats["extra_jumps"]
 	wall_jumps_left = stats["wall_jumps"]
+	boot_fuel = BOOT_FUEL
 	eye_dip = 0.25
 	var feet := global_position + Vector3.UP * 0.2
 	if saved:
@@ -1560,6 +1626,7 @@ func _void_bounce() -> void:
 
 ## Orbe de movimento: devolve os dashes no ar, zera a recarga e dá ao menos um pulo no ar.
 func refresh_movement() -> void:
+	boot_fuel = BOOT_FUEL
 	air_dashes_left = stats["air_dashes"]
 	dash_cd = 0.0
 	jumps_left = maxi(jumps_left, maxi(int(stats["extra_jumps"]), 1))
@@ -1662,7 +1729,8 @@ func knockback(v: Vector3) -> void:
 func _send_state() -> void:
 	if not Net.online or not Net.all_ready():
 		return
-	var flags := (1 if is_on_floor() else 0) | (2 if crouching else 0) | (4 if sliding else 0)
+	var flags := (1 if is_on_floor() else 0) | (2 if crouching else 0) | (4 if sliding else 0) \
+		| (8 if boosting else 0)
 	_net_state.rpc(net_round, global_position, velocity, rotation.y, head.rotation.x, flags, shield_timer, health, armor)
 
 
@@ -1681,6 +1749,7 @@ func _net_state(round_id: int, pos: Vector3, vel: Vector3, yaw: float, pitch: fl
 	health = hp
 	armor = vest
 	net_on_floor = (flags & 1) != 0
+	boosting = (flags & 8) != 0
 	sliding = (flags & 4) != 0
 	var crouch := (flags & 2) != 0
 	if crouch != crouching:
@@ -1986,7 +2055,16 @@ func shot_damage() -> float:
 		dmg *= 1.0 + stats["rage"]
 	if ambush_timer > 0.0:
 		dmg *= 1.0 + AMBUSH_DAMAGE
+	if stats["rocket_boots"] > 0:
+		dmg *= 1.0 + air_bonus()
 	return dmg
+
+
+## Bota Foguete: bônus de dano pelo tempo no ar (0 sem a carta ou no chão).
+func air_bonus() -> float:
+	if stats["rocket_boots"] <= 0:
+		return 0.0
+	return minf(AIR_DAMAGE_MAX, air_time * AIR_DAMAGE_RATE)
 
 
 func _activate_shield() -> void:
