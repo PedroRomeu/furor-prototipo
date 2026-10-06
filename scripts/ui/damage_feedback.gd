@@ -82,14 +82,21 @@ func _process(delta: float) -> void:
 			low = 0.22 + 0.08 * sin(Time.get_ticks_msec() * 0.006)
 		if me.last_stand_timer > 0.0:
 			low = 0.4 + 0.15 * sin(Time.get_ticks_msec() * 0.012)
-	_mat.set_shader_parameter("intensity", maxf(pulse, low))
-	_mat.set_shader_parameter("aspect", size.x / maxf(1.0, size.y))
+	# Só liga a vinheta quando há o que mostrar: é um shader na tela inteira, e na Intel HD
+	# a 1080p cada camada de tela cheia custa alguns ms mesmo transparente.
+	var intensity := maxf(pulse, low)
+	vignette.visible = intensity > 0.005
+	if vignette.visible:
+		_mat.set_shader_parameter("intensity", intensity)
+		_mat.set_shader_parameter("aspect", size.x / maxf(1.0, size.y))
+	if arcs.is_empty():
+		return
 	for a in arcs:
 		a["time"] -= delta
 	arcs = arcs.filter(func(a): return a["time"] > 0.0)
 	if not me.alive:
 		arcs.clear()
-	queue_redraw()
+	queue_redraw()   # o último redesenho, com a lista vazia, apaga os arcos
 
 
 func _draw() -> void:

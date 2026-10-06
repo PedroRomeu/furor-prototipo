@@ -611,6 +611,7 @@ func _process(delta: float) -> void:
 
 	_update_status()
 	blind_tint.color.a = clampf(me.blind_timer / 0.3, 0.0, 1.0) * 0.97
+	blind_tint.visible = blind_tint.color.a > 0.0   # camada de tela cheia: só quando cega
 	hit_time = maxf(0.0, hit_time - delta)
 	kill_time = maxf(0.0, kill_time - delta)
 	crosshair.queue_redraw()

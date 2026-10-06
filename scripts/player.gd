@@ -755,6 +755,7 @@ func _build_body() -> void:
 		if anim.has_animation(a):
 			anim.get_animation(a).loop_mode = Animation.LOOP_LINEAR
 	anim.play("idle")
+	_rigidify(model.find_children("*", "Skeleton3D", true, false)[0], skin_model(id))
 	body_meshes = model.find_children("*", "MeshInstance3D", true, false)
 	flash_mat = StandardMaterial3D.new()
 	flash_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -812,6 +813,92 @@ func _build_body() -> void:
 	ring.position.y = 0.03
 	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(ring)
+
+
+## Personagem em peças rígidas (check-up de desempenho de 2026-10-06): nos Mini Characters
+## cada vértice segue um osso só (conferido nos 12), então a malha é cortada uma vez por
+## osso e cada pedaço vai num BoneAttachment3D, que acompanha a animação e o AimArm. Medido
+## com janela no PC do usuário: a deformação por esqueleto custava ~4 ms por personagem
+## por quadro na Intel HD (ANGLE), mesmo com ele fora da tela; as peças não custam isso.
+## Os pedaços ficam guardados por modelo (_rigid_parts) e são os mesmos para todos.
+static var _rigid_parts := {}
+
+
+func _rigidify(skeleton: Skeleton3D, path: String) -> void:
+	var holders := {}
+	for mi: MeshInstance3D in skeleton.find_children("*", "MeshInstance3D", false, false):
+		if mi.skin == null:
+			continue
+		var key := "%s:%s" % [path, mi.name]
+		if not _rigid_parts.has(key):
+			_rigid_parts[key] = _split_by_bone(mi)
+		for part in _rigid_parts[key]:
+			var bone: String = part[0]
+			if not holders.has(bone):
+				var att := BoneAttachment3D.new()
+				att.bone_name = bone
+				skeleton.add_child(att)
+				holders[bone] = att
+			var piece := MeshInstance3D.new()
+			piece.mesh = part[1]
+			piece.cast_shadow = mi.cast_shadow
+			holders[bone].add_child(piece)
+		mi.free()
+
+
+## Uma malha por osso, com os vértices já no espaço do osso (pose de ligação do Skin).
+static func _split_by_bone(mi: MeshInstance3D) -> Array:
+	var skin: Skin = mi.skin
+	var src: Mesh = mi.mesh
+	var arr := src.surface_get_arrays(0)
+	var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+	var uvs = arr[Mesh.ARRAY_TEX_UV]
+	var colors = arr[Mesh.ARRAY_COLOR]
+	var bones = arr[Mesh.ARRAY_BONES]
+	var index = arr[Mesh.ARRAY_INDEX]
+	if index == null or index.is_empty():
+		index = PackedInt32Array(range(verts.size()))
+	var per: int = bones.size() / verts.size()
+	var groups := {}   # índice do bind -> {map, v, n, uv, c, i}
+	for t in index.size():
+		var old: int = index[t]
+		var b: int = bones[old * per]
+		if not groups.has(b):
+			groups[b] = {"map": {}, "v": PackedVector3Array(), "n": PackedVector3Array(),
+				"uv": PackedVector2Array(), "c": PackedColorArray(), "i": PackedInt32Array()}
+		var g: Dictionary = groups[b]
+		if not g["map"].has(old):
+			var pose := skin.get_bind_pose(b)
+			g["map"][old] = g["v"].size()
+			g["v"].append(pose * verts[old])
+			g["n"].append((pose.basis * normals[old]).normalized())
+			if uvs != null:
+				g["uv"].append(uvs[old])
+			if colors != null:
+				g["c"].append(colors[old])
+		g["i"].append(g["map"][old])
+	var material := mi.get_active_material(0)
+	var out := []
+	for b in groups:
+		var g: Dictionary = groups[b]
+		var a := []
+		a.resize(Mesh.ARRAY_MAX)
+		a[Mesh.ARRAY_VERTEX] = g["v"]
+		a[Mesh.ARRAY_NORMAL] = g["n"]
+		if uvs != null:
+			a[Mesh.ARRAY_TEX_UV] = g["uv"]
+		if colors != null:
+			a[Mesh.ARRAY_COLOR] = g["c"]
+		a[Mesh.ARRAY_INDEX] = g["i"]
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a)
+		mesh.surface_set_material(0, material)
+		var bone_name := String(skin.get_bind_name(b))
+		if skin.get_bind_bone(b) >= 0:
+			bone_name = String(mi.get_node(mi.skeleton).get_bone_name(skin.get_bind_bone(b)))
+		out.append([bone_name, mesh])
+	return out
 
 
 func _add_muzzle_light() -> void:
