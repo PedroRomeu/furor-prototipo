@@ -92,6 +92,52 @@ static func beam(parent: Node, from: Vector3, to: Vector3, color: Color, width :
 	parent.add_child(b)
 
 
+## Arco de um corte de espada: faixa curva na horizontal, na frente do corpo, que some
+## rápido. to_right: varre da esquerda para a direita (o desenho é o mesmo; muda o brilho).
+static func slash(parent: Node, center: Vector3, forward: Vector3, right: Vector3, radius: float,
+		to_right: bool, color: Color, time := 0.22, strength := 1.0, inner := 0.6) -> void:
+	var mi := MeshInstance3D.new()
+	var im := ImmediateMesh.new()
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.vertex_color_use_as_albedo = true
+	im.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
+	var n := 14
+	var span := deg_to_rad(65.0)
+	for i in n:
+		var t0 := float(i) / n
+		var t1 := float(i + 1) / n
+		var a0 := lerpf(-span, span, t0)
+		var a1 := lerpf(-span, span, t1)
+		# Mais forte no fim do movimento (para onde a lâmina foi).
+		var w0 := t0 if to_right else 1.0 - t0
+		var w1 := t1 if to_right else 1.0 - t1
+		var d0 := forward.rotated(Vector3.UP, -a0)
+		var d1 := forward.rotated(Vector3.UP, -a1)
+		var c0 := Color(color, (0.06 + 0.34 * w0) * strength)
+		var c1 := Color(color, (0.06 + 0.34 * w1) * strength)
+		var in0 := center + d0 * radius * inner
+		var out0 := center + d0 * radius
+		var in1 := center + d1 * radius * inner
+		var out1 := center + d1 * radius
+		for v in [[in0, c0], [out0, c0], [out1, c1], [in0, c0], [out1, c1], [in1, c1]]:
+			im.surface_set_color(v[1])
+			im.surface_add_vertex(v[0])
+	im.surface_end()
+	mi.mesh = im
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+	mi.top_level = true
+	parent.add_child(mi)
+	mi.global_transform = Transform3D.IDENTITY
+	var tween := mi.create_tween()
+	tween.tween_property(mi, "transparency", 1.0, time)
+	tween.tween_callback(mi.queue_free)
+
+
 class Beam extends MeshInstance3D:
 	var a := Vector3.ZERO
 	var b := Vector3.ZERO

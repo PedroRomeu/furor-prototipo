@@ -114,6 +114,7 @@ const BASE_STATS := {
 	"bazooka": 0,
 	"sniper": 0,
 	"shrink": 0,    # Formiga
+	"sword": 0,     # Espada
 	"barrier": 0,
 	"pierce": 0,
 	"guided": 0,   # Piloto, mestra guardada (CardDB.SHELVED_MASTERS)
@@ -388,9 +389,28 @@ const SNIPER_MODEL := "res://assets/blasters/blaster-e.glb"
 const SCOPE_FOV := 24.0
 ## O modelo da sniper (blaster-e) tem a origem na ponta do cano e 1,39 m para trás: nessa
 ## escala e posição a coronha fica logo à frente da câmera e o cano aponta para a mira.
+const SWORD_VIEW_POS := Vector3(0.08, -0.05, 0.12)   # punho da espada na primeira pessoa
 const SNIPER_VIEW_SCALE := 0.33
 const SNIPER_VIEW_POS := Vector3(0.02, 0.0, -0.15)
 const SCOPE_SPEED := 0.6
+## Espada (2026-10-06, desenho do usuário; números meus): Q troca a arma por uma espada por
+## SWORD_TIME. Cada clique é um golpe de um combo que se repete: corte para a direita, corte
+## para a esquerda e estocada (lança à frente como um dash curto). Os cortes acertam quem
+## estiver até SWORD_RANGE num leque de SWORD_ARC para cada lado; a estocada, até
+## THRUST_RANGE num leque estreito, e também quem ela atravessar no avanço. Dano: a arma
+## (shot_damage) vezes SWORD_DAMAGE[golpe]. Quem leva decide (receive_slash): com o escudo
+## de pé, bloqueia. Sem golpe por COMBO_RESET, o combo volta ao primeiro.
+const SWORD_TIME := 7.0
+const SWORD_RANGE := 3.2
+const SWORD_ARC := 65.0          # graus para cada lado
+const THRUST_RANGE := 3.6
+const THRUST_ARC := 25.0
+const SWORD_DAMAGE := [1.0, 1.0, 1.6]
+const SWORD_GAP := 0.38          # entre um golpe e outro
+const THRUST_GAP := 0.55         # depois da estocada
+const COMBO_RESET := 0.9
+const THRUST_DASH := 0.13        # duração do avanço da estocada (na velocidade do dash)
+const SWORD_COLOR := Color(0.75, 0.88, 1.0)
 ## Formiga (2026-10-06): Q encolhe por SHRINK_TIME (tamanho x SHRINK_SCALE, junto com a área
 ## que as balas acertam; a colisão com o cenário não muda, para não prender ninguém na
 ## parede ao crescer) e dá SHRINK_SPEED de velocidade. Q de novo volta antes. Ao crescer,
@@ -414,13 +434,22 @@ const RECOIL_KICK := 0.03
 const HIT_FLASH_TIME := 0.14   # o modelo atingido pisca em branco por este tempo
 ## Métodos que a outra máquina pode chamar neste jogador (ver remote_call).
 const ASSIST_TIME := 10.0   # placar: dano nos últimos 10 s antes da morte conta assistência
-const REMOTE_METHODS := ["receive_shockwave", "credit_damage", "teleport_to", "swap_to", "receive_stomp"]
+const REMOTE_METHODS := ["receive_shockwave", "credit_damage", "teleport_to", "swap_to", "receive_stomp",
+	"receive_slash"]
 ## Carta mestra que este jogador tem (a primeira de cards; "" se nenhuma).
 var master_id := ""
 var master_cd := 0.0
 var bazooka_timer := 0.0
 var rockets_left := 0
 var shrink_timer := 0.0    # Formiga: pequeno por mais quanto tempo
+var sword_timer := 0.0     # Espada na mão por mais quanto tempo
+var combo_step := 0        # próximo golpe do combo (0 direita, 1 esquerda, 2 estocada)
+var combo_idle := 0.0
+var thrust_timer := 0.0    # estocada avançando (acerta quem atravessar)
+var swing_hits: Array = []
+var swing_anim := 0.0      # terceira pessoa: tempo de animação de ataque que falta
+var sword: Node3D          # espada na mão (primeira pessoa: dentro de sword_pivot)
+var sword_pivot: Node3D
 var sniper_timer := 0.0    # Sniper na mão por mais quanto tempo
 var sniper_shots := 0
 var scoping := false       # mirando com a luneta (botão direito com a Sniper)
@@ -689,6 +718,16 @@ func _build_viewmodel() -> void:
 	sniper.position = SNIPER_VIEW_POS
 	sniper.visible = false
 	viewmodel.add_child(sniper)
+	# Espada: o pivô fica no punho; os golpes giram o pivô (tween em _show_swing).
+	sword_pivot = Node3D.new()
+	sword_pivot.position = SWORD_VIEW_POS
+	viewmodel.add_child(sword_pivot)
+	sword = _make_sword()
+	_no_shadows(sword)
+	sword.scale = Vector3.ONE * 0.55
+	sword.visible = false
+	sword_pivot.add_child(sword)
+	_rest_sword()
 	muzzle = Marker3D.new()
 	muzzle.position = Vector3(-0.01, 0.025, -0.17) + _muzzle_shift() * VIEWMODEL_SCALE
 	viewmodel.add_child(muzzle)
@@ -735,6 +774,12 @@ func _build_body() -> void:
 	sniper.position = gun.position
 	sniper.visible = false
 	hand.add_child(sniper)
+	sword = _make_sword()
+	sword.scale = Vector3.ONE * (2.4 / MODEL_SCALE)
+	sword.rotation = gun.rotation
+	sword.position = gun.position
+	sword.visible = false
+	hand.add_child(sword)
 	muzzle = Marker3D.new()
 	muzzle.position = Vector3(0, 0.04, -0.3) + _muzzle_shift()
 	gun.add_child(muzzle)
@@ -795,6 +840,10 @@ func reset_for_round(spawn: Transform3D) -> void:
 	sniper_shots = 0
 	scoping = false
 	shrink_timer = 0.0
+	sword_timer = 0.0
+	combo_step = 0
+	thrust_timer = 0.0
+	swing_anim = 0.0
 	set_meta("shrunk", false)
 	_show_bazooka(false)
 	last_stand_timer = 0.0
@@ -974,7 +1023,11 @@ func _process(delta: float) -> void:
 
 func _update_animation() -> void:
 	aim_arm.pitch = head.rotation.x
-	aim_arm.active = alive
+	aim_arm.active = alive and swing_anim <= 0.0
+	if swing_anim > 0.0:
+		swing_anim -= get_process_delta_time()
+		if alive:
+			return   # golpe de espada tocando (attack-melee-right)
 	# Caído: o modelo deita de bruços (gira para a frente sobre os pés) e "nada" no chão.
 	var lie := DOWN_LIE if downed else 0.0
 	if not is_equal_approx(model.rotation.x, lie):
@@ -1292,6 +1345,16 @@ func _tick(delta: float) -> void:
 		if shrink_timer <= 0.0:
 			shrink_timer = 0.001
 			_end_shrink(true)
+	if sword_timer > 0.0:
+		sword_timer -= delta
+		thrust_timer = maxf(0.0, thrust_timer - delta)
+		combo_idle -= delta
+		if combo_idle <= 0.0:
+			combo_step = 0
+		if sword_timer <= 0.0:
+			sword_timer = 0.0
+			thrust_timer = 0.0
+			_show_weapon(0)
 	if sniper_timer > 0.0:
 		sniper_timer -= delta
 		if sniper_timer <= 0.0 or (sniper_shots <= 0 and fire_timer <= 0.0):
@@ -1934,6 +1997,13 @@ func _act(delta: float) -> void:
 			shot_queued = 0.0
 			_fire_sniper()
 		return
+	if sword_timer > 0.0:
+		if thrust_timer > 0.0:
+			_sword_hits(2)   # a estocada acerta quem atravessar no avanço
+		if trigger and not is_shielding() and fire_timer <= 0.0:
+			shot_queued = 0.0
+			_swing()
+		return
 	if in_reload and reload_timer <= 0.0 and ammo < stats["mag_size"] and burst_left == 0:
 		_start_reload()
 	if burst_left > 0:
@@ -1975,6 +2045,13 @@ func _use_master() -> void:
 		Sfx.at(self, "pickup", chest())
 	if stats["shrink"] > 0:
 		_start_shrink()
+	if stats["sword"] > 0:
+		sword_timer = SWORD_TIME
+		combo_step = 0
+		burst_left = 0
+		fire_timer = 0.2
+		_show_weapon(3)
+		Sfx.at(self, "pickup", chest())
 	if stats["sniper"] > 0:
 		sniper_timer = SNIPER_TIME
 		sniper_shots = 1
@@ -2063,6 +2140,8 @@ func _set_weapon(kind: int) -> void:
 		bazooka.visible = kind == 1
 	if sniper:
 		sniper.visible = kind == 2
+	if sword:
+		sword.visible = kind == 3
 
 
 ## Bastião: a parede existe em todas as máquinas; quem decide o reflexo é a do dono.
@@ -2121,6 +2200,167 @@ func _set_shrunk(on: bool) -> void:
 		Effects.burst(get_parent(), global_position + Vector3.UP * 0.3, SHRINK_SLAM_RANGE, Color(0.75, 0.6, 1.0), 0.3)
 		Sfx.at(self, "explosion", global_position)
 		eye_dip = 0.3
+
+
+# ---------------------------------------------------------------- espada
+
+## Espada montada com formas simples (os pacotes da Kenney que usamos não têm uma): lâmina
+## larga e longa apontando para -Z, como as armas, guarda dourada, cabo e pomo. O punho
+## fica na origem; medidas em metros (lâmina de 1 m), o tamanho na mão vem de quem chama.
+func _make_sword() -> Node3D:
+	var root := Node3D.new()
+	var steel := StandardMaterial3D.new()
+	steel.albedo_color = Color(0.82, 0.86, 0.92)
+	steel.metallic = 0.6
+	steel.roughness = 0.3
+	steel.emission_enabled = true
+	steel.emission = SWORD_COLOR * 0.25   # a lâmina aparece mesmo na sombra e na qualidade Baixa
+	var gold := StandardMaterial3D.new()
+	gold.albedo_color = Color(0.85, 0.65, 0.2)
+	gold.metallic = 0.5
+	var grip := StandardMaterial3D.new()
+	grip.albedo_color = Color(0.2, 0.13, 0.08)
+	var part := func(mesh: PrimitiveMesh, mat: Material, pos: Vector3, rot := Vector3.ZERO) -> void:
+		mesh.material = mat
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.position = pos
+		mi.rotation = rot
+		root.add_child(mi)
+	var blade := BoxMesh.new()
+	blade.size = Vector3(0.11, 0.025, 1.0)
+	part.call(blade, steel, Vector3(0, 0, -0.62))
+	var tip := PrismMesh.new()                     # ponta triangular
+	tip.size = Vector3(0.11, 0.14, 0.025)
+	part.call(tip, steel, Vector3(0, 0, -1.19), Vector3(-PI / 2.0, 0, 0))
+	var guard := BoxMesh.new()
+	guard.size = Vector3(0.32, 0.05, 0.06)
+	part.call(guard, gold, Vector3(0, 0, -0.1))
+	var handle := CylinderMesh.new()
+	handle.top_radius = 0.025
+	handle.bottom_radius = 0.025
+	handle.height = 0.2
+	handle.radial_segments = 8
+	part.call(handle, grip, Vector3(0, 0, 0.02), Vector3(PI / 2.0, 0, 0))
+	var pommel := SphereMesh.new()
+	pommel.radius = 0.04
+	pommel.height = 0.08
+	pommel.radial_segments = 8
+	pommel.rings = 4
+	part.call(pommel, gold, Vector3(0, 0, 0.13))
+	return root
+
+
+## Primeira pessoa: espada em repouso, inclinada para cima e para a esquerda.
+func _rest_sword() -> void:
+	if sword_pivot:
+		sword_pivot.rotation = Vector3(0.9, -0.35, -0.35)
+		sword_pivot.position = SWORD_VIEW_POS
+
+
+## Um golpe do combo: decide os acertos (máquina dona), anima e avisa as outras máquinas.
+func _swing() -> void:
+	var step := combo_step
+	combo_step = (step + 1) % 3
+	combo_idle = COMBO_RESET
+	fire_timer = THRUST_GAP if step == 2 else SWORD_GAP
+	swing_hits.clear()
+	reveal()
+	if step == 2:
+		# Estocada: avança como um dash curto, sem gastar o dash.
+		dash_dir = _flat_forward()
+		dash_timer = THRUST_DASH
+		dash_air = not is_on_floor()
+		dash_exit = maxf(Vector3(velocity.x, 0.0, velocity.z).length(), float(stats["move_speed"]))
+		thrust_timer = THRUST_DASH + 0.05
+	_sword_hits(step)
+	_show_swing(step)
+	if Net.online:
+		_net_swing.rpc(step)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_swing(step: int) -> void:
+	_show_swing(step)
+
+
+## Quem está no alcance e no leque do golpe (cada um uma vez por golpe).
+func _sword_hits(step: int) -> void:
+	var forward := _flat_forward()
+	var reach := THRUST_RANGE if step == 2 else SWORD_RANGE
+	var arc := deg_to_rad(THRUST_ARC if step == 2 else SWORD_ARC)
+	var dmg := shot_damage() * float(SWORD_DAMAGE[step])
+	for enemy in enemies():
+		if enemy in swing_hits:
+			continue
+		var to: Vector3 = enemy.chest() - chest()
+		if absf(to.y) > 2.0:
+			continue
+		var flat := Vector3(to.x, 0.0, to.z)
+		var dist := flat.length()
+		if dist > reach + enemy.hit_radius():
+			continue
+		# Colado no corpo vale de qualquer ângulo; senão, só dentro do leque.
+		if dist > 0.9 and forward.angle_to(flat / dist) > arc:
+			continue
+		swing_hits.append(enemy)
+		var push := forward * (9.0 if step == 2 else 4.0)
+		if step < 2:
+			# Os cortes empurram para o lado do corte.
+			push += forward.cross(Vector3.UP) * (3.0 if step == 0 else -3.0)
+		enemy.remote_call("receive_slash", [dmg, String(name), push])
+		Effects.sparks(get_parent(), enemy.chest(), SWORD_COLOR, 10, 7.0)
+
+
+## Levou um golpe de espada (na máquina dona do alvo): o escudo de pé bloqueia.
+func receive_slash(dmg: float, from_name: String, push: Vector3) -> void:
+	if not alive:
+		return
+	if is_shielding():
+		reflect_flash = 1.0
+		Sfx.at(self, "reflect", chest())
+		Effects.burst(get_parent(), chest(), 1.2, Color(0.5, 0.9, 1.0), 0.15)
+		return
+	knockback(push + Vector3.UP * 2.5)
+	take_damage(dmg, get_parent().get_node_or_null(from_name) as Player)
+
+
+## Visual do golpe: arco (ou traço, na estocada) na frente do corpo, som e animação.
+func _show_swing(step: int) -> void:
+	Sfx.at(self, "dash", chest())
+	var forward := _flat_forward()
+	var right := forward.cross(Vector3.UP)
+	var center := chest() + Vector3.UP * 0.1
+	# Na própria tela o golpe aparece pela espada; o rastro fica quase invisível (cheio, ele
+	# cobria a tela). Para os outros, rastro do corte e traço da estocada.
+	var own := is_human
+	if step == 2:
+		if not own:
+			Effects.beam(get_parent(), center + forward * 0.6, center + forward * THRUST_RANGE, SWORD_COLOR, 0.08, 0.2)
+	else:
+		Effects.slash(get_parent(), center - Vector3.UP * (0.35 if own else 0.0), forward, right, SWORD_RANGE * 0.85,
+			step == 0, SWORD_COLOR, 0.22, 0.35 if own else 1.0, 0.85 if own else 0.6)
+	if model:
+		swing_anim = 0.4
+		anim.play("attack-melee-right", 0.05)
+		anim.speed_scale = 1.4 if step == 2 else 1.0
+	if sword_pivot and is_human:
+		var t := create_tween()
+		match step:
+			0:   # da esquerda para a direita, lâmina deitada
+				sword_pivot.rotation = Vector3(0.1, 1.1, -1.4)
+				t.tween_property(sword_pivot, "rotation", Vector3(0.1, -1.2, -1.4), 0.16) \
+					.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			1:   # da direita para a esquerda
+				sword_pivot.rotation = Vector3(0.1, -1.2, 1.4)
+				t.tween_property(sword_pivot, "rotation", Vector3(0.1, 1.1, 1.4), 0.16) \
+					.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			2:   # estocada: aponta para a mira e avança
+				sword_pivot.rotation = Vector3(0.05, 0.05, 0.0)
+				sword_pivot.position = SWORD_VIEW_POS + Vector3(0.0, 0.0, 0.1)
+				t.tween_property(sword_pivot, "position", SWORD_VIEW_POS + Vector3(-0.08, 0.04, -0.3), 0.1)
+		t.tween_interval(0.12)
+		t.tween_callback(_rest_sword)
 
 
 ## Sniper: um tiro que é um laser. Mira no que está sob a mira (atravessando o cenário: o
@@ -2621,9 +2861,11 @@ func _apply_down(bleed: float) -> void:
 	crouching = true
 	_set_height(DOWN_HEIGHT)
 	_end_shrink(false)
-	if bazooka_timer > 0.0 or sniper_timer > 0.0:
+	if bazooka_timer > 0.0 or sniper_timer > 0.0 or sword_timer > 0.0:
 		bazooka_timer = 0.0
 		sniper_timer = 0.0
+		sword_timer = 0.0
+		thrust_timer = 0.0
 		scoping = false
 		_show_weapon(0)
 	_clear_down_marker()

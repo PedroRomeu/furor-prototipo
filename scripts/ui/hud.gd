@@ -546,6 +546,8 @@ func _draw_ammo_arc() -> void:
 	elif me.sniper_timer > 0.0:
 		count = 1
 		left = me.sniper_shots
+	elif me.sword_timer > 0.0:
+		return   # a espada não tem pente
 	if count <= 0:
 		return
 	var span := deg_to_rad(AMMO_SPAN)
@@ -610,7 +612,9 @@ func _process(delta: float) -> void:
 	if scope.visible:
 		(scope.material as ShaderMaterial).set_shader_parameter("screen", scope.size)
 	crosshair.visible = not me.scoping and not dead_view
-	if me.sniper_timer > 0.0:
+	if me.sword_timer > 0.0:
+		ammo_label.text = "Espada  %s" % ["corte →", "corte ←", "estocada"][me.combo_step]
+	elif me.sniper_timer > 0.0:
 		ammo_label.text = "Sniper  %d" % me.sniper_shots
 	elif me.bazooka_timer > 0.0:
 		ammo_label.text = "Foguetes %d" % me.rockets_left

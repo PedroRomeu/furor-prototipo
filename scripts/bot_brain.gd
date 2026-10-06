@@ -64,6 +64,9 @@ func think(delta: float) -> void:
 		_aim_and_shoot(delta, foe, sees, go)
 		_defend()
 		return
+	if p.sword_timer > 0.0:
+		_sword_fight(delta, foe, sees)
+		return
 	var wish := _movement(delta, foe, sees)
 	_aim_and_shoot(delta, foe, sees, wish)
 	_defend()
@@ -95,6 +98,23 @@ func _set_move(wish: Vector3) -> void:
 	player.in_move = Vector2(local.x, -local.z).limit_length(1.0)
 
 
+## Com a Espada: corre até o alvo e golpeia quando ele está no alcance e na frente.
+func _sword_fight(delta: float, foe: Player, sees: bool) -> void:
+	var p := player
+	var dist := p.global_position.distance_to(foe.global_position)
+	var wish := Vector3.ZERO
+	if dist > Player.SWORD_RANGE * 0.7:
+		wish = _follow_path(delta, foe.global_position) if not sees else \
+			Vector3(foe.global_position.x - p.global_position.x, 0.0, foe.global_position.z - p.global_position.z).normalized()
+	_set_move(wish)
+	p.look_at_point(foe.chest(), TURN_SPEED * delta)
+	click_cd -= delta
+	if dist < Player.SWORD_RANGE and click_cd <= 0.0:
+		p.in_shoot = true
+		click_cd = randf_range(CLICK_MIN, CLICK_MAX)
+	_defend()
+
+
 ## Carta mestra: Corrente de vez em quando na luta, Bazuca e Perfurante com o alvo à vista.
 ## (O Bastião sobe em _defend, contra uma bala que vem quando o escudo não está pronto.)
 func _master(foe: Player, sees: bool) -> void:
@@ -108,6 +128,8 @@ func _master(foe: Player, sees: bool) -> void:
 	elif p.stats["sniper"] > 0 and p.global_position.distance_to(foe.global_position) > NEAR:
 		p.in_master = true
 	elif p.stats["pierce"] > 0 and p.pierce_left == 0:
+		p.in_master = true
+	elif p.stats["sword"] > 0 and p.global_position.distance_to(foe.global_position) < NEAR:
 		p.in_master = true
 	elif p.stats["shrink"] > 0 and p.shrink_timer <= 0.0 \
 			and (p.health < p.stats["max_health"] * 0.4 or randf() < 0.01):
