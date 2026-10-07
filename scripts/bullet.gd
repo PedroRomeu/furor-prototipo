@@ -61,7 +61,7 @@ const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", 
 	"slow", "push", "shield_break", "target_bounce", "execute", "reflected", "gravity",
 	"boomerang", "returning", "bounce_damage", "sticky", "split", "grow", "swap", "blind",
 	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls",
-	"toxic", "hole", "laser", "ice"]
+	"toxic", "hole", "laser", "ice", "meteor"]
 ## Bala Fantasma: só paredes contam (superfície quase em pé); no chão e no topo das peças a
 ## bala para ou quica como as outras.
 const GHOST_WALL_NORMAL_Y := 0.7
@@ -111,6 +111,7 @@ var swap := false
 var blind := 0.0
 var laser := false   # tiro da Sniper: deixa um feixe reto ao nascer (em todas as máquinas)
 var ice := false     # caco da Prisão de Gelo: congela em vez de ferir; some a ICE_RANGE
+var meteor := false  # Chuva de Meteoros: onde bater marca o chão (uma vez só)
 var toxic := 0   # Nuvem Tóxica: cópias (AreaField)
 var hole := 0    # Buraco Negro: cópias (AreaField)
 var lazy_top := 0.0
@@ -266,6 +267,8 @@ func _ready() -> void:
 		c = REFLECTED_COLOR
 	if ice:
 		c = Player.ICE_COLOR
+	if meteor:
+		c = MeteorStrike.COLOR
 	_set_color(c)
 	if sound:
 		Sfx.at(get_parent(), "shot", global_position)
@@ -651,6 +654,10 @@ func _laser_beam() -> void:
 
 ## Nuvem Tóxica e Buraco Negro onde a bala bateu (em todas as máquinas, sem rede).
 func _impact_fields(point: Vector3, normal: Vector3) -> void:
+	# Chuva de Meteoros: só a máquina de quem atirou marca (e avisa as outras).
+	if meteor and is_instance_valid(shooter) and shooter.is_local:
+		meteor = false
+		shooter.meteor_mark(point)
 	if (toxic > 0 or hole > 0) and is_instance_valid(shooter):
 		AreaField.on_impact(shooter, point, normal, toxic, hole, damage)
 

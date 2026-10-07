@@ -138,6 +138,8 @@ func _master(foe: Player, sees: bool) -> void:
 	elif p.stats["beam"] > 0 and p.global_position.distance_to(foe.global_position) > 8.0 \
 			and p.global_position.distance_to(foe.global_position) < 30.0:
 		p.in_master = true   # Canhão Arcano: alvo à vista entre 8 e 30 m
+	elif p.stats["meteor"] > 0 and p.meteor_left == 0 and p.global_position.distance_to(foe.global_position) > 6.0:
+		p.in_master = true   # Chuva de Meteoros: os próximos tiros marcam
 	elif p.stats["slap"] > 0 and p.global_position.distance_to(foe.global_position) < Player.SLAP_RANGE + 0.5:
 		p.in_master = true   # Mega Tapa: tira quem chegou perto
 	elif p.stats["sword"] > 0 and p.global_position.distance_to(foe.global_position) < NEAR:

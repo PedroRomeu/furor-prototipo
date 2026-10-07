@@ -98,6 +98,11 @@ const MASTERS := {
 	"canhao_arcano": {"name": "Canhão Arcano", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 24.0,
 		"desc": "Q: carrega por 1 s (andando devagar) e solta um raio de 40 m por 2,5 s, que atravessa paredes. Parado, no chão ou flutuando no ar, você mira devagar. Cada toque causa 30 de dano e arremessa o alvo para fora do raio (o mesmo alvo a cada 0,6 s). Escudo levantado bloqueia o dano. Levar tapa, congelar ou morrer corta o raio. Recarga de 24 s.",
 		"mods": [{"stat": "beam", "add": 1}]},
+	# Chuva de Meteoros (2026-10-06, ideia do usuário; números meus, aprovados; ignorar
+	# telhados foi escolha dele).
+	"chuva_de_meteoros": {"name": "Chuva de Meteoros", "cat": "Balas", "rarity": "mitico", "master": true, "cooldown": 16.0,
+		"desc": "Q: os próximos 3 tiros (em até 8 s) marcam o chão onde batem. 1,5 s depois cai um meteoro em cada marca: 45 de dano no centro, até 4 m, e empurra. A marca aparece para todos. Recarga de 16 s.",
+		"mods": [{"stat": "meteor", "add": 1}]},
 	"perfurante": {"name": "Perfurante", "cat": "Balas", "rarity": "mitico", "master": true, "cooldown": 12.0,
 		"desc": "Q: os próximos 3 tiros vão retos, sem queda, 3x mais rápidos e atravessando paredes. Recarga de 12 s.",
 		"mods": [{"stat": "pierce", "add": 1}]},

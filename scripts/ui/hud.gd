@@ -580,6 +580,8 @@ func _draw_ammo_arc() -> void:
 			c = last if left == 1 and me.bazooka_timer <= 0.0 else full
 			if me.pierce_left > 0 and i - (count - left) < me.pierce_left and me.bazooka_timer <= 0.0:
 				c = Color(Bullet.PIERCE_COLOR, 0.95)
+			elif me.meteor_left > 0 and i - (count - left) < me.meteor_left and me.bazooka_timer <= 0.0:
+				c = Color(MeteorStrike.COLOR, 0.95)
 		for k in 3:
 			_arc_piece(pts, cols, AMMO_RADIUS, a + seg * k / 3.0, a + seg * (k + 1) / 3.0, c)
 	crosshair.draw_multiline(pts, shadow, 5.0, true)
@@ -646,6 +648,9 @@ func _update_ammo() -> void:
 		sub_color = Color(1, 1, 1, 0.75)
 	if me.pierce_left > 0 and me.bazooka_timer <= 0.0:
 		sub = ("%s  ·  " % sub if sub != "" else "") + "PERFURANTES %d" % me.pierce_left
+	if me.meteor_left > 0 and me.bazooka_timer <= 0.0:
+		sub = ("%s  ·  " % sub if sub != "" else "") + "METEOROS %d  %.0f s" % [me.meteor_left, ceilf(me.meteor_window)]
+		sub_color = MeteorStrike.COLOR
 		sub_color = Bullet.PIERCE_COLOR.lerp(Color.WHITE, 0.3)
 	ammo_label.text = big
 	ammo_max.text = small

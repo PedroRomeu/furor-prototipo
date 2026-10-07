@@ -24,6 +24,7 @@ signal froze       # ficou preso no gelo (Prisão de Gelo; o registro do autotes
 signal slapped(splat: bool)   # levou o Mega Tapa / bateu na parede (registro do autoteste)
 signal beamed      # levou um toque do Canhão Arcano (registro do autoteste)
 signal platform_made   # criou (ou recebeu pela rede) uma plataforma suspensa (registro do autoteste)
+signal meteor_marked   # marca de meteoro no chão (registro do autoteste)
 
 ## Atributos sem nenhuma carta. As cartas (CardDB) alteram estes valores.
 const BASE_STATS := {
@@ -120,6 +121,7 @@ const BASE_STATS := {
 	"slap": 0,      # Mega Tapa
 	"beam": 0,      # Canhão Arcano
 	"platforms": 0, # Plataformas Suspensas
+	"meteor": 0,    # Chuva de Meteoros
 	"updraft": 0,
 	"bazooka": 0,
 	"sniper": 0,
@@ -492,6 +494,13 @@ const PLAT_MODE := 6.0
 const PLAT_MAX := 4
 var plat_mode := 0.0
 var plat_left := 0
+## Chuva de Meteoros (mestra): METEOR_SHOTS tiros marcados por até METEOR_WINDOW; o meteoro
+## em si está em MeteorStrike.
+const METEOR_SHOTS := 3
+const METEOR_WINDOW := 8.0
+var meteor_left := 0
+var meteor_window := 0.0
+var meteor_shot := false   # o disparo atual marca o chão
 ## Mega Tapa (mestra): leque curto à frente; arremessa (SLAP_PUSH para o lado, SLAP_LIFT
 ## para cima). Por SLAP_FLIGHT segundos, bater numa parede ainda rápido (SPLAT_MIN_SPEED)
 ## dá SPLAT_DAMAGE e deixa tonto (DAZE_TIME: lento e sem atirar).
@@ -1059,6 +1068,9 @@ func reset_for_round(spawn: Transform3D) -> void:
 	_end_beam(false)
 	plat_mode = 0.0
 	plat_left = 0
+	meteor_left = 0
+	meteor_window = 0.0
+	get_tree().call_group("meteor_strikes", "queue_free")
 	global_transform = spawn
 	reset_physics_interpolation()
 	net_pos = spawn.origin
@@ -1580,6 +1592,10 @@ func _tick(delta: float) -> void:
 	speed_orb_timer = maxf(0.0, speed_orb_timer - delta)
 	daze_timer = maxf(0.0, daze_timer - delta)
 	plat_mode = maxf(0.0, plat_mode - delta)
+	if meteor_window > 0.0:
+		meteor_window -= delta
+		if meteor_window <= 0.0:
+			meteor_left = 0   # o que sobrou se perde
 	if bazooka_timer > 0.0:
 		bazooka_timer -= delta
 		if bazooka_timer <= 0.0 or (rockets_left <= 0 and fire_timer <= 0.0):
@@ -2354,7 +2370,7 @@ func _chaos_tick(delta: float) -> void:
 	if not chaos_used:
 		return
 	if bazooka_timer > 0.0 or sniper_timer > 0.0 or sword_timer > 0.0 or shrink_timer > 0.0 or pierce_left > 0 \
-			or beam_timer > 0.0 or beam_charge > 0.0 or plat_mode > 0.0:
+			or beam_timer > 0.0 or beam_charge > 0.0 or plat_mode > 0.0 or meteor_left > 0:
 		master_cd = CHAOS_WAIT
 	elif master_cd <= 0.0:
 		_chaos_draw()
@@ -2417,6 +2433,11 @@ func _use_master() -> void:
 		_slap()
 	if stats["beam"] > 0:
 		_start_beam()
+	if stats["meteor"] > 0:
+		meteor_left = METEOR_SHOTS
+		meteor_window = METEOR_WINDOW
+		Effects.burst(get_parent(), muzzle.global_position, 0.6, MeteorStrike.COLOR, 0.2)
+		Sfx.at(self, "pickup", chest())
 	if stats["platforms"] > 0:
 		plat_mode = PLAT_MODE
 		plat_left = PLAT_MAX
@@ -3050,6 +3071,25 @@ func _make_hand() -> Node3D:
 	return root
 
 
+# ---------------------------------------------------------------- Chuva de Meteoros
+
+## Bala marcada bateu (na máquina de quem atirou): marca o chão logo abaixo e avisa todas.
+func meteor_mark(point: Vector3) -> void:
+	var query := PhysicsRayQueryParameters3D.create(point + Vector3.UP * 0.5, point + Vector3.DOWN * 60.0, 1)
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	var ground: Vector3 = hit["position"] if not hit.is_empty() else point
+	if Net.online and is_inside_tree():
+		_net_meteor.rpc(ground)
+	else:
+		_net_meteor(ground)
+
+
+@rpc("authority", "call_local", "reliable")
+func _net_meteor(pos: Vector3) -> void:
+	MeteorStrike.spawn(get_parent(), pos, self)
+	meteor_marked.emit()
+
+
 # ---------------------------------------------------------------- Plataformas Suspensas
 
 ## Plataforma sob os pés, nesta e nas outras máquinas (para todo mundo poder pisar).
@@ -3278,6 +3318,9 @@ func _fire() -> void:
 	pierce_shot = pierce_left > 0
 	if pierce_shot:
 		pierce_left -= 1
+	meteor_shot = meteor_left > 0
+	if meteor_shot:
+		meteor_left -= 1
 	shot_mult = float(stats["last_shot"]) if ammo == 0 else 1.0
 	burst_left = stats["burst"] - 1
 	burst_timer = BURST_GAP
@@ -3312,6 +3355,8 @@ func _volley() -> void:
 			# Perfurante: reta, bem mais rápida e atravessando paredes.
 			extra.merge({"speed": float(stats["bullet_speed"]) * PIERCE_SPEED, "gravity": 0.0,
 				"ghost": true, "pierce": true})
+		if meteor_shot and k == 0:
+			extra["meteor"] = true   # só a primeira bala do disparo marca (escopeta)
 		Bullet.fire(self, muzzle.global_position, dir, mult, k == 0, extra)
 	recoil = 1.0
 	muzzle_light.light_energy = 3.0
