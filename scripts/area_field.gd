@@ -21,9 +21,6 @@ const SHIELD_SAW := 1
 const SHIELD_FLAMES := 2
 const SHIELD_FROST := 4
 const SHIELD_MINE := 8
-## Cada efeito do escudo tem recarga própria, como a Restauração: com cartas que aceleram
-## o escudo, sem isso o chão viraria fogo sem parar.
-const SHIELD_COOLDOWNS := {SHIELD_SAW: 3.0, SHIELD_FLAMES: 4.0, SHIELD_FROST: 3.0, SHIELD_MINE: 2.5}
 
 # Serra: gira em volta do dono; o raio cresce por cópia.
 const SAW_TIME := 2.0

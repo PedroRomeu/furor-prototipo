@@ -42,7 +42,7 @@ const LIMITS := {
 	"fire_interval": [0.08, 5.0],
 	"reload_time": [0.2, 10.0],
 	"bullet_speed": [15.0, 400.0],
-	"shield_cooldown": [0.3, 20.0],
+	"shield_cooldown": [1.0, 20.0],
 	"slow": [0.0, 0.7],
 	"move_speed": [3.0, 20.0],
 	"body_scale": [0.45, 1.8],
@@ -79,6 +79,10 @@ const LOWER_BETTER := ["fire_interval", "reload_time", "shield_cooldown", "dash_
 const PENALTY_FLOOR := 0.35
 const PENALTY_CEIL := 2.5
 const PENALTY_FLOOR_ABS := {"mag_size": 1}   # pente: as perdas param em 1 bala
+## Recarga do escudo (2026-10-07): os custos das cartas (+1 s, +0,5 s) somam até este teto,
+## no lugar do PENALTY_CEIL (2,5x apagaria o custo da 3a carta em diante). As porcentagens
+## que pioram (Escudo Duplo) entram depois das reduções, sobre o total; LIMITS dá 1 a 20 s.
+const SHIELD_COST_MAX := 12.0
 
 const MASTER_DEFAULT := "corrente"
 const MASTERS := {
@@ -195,11 +199,11 @@ const ARCHETYPES := {
 			"geada", "nuvem_toxica", "buraco_negro", "chamas"]},
 	"Espelho": {"desc": "Refletir as balas do inimigo com o escudo.",
 		"cards": ["escudo_firme", "reflexos", "espelho_cortante", "adrenalina", "espelho_duplo",
-			"espelho_perseguidor", "espelho_gigante", "escudo_duplo", "eco"]},
+			"espelho_perseguidor", "espelho_gigante", "escudo_duplo", "eco", "escudo_de_papel"]},
 	"Escudo de ataque": {"desc": "O escudo como arma, de perto.",
 		"cards": ["pancada", "onda_de_choque", "investida", "nova", "chuva_de_bombas", "teleporte",
 			"couraca", "fortaleza", "restauracao", "recarga_tatica", "ultima_defesa",
-			"serra", "chamas", "geada", "mina"]},
+			"serra", "chamas", "geada", "mina", "passo_ligeiro", "escudo_de_papel"]},
 	"Corpo a corpo": {"desc": "Encostar no inimigo e bater.",
 		"cards": ["escopeta", "atropelar", "cacador", "sede_de_sangue", "meteoro", "troca_troca",
 			"pancada", "investida", "cacada", "serra", "pisao"]},
@@ -213,7 +217,8 @@ const ARCHETYPES := {
 		"cards": ["impulso", "folego", "dash_longo", "deslize_turbo", "esquiva", "atropelar", "saque_rapido",
 			"cacada", "botas_leves", "pisao"]},
 	"Tudo ou nada": {"desc": "Troca vida por poder.",
-		"cards": ["fragil", "canhao_de_vidro", "imprudente", "nanico", "furia", "fenix", "molas"]},
+		"cards": ["fragil", "canhao_de_vidro", "imprudente", "nanico", "furia", "fenix", "molas",
+			"escudo_de_papel"]},
 }
 
 ## O corpo cresce com a vida máxima, de leve (como no Furor): 1,8x de vida = 19% maior,
@@ -355,85 +360,102 @@ var CARDS := {
 		"mods": [{"stat": "black_hole", "add": 1}, {"stat": "damage", "mul": 0.9}]},
 
 	# Escudo
+	# Recarga do E (2026-10-07, regra do Furor descrita pelo usuário): toda carta que melhora
+	# o escudo deixa a recarga mais longa, +1 s se o efeito é forte e +0,5 s se é fraco, por
+	# cópia. Reflexos (-0,5 s, só isso) é a que mais tira sem custo; as que tiram e fazem
+	# outra coisa tiram menos ou cobram algo. Somas limitadas em compute_stats.
 	"escudo_firme": {"name": "Escudo Firme", "cat": "Escudo", "rarity": "comum",
-		"desc": "O escudo dura +0,15 s.",
-		"mods": [{"stat": "shield_duration", "add": 0.15}]},
+		"desc": "O escudo dura +0,15 s. Escudo +0,5 s de recarga.",
+		"mods": [{"stat": "shield_duration", "add": 0.15}, {"stat": "shield_cooldown", "add": 0.5}]},
 	"reflexos": {"name": "Reflexos", "cat": "Escudo", "rarity": "comum",
-		"desc": "O escudo volta 30% mais rápido.",
-		"mods": [{"stat": "shield_cooldown", "mul": 0.7}]},
+		"desc": "O escudo volta 0,5 s mais rápido.",
+		"mods": [{"stat": "shield_cooldown", "add": -0.5}]},
 	"defensor": {"name": "Defensor", "cat": "Escudo", "rarity": "comum",
-		"desc": "+25% de vida e o escudo volta 0,4 s mais rápido.",
-		"mods": [{"stat": "max_health", "mul": 1.25}, {"stat": "shield_cooldown", "add": -0.4}]},
+		"desc": "+25% de vida e o escudo volta 0,25 s mais rápido.",
+		"mods": [{"stat": "max_health", "mul": 1.25}, {"stat": "shield_cooldown", "add": -0.25}]},
+	"passo_ligeiro": {"name": "Passo Ligeiro", "cat": "Escudo", "rarity": "comum",
+		"desc": "Levantar o escudo te deixa 25% mais rápido por 1,5 s. O escudo volta 0,3 s mais rápido.",
+		"mods": [{"stat": "shield_haste", "add": 0.25}, {"stat": "shield_cooldown", "add": -0.3}]},
+	"escudo_de_papel": {"name": "Escudo de Papel", "cat": "Escudo", "rarity": "raro",
+		"desc": "O escudo volta 1 s mais rápido, mas -20% de vida.",
+		"mods": [{"stat": "shield_cooldown", "add": -1.0}, {"stat": "max_health", "mul": 0.8}]},
 	"espelho_cortante": {"name": "Espelho Cortante", "cat": "Escudo", "rarity": "raro",
-		"desc": "Balas refletidas causam +75% de dano.",
-		"mods": [{"stat": "reflect_mult", "add": 0.75}]},
+		"desc": "Balas refletidas causam +75% de dano. Escudo +0,5 s de recarga.",
+		"mods": [{"stat": "reflect_mult", "add": 0.75}, {"stat": "shield_cooldown", "add": 0.5}]},
 	"adrenalina": {"name": "Adrenalina", "cat": "Escudo", "rarity": "epico", "max": 1,
-		"desc": "Refletir uma bala recarrega o escudo na hora.",
-		"mods": [{"stat": "reflect_refund", "add": 1}]},
+		"desc": "Refletir uma bala corta pela metade o que falta da recarga do escudo, uma vez por escudo levantado. Escudo +1 s de recarga.",
+		"mods": [{"stat": "reflect_refund", "add": 1}, {"stat": "shield_cooldown", "add": 1.0}]},
 	"espelho_duplo": {"name": "Espelho Duplo", "cat": "Escudo", "rarity": "epico",
-		"desc": "Cada bala refletida volta acompanhada de mais uma.",
-		"mods": [{"stat": "reflect_split", "add": 1}]},
+		"desc": "Cada bala refletida volta acompanhada de mais uma. Escudo +1 s de recarga.",
+		"mods": [{"stat": "reflect_split", "add": 1}, {"stat": "shield_cooldown", "add": 1.0}]},
 	"espelho_perseguidor": {"name": "Espelho Perseguidor", "cat": "Escudo", "rarity": "epico",
-		"desc": "Balas refletidas perseguem quem atirou.",
-		"mods": [{"stat": "reflect_homing", "add": 3.0}]},
+		"desc": "Balas refletidas perseguem quem atirou. Escudo +1 s de recarga.",
+		"mods": [{"stat": "reflect_homing", "add": 3.0}, {"stat": "shield_cooldown", "add": 1.0}]},
 	"recarga_tatica": {"name": "Recarga Tática", "cat": "Escudo", "rarity": "raro", "max": 1,
-		"desc": "Levantar o escudo enche o pente.",
-		"mods": [{"stat": "shield_reload", "add": 1}]},
+		"desc": "Levantar o escudo enche o pente. Escudo +1 s de recarga.",
+		"mods": [{"stat": "shield_reload", "add": 1}, {"stat": "shield_cooldown", "add": 1.0}]},
 	"investida": {"name": "Investida", "cat": "Escudo", "rarity": "raro", "max": 1,
-		"desc": "Levantar o escudo te lança para frente.",
-		"mods": [{"stat": "shield_dash", "add": 1}]},
+		"desc": "Levantar o escudo te lança para frente. Escudo +0,5 s de recarga.",
+		"mods": [{"stat": "shield_dash", "add": 1}, {"stat": "shield_cooldown", "add": 0.5}]},
 	"onda_de_choque": {"name": "Onda de Choque", "cat": "Escudo", "rarity": "raro",
-		"desc": "O escudo empurra o inimigo a até 8 m e causa 10 de dano. Escudo +0,3 s de recarga.",
-		"mods": [{"stat": "shield_shockwave", "add": 1}, {"stat": "shield_cooldown", "add": 0.3}]},
+		"desc": "O escudo empurra o inimigo a até 8 m e causa 10 de dano. Escudo +1 s de recarga.",
+		"mods": [{"stat": "shield_shockwave", "add": 1}, {"stat": "shield_cooldown", "add": 1.0}]},
 	"restauracao": {"name": "Restauração", "cat": "Escudo", "rarity": "comum",
-		"desc": "Levantar o escudo cura 10 de vida, no máximo uma vez a cada 3 s.",
-		"mods": [{"stat": "shield_heal", "add": 10.0}]},
+		"desc": "Levantar o escudo cura 10 de vida. Escudo +0,5 s de recarga.",
+		"mods": [{"stat": "shield_heal", "add": 10.0}, {"stat": "shield_cooldown", "add": 0.5}]},
 	"nova": {"name": "Nova", "cat": "Escudo", "rarity": "epico",
-		"desc": "O escudo dispara 6 balas em volta de você (meio dano). Escudo +0,5 s de recarga.",
-		"mods": [{"stat": "shield_nova", "add": 6}, {"stat": "shield_cooldown", "add": 0.5}]},
+		"desc": "O escudo dispara 6 balas em volta de você (meio dano). Escudo +1 s de recarga.",
+		"mods": [{"stat": "shield_nova", "add": 6}, {"stat": "shield_cooldown", "add": 1.0}]},
 
 	"teleporte": {"name": "Teleporte", "cat": "Escudo", "rarity": "lendario", "max": 1,
-		"desc": "Levantar o escudo te teleporta 7 m para onde você olha, atravessando paredes. Escudo volta 0,3 s mais rápido.",
-		"mods": [{"stat": "shield_teleport", "add": 1}, {"stat": "shield_cooldown", "add": -0.3}]},
+		"desc": "Levantar o escudo te teleporta 7 m para onde você olha, atravessando paredes. Escudo +0,5 s de recarga.",
+		"mods": [{"stat": "shield_teleport", "add": 1}, {"stat": "shield_cooldown", "add": 0.5}]},
 	"chuva_de_bombas": {"name": "Chuva de Bombas", "cat": "Escudo", "rarity": "epico",
-		"desc": "O escudo lança 5 bombas em arco à sua volta. Escudo +0,4 s de recarga.",
-		"mods": [{"stat": "shield_bombs", "add": 5}, {"stat": "shield_cooldown", "add": 0.4}]},
-	"eco": {"name": "Eco", "cat": "Escudo", "rarity": "lendario", "max": 1,
-		"desc": "O escudo se levanta de novo sozinho 0,5 s depois. +20% de vida.",
-		"mods": [{"stat": "shield_echo", "add": 1}, {"stat": "max_health", "mul": 1.2}]},
+		"desc": "O escudo lança 5 bombas em arco à sua volta. Escudo +1 s de recarga.",
+		"mods": [{"stat": "shield_bombs", "add": 5}, {"stat": "shield_cooldown", "add": 1.0}]},
+	"eco": {"name": "Eco", "cat": "Escudo", "rarity": "lendario",
+		"desc": "O escudo se levanta de novo sozinho 0,5 s depois (só o bloqueio, sem os efeitos), uma vez a mais por cópia. +20% de vida. Escudo +1 s de recarga.",
+		"mods": [{"stat": "shield_echo", "add": 1}, {"stat": "max_health", "mul": 1.2},
+			{"stat": "shield_cooldown", "add": 1.0}]},
 	"ultima_defesa": {"name": "Última Defesa", "cat": "Escudo", "rarity": "raro", "max": 1,
-		"desc": "Quando o pente esvazia, o escudo levanta sozinho (se estiver pronto).",
-		"mods": [{"stat": "shield_on_empty", "add": 1}]},
+		"desc": "Quando o pente esvazia, o escudo levanta sozinho (se estiver pronto). Escudo +0,5 s de recarga.",
+		"mods": [{"stat": "shield_on_empty", "add": 1}, {"stat": "shield_cooldown", "add": 0.5}]},
 	"pancada": {"name": "Pancada", "cat": "Escudo", "rarity": "raro",
-		"desc": "Com o escudo de pé, quem estiver colado em você leva 25 de dano e é empurrado.",
-		"mods": [{"stat": "shield_bash", "add": 25.0}]},
-	"escudo_duplo": {"name": "Escudo Duplo", "cat": "Escudo", "rarity": "lendario", "max": 1,
-		"desc": "Dá para levantar o escudo de novo meio segundo depois; aí ele recarrega 30% mais devagar.",
-		"mods": [{"stat": "shield_charges", "add": 1}, {"stat": "shield_cooldown", "mul": 1.3}]},
+		"desc": "Com o escudo de pé, quem estiver colado em você leva 25 de dano e é empurrado. Escudo +1 s de recarga.",
+		"mods": [{"stat": "shield_bash", "add": 25.0}, {"stat": "shield_cooldown", "add": 1.0}]},
+	# Escudo Duplo (2026-10-07, pedido do usuário: sem o limite de 1 e repetindo os efeitos):
+	# cada cópia é uma levantada a mais, 0,5 s depois, com todos os efeitos. Os +30% vêm
+	# depois do teto das somas, então quanto mais efeitos no escudo, mais ela cobra: a partir
+	# da 2a cópia o ganho por segundo para de crescer e só a rajada aumenta.
+	"escudo_duplo": {"name": "Escudo Duplo", "cat": "Escudo", "rarity": "lendario", "max": 3,
+		"desc": "Dá para levantar o escudo mais uma vez meio segundo depois, com todos os efeitos de novo. Escudo +1 s de recarga, e depois disso ela fica 30% mais longa.",
+		"mods": [{"stat": "shield_charges", "add": 1}, {"stat": "shield_cooldown", "add": 1.0},
+			{"stat": "shield_cooldown", "mul": 1.3}]},
 	"couraca": {"name": "Couraça", "cat": "Escudo", "rarity": "raro",
-		"desc": "Levantar o escudo dá 10 de colete, no máximo uma vez a cada 3 s. O colete absorve dano antes da vida e vai até 50, junto com o do mapa.",
-		"mods": [{"stat": "shield_armor", "add": 10.0}]},
+		"desc": "Levantar o escudo dá 10 de colete. O colete absorve dano antes da vida e vai até 50, junto com o do mapa. Escudo +0,5 s de recarga.",
+		"mods": [{"stat": "shield_armor", "add": 10.0}, {"stat": "shield_cooldown", "add": 0.5}]},
 	"fortaleza": {"name": "Fortaleza", "cat": "Escudo", "rarity": "comum",
-		"desc": "+30 de vida e o escudo dura +0,1 s. 8% mais lento.",
+		"desc": "+30 de vida e o escudo dura +0,1 s. 8% mais lento. Escudo +0,5 s de recarga.",
 		"mods": [{"stat": "max_health", "add": 30.0}, {"stat": "shield_duration", "add": 0.1},
-			{"stat": "move_speed", "mul": 0.92}]},
+			{"stat": "move_speed", "mul": 0.92}, {"stat": "shield_cooldown", "add": 0.5}]},
 	"espelho_gigante": {"name": "Espelho Gigante", "cat": "Escudo", "rarity": "raro",
-		"desc": "O escudo pega balas 50% mais longe de você e dura +0,1 s.",
-		"mods": [{"stat": "shield_size", "mul": 1.5}, {"stat": "shield_duration", "add": 0.1}]},
+		"desc": "O escudo pega balas 50% mais longe de você e dura +0,1 s. Escudo +0,5 s de recarga.",
+		"mods": [{"stat": "shield_size", "mul": 1.5}, {"stat": "shield_duration", "add": 0.1},
+			{"stat": "shield_cooldown", "add": 0.5}]},
 	# Áreas do escudo (2026-10-06, cartas do Furor lembradas pelo usuário; números meus, dano
-	# fixo por escolha dele). Cada uma tem recarga própria (AreaField.SHIELD_COOLDOWNS).
+	# fixo por escolha dele). Desde 2026-10-07 sem recarga própria: o custo é o +1 s no E.
 	"serra": {"name": "Serra", "cat": "Escudo", "rarity": "epico", "max": 3,
-		"desc": "O escudo faz uma serra girar em volta de você por 2 s: 24 de dano por segundo em quem estiver perto. Raio de 2,5 m, +1 m por cópia. No máximo a cada 3 s. Escudo +0,3 s de recarga.",
-		"mods": [{"stat": "shield_saw", "add": 1}, {"stat": "shield_cooldown", "add": 0.3}]},
+		"desc": "O escudo faz uma serra girar em volta de você por 2 s: 24 de dano por segundo em quem estiver perto. Raio de 2,5 m, +1 m por cópia. Escudo +1 s de recarga.",
+		"mods": [{"stat": "shield_saw", "add": 1}, {"stat": "shield_cooldown", "add": 1.0}]},
 	"chamas": {"name": "Chamas", "cat": "Escudo", "rarity": "epico", "max": 3,
-		"desc": "O escudo acende um círculo de fogo em volta de você por 3 s, que te acompanha: quem estiver dentro queima (12 por segundo) e segue queimando 1 s depois de sair. Raio de 4 m, +1 m por cópia. No máximo a cada 4 s. Escudo +0,3 s de recarga.",
-		"mods": [{"stat": "shield_flames", "add": 1}, {"stat": "shield_cooldown", "add": 0.3}]},
+		"desc": "O escudo acende um círculo de fogo em volta de você por 3 s, que te acompanha: quem estiver dentro queima (12 por segundo) e segue queimando 1 s depois de sair. Raio de 4 m, +1 m por cópia. Escudo +1 s de recarga.",
+		"mods": [{"stat": "shield_flames", "add": 1}, {"stat": "shield_cooldown", "add": 1.0}]},
 	"geada": {"name": "Geada", "cat": "Escudo", "rarity": "epico", "max": 3,
-		"desc": "O escudo solta uma onda de gelo de 5 m: 8 de dano e 45% mais lento por 2 s. Mais cópias: +1,5 m e +0,5 s. No máximo a cada 3 s. Escudo +0,3 s de recarga.",
-		"mods": [{"stat": "shield_frost", "add": 1}, {"stat": "shield_cooldown", "add": 0.3}]},
+		"desc": "O escudo solta uma onda de gelo de 5 m: 8 de dano e 45% mais lento por 2 s. Mais cópias: +1,5 m e +0,5 s. Escudo +1 s de recarga.",
+		"mods": [{"stat": "shield_frost", "add": 1}, {"stat": "shield_cooldown", "add": 1.0}]},
 	"mina": {"name": "Mina", "cat": "Escudo", "rarity": "epico", "max": 3,
-		"desc": "O escudo larga uma bomba no chão que pisca e explode 1 s depois: 40 de dano (metade na borda), raio de 4 m. Mais cópias: +20 de dano e +0,5 m. No máximo a cada 2,5 s. Escudo +0,3 s de recarga.",
-		"mods": [{"stat": "shield_mine", "add": 1}, {"stat": "shield_cooldown", "add": 0.3}]},
+		"desc": "O escudo larga uma bomba no chão que pisca e explode 1 s depois: 40 de dano (metade na borda), raio de 4 m. Mais cópias: +20 de dano e +0,5 m. Escudo +1 s de recarga.",
+		"mods": [{"stat": "shield_mine", "add": 1}, {"stat": "shield_cooldown", "add": 1.0}]},
 
 	# Corpo
 	"vigor": {"name": "Vigor", "cat": "Corpo", "rarity": "comum",
@@ -711,13 +733,17 @@ func compute_stats(base: Dictionary, card_ids: Array) -> Dictionary:
 			else:
 				muls[stat] = muls.get(stat, 1.0) * m
 	for stat in muls:
-		stats[stat] *= muls[stat]
+		if stat != "shield_cooldown":
+			stats[stat] *= muls[stat]
 	for stat in HIGHER_BETTER:
 		stats[stat] = maxf(stats[stat], PENALTY_FLOOR_ABS.get(stat, base[stat] * PENALTY_FLOOR))
 	for stat in LOWER_BETTER:
-		stats[stat] = minf(stats[stat], base[stat] * PENALTY_CEIL)
+		var ceil_value: float = SHIELD_COST_MAX if stat == "shield_cooldown" else base[stat] * PENALTY_CEIL
+		stats[stat] = minf(stats[stat], ceil_value)
 	for stat in good_add:
 		stats[stat] += good_add[stat]
+	# Piso antes do Escudo Duplo, senão Reflexos repetido zeraria também o custo dele.
+	stats["shield_cooldown"] = maxf(stats["shield_cooldown"], LIMITS["shield_cooldown"][0]) 		* muls.get("shield_cooldown", 1.0)
 	for stat in bonus:
 		if stat in LOWER_BETTER:
 			stats[stat] /= 1.0 + bonus[stat]

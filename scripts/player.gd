@@ -102,6 +102,7 @@ const BASE_STATS := {
 	"shield_flames": 0,
 	"shield_frost": 0,
 	"shield_mine": 0,
+	"shield_haste": 0.0,  # Passo Ligeiro: velocidade a mais por SHIELD_HASTE_TIME ao levantar
 	"toxic": 0,           # Nuvem Tóxica e Buraco Negro: nascem onde a bala bate (AreaField)
 	"black_hole": 0,
 	"stomp": 0,           # Pisão
@@ -326,6 +327,7 @@ const BURST_GAP := 0.07
 ## sem isso o clique adiantado se perderia e a arma pareceria falhar.
 const SHOT_BUFFER := 0.15
 const ADRENALINE_GAP := 0.4
+const ADRENALINE_CUT := 0.5   # Adrenalina: parte da recarga que falta cortada ao refletir
 const CRIT_MULT := 2.5
 const TELEPORT_RANGE := 7.0
 ## Teleporte (refeito em 2026-10-05, como no Furor): atravessa paredes. Se o ponto cair
@@ -333,10 +335,7 @@ const TELEPORT_RANGE := 7.0
 ## tanto a mais, depois para trás; nunca sai pelo muro de fora do mapa.
 const TELEPORT_OVERSHOOT := 4.0
 const TELEPORT_STEP := 0.5
-## Restauração e Couraça (2026-10-05, pedido do usuário: a build de escudo curava sem
-## parar): o efeito tem recarga própria, separada da do escudo. Cartas que aceleram o
-## escudo não multiplicam a cura; cópias aumentam a quantidade, não a frequência.
-const SHIELD_PERK_COOLDOWN := 3.0
+const SHIELD_HASTE_TIME := 1.5   # Passo Ligeiro
 ## Troca-Troca (2026-10-05, pedido do usuário: a troca instantânea confundia): os dois
 ## ficam marcados por SWAP_DELAY e só então trocam; quem foi trocado não troca de novo por
 ## SWAP_COOLDOWN depois disso.
@@ -693,15 +692,15 @@ var death_assists: Array = []
 var revives_left := 0
 var blind_timer := 0.0
 var echo_timer := 0.0
+var echo_left := 0        # Eco: levantadas automáticas que ainda faltam neste ciclo
+var adrenaline_used := false   # Adrenalina: já cortou a recarga neste escudo levantado
+var haste_timer := 0.0    # Passo Ligeiro: mais rápido por mais quanto tempo
 var glided := false       # Planador: planou neste salto (vale até tocar o chão)
 var boot_fuel := BOOT_FUEL   # Bota Foguete: jato que sobra (s)
 var boot_armed := false   # apertou pular no ar sem pulos sobrando; vale enquanto segurar
 var boosting := false     # jato ligado neste quadro (vai para as outras máquinas no estado)
 var air_time := 0.0       # há quanto tempo está no ar (bônus de dano da Bota Foguete)
 var boot_fx: CPUParticles3D
-var heal_cd := 0.0        # Restauração: falta quanto para curar de novo
-var armor_cd := 0.0       # Couraça: falta quanto para dar colete de novo
-var area_cd := {}         # Serra, Chamas, Geada, Mina: bit (AreaField.SHIELD_*) -> recarga própria
 var stomp_hits := {}      # Pisão: inimigo -> quando levou o último (ms)
 var burn_timer := 0.0     # Chamas: queimando por mais quanto tempo
 var burn_dps := 0.0
@@ -1164,9 +1163,8 @@ func reset_for_round(spawn: Transform3D) -> void:
 	revives_left = stats["revives"]
 	blind_timer = 0.0
 	echo_timer = 0.0
-	heal_cd = 0.0
-	armor_cd = 0.0
-	area_cd.clear()
+	echo_left = 0
+	haste_timer = 0.0
 	stomp_hits.clear()
 	downed = false
 	downs = 0
@@ -1709,12 +1707,9 @@ func _tick(delta: float) -> void:
 		last_stand_timer -= delta
 		if last_stand_timer <= 0.0 and alive:
 			_lethal()   # ninguém abatido a tempo
-	heal_cd = maxf(0.0, heal_cd - delta)
-	armor_cd = maxf(0.0, armor_cd - delta)
+	haste_timer = maxf(0.0, haste_timer - delta)
 	protect_timer = maxf(0.0, protect_timer - delta)
 	ambush_cd = maxf(0.0, ambush_cd - delta)
-	for bit in area_cd:
-		area_cd[bit] = maxf(0.0, area_cd[bit] - delta)
 	swap_lock = maxf(0.0, swap_lock - delta)
 	if swap_timer > 0.0:
 		swap_timer -= delta
@@ -1735,6 +1730,9 @@ func _tick(delta: float) -> void:
 		echo_timer -= delta
 		if echo_timer <= 0.0 and alive and silence_timer <= 0.0:
 			shield_timer = stats["shield_duration"]
+			echo_left -= 1
+			if echo_left > 0:
+				echo_timer = stats["shield_duration"] + ECHO_DELAY
 	if reload_timer > 0.0:
 		reload_timer -= delta
 		if reload_timer <= 0.0:
@@ -1769,6 +1767,8 @@ func _target_speed() -> float:
 		speed *= 1.0 + AMBUSH_SPEED
 	if speed_orb_timer > 0.0:
 		speed *= 1.0 + SPEED_ORB
+	if haste_timer > 0.0:
+		speed *= 1.0 + stats["shield_haste"]
 	if beam_charge > 0.0:
 		speed *= BEAM_CHARGE_SPEED
 	if hook_state == 3:
@@ -3964,16 +3964,19 @@ func _activate_shield() -> void:
 		shield_cd = stats["shield_duration"] + stats["shield_cooldown"]
 		shield_extra = stats["shield_charges"] - 1
 	bash_hits.clear()
+	adrenaline_used = false
+	# Desde 2026-10-07 os efeitos não têm recarga própria: o custo de cada carta está na
+	# recarga do E, e a levantada extra do Escudo Duplo repete todos (pedido do usuário).
 	# O colete da Couraça é o mesmo do item do mapa: um só, até ARMOR_MAX.
-	if stats["shield_armor"] > 0.0 and armor_cd <= 0.0:
+	if stats["shield_armor"] > 0.0:
 		armor = minf(ARMOR_MAX, armor + stats["shield_armor"])
-		armor_cd = SHIELD_PERK_COOLDOWN
+	if stats["shield_haste"] > 0.0:
+		haste_timer = SHIELD_HASTE_TIME
 	if stats["shield_reload"] > 0:
 		ammo = stats["mag_size"]
 		reload_timer = 0.0
-	if stats["shield_heal"] > 0.0 and heal_cd <= 0.0:
+	if stats["shield_heal"] > 0.0:
 		heal(stats["shield_heal"])
-		heal_cd = SHIELD_PERK_COOLDOWN
 	if stats["shield_dash"] > 0:
 		dash_dir = _flat_forward()
 		dash_timer = DASH_TIME * 1.4
@@ -3998,6 +4001,7 @@ func _activate_shield() -> void:
 			"radius": 0.25, "bounces": 0, "homing": 0.0, "seek": 0.0, "boomerang": false, "split": 0, "sticky": false})
 	if stats["shield_echo"] > 0 and echo_timer <= 0.0:
 		echo_timer = stats["shield_duration"] + ECHO_DELAY
+		echo_left = stats["shield_echo"]
 	if stats["shield_teleport"] > 0:
 		_teleport_forward()
 	var mask := _shield_area_mask()
@@ -4007,15 +4011,13 @@ func _activate_shield() -> void:
 			_net_shield_area.rpc(mask, global_position)
 
 
-## Quais áreas do escudo saem agora: as cartas que tem e cuja recarga própria acabou.
+## Quais áreas do escudo saem: uma por carta de área que o jogador tem.
 func _shield_area_mask() -> int:
 	var mask := 0
 	for pair in [[AreaField.SHIELD_SAW, "shield_saw"], [AreaField.SHIELD_FLAMES, "shield_flames"],
 			[AreaField.SHIELD_FROST, "shield_frost"], [AreaField.SHIELD_MINE, "shield_mine"]]:
-		var bit: int = pair[0]
-		if stats[pair[1]] > 0 and area_cd.get(bit, 0.0) <= 0.0:
-			mask |= bit
-			area_cd[bit] = AreaField.SHIELD_COOLDOWNS[bit]
+		if stats[pair[1]] > 0:
+			mask |= pair[0]
 	return mask
 
 
@@ -4135,9 +4137,12 @@ func on_reflect() -> void:
 	reflect_flash = 1.0
 	reflected.emit()
 	Sfx.at(self, "reflect", chest())
-	if stats["reflect_refund"] > 0:
-		# O escudo fica pronto pouco depois de o atual acabar (sem a folga, ficaria permanente).
-		shield_cd = minf(shield_cd, shield_timer + ADRENALINE_GAP)
+	if stats["reflect_refund"] > 0 and not adrenaline_used:
+		# Corta metade do que falta depois de o escudo atual baixar, uma vez por levantada
+		# (2026-10-07; antes zerava a recarga a cada reflexo e virava escudo eterno).
+		adrenaline_used = true
+		var rest := maxf(0.0, shield_cd - shield_timer)
+		shield_cd = minf(shield_cd, shield_timer + maxf(ADRENALINE_GAP, rest * (1.0 - ADRENALINE_CUT)))
 
 
 func chest() -> Vector3:

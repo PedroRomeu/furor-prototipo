@@ -26,7 +26,6 @@ const LOW := 0.3              # abaixo disso a barra fica vermelha e pulsa
 const SHIELD_COLOR := Color(0.4, 0.88, 1.0)
 const DASH_COLOR := Color(0.78, 0.64, 1.0)
 const ARMOR_COLOR := Color(0.3, 0.55, 1.0)   # a mesma do item (Pickup.COLORS)
-const HEAL_COLOR := Color(0.45, 0.9, 0.55)
 const CHAOS_COLOR := Color(1.0, 0.45, 0.4)   # cor do grupo Balas
 const SHADOW := Color(0, 0, 0, 0.45)
 
@@ -111,8 +110,6 @@ func _draw_health() -> void:
 		var armor_text := "+%d colete" % ceili(me.armor)
 		_text(_bold, Vector2(after, 34), armor_text, 14, ARMOR_COLOR)
 		after += _width(_bold, armor_text, 14) + 14
-	if combat:
-		_draw_perks(after)
 
 	# Barra: fundo, rastro do dano, vida e marcas a cada 25.
 	var bar := Rect2(x, 44, BAR_W, BAR_H)
@@ -134,21 +131,6 @@ func _draw_health() -> void:
 		var ar := Rect2(x, bar.end.y + 4, BAR_W * clampf(me.armor / Player.ARMOR_MAX, 0, 1), 4)
 		_rect(ar.grow(1), SHADOW)
 		_rect(ar, ARMOR_COLOR)
-
-
-## Restauração e Couraça: "cura" e "colete" pequenos ao lado da vida, acesos quando o
-## escudo vai curar ou dar colete de novo; apagados com os segundos que faltam.
-func _draw_perks(x: float) -> void:
-	var perks := []
-	if me.stats["shield_heal"] > 0.0:
-		perks.append(["cura", me.heal_cd, HEAL_COLOR])
-	if me.stats["shield_armor"] > 0.0:
-		perks.append(["colete", me.armor_cd, ARMOR_COLOR])
-	for p in perks:
-		var ready: bool = p[1] <= 0.0
-		var text: String = "● " + p[0] if ready else "○ %s %.1f" % [p[0], p[1]]
-		_text(_font, Vector2(x, 34), text, 12, p[2] if ready else Color(1, 1, 1, 0.4))
-		x += _width(_font, text, 12) + 12
 
 
 # ---------------------------------------------------------------- carta mestra
