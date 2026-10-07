@@ -79,8 +79,8 @@ func show_look(skin: String, gun: String) -> void:
 	skeleton.add_child(hand)
 	var g: Node3D = load(Player.gun_model(gun)).instantiate()
 	g.scale = Vector3.ONE * (1.3 / Player.MODEL_SCALE)
-	g.rotation.x = -PI / 2.0
-	g.position = Vector3(0, -0.13, 0.04)
+	g.rotation = Player.HAND_ROT
+	g.position = Player.HAND_POS
 	hand.add_child(g)
 	pivot.rotation.y = _yaw
 
