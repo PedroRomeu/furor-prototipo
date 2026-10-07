@@ -33,7 +33,7 @@ two keys per action.
 | Shift | dash (without crouching) |
 | C | crouch |
 | R | reload |
-| Q | master card ability (Corrente, Bazuca, Bastião, Perfurante) |
+| Q | master card ability (see the master cards below) |
 | Tab (hold) | scoreboard: rounds, kills, assists and deaths, and everyone's cards (hover an icon to see its effect) |
 | Enter | chat (online): Enter sends, Esc cancels |
 | Dead, round still going | click: watch the next living player; E (or right click): free camera (WASD, Space up, Ctrl down) |
@@ -50,6 +50,11 @@ Crosshair: the arc on the right shows the bullets left in the magazine (spent on
 the last one turns orange). While reloading, the crosshair becomes a ring that closes when
 the reload ends.
 
+HUD: bottom left, your master card in a frame (it darkens while recharging and shows its
+key), your health with armor below it, and the shield and dash icons, which fill up while
+they recharge. Bottom right, the ammo. Status effects (slowed, frozen, speed boost...)
+show as small tags above your health.
+
 Movement tips: a jump goes up about 2.3 m. Against a wall you can jump off it twice before
 landing: holding toward the wall climbs it (about 7 m); holding away jumps far. Jumping
 right after a slide keeps the speed, and you can turn in the air without losing momentum.
@@ -61,10 +66,15 @@ Controles and Créditos: display mode (window, borderless fullscreen, fullscreen
 size (the game always renders at the real window size, so maximizing stays sharp;
 fullscreen uses the monitor resolution), interface size (100%, 125%, 150%), graphics
 quality (Low, Medium, High), graphics API (Compatibility/OpenGL, Vulkan, DirectX 12), FPS
-counter, your name (what friends see online; can also be changed
+counter, VSync, your name (what friends see online; can also be changed
 in the lobby), volume (Master, Effects, Interface, Music; releasing a slider plays a
 sample), mouse sensitivity and key rebinding (click a key and press the new one; right
 click clears it). On an Intel HD GPU, High runs at ~14 FPS; Medium and Low at 45-60.
+
+For weak PCs: in fullscreen the resolution can be lowered (the game renders smaller and
+stretches to the monitor; about 25% faster at 1280 x 720 on an Intel HD at 1080p), VSync
+can be turned off (with it on, a frame that misses 60 FPS drops straight to 30), and Low
+quality draws a flat sky.
 
 The graphics API is applied on restart through an `override.cfg` file next to the game.
 If the PC lacks the chosen API, Godot falls back to OpenGL by itself. If the game ever
@@ -140,7 +150,19 @@ shows in a corner during the match.
   in its own slot; click it to choose another. The **equipped** deck is the one used in
   matches.
 - **Master card**: each deck has one, picked in its own slot in the editor, outside the
-  card count. You start every match with it: **Espada** (Weapon, Q: a big
+  card count. You start every match with it. New in 0.5.0: **Caos** (Bullets: draws a
+  random master; an active one is used once and 8 s after its effect ends another comes, a
+  passive one lasts 15 s), **Prisão de Gelo** (Shield, Q: an ice shard that traps the target
+  in a sliding ice block for 3 s; they take no damage, but shots, explosions and bodies push
+  the block), **Mega Tapa** (Body, Q: a short slap that launches far; hitting a wall deals 25
+  more and dazes), **Canhão Arcano** (Weapon, Q: charge 1 s, then a 2.5 s beam through walls
+  that you aim slowly; each touch deals 30 and throws the target out of the beam),
+  **Plataformas Suspensas** (Movement, Q in the air: platforms under your feet as you jump,
+  up to 4, 5 s each, anyone can stand on them), **Chuva de Meteoros** (Bullets, Q: the next
+  3 shots mark the ground; 1.5 s later a meteor falls on each mark), **Foguete** (Weapon, Q:
+  ride a slow, hard-to-steer rocket that explodes on impact; Q again to jump off and send it
+  flying fast) and **Gancho** (Body, Q: a hook that pulls the enemy to you and holds them;
+  click to throw them into a wall or another player). Also: **Espada** (Weapon, Q: a big
   sword for 8 s with a 3-hit combo: slash right, slash left and a lunging thrust; a raised
   shield blocks it), **Sniper** (Weapon, Q: a sniper with ONE laser shot
   that goes through every wall and deals 3x damage; right click to aim with the scope),
@@ -176,7 +198,8 @@ shows in a corner during the match.
   When dead you watch your teammate (or use the free camera) until the round ends.
 - Cards never leave the deck: you can pick the same one several times and the effects
   stack. A few (Adrenalina, Radar, Fênix...) can only be picked once.
-- Every 5 rounds the game asks: 5 more rounds or finish. Most rounds wins.
+- Every 5 rounds the game asks: 5 more rounds or finish (online, everyone's vote shows
+  live). Most rounds wins. The match ends on a final scoreboard with everyone's cards.
 - Each round rolls a new arena from one of 12 maps: 4 styles (Pátio, Ruínas, Torres and
   Fábrica) in 3 sizes (small, medium, large), plus one of 6 color ambiences. Medium and
   large maps have proportionally more pieces; large maps add tall dividing walls with
@@ -187,10 +210,11 @@ shows in a corner during the match.
   automatic rule: large maps are off with 2 players in the arena (1v1 and Duels), on with
   3 or 4. In Treino the bot count decides: 1 bot small only, 2 bots small and medium,
   3 bots all sizes.
-- Map items (not every map, one of each per player): **purple orb** up high (gives back the
-  air dash, resets the dash cooldown and grants an air jump; respawns in 6 s), **green
-  cross** (30 health; 25 s) and, rarer, **yellow vest** (25 armor, up to 50, absorbs damage
-  before health and resets every round; 30 s).
+- Map items (not every map, one of each per player; a ring on the ground marks where each
+  comes back): **pink ">>" orb** (+30% speed for 4 s; 15 s), **green up-arrow orb** floating
+  low in open spots (launches you about 6 m up and gives back dash, air jumps and boots;
+  8 s), **green cross** (30 health; 25 s) and, rarer, **blue shield** (25 armor, up to 50,
+  absorbs damage before health and resets every round; 30 s).
 - **Void**: some maps have no edge walls and some have holes. Below (1 m under the floor)
   is the purple void: falling in bounces you and costs 20 health. The bounce is low and
   short, so far from the edge it takes several (each one hurts). With the **shield (E) up
@@ -231,7 +255,8 @@ needs a new attribute in `BASE_STATS` and the code that uses it.
 | `scripts/match.gd` | Match flow: picks, countdown, round, 5-round blocks, end. |
 | `scripts/spectator.gd` | Camera when dead: follow a living player or fly freely. |
 | `scripts/arena/` | Arena generator, color themes, moving pieces, jump pads, map items. |
-| `scripts/ui/` | HUD, kill feed, chat, damage feedback, scoreboard, pick screen, menu, settings, customization preview, deck screens and the shared look (`ui_style.gd`). |
+| `scripts/meteor_strike.gd`, `sky_platform.gd` | Chuva de Meteoros meteor, Plataformas Suspensas platform. |
+| `scripts/ui/` | HUD (`vitals.gd` for the health, master card and ability corner), kill feed, chat, damage feedback, scoreboard, pick screen, menu, settings, customization preview, deck screens and the shared look (`ui_style.gd`). |
 | `scripts/sfx.gd`, `effects.gd`, `aim_arm.gd` | Sounds, visual effects, arm pointing at the aim. |
 | `assets/` | Kenney models and sounds (CC0; licenses in each folder). Card icons in `assets/card_icons`, from game-icons.net (CC BY 3.0: credit required, authors listed in that folder's `LICENSE.txt` and in Settings). Character and gun thumbnails in `assets/skins` and `assets/gun_skins`. |
 
@@ -259,5 +284,7 @@ Godot_v4.7.2-stable_win64_console.exe --headless --path . -- --autotest --join
 1. Card balancing and new cards.
 2. Rematch directly online (today it goes back to the menu and reconnects).
 3. Footstep, landing and slide sounds.
-4. Use card rarity (common, rare, epic, legendary; mythic = master cards): today it is only a label.
-5. A way to earn cards (today everyone has all of them).
+4. Progression: start with some cards and earn the rest from purchases or chests, with
+   rarity tokens (common to mythic) from recycling duplicates. Today everyone has every card
+   and rarity is only a label.
+5. Find the remaining frame spikes in busy fights, one suspect at a time.
