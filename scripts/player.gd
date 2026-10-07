@@ -21,6 +21,7 @@ signal went_down    # caiu no 2x2 (pode ser revivido)
 signal got_up       # foi revivido
 signal chaos_drawn(id: String)   # Caos sorteou outra mestra (a HUD avisa)
 signal froze       # ficou preso no gelo (Prisão de Gelo; o registro do autoteste conta)
+signal slapped(splat: bool)   # levou o Mega Tapa / bateu na parede (registro do autoteste)
 
 ## Atributos sem nenhuma carta. As cartas (CardDB) alteram estes valores.
 const BASE_STATS := {
@@ -114,6 +115,7 @@ const BASE_STATS := {
 	# Cartas mestras (CardDB.MASTERS)
 	"chaos": 0,     # Caos: sorteia outra mestra (_chaos_draw)
 	"ice": 0,       # Prisão de Gelo
+	"slap": 0,      # Mega Tapa
 	"updraft": 0,
 	"bazooka": 0,
 	"sniper": 0,
@@ -454,7 +456,25 @@ const HIT_FLASH_TIME := 0.14   # o modelo atingido pisca em branco por este temp
 ## Métodos que a outra máquina pode chamar neste jogador (ver remote_call).
 const ASSIST_TIME := 10.0   # placar: dano nos últimos 10 s antes da morte conta assistência
 const REMOTE_METHODS := ["receive_shockwave", "credit_damage", "teleport_to", "swap_to", "receive_stomp",
-	"receive_slash", "ice_shove"]
+	"receive_slash", "ice_shove", "receive_slap"]
+## Mega Tapa (mestra): leque curto à frente; arremessa (SLAP_PUSH para o lado, SLAP_LIFT
+## para cima). Por SLAP_FLIGHT segundos, bater numa parede ainda rápido (SPLAT_MIN_SPEED)
+## dá SPLAT_DAMAGE e deixa tonto (DAZE_TIME: lento e sem atirar).
+const SLAP_RANGE := 2.5
+const SLAP_ARC := 50.0
+const SLAP_DAMAGE := 15.0
+const SLAP_PUSH := 22.0
+const SLAP_LIFT := 12.0
+const SLAP_FLIGHT := 1.0
+const SPLAT_DAMAGE := 25.0
+const SPLAT_MIN_SPEED := 6.0
+const DAZE_TIME := 0.6
+const DAZE_SLOW := 0.5
+const SLAP_COLOR := Color(1.0, 0.75, 0.55)
+var slap_flight := 0.0     # arremessado por um tapa: ainda pode bater na parede
+var slap_from := ""        # quem deu o tapa (crédito do impacto)
+var daze_timer := 0.0      # tonto: não atira
+var hand_pivot: Node3D     # primeira pessoa: a mão do tapa
 ## Prisão de Gelo (mestra): caco reto que congela por ICE_TIME. Congelado: não age, não
 ## leva dano, desliza (ICE_FRICTION) e é empurrado por tiros (ICE_PUSH por ponto de dano,
 ## ~5 m/s no tiro base), explosões e encontrões (ice_shove). No vazio quica e o dano fica
@@ -770,6 +790,12 @@ func _build_viewmodel() -> void:
 	sword.visible = false
 	sword_pivot.add_child(sword)
 	_rest_sword()
+	hand_pivot = Node3D.new()
+	hand_pivot.visible = false
+	viewmodel.add_child(hand_pivot)
+	var hand := _make_hand()
+	_no_shadows(hand)
+	hand_pivot.add_child(hand)
 	muzzle = Marker3D.new()
 	muzzle.position = Vector3(-0.01, 0.025, -0.17) + _muzzle_shift() * VIEWMODEL_SCALE
 	viewmodel.add_child(muzzle)
@@ -993,6 +1019,8 @@ func reset_for_round(spawn: Transform3D) -> void:
 	ice_timer = 0.0
 	ice_debt = 0.0
 	_ice_visual(false)
+	slap_flight = 0.0
+	daze_timer = 0.0
 	global_transform = spawn
 	reset_physics_interpolation()
 	net_pos = spawn.origin
@@ -1470,7 +1498,10 @@ func _physics_process(delta: float) -> void:
 	_move(delta)
 	_act(delta)
 	var fall_speed := velocity.y
+	var before_h := Vector3(velocity.x, 0.0, velocity.z)
 	move_and_slide()
+	if slap_flight > 0.0:
+		_check_splat(before_h, delta)
 	_check_wall()
 	if is_on_floor() and not was_on_floor:
 		_on_landed(fall_speed)
@@ -1492,6 +1523,7 @@ func _tick(delta: float) -> void:
 	if chaos and is_local and alive:
 		_chaos_tick(delta)
 	speed_orb_timer = maxf(0.0, speed_orb_timer - delta)
+	daze_timer = maxf(0.0, daze_timer - delta)
 	if bazooka_timer > 0.0:
 		bazooka_timer -= delta
 		if bazooka_timer <= 0.0 or (rockets_left <= 0 and fire_timer <= 0.0):
@@ -2164,6 +2196,10 @@ func _act(delta: float) -> void:
 		_activate_shield()
 	_shield_bash()
 	shot_queued = maxf(0.0, shot_queued - delta)
+	if daze_timer > 0.0:
+		shot_queued = 0.0
+		shoot_was = in_shoot
+		return
 	if in_click or (in_shoot and not shoot_was):
 		shot_queued = SHOT_BUFFER
 	shoot_was = in_shoot
@@ -2311,6 +2347,8 @@ func _use_master() -> void:
 		Sfx.at(self, "pickup", chest())
 	if stats["ice"] > 0:
 		_fire_ice()
+	if stats["slap"] > 0:
+		_slap()
 	if stats["barrier"] > 0:
 		var pos := global_position + _flat_forward() * 2.5
 		_make_barrier(pos, rotation.y)
@@ -2800,6 +2838,140 @@ func _place_ice_camera() -> void:
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	var pos: Vector3 = want if hit.is_empty() else center.lerp(hit["position"], 0.85)
 	camera.global_transform = Transform3D(basis, pos)
+
+
+# ---------------------------------------------------------------- Mega Tapa
+
+## Tapa: quem está no leque curto à frente leva (a máquina do alvo decide o escudo).
+func _slap() -> void:
+	var forward := _flat_forward()
+	var arc := deg_to_rad(SLAP_ARC)
+	reveal()
+	for enemy in enemies():
+		var to: Vector3 = enemy.chest() - chest()
+		if absf(to.y) > 2.0:
+			continue
+		var flat := Vector3(to.x, 0.0, to.z)
+		var dist := flat.length()
+		if dist > SLAP_RANGE + enemy.hit_radius():
+			continue
+		if dist > 0.9 and forward.angle_to(flat / dist) > arc:
+			continue
+		enemy.remote_call("receive_slap", [String(name), forward])
+		Effects.burst(get_parent(), enemy.chest(), 1.1, SLAP_COLOR, 0.15)
+	_show_slap()
+	if Net.online:
+		_net_slap.rpc()
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_slap() -> void:
+	_show_slap()
+
+
+## Levou o tapa (máquina dona): escudo bloqueia; congelado só voa; senão dano e voo.
+func receive_slap(from_name: String, dir: Vector3) -> void:
+	if not alive:
+		return
+	if is_shielding():
+		reflect_flash = 1.0
+		Sfx.at(self, "reflect", chest())
+		Effects.burst(get_parent(), chest(), 1.2, Color(0.5, 0.9, 1.0), 0.15)
+		return
+	var flat := Vector3(dir.x, 0.0, dir.z).normalized()
+	velocity = flat * SLAP_PUSH + Vector3.UP * SLAP_LIFT
+	jump_rising = false
+	coyote = 0.0
+	sliding = false
+	dash_timer = 0.0
+	if ice_timer > 0.0:
+		return
+	slap_flight = SLAP_FLIGHT
+	slap_from = from_name
+	slapped.emit(false)
+	take_damage(SLAP_DAMAGE, get_parent().get_node_or_null(from_name) as Player)
+
+
+## No voo do tapa: bateu numa parede (superfície em pé, sem ser outro jogador) ainda
+## rápido? Leva o impacto e fica tonto.
+func _check_splat(before_h: Vector3, delta: float) -> void:
+	slap_flight -= delta
+	if before_h.length() < SPLAT_MIN_SPEED:
+		return
+	for i in get_slide_collision_count():
+		var c := get_slide_collision(i)
+		if c.get_collider() is Player or absf(c.get_normal().y) > 0.6:
+			continue
+		if before_h.normalized().dot(-c.get_normal()) < 0.3:
+			continue   # raspou de lado
+		slap_flight = 0.0
+		daze_timer = DAZE_TIME
+		apply_slow(DAZE_SLOW, DAZE_TIME)
+		shake = maxf(shake, 0.6)
+		take_damage(SPLAT_DAMAGE, get_parent().get_node_or_null(slap_from) as Player)
+		_show_splat(c.get_position())
+		slapped.emit(true)
+		if Net.online:
+			_net_splat.rpc(c.get_position())
+		return
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_splat(pos: Vector3) -> void:
+	_show_splat(pos)
+
+
+func _show_splat(pos: Vector3) -> void:
+	Effects.burst(get_parent(), pos, 1.8, SLAP_COLOR, 0.25)
+	Effects.sparks(get_parent(), pos, Color(1, 1, 1), 12, 8.0)
+	Sfx.at(get_parent(), "explosion", pos)
+
+
+## Visual do tapa: rastro do arco, animação de ataque e, na própria tela, a mão.
+func _show_slap() -> void:
+	Sfx.at(self, "dash", chest())
+	var forward := _flat_forward()
+	var right := forward.cross(Vector3.UP)
+	var own := is_human
+	Effects.slash(get_parent(), chest() - Vector3.UP * (0.35 if own else 0.0), forward, right, SLAP_RANGE * 0.8,
+		false, SLAP_COLOR, 0.2, 0.35 if own else 1.0, 0.85 if own else 0.6)
+	if model:
+		swing_anim = 0.4
+		anim.play("attack-melee-right", 0.05)
+		anim.speed_scale = 1.3
+	if hand_pivot and is_human:
+		hand_pivot.visible = true
+		hand_pivot.position = Vector3(0.35, -0.12, -0.05)
+		hand_pivot.rotation = Vector3(0.0, 0.9, 0.2)
+		var t := create_tween()
+		t.tween_property(hand_pivot, "position", Vector3(-0.25, -0.05, -0.32), 0.12) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		t.parallel().tween_property(hand_pivot, "rotation", Vector3(0.0, -0.6, -0.1), 0.12)
+		t.tween_interval(0.08)
+		t.tween_callback(func(): hand_pivot.visible = false)
+
+
+## Mão aberta montada em código (palma e quatro dedos juntos, polegar de lado), cor de pele.
+static var _hand_mat: StandardMaterial3D
+
+func _make_hand() -> Node3D:
+	if _hand_mat == null:
+		_hand_mat = StandardMaterial3D.new()
+		_hand_mat.albedo_color = Color(0.93, 0.72, 0.56)
+	var root := Node3D.new()
+	var parts := [[Vector3(0.16, 0.05, 0.16), Vector3(0, 0, 0)],
+		[Vector3(0.15, 0.045, 0.14), Vector3(0, 0, -0.15)],
+		[Vector3(0.05, 0.045, 0.1), Vector3(0.1, 0, 0.0)]]
+	for p in parts:
+		var mi := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = p[0]
+		mi.mesh = box
+		mi.material_override = _hand_mat
+		mi.position = p[1]
+		root.add_child(mi)
+	root.rotation = Vector3(PI / 2.0, 0.0, 0.0)   # palma virada para a frente, dedos para cima
+	return root
 
 
 ## Bazuca: foguete reto, lento, com o dobro do dano e explosão grande.

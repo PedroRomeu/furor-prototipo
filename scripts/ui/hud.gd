@@ -671,6 +671,8 @@ func _update_status() -> void:
 		items.append(["INVISÍVEL", Color(0.75, 0.6, 1.0)])
 	if me.ambush_timer > 0.0:
 		items.append(["EMBOSCADA %.1f" % me.ambush_timer, Color(0.8, 0.55, 1.0)])
+	if me.daze_timer > 0.0:
+		items.append(["TONTO %.1f" % me.daze_timer, Player.SLAP_COLOR])
 	if me.ice_timer > 0.0:
 		items.append(["CONGELADO %.1f" % me.ice_timer, Player.ICE_COLOR])
 	if me.speed_orb_timer > 0.0:

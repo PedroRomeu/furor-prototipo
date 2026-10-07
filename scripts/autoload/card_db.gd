@@ -104,6 +104,11 @@ const MASTERS := {
 	"prisao_gelo": {"name": "Prisão de Gelo", "cat": "Escudo", "rarity": "mitico", "master": true, "cooldown": 14.0,
 		"desc": "Q: dispara um caco de gelo (reto, até 40 m). Quem for atingido fica preso num bloco de gelo por 3 s: não age, mas também não leva dano. O bloco desliza: tiros, explosões e encontrões o empurram. No vazio ele quica, e o dano vem quando o gelo derrete. O escudo devolve o caco. Recarga de 14 s.",
 		"mods": [{"stat": "ice", "add": 1}]},
+	# Mega Tapa (2026-10-06, ideia do usuário: tirar quem joga de perto; números meus e o
+	# impacto na parede, escolhido por ele entre 3 extras).
+	"mega_tapa": {"name": "Mega Tapa", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 10.0,
+		"desc": "Q: um tapa à frente (2,5 m) que causa 15 de dano e arremessa longe e para cima. Se o arremessado bater numa parede no voo, leva mais 25 e fica tonto por 0,6 s (lento e sem atirar). Escudo levantado bloqueia. Recarga de 10 s.",
+		"mods": [{"stat": "slap", "add": 1}]},
 	"ultimo_suspiro": {"name": "Último Suspiro", "cat": "Corpo", "rarity": "mitico", "master": true,
 		"desc": "Uma vez por rodada, o golpe fatal te deixa com 1 de vida e sem morrer por 3 s. Abata alguém nesse tempo e volte com metade da vida.",
 		"mods": [{"stat": "last_stand", "add": 1}]},
