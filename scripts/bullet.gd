@@ -61,7 +61,7 @@ const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", 
 	"slow", "push", "shield_break", "target_bounce", "execute", "reflected", "gravity",
 	"boomerang", "returning", "bounce_damage", "sticky", "split", "grow", "swap", "blind",
 	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls",
-	"toxic", "hole", "laser"]
+	"toxic", "hole", "laser", "ice"]
 ## Bala Fantasma: só paredes contam (superfície quase em pé); no chão e no topo das peças a
 ## bala para ou quica como as outras.
 const GHOST_WALL_NORMAL_Y := 0.7
@@ -110,6 +110,7 @@ var grow := 0.0
 var swap := false
 var blind := 0.0
 var laser := false   # tiro da Sniper: deixa um feixe reto ao nascer (em todas as máquinas)
+var ice := false     # caco da Prisão de Gelo: congela em vez de ferir; some a ICE_RANGE
 var toxic := 0   # Nuvem Tóxica: cópias (AreaField)
 var hole := 0    # Buraco Negro: cópias (AreaField)
 var lazy_top := 0.0
@@ -263,6 +264,8 @@ func _ready() -> void:
 		c = CRIT_COLOR
 	if reflected:
 		c = REFLECTED_COLOR
+	if ice:
+		c = Player.ICE_COLOR
 	_set_color(c)
 	if sound:
 		Sfx.at(get_parent(), "shot", global_position)
@@ -336,7 +339,7 @@ func _orient() -> void:
 
 func _physics_process(delta: float) -> void:
 	age += delta
-	if age > LIFETIME:
+	if age > LIFETIME or (ice and age * velocity.length() > Player.ICE_RANGE):
 		queue_free()
 		return
 	if fuse > 0.0:
@@ -579,8 +582,23 @@ func _hit_player(target: Player, point: Vector3) -> void:
 		visible = false
 		global_position = point
 		return
+	if target.ice_timer > 0.0:
+		# Bloco de gelo: não leva dano nem efeito; o tiro só empurra.
+		target.ice_push(velocity, damage if not ice else 20.0)
+		if Net.online:
+			get_parent().net_bullet_hit.rpc(id, point, 0.0)
+		Effects.burst(get_parent(), point, 0.5, Player.ICE_COLOR, 0.12)
+		queue_free()
+		return
 	if target.is_shielding():
 		_reflect(target, point)
+		return
+	if ice:
+		target.freeze()
+		if Net.online:
+			get_parent().net_bullet_hit.rpc(id, point, 0.0)
+		Effects.burst(get_parent(), point, 1.0, Player.ICE_COLOR, 0.2)
+		queue_free()
 		return
 	var dmg := damage
 	if execute > 0.0 and target.health < target.stats["max_health"] * 0.4:
@@ -713,6 +731,11 @@ func remote_reflect(point: Vector3, dir: Vector3, owner_name: String, new_damage
 
 ## Resposta da outra máquina: o alvo levou esta bala.
 func remote_hit(point: Vector3, dmg: float) -> void:
+	if dmg <= 0.0:
+		# Gelo (congelou ou bateu num bloco): sem número nem explosão.
+		Effects.burst(get_parent(), point, 0.8, Player.ICE_COLOR, 0.15)
+		queue_free()
+		return
 	_show_damage(point, dmg)
 	_finish_hit(point, null)
 

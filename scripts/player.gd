@@ -20,6 +20,7 @@ signal void_bounced(saved: bool)
 signal went_down    # caiu no 2x2 (pode ser revivido)
 signal got_up       # foi revivido
 signal chaos_drawn(id: String)   # Caos sorteou outra mestra (a HUD avisa)
+signal froze       # ficou preso no gelo (Prisão de Gelo; o registro do autoteste conta)
 
 ## Atributos sem nenhuma carta. As cartas (CardDB) alteram estes valores.
 const BASE_STATS := {
@@ -112,6 +113,7 @@ const BASE_STATS := {
 	"ground_slam": 0,
 	# Cartas mestras (CardDB.MASTERS)
 	"chaos": 0,     # Caos: sorteia outra mestra (_chaos_draw)
+	"ice": 0,       # Prisão de Gelo
 	"updraft": 0,
 	"bazooka": 0,
 	"sniper": 0,
@@ -452,7 +454,22 @@ const HIT_FLASH_TIME := 0.14   # o modelo atingido pisca em branco por este temp
 ## Métodos que a outra máquina pode chamar neste jogador (ver remote_call).
 const ASSIST_TIME := 10.0   # placar: dano nos últimos 10 s antes da morte conta assistência
 const REMOTE_METHODS := ["receive_shockwave", "credit_damage", "teleport_to", "swap_to", "receive_stomp",
-	"receive_slash"]
+	"receive_slash", "ice_shove"]
+## Prisão de Gelo (mestra): caco reto que congela por ICE_TIME. Congelado: não age, não
+## leva dano, desliza (ICE_FRICTION) e é empurrado por tiros (ICE_PUSH por ponto de dano,
+## ~5 m/s no tiro base), explosões e encontrões (ice_shove). No vazio quica e o dano fica
+## guardado (ice_debt) até derreter.
+const ICE_TIME := 3.0
+const ICE_SPEED := 60.0
+const ICE_RANGE := 40.0
+const ICE_PUSH := 0.15
+const ICE_FRICTION := 2.5
+const ICE_SHOVE_DASH := 1.5
+const ICE_COLOR := Color(0.7, 0.95, 1.0)
+const ICE_CAM_DISTANCE := 4.5
+var ice_timer := 0.0      # congelado por mais quanto tempo (todas as máquinas, para o visual)
+var ice_debt := 0.0       # dano do vazio guardado até derreter (no máximo um)
+var ice_block: Node3D
 ## Carta mestra que este jogador tem (a primeira de cards; "" se nenhuma).
 var master_id := ""      # mestra da vez (com o Caos, a sorteada)
 var master_cd := 0.0
@@ -973,6 +990,9 @@ func reset_for_round(spawn: Transform3D) -> void:
 	_show_bazooka(false)
 	last_stand_timer = 0.0
 	last_stand_used = false
+	ice_timer = 0.0
+	ice_debt = 0.0
+	_ice_visual(false)
 	global_transform = spawn
 	reset_physics_interpolation()
 	net_pos = spawn.origin
@@ -1372,7 +1392,7 @@ func _camera_feel(delta: float) -> void:
 		fov = SCOPE_FOV
 	camera.fov = lerpf(camera.fov, fov, minf(1.0, delta * (18.0 if scoping else 6.0)))
 	if viewmodel:
-		viewmodel.visible = not downed and not scoping
+		viewmodel.visible = not downed and not scoping and ice_timer <= 0.0
 	var roll := -in_move.x * 0.012 + (0.04 if sliding else 0.0)
 	cam_roll = lerpf(cam_roll, roll, minf(1.0, delta * 8.0))
 	recoil = move_toward(recoil, 0.0, delta * 6.0)
@@ -1399,6 +1419,9 @@ func _ceiling_room(eye: float) -> float:
 
 ## Põe a câmera na posição interpolada do corpo, com a mira atual do mouse.
 func _place_camera() -> void:
+	if ice_timer > 0.0 and is_human:
+		_place_ice_camera()
+		return
 	var yaw := look_yaw if brain == null else rotation.y
 	var origin := get_global_transform_interpolated().origin + Vector3(0, head.position.y, 0)
 	var jitter := Vector3.ZERO
@@ -1439,6 +1462,10 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		_send_state()
 		return
+	if ice_timer > 0.0:
+		_ice_move(delta)
+		_send_state()
+		return
 	_update_crouch()
 	_move(delta)
 	_act(delta)
@@ -1452,6 +1479,7 @@ func _physics_process(delta: float) -> void:
 		_check_stomp(fall_speed)
 	if global_position.y < Arena.VOID_Y and velocity.y <= 0.0:
 		_void_bounce()
+	_shove_ice_blocks()
 	_send_state()
 
 
@@ -1900,7 +1928,12 @@ func _void_bounce() -> void:
 	else:
 		Effects.burst(get_parent(), feet, 2.0, Color(0.7, 0.35, 1.0), 0.3)
 		var who := last_attacker if since_damage < VOID_CREDIT and is_instance_valid(last_attacker) else null
-		take_damage(VOID_DAMAGE, who)
+		if ice_timer > 0.0:
+			# Congelado: o dano vem quando o gelo derrete, uma vez só (o bloco não sai do
+			# vazio sozinho e quicaria várias vezes no mesmo lugar).
+			ice_debt = VOID_DAMAGE
+		else:
+			take_damage(VOID_DAMAGE, who)
 	void_bounced.emit(saved)
 
 
@@ -2276,6 +2309,8 @@ func _use_master() -> void:
 		pierce_left = PIERCE_SHOTS
 		Effects.burst(get_parent(), muzzle.global_position, 0.6, Bullet.PIERCE_COLOR, 0.2)
 		Sfx.at(self, "pickup", chest())
+	if stats["ice"] > 0:
+		_fire_ice()
 	if stats["barrier"] > 0:
 		var pos := global_position + _flat_forward() * 2.5
 		_make_barrier(pos, rotation.y)
@@ -2595,6 +2630,176 @@ func _fire_sniper() -> void:
 	shake = maxf(shake, 0.25)
 	scoping = false
 	reveal()
+
+
+# ---------------------------------------------------------------- Prisão de Gelo
+
+## Caco de gelo: reto, sem queda, sem os efeitos das cartas; congela quem acertar.
+func _fire_ice() -> void:
+	var origin := head.global_position
+	var aim := -head.global_transform.basis.z
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + aim * ICE_RANGE, 1 | 2, [get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	var target: Vector3 = hit["position"] if not hit.is_empty() else origin + aim * ICE_RANGE
+	shot_mult = 1.0
+	Bullet.fire(self, muzzle.global_position, (target - muzzle.global_position).normalized(), 0.0, true,
+		{"speed": ICE_SPEED, "ice": true, "radius": 0.22, "gravity": 0.0, "bounces": 0, "ghost_walls": 0,
+		"explosion": 0.0, "poison": 0.0, "slow": 0.0, "push": 0.0, "shield_break": false, "execute": 0.0,
+		"split": 0, "sticky": false, "boomerang": false, "guided": false, "seek": 0.0, "homing": 0.0,
+		"target_bounce": 0.0, "lazy_top": 0.0, "grow": 0.0, "swap": false, "blind": 0.0, "toxic": 0,
+		"hole": 0, "bounce_damage": 0.0})
+	Sfx.at(self, "pickup", chest())
+	recoil = 1.0
+	reveal()
+
+
+## Na máquina dona: preso no gelo. Cancela o que estava fazendo (escudo, dash, deslize).
+func freeze() -> void:
+	if not alive or downed or ice_timer > 0.0:
+		return
+	ice_timer = ICE_TIME
+	froze.emit()
+	shield_timer = 0.0
+	dash_timer = 0.0
+	sliding = false
+	slamming = false
+	scoping = false
+	_ice_visual(true)
+	if Net.online and is_inside_tree():
+		_net_ice.rpc(true)
+
+
+func _thaw() -> void:
+	ice_timer = 0.0
+	_ice_visual(false)
+	if Net.online and is_inside_tree():
+		_net_ice.rpc(false)
+	if ice_debt > 0.0:
+		var who := last_attacker if since_damage < VOID_CREDIT and is_instance_valid(last_attacker) else null
+		var debt := ice_debt
+		ice_debt = 0.0
+		take_damage(debt, who)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_ice(on: bool) -> void:
+	ice_timer = ICE_TIME if on else 0.0
+	_ice_visual(on)
+	if on:
+		froze.emit()
+
+
+## Congelado: só a física. Desliza com pouco atrito, cai das beiradas, quica no vazio.
+func _ice_move(delta: float) -> void:
+	ice_timer -= delta
+	if ice_timer <= 0.0:
+		_thaw()
+		return
+	velocity.y -= (GRAVITY_RISE if velocity.y > 0.0 else GRAVITY_FALL) * delta
+	var h := Vector2(velocity.x, velocity.z).move_toward(Vector2.ZERO, ICE_FRICTION * delta)
+	velocity.x = h.x
+	velocity.z = h.y
+	move_and_slide()
+	if global_position.y < Arena.VOID_Y and velocity.y <= 0.0:
+		_void_bounce()
+
+
+## Tiro num bloco de gelo (na máquina do congelado): empurra na direção do tiro.
+func ice_push(dir: Vector3, dmg: float) -> void:
+	var v := dir.normalized() * dmg * ICE_PUSH
+	velocity += Vector3(v.x, maxf(v.y, 0.0) * 0.3, v.z)
+
+
+## Encontrão: o bloco anda pelo menos na velocidade de quem empurra (não soma a cada passo).
+func ice_shove(v: Vector3) -> void:
+	if ice_timer <= 0.0:
+		return
+	var dir := Vector3(v.x, 0.0, v.z)
+	var speed := dir.length()
+	if speed < 0.5:
+		return
+	dir /= speed
+	var along := Vector3(velocity.x, 0.0, velocity.z).dot(dir)
+	if along < speed:
+		velocity += dir * (speed - along)
+
+
+## Quem anda contra um bloco de gelo o empurra (dash e deslize empurram mais forte).
+func _shove_ice_blocks() -> void:
+	for i in get_slide_collision_count():
+		var other := get_slide_collision(i).get_collider() as Player
+		if other == null or other.ice_timer <= 0.0:
+			continue
+		var push := Vector3(velocity.x, 0.0, velocity.z)
+		var toward := other.global_position - global_position
+		toward.y = 0.0
+		if push.dot(toward) <= 0.0:
+			continue
+		if dash_timer > 0.0 or sliding:
+			push *= ICE_SHOVE_DASH
+		other.remote_call("ice_shove", [push])
+
+
+## Bloco de gelo em volta do jogador (todas as máquinas). Quem está na primeira pessoa
+## não tem modelo: um boneco simples na cor dele fica dentro do bloco, para a câmera de
+## fora. Os modelos param a animação enquanto congelados.
+static var _ice_mat: StandardMaterial3D
+
+func _ice_visual(on: bool) -> void:
+	if anim:
+		anim.speed_scale = 0.0 if on else 1.0
+	if viewmodel:
+		viewmodel.visible = not on
+	if not on:
+		if ice_block:
+			ice_block.queue_free()
+			ice_block = null
+		return
+	if ice_block:
+		return
+	if _ice_mat == null:
+		_ice_mat = StandardMaterial3D.new()
+		_ice_mat.albedo_color = Color(ICE_COLOR, 0.45)
+		_ice_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_ice_mat.emission_enabled = true
+		_ice_mat.emission = ICE_COLOR
+		_ice_mat.emission_energy_multiplier = 0.25
+		_ice_mat.roughness = 0.15
+	ice_block = Node3D.new()
+	add_child(ice_block)
+	var scale_k: float = stats["body_scale"]
+	var box := BoxMesh.new()
+	box.size = Vector3(1.25, height + 0.35, 1.25) * Vector3(scale_k, 1.0, scale_k)
+	var mi := MeshInstance3D.new()
+	mi.mesh = box
+	mi.material_override = _ice_mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.position.y = (height + 0.35) / 2.0 - 0.05
+	ice_block.add_child(mi)
+	if model == null:
+		var doll := MeshInstance3D.new()
+		var cap := CapsuleMesh.new()
+		cap.radius = 0.35
+		cap.height = height * 0.9
+		doll.mesh = cap
+		var dm := StandardMaterial3D.new()
+		dm.albedo_color = color
+		doll.material_override = dm
+		doll.position.y = height * 0.45
+		doll.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		ice_block.add_child(doll)
+	Effects.burst(get_parent(), chest(), 1.6, ICE_COLOR, 0.25)
+
+
+## Congelado na sua tela: câmera atrás e acima do bloco; o mouse gira em volta.
+func _place_ice_camera() -> void:
+	var center := get_global_transform_interpolated().origin + Vector3(0, height * 0.7, 0)
+	var basis := Basis.from_euler(Vector3(clampf(head.rotation.x, -1.2, 0.6) - 0.25, look_yaw, 0.0))
+	var want := center + basis * Vector3(0, 0, ICE_CAM_DISTANCE)
+	var query := PhysicsRayQueryParameters3D.create(center, want, 1)
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	var pos: Vector3 = want if hit.is_empty() else center.lerp(hit["position"], 0.85)
+	camera.global_transform = Transform3D(basis, pos)
 
 
 ## Bazuca: foguete reto, lento, com o dobro do dano e explosão grande.
@@ -2932,7 +3137,7 @@ func silence() -> void:
 
 ## Só é chamado na máquina dona deste jogador.
 func take_damage(amount: float, from: Player, flash := true) -> void:
-	if not alive or amount <= 0.0 or protect_timer > 0.0:
+	if not alive or amount <= 0.0 or protect_timer > 0.0 or ice_timer > 0.0:
 		return
 	if from and from != self:
 		last_attacker = from

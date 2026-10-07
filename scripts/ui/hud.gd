@@ -601,7 +601,7 @@ func _process(delta: float) -> void:
 	scope.visible = me.scoping
 	if scope.visible:
 		(scope.material as ShaderMaterial).set_shader_parameter("screen", scope.size)
-	crosshair.visible = not me.scoping and not dead_view
+	crosshair.visible = not me.scoping and not dead_view and me.ice_timer <= 0.0
 	_update_ammo()
 	shield_tint.visible = me.alive and me.is_shielding()
 	_update_downed()
@@ -671,6 +671,8 @@ func _update_status() -> void:
 		items.append(["INVISÍVEL", Color(0.75, 0.6, 1.0)])
 	if me.ambush_timer > 0.0:
 		items.append(["EMBOSCADA %.1f" % me.ambush_timer, Color(0.8, 0.55, 1.0)])
+	if me.ice_timer > 0.0:
+		items.append(["CONGELADO %.1f" % me.ice_timer, Player.ICE_COLOR])
 	if me.speed_orb_timer > 0.0:
 		items.append(["VELOCIDADE +%d%%  %.1f" % [roundi(Player.SPEED_ORB * 100.0), me.speed_orb_timer], Pickup.COLORS[Pickup.Kind.SPEED]])
 	if me.shrink_timer > 0.0:

@@ -99,6 +99,11 @@ const MASTERS := {
 	"bastiao": {"name": "Bastião", "cat": "Escudo", "rarity": "mitico", "master": true, "cooldown": 14.0,
 		"desc": "Q: ergue à sua frente uma parede de energia por 4 s que devolve as balas inimigas. As suas passam. Recarga de 14 s.",
 		"mods": [{"stat": "barrier", "add": 1}]},
+	# Prisão de Gelo (2026-10-06, desenho do usuário; números meus, ele pediu 3 s; o bloco
+	# quica no vazio e o dano do vazio vem quando o gelo derrete).
+	"prisao_gelo": {"name": "Prisão de Gelo", "cat": "Escudo", "rarity": "mitico", "master": true, "cooldown": 14.0,
+		"desc": "Q: dispara um caco de gelo (reto, até 40 m). Quem for atingido fica preso num bloco de gelo por 3 s: não age, mas também não leva dano. O bloco desliza: tiros, explosões e encontrões o empurram. No vazio ele quica, e o dano vem quando o gelo derrete. O escudo devolve o caco. Recarga de 14 s.",
+		"mods": [{"stat": "ice", "add": 1}]},
 	"ultimo_suspiro": {"name": "Último Suspiro", "cat": "Corpo", "rarity": "mitico", "master": true,
 		"desc": "Uma vez por rodada, o golpe fatal te deixa com 1 de vida e sem morrer por 3 s. Abata alguém nesse tempo e volte com metade da vida.",
 		"mods": [{"stat": "last_stand", "add": 1}]},

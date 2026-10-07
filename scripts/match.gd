@@ -175,6 +175,7 @@ func _spawn_player(peer: int, side: int, pname: String, team := -1) -> Player:
 	p.went_down.connect(_on_player_down.bind(p))
 	p.got_up.connect(_on_player_up.bind(p))
 	p.reflected.connect(func(): _log("%s refletiu uma bala" % p.player_name))
+	p.froze.connect(func(): _log("%s ficou congelado" % p.player_name))
 	players.append(p)
 	score[String(p.name)] = 0
 	kda[String(p.name)] = [0, 0, 0]

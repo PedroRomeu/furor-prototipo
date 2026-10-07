@@ -129,6 +129,9 @@ func _master(foe: Player, sees: bool) -> void:
 		p.in_master = true
 	elif p.stats["pierce"] > 0 and p.pierce_left == 0:
 		p.in_master = true
+	elif p.stats["ice"] > 0 and foe.ice_timer <= 0.0 \
+			and p.global_position.distance_to(foe.global_position) < Player.ICE_RANGE * 0.6:
+		p.in_master = true   # Prisão de Gelo: com o alvo à vista a menos de ~25 m
 	elif p.stats["sword"] > 0 and p.global_position.distance_to(foe.global_position) < NEAR:
 		p.in_master = true
 	elif p.stats["shrink"] > 0 and p.shrink_timer <= 0.0 \
