@@ -76,6 +76,32 @@ static func burst(parent: Node, pos: Vector3, radius: float, color: Color, time 
 	tween.chain().tween_callback(mi.queue_free)
 
 
+## Explosão: o dano é instantâneo e cobre o raio todo, então o clarão já nasce grande (70%)
+## e chega ao raio real em 0,1 s antes de desbotar. O burst cresce de 0,1 enquanto some e
+## parecia bem menor que a área de dano (2026-10-07).
+static func explosion(parent: Node, pos: Vector3, radius: float, color: Color, time := 0.35) -> void:
+	if not _allowed("explosion"):
+		return
+	var mi := MeshInstance3D.new()
+	var mat := StandardMaterial3D.new()
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.albedo_color = Color(color, 0.5)
+	mi.mesh = sphere_mesh()
+	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+	_track(mi, "explosion")
+	parent.add_child(mi)
+	mi.global_position = pos
+	mi.scale = Vector3.ONE * radius * 0.7
+	var tween := mi.create_tween().set_parallel()
+	tween.tween_property(mi, "scale", Vector3.ONE * radius, 0.1)
+	tween.tween_property(mat, "albedo_color:a", 0.0, time).set_ease(Tween.EASE_IN)
+	tween.chain().tween_callback(mi.queue_free)
+
+
 ## Feixe reto que some rápido (o tiro da Sniper): uma fita virada para a câmera, como os
 ## rastros das balas, para aparecer de qualquer ângulo (um cilindro fino visto de ponta,
 ## na direção da mira, quase sumia).

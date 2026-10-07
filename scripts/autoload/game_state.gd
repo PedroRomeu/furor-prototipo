@@ -37,6 +37,9 @@ var skin := "male-b"
 var gun_skin := "blaster-b"
 ## Quantos bots no treino: 1 a 3.
 var bot_count := 1
+## Dificuldade dos bots do treino (BotBrain.LEVELS: 0 Fácil, 1 Médio, 2 Difícil), em
+## settings.cfg [treino]. O autoteste usa Difícil (o bot de antes); teste: "--dificuldade=facil".
+var bot_level := 1
 ## Treino com 3 bots em 2x2 (você e um bot aliado contra dois). Online quem decide é a
 ## sala (Net.teams). Teste: "-- --autotest --solo --bots=3 --2x2".
 ## Modo do treino (GameModes: "ffa", "teams", "duels") e vidas do Duelos, salvos em
@@ -151,6 +154,7 @@ func _ready() -> void:
 		mode = saved_mode if saved_mode in GameModes.ids() else mode
 		var saved_lives: int = cfg_modes.get_value("treino", "vidas", lives)
 		lives = saved_lives if saved_lives in GameModes.LIVES_OPTIONS else lives
+		bot_level = clampi(int(cfg_modes.get_value("treino", "dificuldade", bot_level)), 0, 2)
 		var saved_maps = cfg_modes.get_value("sala", "mapas", {})
 		if saved_maps is Dictionary:
 			map_choices = saved_maps
@@ -161,9 +165,13 @@ func _ready() -> void:
 		mode = "duels"
 	elif autotest:
 		mode = "ffa"
+	if autotest:
+		bot_level = 2
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--vidas="):
 			lives = int(arg.trim_prefix("--vidas="))
+		if arg.begins_with("--dificuldade="):
+			bot_level = maxi(0, ["facil", "medio", "dificil"].find(arg.trim_prefix("--dificuldade=")))
 	_register_inputs()
 	load_decks()
 	_setup_audio.call_deferred()
@@ -410,6 +418,12 @@ func restart_game() -> void:
 	Net.stop()
 	OS.set_restart_on_exit(true, OS.get_cmdline_args())
 	get_tree().quit()
+
+
+func set_bot_level(l: int) -> void:
+	bot_level = clampi(l, 0, 2)
+	if not autotest:
+		_save_setting("treino", "dificuldade", bot_level)
 
 
 func set_mode(id: String, p_lives: int) -> void:

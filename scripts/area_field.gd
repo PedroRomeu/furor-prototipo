@@ -137,7 +137,7 @@ static func shield(owner: Player, mask: int, pos: Vector3) -> void:
 		for p: Player in _local_enemies(owner):
 			if p.chest().distance_to(center) < r:
 				p.apply_slow(FROST_SLOW, FROST_TIME + FROST_TIME_STEP * (n - 1))
-				p.take_damage(FROST_DAMAGE, owner)
+				p.take_area_damage(FROST_DAMAGE, owner)
 
 
 ## Bala bateu (parede, chão ou alguém): Nuvem Tóxica e Buraco Negro, se ela os carrega.
@@ -245,7 +245,7 @@ func _physics_process(delta: float) -> void:
 			tick = SAW_TICK
 			for p: Player in _local_enemies(owner_player):
 				if _inside(p):
-					p.take_damage(power, owner_player)
+					p.take_area_damage(power, owner_player)
 		Kind.FLAMES:
 			tick = FLAMES_TICK
 			for p: Player in _local_enemies(owner_player):
@@ -258,7 +258,7 @@ func _physics_process(delta: float) -> void:
 				var key := "%s:%s" % [p.name, owner_player.name]
 				if _inside(p) and now - int(_cloud_hit.get(key, -100000)) >= CLOUD_TICK * 900.0:
 					_cloud_hit[key] = now
-					p.take_damage(power * CLOUD_TICK, owner_player)
+					p.take_area_damage(power * CLOUD_TICK, owner_player)
 
 
 func _process(delta: float) -> void:
@@ -330,7 +330,7 @@ func _pull(delta: float) -> void:
 
 func _explode() -> void:
 	var parent := get_parent()
-	Effects.burst(parent, global_position, radius, Color(1.0, 0.6, 0.2))
+	Effects.explosion(parent, global_position, radius, Color(1.0, 0.6, 0.2))
 	Sfx.at(parent, "explosion", global_position)
 	if owner_player.is_local and owner_player.alive and owner_player.stats["rocket_jump"] > 0:
 		var d := owner_player.chest().distance_to(global_position)
@@ -343,7 +343,7 @@ func _explode() -> void:
 		if d < radius:
 			var away := (p.chest() - global_position).normalized()
 			p.knockback(away * 9.0 + Vector3.UP * 4.0)
-			p.take_damage(power * (1.0 - 0.5 * d / radius), owner_player)
+			p.take_area_damage(power * (1.0 - 0.5 * d / radius), owner_player)
 
 
 # ---------------------------------------------------------------- visual

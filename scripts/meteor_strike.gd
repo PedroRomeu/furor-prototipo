@@ -93,7 +93,7 @@ func _process(delta: float) -> void:
 
 func _impact() -> void:
 	var pos := global_position + Vector3.UP * 0.5
-	Effects.burst(get_parent(), pos, RADIUS, COLOR, 0.35)
+	Effects.explosion(get_parent(), pos, RADIUS, COLOR)
 	Effects.sparks(get_parent(), pos, COLOR, 16, 9.0)
 	Sfx.at(get_parent(), "explosion", pos)
 	for node in get_tree().get_nodes_in_group("players"):
@@ -108,4 +108,4 @@ func _impact() -> void:
 		var away := p.chest() - pos
 		away.y = 0.0
 		p.knockback(away.normalized() * 6.0 + Vector3.UP * 4.0)
-		p.take_damage(DAMAGE * (1.0 - 0.5 * clampf(d / RADIUS, 0.0, 1.0)), shooter if is_instance_valid(shooter) else null)
+		p.take_area_damage(DAMAGE * (1.0 - 0.5 * clampf(d / RADIUS, 0.0, 1.0)), shooter if is_instance_valid(shooter) else null)

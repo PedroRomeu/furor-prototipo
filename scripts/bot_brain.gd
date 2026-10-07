@@ -1,16 +1,26 @@
 class_name BotBrain
 extends Node
 ## IA simples para testar o 1x1 sozinho. Ela só preenche as variáveis in_* do
-## Player, exatamente como o teclado faria. Mude as constantes para ajustar a dificuldade.
+## Player, exatamente como o teclado faria. A dificuldade vem de LEVELS (set_level).
 ## Sem ver o inimigo, segue o caminho da malha de navegação da arena até ele.
 
-const AIM_ERROR := 0.5       # erro de mira, em metros
-const TURN_SPEED := 7.0      # velocidade de giro, rad/s
-const LEAD := 0.7            # quanto antecipa o movimento do alvo (0 a 1)
-const SHIELD_CHANCE := 0.5   # chance de levantar o escudo contra uma bala que vai acertar
-const VOID_SAVE_CHANCE := 0.5  # chance de acertar o escudo ao bater no vazio
-const CLICK_MIN := 0.12      # intervalo entre cliques do bot, em segundos (6 a 8 por segundo)
-const CLICK_MAX := 0.17
+## Dificuldade (2026-10-07, pedido do usuário; números meus, aprovados). Difícil é o bot
+## de antes, sem mudança. aim: erro de mira (m); turn: giro (rad/s); lead: quanto antecipa o
+## alvo (0 a 1); react: tempo vendo o alvo antes do 1o tiro (s); click: intervalo entre
+## cliques (s); shield: chance de defender uma bala; front: só defende bala vinda da frente
+## (cone de 120 graus) e vista há "seen" segundos (Difícil vê até nas costas e atrás da
+## parede, na hora); void: chance de acertar o escudo no vazio; master_wait: espera a mais
+## depois da recarga da carta mestra.
+const LEVEL_NAMES := ["Fácil", "Médio", "Difícil"]
+const LEVELS := [
+	{"aim": 1.4, "turn": 3.5, "lead": 0.3, "react": 0.6, "click": [0.25, 0.33], "shield": 0.15,
+		"front": true, "seen": 0.35, "void": 0.15, "master_wait": 3.0},
+	{"aim": 0.9, "turn": 5.0, "lead": 0.5, "react": 0.35, "click": [0.17, 0.25], "shield": 0.3,
+		"front": true, "seen": 0.2, "void": 0.3, "master_wait": 0.0},
+	{"aim": 0.5, "turn": 7.0, "lead": 0.7, "react": 0.0, "click": [0.12, 0.17], "shield": 0.5,
+		"front": false, "seen": 0.0, "void": 0.5, "master_wait": 0.0},
+]
+const FRONT_CONE := 60.0   # graus para cada lado da mira
 const NEAR := 8.0
 const FAR := 22.0
 const REPATH_TIME := 0.5
@@ -33,6 +43,17 @@ var target_timer := 0.0
 var void_save := false
 var click_cd := 0.0   # tempo até o próximo clique (a arma é semiautomática)
 var judged := {}   # id da bala -> decidiu se defende ou não (decide uma vez por bala)
+var seen_at := {}  # id da bala -> quando o bot a viu vindo (Fácil e Médio)
+var level := 2
+var cfg: Dictionary = LEVELS[2]
+var aim_seen := 0.0      # tempo vendo o alvo atual (reação antes do 1o tiro)
+var aim_target: Player
+var master_ready := 0.0  # tempo com a carta mestra pronta
+
+
+func set_level(l: int) -> void:
+	level = clampi(l, 0, LEVELS.size() - 1)
+	cfg = LEVELS[level]
 
 
 func think(delta: float) -> void:
@@ -57,6 +78,12 @@ func think(delta: float) -> void:
 		return
 	var sees := _can_see(foe)
 	unseen_time = 0.0 if sees else unseen_time + delta
+	if foe != aim_target or unseen_time > 0.25:
+		aim_target = foe
+		aim_seen = 0.0
+	elif sees:
+		aim_seen += delta
+	master_ready = master_ready + delta if p.master_cd <= 0.0 else 0.0
 	var hurt := _downed_ally()
 	if hurt and (not sees or p.global_position.distance_to(foe.global_position) > REVIVE_SAFE):
 		# Parceiro caído e nenhum inimigo perto: vai até ele e fica ali (atirando, se vir alguém).
@@ -110,11 +137,11 @@ func _sword_fight(delta: float, foe: Player, sees: bool) -> void:
 		wish = _follow_path(delta, foe.global_position) if not sees else \
 			Vector3(foe.global_position.x - p.global_position.x, 0.0, foe.global_position.z - p.global_position.z).normalized()
 	_set_move(wish)
-	p.look_at_point(foe.chest(), TURN_SPEED * delta)
+	p.look_at_point(foe.chest(), float(cfg["turn"]) * delta)
 	click_cd -= delta
-	if dist < Player.SWORD_RANGE and click_cd <= 0.0:
+	if dist < Player.SWORD_RANGE and click_cd <= 0.0 and aim_seen >= float(cfg["react"]):
 		p.in_shoot = true
-		click_cd = randf_range(CLICK_MIN, CLICK_MAX)
+		click_cd = randf_range(cfg["click"][0], cfg["click"][1])
 	_defend()
 
 
@@ -132,7 +159,8 @@ func _master(foe: Player, sees: bool) -> void:
 		if p.global_position.distance_to(foe.global_position) < 9.0 and p.ride_age > 0.3:
 			p.in_master = true
 		return
-	if not sees or p.master_cd > 0.0 or p.global_position.distance_to(foe.global_position) > FAR:
+	if not sees or p.master_cd > 0.0 or p.global_position.distance_to(foe.global_position) > FAR \
+			or master_ready < float(cfg["master_wait"]):
 		return
 	if p.stats["updraft"] > 0 and randf() < 0.01:
 		p.in_master = true
@@ -252,14 +280,14 @@ func _aim_and_shoot(delta: float, foe: Player, sees: bool, wish: Vector3) -> voi
 	if not sees:
 		# Sem ver o inimigo, olha para onde está indo.
 		if wish != Vector3.ZERO:
-			p.look_at_point(eye + wish * 5.0, TURN_SPEED * delta)
+			p.look_at_point(eye + wish * 5.0, float(cfg["turn"]) * delta)
 		if p.ammo < p.stats["mag_size"]:
 			p.in_reload = true
 		return
 	aim_timer -= delta
 	if aim_timer <= 0.0:
 		aim_timer = 0.4
-		var error := AIM_ERROR * (6.0 if p.blind_timer > 0.0 else 1.0)
+		var error := float(cfg["aim"]) * (6.0 if p.blind_timer > 0.0 else 1.0)
 		aim_offset = Vector3(randf_range(-1, 1), randf_range(-0.6, 0.6), randf_range(-1, 1)) * error
 	var rocket := p.bazooka_timer > 0.0
 	var sniping := p.sniper_timer > 0.0
@@ -268,21 +296,21 @@ func _aim_and_shoot(delta: float, foe: Player, sees: bool, wish: Vector3) -> voi
 	if not rocket and p.pierce_left > 0:
 		speed *= Player.PIERCE_SPEED
 	var travel := eye.distance_to(foe.global_position) / speed
-	var target := foe.chest() + foe.velocity * travel * LEAD + aim_offset
+	var target := foe.chest() + foe.velocity * travel * float(cfg["lead"]) + aim_offset
 	# Compensa a queda da bala mirando acima (foguete, perfurante e bala guiada vão retos).
 	if not straight:
 		target.y += 0.5 * float(p.stats["bullet_gravity"]) * travel * travel
-	p.look_at_point(target, TURN_SPEED * delta)
+	p.look_at_point(target, float(cfg["turn"]) * delta)
 	var forward := -p.head.global_transform.basis.z
 	click_cd -= delta
-	if forward.angle_to(target - eye) < 0.06:
+	if forward.angle_to(target - eye) < 0.06 and aim_seen >= float(cfg["react"]):
 		# Semiautomática: o bot clica num ritmo de gente (6 a 8 por segundo); segurar só
 		# repete o tiro com a Metralhadora. think() solta o botão a cada quadro.
 		if p.stats["auto_fire"] > 0:
 			p.in_shoot = true
 		elif click_cd <= 0.0:
 			p.in_shoot = true
-			click_cd = randf_range(CLICK_MIN, CLICK_MAX)
+			click_cd = randf_range(cfg["click"][0], cfg["click"][1])
 
 
 func _can_see(foe: Player) -> bool:
@@ -303,7 +331,7 @@ func _defend() -> void:
 	# Caindo no vazio: levanta o escudo pouco antes de bater (às vezes erra o tempo).
 	var p := player
 	if p.global_position.y > Arena.VOID_Y + 3.0:
-		void_save = randf() < VOID_SAVE_CHANCE   # sorteia uma vez por queda
+		void_save = randf() < float(cfg["void"])   # sorteia uma vez por queda
 	elif void_save and p.velocity.y < 0.0 and p.global_position.y + p.velocity.y * 0.15 < Arena.VOID_Y:
 		p.in_shield = true
 	var center := player.chest()
@@ -319,14 +347,34 @@ func _defend() -> void:
 		var along := rel.dot(dir)
 		if along <= 0.0 or (rel - dir * along).length() > 1.4:
 			continue   # já passou ou vai errar
+		var id := b.get_instance_id()
+		if cfg["front"]:
+			# Fácil e Médio: só defendem a bala que viram vindo pela frente, e com atraso.
+			if not seen_at.has(id):
+				if not _sees_bullet(b):
+					continue
+				seen_at[id] = Time.get_ticks_msec()
+			if Time.get_ticks_msec() - int(seen_at[id]) < float(cfg["seen"]) * 1000.0:
+				continue
 		if along / speed > float(player.stats["shield_duration"]) * 0.8:
 			continue   # ainda longe demais para levantar o escudo
-		var id := b.get_instance_id()
 		if not judged.has(id):
-			judged[id] = randf() < SHIELD_CHANCE
+			judged[id] = randf() < float(cfg["shield"])
 		if judged[id]:
 			player.in_shield = true
 			if player.shield_cd > 0.0 and player.stats["barrier"] > 0:
 				player.in_master = true
 	if judged.size() > 256:
 		judged.clear()
+	if seen_at.size() > 256:
+		seen_at.clear()
+
+
+## A bala está no cone da frente e sem parede no caminho até os olhos?
+func _sees_bullet(b: Bullet) -> bool:
+	var eye := player.head.global_position
+	var forward := -player.head.global_transform.basis.z
+	if forward.angle_to(b.global_position - eye) > deg_to_rad(FRONT_CONE):
+		return false
+	var query := PhysicsRayQueryParameters3D.create(eye, b.global_position, 1)
+	return player.get_world_3d().direct_space_state.intersect_ray(query).is_empty()

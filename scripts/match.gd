@@ -91,6 +91,7 @@ func _ready() -> void:
 				bot_name = "Aliado" if i == 0 else "Bot %d" % i
 			var bot := _spawn_player(1, i + 1, bot_name, team)
 			bot.brain = BotBrain.new()
+			bot.brain.set_level(GameState.bot_level)
 			bot.brain.player = bot
 			bot.add_child(bot.brain)
 			bot.deck = CardDB.random_deck()

@@ -13,10 +13,18 @@ extends Node3D
 ## (escondida) pela resposta da outra máquina: refletiu, acertou ou passou.
 
 const LIFETIME := 4.0
+## Cada quique dá mais BOUNCE_LIFE de vida (2026-10-07, para a "nuke" do Furor: atirar para o
+## céu e esperar quicar). Sem teto de tempo: o teto de quiques (LIMITS) já limita.
+const BOUNCE_LIFE := 2.0
 const REFLECTED_COLOR := Color(0.6, 1.0, 1.0)
 const CRIT_COLOR := Color(1.0, 0.85, 0.2)
 const PIERCE_COLOR := Color(0.85, 0.5, 1.0)
 const EXPLOSION_DAMAGE := 0.6
+## A explosão começa na borda da bala: raio das cartas + EXPLOSION_SIZE_GAIN x o raio da bala
+## (2026-10-07; a bala base soma 0,2 m, a Bala Gigante 0,7, uma nuke de 9 m uns 14).
+const EXPLOSION_SIZE_GAIN := 1.5
+const EXPLOSION_MIN := 0.5
+const TRAIL_MAX_WIDTH := 1.5   # rastro de bala gigante: faixa translúcida enorme pesa na placa
 const SPLIT_ANGLE := 10.0
 const MAX_BULLETS := 300   # teto de segurança para combinações extremas de cartas
 const REMOTE_WAIT := 0.3
@@ -32,17 +40,23 @@ const MAX_GROW_RADIUS := 1.2
 ## Bola de Neve: o dano cresce em linha reta até GROW_TIME (por carta, +grow de dano no fim).
 ## Antes crescia em juros compostos e, com 3 cópias, chegava a centenas de vezes o dano.
 const GROW_TIME := 2.0
-## Teleguiada (refeita em 2026-10-04, como a Seeker do OVERKILL e a do Furor): a bala só
-## curva quando um inimigo entra num raio em volta dela, e nem toda bala procura alvo.
-## Raio, curva e chance crescem com as cópias (n) com retorno decrescente, n / (n + k):
-## n=1: 33% das balas, raio 4,5 m, 1,3 rad/s (uns 8 graus de correção num tiro de perto);
-## n=3: 60%, 7 m, 2,4 rad/s; n=10: 83%, 9,7 m, 3,3 rad/s. Nunca chega à mira perfeita.
-const SEEK_CHANCE_K := 0.5
-const SEEK_RADIUS_MIN := 2.0
-const SEEK_RADIUS_GAIN := 10.0
+## Teleguiada (refeita em 2026-10-04 como a Seeker do OVERKILL e a do Furor; faixa refeita
+## em 2026-10-07): nem toda bala procura alvo, e a que procura só curva quando um inimigo
+## passa perto dela, mas aí curva forte, para dar para ver (e fica verde, SEEK_COLOR).
+## As cópias (n) aumentam sobretudo a chance, com retorno decrescente e teto de 70%: nunca
+## é toda bala. Medido (simulação, balas que passariam a 0,65-2 m do alvo): viram acerto
+## 18/31/41/53/61% com n = 1/2/3/5/10 (antes 7/27/54/71/83%: invisível com 1 e quase
+## mira automática com 4+). Fórmula de cada termo: MIN + GAIN x (n - 1) / (n + K).
+const SEEK_CHANCE_MIN := 0.35
+const SEEK_CHANCE_GAIN := 0.35
+const SEEK_CHANCE_K := 2.0
+const SEEK_RADIUS_MIN := 4.0
+const SEEK_RADIUS_GAIN := 2.0
 const SEEK_RADIUS_K := 3.0
-const SEEK_TURN_MAX := 4.0
-const SEEK_TURN_K := 2.0
+const SEEK_TURN_MIN := 4.5
+const SEEK_TURN_GAIN := 1.5
+const SEEK_TURN_K := 3.0
+const SEEK_COLOR := Color(0.1, 1.0, 0.25)   # saturado: o brilho (x2,2) deixa cor clara branca
 ## Quique Certeiro (refeito em 2026-10-04: antes virava a bala direto para o inimigo em todo
 ## quique, uma mira automática). Junta com a Teleguiada: n = 1 (a carta) + cópias de
 ## Teleguiada. No quique a bala vira para o inimigo só até um ângulo, que cresce com
@@ -61,7 +75,7 @@ const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", 
 	"slow", "push", "shield_break", "target_bounce", "execute", "reflected", "gravity",
 	"boomerang", "returning", "bounce_damage", "sticky", "split", "grow", "swap", "blind",
 	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls",
-	"toxic", "hole", "laser", "ice", "meteor", "rocket"]
+	"toxic", "hole", "laser", "ice", "meteor", "rocket", "blast_radius", "blast_damage", "life"]
 ## Bala Fantasma: só paredes contam (superfície quase em pé); no chão e no topo das peças a
 ## bala para ou quica como as outras.
 const GHOST_WALL_NORMAL_Y := 0.7
@@ -85,12 +99,16 @@ var radius := 0.1
 var bounces := 0
 var homing := 0.0      # curva fixa atrás do inimigo mais próximo (Espelho Perseguidor)
 var seek := 0.0        # Teleguiada: cópias da carta, se esta bala ganhou o sorteio
+var seek_locked := false   # já curvou atrás de alguém (mudou de cor)
 var ghost := false      # atravessa todo o cenário (Perfurante)
 ## Bala Fantasma (refeita em 2026-10-05, ideia do usuário, como no Furor): cada bala
 ## atravessa as primeiras paredes em que bater, uma por cópia da carta.
 var ghost_walls := 0
 var _passed: Array[RID] = []   # paredes já atravessadas: o raio passa a ignorá-las
 var explosion := 0.0
+var blast_radius := 0.0   # Pólvora / Carga Concentrada: soma ao raio da explosão (só com explosão)
+var blast_damage := 0.0   # ...e ao dano dela (+0,3 = +30%)
+var life := LIFETIME      # cresce BOUNCE_LIFE a cada quique
 var poison := 0.0
 var slow := 0.0
 var push := 0.0
@@ -146,9 +164,11 @@ static func fire(from: Player, pos: Vector3, dir: Vector3, damage_mult := 1.0, w
 	b.ghost_walls = s["ghost"]
 	# Teleguiada: cada bala sorteia se procura alvo; o raio e a curva vêm do número de cópias.
 	var seekers := float(s["homing"])
-	if seekers > 0.0 and randf() < 1.0 - 1.0 / (1.0 + SEEK_CHANCE_K * seekers):
+	if seekers > 0.0 and randf() < _seek_term(seekers, SEEK_CHANCE_MIN, SEEK_CHANCE_GAIN, SEEK_CHANCE_K):
 		b.seek = seekers
 	b.explosion = s["explosion"]
+	b.blast_radius = s["blast_radius"]
+	b.blast_damage = s["blast_damage"]
 	b.poison = s["poison"]
 	b.slow = s["slow"]
 	b.push = s["knockback"]
@@ -349,7 +369,7 @@ func _physics_process(delta: float) -> void:
 		Player.rocket_blast(get_parent(), global_position, shooter)
 		queue_free()
 		return
-	if age > LIFETIME or (ice and age * velocity.length() > Player.ICE_RANGE):
+	if age > life or (ice and age * velocity.length() > Player.ICE_RANGE):
 		queue_free()
 		return
 	if fuse > 0.0:
@@ -438,9 +458,18 @@ func _update_flight(delta: float) -> void:
 			_steer_to(enemy.chest(), homing, delta)
 	elif seek > 0.0:
 		var enemy := _enemy()
-		var reach := SEEK_RADIUS_MIN + SEEK_RADIUS_GAIN * seek / (seek + SEEK_RADIUS_K)
+		var reach := _seek_term(seek, SEEK_RADIUS_MIN, SEEK_RADIUS_GAIN, SEEK_RADIUS_K)
 		if enemy and enemy.chest().distance_to(global_position) < reach:
-			_steer_to(enemy.chest(), SEEK_TURN_MAX * seek / (seek + SEEK_TURN_K), delta)
+			if not seek_locked:
+				seek_locked = true   # travou: fica verde (rastro junto) para o efeito ser visto
+				if not crit and not reflected:
+					_set_color(SEEK_COLOR)
+			_steer_to(enemy.chest(), _seek_term(seek, SEEK_TURN_MIN, SEEK_TURN_GAIN, SEEK_TURN_K), delta)
+
+
+## Termo da Teleguiada com n cópias: MIN com 1 cópia, tendendo a MIN + GAIN.
+static func _seek_term(n: float, base: float, gain: float, k: float) -> float:
+	return base + gain * maxf(0.0, n - 1.0) / (n + k)
 
 
 ## Parede do Bastião no caminho: devolve a bala de quem não é o dono dela. Quem decide é a
@@ -488,8 +517,8 @@ func _player_on_segment(from: Vector3, end: Vector3) -> Dictionary:
 		var center := p.global_position + Vector3(0.0, body, 0.0)
 		if center.distance_to(mid) > half + body + p.hit_radius() + radius:
 			continue
-		if is_instance_valid(shooter) and shooter.is_ally(p):
-			continue   # 2x2: a bala atravessa o parceiro
+		if is_instance_valid(shooter) and shooter.is_ally(p) and p.hooked_by == null:
+			continue   # 2x2: a bala atravessa o parceiro (menos preso no Gancho: escudo humano)
 		if not p.is_local and age < ignore_remote_until:
 			continue
 		if p.is_local and p.is_dodging():
@@ -557,6 +586,7 @@ func _hit_world(hit: Dictionary) -> void:
 		return
 	bounces -= 1
 	bounced = true
+	life += BOUNCE_LIFE
 	if bounce_damage > 0.0:
 		# +bounce_damage do dano de saída a cada quique, somando (3 quiques com +40% = +120%).
 		bounce_hits += 1
@@ -682,15 +712,17 @@ func _impact_fields(point: Vector3, normal: Vector3) -> void:
 ## Dano em área. Só fere jogadores desta máquina; nunca o dono da bala; quem levou
 ## o tiro direto não leva de novo. Com Pulo-Foguete, a explosão lança o próprio dono.
 func _explode(point: Vector3, skip: Player) -> void:
-	Effects.burst(get_parent(), point, explosion, Color(1.0, 0.6, 0.2))
+	var r := blast_size()
+	var power := damage * EXPLOSION_DAMAGE * (1.0 + blast_damage)
+	Effects.explosion(get_parent(), point, r, Color(1.0, 0.6, 0.2))
 	Sfx.at(get_parent(), "explosion", point)
 	_refresh_cache()
 	if is_instance_valid(shooter) and shooter.is_local and shooter.alive and shooter.stats["rocket_jump"] > 0:
 		var d := shooter.chest().distance_to(point)
-		if d < explosion + 1.0:
+		if d < r + 1.0:
 			var away := (shooter.chest() - point).normalized()
-			var power := 1.0 - 0.5 * d / (explosion + 1.0)
-			shooter.launch(Vector3(away.x * 13.0, maxf(away.y * 15.0, 8.0), away.z * 13.0) * power)
+			var k := 1.0 - 0.5 * d / (r + 1.0)
+			shooter.launch(Vector3(away.x * 13.0, maxf(away.y * 15.0, 8.0), away.z * 13.0) * k)
 	for node in _players:
 		if not is_instance_valid(node):
 			continue
@@ -699,10 +731,15 @@ func _explode(point: Vector3, skip: Player) -> void:
 				or (is_instance_valid(shooter) and shooter.is_ally(p)):
 			continue
 		var d := p.chest().distance_to(point)
-		if d < explosion:
+		if d < r:
 			var away := (p.chest() - point).normalized()
 			p.knockback(away * 6.0 + Vector3.UP * 2.0)
-			p.take_damage(damage * EXPLOSION_DAMAGE * (1.0 - 0.5 * d / explosion), shooter)
+			p.take_area_damage(power * (1.0 - 0.5 * d / r), shooter)
+
+
+## Raio da explosão: cartas (explosion + blast_radius) mais a borda da bala.
+func blast_size() -> float:
+	return maxf(EXPLOSION_MIN, explosion + blast_radius + EXPLOSION_SIZE_GAIN * radius)
 
 
 ## Reflexo: a bala muda de dono e segue na direção de quem atirou.
@@ -799,7 +836,7 @@ class TrailBatch extends MeshInstance3D:
 				continue
 			var pts: Array = b.trail_points.duplicate()
 			pts.append(b.get_global_transform_interpolated().origin)
-			var width := maxf(0.07, b.radius * 0.8)
+			var width := clampf(b.radius * 0.8, 0.07, Bullet.TRAIL_MAX_WIDTH)
 			var last := pts.size() - 1
 			var prev_a := Vector3.ZERO
 			var prev_b := Vector3.ZERO

@@ -29,6 +29,8 @@ var solo_modes: ModePicker   # modo do treino
 var solo_bots: HSlider       # quantos bots (1 a 3; slider, pedido do usuário)
 var solo_bots_label: Label
 var bots_hint: Label         # frase da linha dos bots: que tamanhos de mapa saem
+const LEVEL_HINTS := ["Mira e reage devagar; quase não usa o escudo.",
+	"Reage como gente; só defende o que vê chegar.", "Reflexos rápidos: o bot de sempre."]
 var start_solo: Button
 var lobby_modes: ModePicker  # modo da sala (só o anfitrião mexe)
 var maps_button: Button      # abre a lista de mapas da sala (MapPicker)
@@ -200,6 +202,11 @@ func _play_page() -> Control:
 		bot_count = int(v)
 		_refresh_solo())
 	bots_hint = Ui.option_row(solo, "Bots", "", bots, 260)
+	var level_ref := {}   # o rótulo nasce depois da função anônima (ela copia variáveis)
+	var levels := Ui.tabs(BotBrain.LEVEL_NAMES, GameState.bot_level, func(i):
+		GameState.set_bot_level(i)
+		level_ref["hint"].text = LEVEL_HINTS[i])
+	level_ref["hint"] = Ui.option_row(solo, "Dificuldade", LEVEL_HINTS[GameState.bot_level], levels, 260)
 	solo.add_child(Ui.grow())
 	start_solo = Ui.accent(Ui.button("Começar treino", _play_bots))
 	start_solo.custom_minimum_size.y = 48

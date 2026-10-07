@@ -63,6 +63,9 @@ const BASE_STATS := {
 	"homing": 0.0,
 	"ghost": 0,
 	"explosion": 0.0,
+	"blast_radius": 0.0,   # Pólvora (+1), Carga Concentrada (-1): só vale com explosão
+	"blast_damage": 0.0,   # Pólvora (+0,3), Carga Concentrada (+0,6)
+	"blast_resist": 0.0,   # Blindado: fração a menos do dano de explosões e áreas
 	"poison": 0.0,
 	"slow": 0.0,
 	"knockback": 0.0,
@@ -1529,7 +1532,11 @@ func _start_ambush() -> void:
 func _restore_overlay() -> void:
 	if model == null or hit_flash > 0.0:
 		return
-	var mat: Material = ambush_mat if ambush_timer > 0.0 else (ally_mat if _ally_look else null)
+	# Aliado preso no Gancho inimigo perde o contorno e a seta: atirar nele machuca (escudo humano).
+	var ally_on := _ally_look and hooked_by == null
+	if ally_arrow:
+		ally_arrow.visible = ally_on
+	var mat: Material = ambush_mat if ambush_timer > 0.0 else (ally_mat if ally_on else null)
 	for m in body_meshes:
 		m.material_overlay = mat
 
@@ -3099,12 +3106,14 @@ func _check_splat(before_h: Vector3, delta: float) -> void:
 		var other := c.get_collider() as Player
 		if other:
 			# Gancho: arremessado em cima de alguém (que não seja quem jogou), os dois levam.
-			if bowl and String(other.name) != slap_from and other.alive:
+			# O parceiro de quem arremessou não leva (2x2); os dois inimigos levam e ficam tontos.
+			var thrower := get_parent().get_node_or_null(slap_from) as Player
+			if bowl and String(other.name) != slap_from and other.alive 					and not (thrower and thrower.is_ally(other)):
 				slap_flight = 0.0
 				bowl = false
-				var thrower := get_parent().get_node_or_null(slap_from) as Player
 				other.remote_call("receive_bowl", [slap_from])
 				take_damage(HOOK_IMPACT, thrower)
+				_daze()
 				_show_splat(c.get_position())
 				if Net.online:
 					_net_splat.rpc(c.get_position())
@@ -3115,9 +3124,10 @@ func _check_splat(before_h: Vector3, delta: float) -> void:
 		if before_h.normalized().dot(-c.get_normal()) < 0.3:
 			continue   # raspou de lado
 		slap_flight = 0.0
-		bowl = false
-		daze_timer = DAZE_TIME
-		apply_slow(DAZE_SLOW, DAZE_TIME)
+		if bowl:
+			bowl = false   # Gancho: na parede só o dano; a tontura vem de acertar outro jogador
+		else:
+			_daze()
 		shake = maxf(shake, 0.6)
 		take_damage(splat_damage, get_parent().get_node_or_null(slap_from) as Player)
 		_show_splat(c.get_position())
@@ -3125,6 +3135,12 @@ func _check_splat(before_h: Vector3, delta: float) -> void:
 		if Net.online:
 			_net_splat.rpc(c.get_position())
 		return
+
+
+## Tonto (parede no Mega Tapa, boliche do Gancho): lento e sem atirar por DAZE_TIME.
+func _daze() -> void:
+	daze_timer = DAZE_TIME
+	apply_slow(DAZE_SLOW, DAZE_TIME)
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -3274,6 +3290,7 @@ func _net_hooked(from_name: String, state: int) -> void:
 			hooked_by.remove_collision_exception_with(self)
 		hooked_by = null
 		grabber._hook_clear()
+		_restore_overlay()
 		return
 	if state == 2:
 		hooked_by = grabber
@@ -3283,6 +3300,7 @@ func _net_hooked(from_name: String, state: int) -> void:
 		grabber.hook_taken = 0.0
 		grabber._hook_visual(true)
 		grabber.hooked_someone.emit()
+		_restore_overlay()
 		sliding = false
 		dash_timer = 0.0
 		shield_timer = 0.0
@@ -3387,6 +3405,7 @@ func receive_bowl(from_name: String) -> void:
 		return
 	knockback(Vector3.UP * 4.0)
 	take_damage(HOOK_IMPACT, get_parent().get_node_or_null(from_name) as Player)
+	_daze()
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -3556,7 +3575,7 @@ func _net_rocket_blast(pos: Vector3) -> void:
 static func rocket_blast(parent: Node, pos: Vector3, owner_p: Player) -> void:
 	if is_instance_valid(owner_p):
 		owner_p.rocket_exploded.emit()
-	Effects.burst(parent, pos, ROCKET_BLAST_RADIUS, ROCKET_COLOR, 0.35)
+	Effects.explosion(parent, pos, ROCKET_BLAST_RADIUS, ROCKET_COLOR)
 	Effects.sparks(parent, pos, ROCKET_COLOR, 16, 9.0)
 	Sfx.at(parent, "explosion", pos)
 	for node in parent.get_tree().get_nodes_in_group("players"):
@@ -3574,7 +3593,7 @@ static func rocket_blast(parent: Node, pos: Vector3, owner_p: Player) -> void:
 		if is_instance_valid(owner_p) and owner_p.is_ally(p):
 			continue
 		p.knockback(away.normalized() * 8.0 + Vector3.UP * 5.0)
-		p.take_damage(ROCKET_BLAST_DAMAGE * (1.0 - 0.5 * clampf(d / ROCKET_BLAST_RADIUS, 0.0, 1.0)),
+		p.take_area_damage(ROCKET_BLAST_DAMAGE * (1.0 - 0.5 * clampf(d / ROCKET_BLAST_RADIUS, 0.0, 1.0)),
 			owner_p if is_instance_valid(owner_p) else null)
 
 
@@ -4173,7 +4192,7 @@ func apply_slow(amount: float, time := SLOW_TIME) -> void:
 
 ## Chamas: queima por time segundos (renovado enquanto estiver no fogo).
 func apply_burn(dps: float, time: float, from: Player) -> void:
-	burn_dps = dps
+	burn_dps = dps * (1.0 - float(stats["blast_resist"]))
 	burn_timer = maxf(burn_timer, time)
 	burn_from = from
 
@@ -4192,11 +4211,16 @@ func silence() -> void:
 	shield_timer = 0.0
 
 
+## Dano de explosão ou de área (Blindado tira uma parte). Só na máquina dona.
+func take_area_damage(amount: float, from: Player) -> void:
+	take_damage(amount * (1.0 - float(stats["blast_resist"])), from)
+
+
 ## Só é chamado na máquina dona deste jogador.
 func take_damage(amount: float, from: Player, flash := true) -> void:
 	if not alive or amount <= 0.0 or protect_timer > 0.0 or ice_timer > 0.0:
 		return
-	if from and from != self:
+	if from and from != self and not is_ally(from):   # tiro do parceiro (escudo humano) não conta
 		last_attacker = from
 		recent_hits[from] = Time.get_ticks_msec()
 	if hook_state >= 2 and hook_target:
