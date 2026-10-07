@@ -3333,7 +3333,13 @@ func _hook_free() -> void:
 func _hook_throw_now() -> void:
 	if hook_target == null:
 		return
-	var dir := -head.global_transform.basis.z
+	# Do preso até o ponto mirado (ele fica à direita; reto pela mira passaria ao lado).
+	var aim := -head.global_transform.basis.z
+	var query := PhysicsRayQueryParameters3D.create(head.global_position, head.global_position + aim * 60.0,
+		1 | 2, [get_rid(), hook_target.get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	var point: Vector3 = hit["position"] if not hit.is_empty() else head.global_position + aim * 60.0
+	var dir := (point - hook_target.chest()).normalized()
 	hook_target.remote_call("hook_throw", [dir])
 	hook_state = 0
 	Sfx.at(self, "dash", chest())
