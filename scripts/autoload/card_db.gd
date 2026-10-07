@@ -129,6 +129,11 @@ const MASTERS := {
 		"mods": [{"stat": "rocket_boots", "add": 1}]},
 	# Formiga (2026-10-06, ideia do usuário; números meus, aprovados; cancelar no Q e o
 	# impacto ao crescer foram sugestões minhas aceitas).
+	# Plataformas Suspensas (2026-10-06, ideia e nome do usuário; números meus, aprovados;
+	# todos pisam, escolha dele).
+	"plataformas_suspensas": {"name": "Plataformas Suspensas", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 18.0,
+		"desc": "Q no ar: cria uma plataforma sob os seus pés e, por 6 s, pular no ar sem pulos sobrando cria outra (até 4 no total). Cada plataforma dura 5 s; qualquer jogador pode pisar nelas, e as balas atravessam. Recarga de 12 s depois que acaba.",
+		"mods": [{"stat": "platforms", "add": 1}]},
 	"formiga": {"name": "Formiga", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 16.0,
 		"desc": "Q: por 6 s você fica com 40% do tamanho (mais difícil de acertar) e 60% mais rápido. Q de novo volta antes. Ao voltar ao tamanho, um impacto empurra quem estiver a até 4 m e causa 20 de dano. Recarga de 16 s.",
 		"mods": [{"stat": "shrink", "add": 1}]},

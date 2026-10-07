@@ -176,6 +176,7 @@ func _spawn_player(peer: int, side: int, pname: String, team := -1) -> Player:
 	p.got_up.connect(_on_player_up.bind(p))
 	p.reflected.connect(func(): _log("%s refletiu uma bala" % p.player_name))
 	p.froze.connect(func(): _log("%s ficou congelado" % p.player_name))
+	p.platform_made.connect(func(): _log("%s fez uma plataforma" % p.player_name))
 	p.beamed.connect(func(): _log("%s levou o raio" % p.player_name))
 	p.slapped.connect(func(splat): _log("%s %s" % [p.player_name, "bateu na parede" if splat else "levou um tapa"]))
 	players.append(p)

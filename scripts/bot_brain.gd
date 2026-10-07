@@ -46,6 +46,9 @@ func think(delta: float) -> void:
 	p.in_dash = false
 	p.in_reload = false
 	p.in_master = false
+	if p.stats["platforms"] > 0 and p.master_cd <= 0.0 and not p.is_on_floor() \
+			and p.global_position.y < Arena.VOID_Y + 1.5 and p.velocity.y < 0.0:
+		p.in_master = true   # Plataformas Suspensas: plataforma para não cair no vazio
 	if p.downed and not p.frozen:
 		_crawl_to_ally(delta)
 		return

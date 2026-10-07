@@ -675,6 +675,8 @@ func _update_status() -> void:
 		items.append(["CARREGANDO %.1f" % me.beam_charge, Player.BEAM_COLOR])
 	elif me.beam_timer > 0.0:
 		items.append(["CANHÃO %.1f" % me.beam_timer, Player.BEAM_COLOR])
+	if me.plat_mode > 0.0:
+		items.append(["PLATAFORMAS %d  ·  %.1f s" % [me.plat_left, me.plat_mode], Color(0.6, 0.85, 1.0)])
 	if me.daze_timer > 0.0:
 		items.append(["TONTO %.1f" % me.daze_timer, Player.SLAP_COLOR])
 	if me.ice_timer > 0.0:

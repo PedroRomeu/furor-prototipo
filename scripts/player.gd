@@ -23,6 +23,7 @@ signal chaos_drawn(id: String)   # Caos sorteou outra mestra (a HUD avisa)
 signal froze       # ficou preso no gelo (Prisão de Gelo; o registro do autoteste conta)
 signal slapped(splat: bool)   # levou o Mega Tapa / bateu na parede (registro do autoteste)
 signal beamed      # levou um toque do Canhão Arcano (registro do autoteste)
+signal platform_made   # criou (ou recebeu pela rede) uma plataforma suspensa (registro do autoteste)
 
 ## Atributos sem nenhuma carta. As cartas (CardDB) alteram estes valores.
 const BASE_STATS := {
@@ -118,6 +119,7 @@ const BASE_STATS := {
 	"ice": 0,       # Prisão de Gelo
 	"slap": 0,      # Mega Tapa
 	"beam": 0,      # Canhão Arcano
+	"platforms": 0, # Plataformas Suspensas
 	"updraft": 0,
 	"bazooka": 0,
 	"sniper": 0,
@@ -483,6 +485,13 @@ var beam_timer := 0.0      # raio ligado
 var beam_hits := {}        # alvo -> tempo até poder levar de novo
 var beam_aim := Vector2.ZERO   # (yaw, pitch) para onde o mouse quer ir; a mira segue devagar
 var beam_fx: Node3D
+## Plataformas Suspensas (mestra): Q no ar cria uma plataforma e liga o modo por PLAT_MODE; nesse
+## tempo, pular no ar sem pulos sobrando cria outra (até PLAT_MAX). Recarga do card (18 s)
+## = os 6 s do modo + 12 s.
+const PLAT_MODE := 6.0
+const PLAT_MAX := 4
+var plat_mode := 0.0
+var plat_left := 0
 ## Mega Tapa (mestra): leque curto à frente; arremessa (SLAP_PUSH para o lado, SLAP_LIFT
 ## para cima). Por SLAP_FLIGHT segundos, bater numa parede ainda rápido (SPLAT_MIN_SPEED)
 ## dá SPLAT_DAMAGE e deixa tonto (DAZE_TIME: lento e sem atirar).
@@ -727,7 +736,7 @@ var _ally_look := false
 func _ready() -> void:
 	add_to_group("players")
 	collision_layer = 2
-	collision_mask = 1 | 2
+	collision_mask = 1 | 2 | SkyPlatform.LAYER   # plataformas da Plataformas Suspensas: só jogadores pisam
 	floor_max_angle = deg_to_rad(46.0)
 	floor_snap_length = 0.3
 
@@ -1048,6 +1057,8 @@ func reset_for_round(spawn: Transform3D) -> void:
 	slap_flight = 0.0
 	daze_timer = 0.0
 	_end_beam(false)
+	plat_mode = 0.0
+	plat_left = 0
 	global_transform = spawn
 	reset_physics_interpolation()
 	net_pos = spawn.origin
@@ -1568,6 +1579,7 @@ func _tick(delta: float) -> void:
 		_chaos_tick(delta)
 	speed_orb_timer = maxf(0.0, speed_orb_timer - delta)
 	daze_timer = maxf(0.0, daze_timer - delta)
+	plat_mode = maxf(0.0, plat_mode - delta)
 	if bazooka_timer > 0.0:
 		bazooka_timer -= delta
 		if bazooka_timer <= 0.0 or (rockets_left <= 0 and fire_timer <= 0.0):
@@ -1783,6 +1795,12 @@ func _move(delta: float) -> void:
 		elif jumps_left > 0:
 			jumps_left -= 1
 			# O pulo no ar deixa trocar de direção sem perder velocidade.
+			if wish != Vector3.ZERO:
+				h = wish.normalized() * maxf(h.length(), target)
+			jumped = true
+		elif plat_mode > 0.0 and plat_left > 0:
+			# Plataformas Suspensas: plataforma sob os pés e pula dela.
+			_make_platform()
 			if wish != Vector3.ZERO:
 				h = wish.normalized() * maxf(h.length(), target)
 			jumped = true
@@ -2236,7 +2254,8 @@ func credit_damage(amount: float, lethal := false) -> void:
 func _act(delta: float) -> void:
 	if in_master and shrink_timer > 0.0:
 		_end_shrink(true)   # Formiga: Q de novo volta ao tamanho antes do tempo
-	elif in_master and master_cd <= 0.0 and master_id != "" and CardDB.CARDS[master_id].has("cooldown"):
+	elif in_master and master_cd <= 0.0 and master_id != "" and CardDB.CARDS[master_id].has("cooldown") \
+			and not (stats["platforms"] > 0 and is_on_floor()):
 		_use_master()
 	if in_shield and shield_cd <= 0.0 and silence_timer <= 0.0:
 		_activate_shield()
@@ -2334,7 +2353,8 @@ func _chaos_tick(delta: float) -> void:
 		return
 	if not chaos_used:
 		return
-	if bazooka_timer > 0.0 or sniper_timer > 0.0 or sword_timer > 0.0 or shrink_timer > 0.0 or pierce_left > 0:
+	if bazooka_timer > 0.0 or sniper_timer > 0.0 or sword_timer > 0.0 or shrink_timer > 0.0 or pierce_left > 0 \
+			or beam_timer > 0.0 or beam_charge > 0.0 or plat_mode > 0.0:
 		master_cd = CHAOS_WAIT
 	elif master_cd <= 0.0:
 		_chaos_draw()
@@ -2397,6 +2417,12 @@ func _use_master() -> void:
 		_slap()
 	if stats["beam"] > 0:
 		_start_beam()
+	if stats["platforms"] > 0:
+		plat_mode = PLAT_MODE
+		plat_left = PLAT_MAX
+		_make_platform()
+		# Pousa na primeira: a queda para (salva do vazio).
+		velocity.y = maxf(velocity.y, 0.0)
 	if stats["barrier"] > 0:
 		var pos := global_position + _flat_forward() * 2.5
 		_make_barrier(pos, rotation.y)
@@ -3022,6 +3048,25 @@ func _make_hand() -> Node3D:
 		root.add_child(mi)
 	root.rotation = Vector3(PI / 2.0, 0.0, 0.0)   # palma virada para a frente, dedos para cima
 	return root
+
+
+# ---------------------------------------------------------------- Plataformas Suspensas
+
+## Plataforma sob os pés, nesta e nas outras máquinas (para todo mundo poder pisar).
+func _make_platform() -> void:
+	plat_left -= 1
+	var pos := global_position + Vector3.DOWN * (SkyPlatform.SIZE.y / 2.0 + 0.02)
+	SkyPlatform.spawn(get_parent(), pos, color)
+	platform_made.emit()
+	Sfx.at(self, "pad", pos)
+	if Net.online and is_inside_tree():
+		_net_platform.rpc(pos)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_platform(pos: Vector3) -> void:
+	SkyPlatform.spawn(get_parent(), pos, color)
+	platform_made.emit()
 
 
 # ---------------------------------------------------------------- Canhão Arcano
