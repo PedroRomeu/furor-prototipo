@@ -680,6 +680,10 @@ func _update_status() -> void:
 		items.append(["CARREGANDO %.1f" % me.beam_charge, Player.BEAM_COLOR])
 	elif me.beam_timer > 0.0:
 		items.append(["CANHÃO %.1f" % me.beam_timer, Player.BEAM_COLOR])
+	if me.hook_state == 3:
+		items.append(["SEGURANDO  ·  clique arremessa", Player.HOOK_COLOR])
+	if me.hooked_by:
+		items.append(["PRESO NO GANCHO", Ui.DANGER])
 	if me.ride_timer > 0.0:
 		items.append(["FOGUETE %.1f  ·  [%s] saltar" % [me.ride_timer, GameState.key_text("master")], Player.ROCKET_COLOR])
 	if me.plat_mode > 0.0:

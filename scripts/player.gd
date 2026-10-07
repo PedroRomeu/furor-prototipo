@@ -124,6 +124,7 @@ const BASE_STATS := {
 	"platforms": 0, # Plataformas Suspensas
 	"meteor": 0,    # Chuva de Meteoros
 	"rocket_ride": 0,   # Foguete
+	"hook": 0,      # Gancho
 	"updraft": 0,
 	"bazooka": 0,
 	"sniper": 0,
@@ -464,7 +465,37 @@ const HIT_FLASH_TIME := 0.14   # o modelo atingido pisca em branco por este temp
 ## Métodos que a outra máquina pode chamar neste jogador (ver remote_call).
 const ASSIST_TIME := 10.0   # placar: dano nos últimos 10 s antes da morte conta assistência
 const REMOTE_METHODS := ["receive_shockwave", "credit_damage", "teleport_to", "swap_to", "receive_stomp",
-	"receive_slash", "ice_shove", "receive_slap", "receive_beam"]
+	"receive_slash", "ice_shove", "receive_slap", "receive_beam", "receive_hook", "hook_blocked",
+	"hook_throw", "hook_release", "receive_bowl"]
+## Gancho (mestra). Quem lança move a ponta (HOOK_SPEED, até HOOK_RANGE) e acha o alvo; a
+## máquina do alvo decide (escudo bloqueia), puxa o próprio corpo (HOOK_PULL) até a frente
+## de quem segura e fica lá por HOOK_HOLD. Arremesso a HOOK_THROW: parede dá HOOK_IMPACT e
+## tontura (voo do Mega Tapa); outro jogador, HOOK_IMPACT nos dois. Quem segura solta ao
+## levar HOOK_ESCAPE de dano. hook_state: 0 nada, 1 ponta voando, 2 puxando, 3 segurando.
+const HOOK_RANGE := 20.0
+const HOOK_SPEED := 60.0
+const HOOK_PULL := 25.0
+const HOOK_HOLD := 3.0
+const HOOK_HOLD_DIST := 2.0
+const HOOK_HOLD_SIDE := 0.9    # à direita de quem segura: no meio da tela tapava a mira
+const HOOK_THROW := 25.0
+const HOOK_THROW_LIFT := 6.0   # arco do arremesso (~0,5 s no ar, ~12 m em campo aberto)
+const HOOK_IMPACT := 30.0
+const HOOK_ESCAPE := 40.0
+const HOOK_MISS_CD := 6.0
+const HOOK_CARRY_SPEED := 0.7
+const HOOK_COLOR := Color(0.75, 0.75, 0.8)
+var hook_state := 0
+var hook_dir := Vector3.ZERO
+var hook_tip := Vector3.ZERO
+var hook_dist := 0.0
+var hook_target: Player       # quem eu pego (na máquina de quem lança e nas outras, para a corrente)
+var hooked_by: Player         # quem me pegou (todas as máquinas)
+var hook_hold := 0.0          # tempo segurando que falta (máquina do alvo decide o fim)
+var hook_taken := 0.0         # dano que levei segurando (solta em HOOK_ESCAPE)
+var bowl := false             # fui arremessado pelo Gancho: bater em alguém machuca os dois
+var splat_damage := SPLAT_DAMAGE
+var hook_fx: MeshInstance3D
 ## Canhão Arcano (mestra): carga de BEAM_CHARGE (andando a BEAM_CHARGE_SPEED), depois um
 ## raio de BEAM_TIME que atravessa o cenário. Parado (no ar, flutua); a mira gira no
 ## máximo BEAM_TURN por segundo. Cada toque: BEAM_DAMAGE e arremesso pelo raio; o mesmo
@@ -1094,6 +1125,7 @@ func reset_for_round(spawn: Transform3D) -> void:
 	meteor_window = 0.0
 	ride_timer = 0.0
 	_ride_visual(false)
+	_hook_clear()
 	get_tree().call_group("meteor_strikes", "queue_free")
 	global_transform = spawn
 	reset_physics_interpolation()
@@ -1248,6 +1280,8 @@ func _process(delta: float) -> void:
 		head.rotation.x = rotate_toward(head.rotation.x, pitch_aim, turn)
 	if ride_fx:
 		_update_ride_fx()
+	if hook_fx:
+		_update_hook_fx(delta)
 	if beam_fx:
 		_update_beam_fx(delta)
 	var shielding := alive and is_shielding()
@@ -1586,6 +1620,12 @@ func _physics_process(delta: float) -> void:
 		_ride_step(delta)
 		_send_state()
 		return
+	if hooked_by:
+		_hooked_step(delta)
+		_send_state()
+		return
+	if hook_state == 1:
+		_hook_fly(delta)
 	if beam_charge > 0.0 or beam_timer > 0.0:
 		_beam_step(delta)
 		if beam_timer > 0.0:
@@ -1721,6 +1761,8 @@ func _target_speed() -> float:
 		speed *= 1.0 + SPEED_ORB
 	if beam_charge > 0.0:
 		speed *= BEAM_CHARGE_SPEED
+	if hook_state == 3:
+		speed *= HOOK_CARRY_SPEED
 	if scoping:
 		speed *= SCOPE_SPEED
 	if shrink_timer > 0.0:
@@ -2305,13 +2347,15 @@ func _act(delta: float) -> void:
 	if in_master and shrink_timer > 0.0:
 		_end_shrink(true)   # Formiga: Q de novo volta ao tamanho antes do tempo
 	elif in_master and master_cd <= 0.0 and master_id != "" and CardDB.CARDS[master_id].has("cooldown") \
-			and not (stats["platforms"] > 0 and is_on_floor()):
+			and not (stats["platforms"] > 0 and is_on_floor()) and hook_state == 0:
 		_use_master()
 	if in_shield and shield_cd <= 0.0 and silence_timer <= 0.0:
 		_activate_shield()
 	_shield_bash()
 	shot_queued = maxf(0.0, shot_queued - delta)
-	if daze_timer > 0.0 or beam_charge > 0.0 or beam_timer > 0.0:
+	if hook_state == 3 and (in_click or (in_shoot and not shoot_was) or in_master):
+		_hook_throw_now()
+	if daze_timer > 0.0 or beam_charge > 0.0 or beam_timer > 0.0 or hook_state >= 1:
 		shot_queued = 0.0
 		shoot_was = in_shoot
 		return
@@ -2404,7 +2448,8 @@ func _chaos_tick(delta: float) -> void:
 	if not chaos_used:
 		return
 	if bazooka_timer > 0.0 or sniper_timer > 0.0 or sword_timer > 0.0 or shrink_timer > 0.0 or pierce_left > 0 \
-			or beam_timer > 0.0 or beam_charge > 0.0 or plat_mode > 0.0 or meteor_left > 0 or ride_timer > 0.0:
+			or beam_timer > 0.0 or beam_charge > 0.0 or plat_mode > 0.0 or meteor_left > 0 or ride_timer > 0.0 \
+			or hook_state > 0:
 		master_cd = CHAOS_WAIT
 	elif master_cd <= 0.0:
 		_chaos_draw()
@@ -2469,6 +2514,8 @@ func _use_master() -> void:
 		_start_beam()
 	if stats["rocket_ride"] > 0:
 		_start_ride()
+	if stats["hook"] > 0:
+		_hook_fire()
 	if stats["meteor"] > 0:
 		meteor_left = METEOR_SHOTS
 		meteor_window = METEOR_WINDOW
@@ -2829,6 +2876,7 @@ func freeze() -> void:
 	ice_timer = ICE_TIME
 	_end_beam(true)
 	_ride_crash()
+	_hook_let_go()
 	froze.emit()
 	shield_timer = 0.0
 	dash_timer = 0.0
@@ -3013,6 +3061,7 @@ func receive_slap(from_name: String, dir: Vector3) -> void:
 		return
 	_end_beam(true)
 	_ride_crash()
+	_hook_let_go()
 	var flat := Vector3(dir.x, 0.0, dir.z).normalized()
 	velocity = flat * SLAP_PUSH + Vector3.UP * SLAP_LIFT
 	jump_rising = false
@@ -3023,6 +3072,8 @@ func receive_slap(from_name: String, dir: Vector3) -> void:
 		return
 	slap_flight = SLAP_FLIGHT
 	slap_from = from_name
+	splat_damage = SPLAT_DAMAGE
+	bowl = false
 	slapped.emit(false)
 	take_damage(SLAP_DAMAGE, get_parent().get_node_or_null(from_name) as Player)
 
@@ -3035,15 +3086,30 @@ func _check_splat(before_h: Vector3, delta: float) -> void:
 		return
 	for i in get_slide_collision_count():
 		var c := get_slide_collision(i)
-		if c.get_collider() is Player or absf(c.get_normal().y) > 0.6:
+		var other := c.get_collider() as Player
+		if other:
+			# Gancho: arremessado em cima de alguém (que não seja quem jogou), os dois levam.
+			if bowl and String(other.name) != slap_from and other.alive:
+				slap_flight = 0.0
+				bowl = false
+				var thrower := get_parent().get_node_or_null(slap_from) as Player
+				other.remote_call("receive_bowl", [slap_from])
+				take_damage(HOOK_IMPACT, thrower)
+				_show_splat(c.get_position())
+				if Net.online:
+					_net_splat.rpc(c.get_position())
+				return
+			continue
+		if absf(c.get_normal().y) > 0.6:
 			continue
 		if before_h.normalized().dot(-c.get_normal()) < 0.3:
 			continue   # raspou de lado
 		slap_flight = 0.0
+		bowl = false
 		daze_timer = DAZE_TIME
 		apply_slow(DAZE_SLOW, DAZE_TIME)
 		shake = maxf(shake, 0.6)
-		take_damage(SPLAT_DAMAGE, get_parent().get_node_or_null(slap_from) as Player)
+		take_damage(splat_damage, get_parent().get_node_or_null(slap_from) as Player)
 		_show_splat(c.get_position())
 		slapped.emit(true)
 		if Net.online:
@@ -3107,6 +3173,267 @@ func _make_hand() -> Node3D:
 		root.add_child(mi)
 	root.rotation = Vector3(PI / 2.0, 0.0, 0.0)   # palma virada para a frente, dedos para cima
 	return root
+
+
+# ---------------------------------------------------------------- Gancho
+
+signal hooked_someone   # registro do autoteste
+
+func _hook_fire() -> void:
+	hook_state = 1
+	hook_dir = -head.global_transform.basis.z
+	hook_tip = chest()
+	hook_dist = 0.0
+	hook_taken = 0.0
+	reveal()
+	Sfx.at(self, "dash", chest())
+	_hook_visual(true)
+	if Net.online and is_inside_tree():
+		_net_hook_fire.rpc(hook_dir)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_hook_fire(dir: Vector3) -> void:
+	hook_state = 1
+	hook_dir = dir
+	hook_tip = chest()
+	hook_dist = 0.0
+	_hook_visual(true)
+
+
+## A ponta voa (na máquina de quem lança): parede ou fim do alcance = errou; um inimigo
+## perto da linha = manda o gancho para a máquina dele decidir.
+func _hook_fly(delta: float) -> void:
+	var step := HOOK_SPEED * delta
+	var from := hook_tip
+	var to := hook_tip + hook_dir * step
+	var wall := get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(from, to, 1))
+	for enemy: Player in enemies():
+		if enemy.ice_timer > 0.0 or enemy.hooked_by:
+			continue
+		var c := enemy.chest()
+		var t := clampf((c - from).dot(hook_dir), 0.0, step)
+		if (from + hook_dir * t).distance_to(c) < 0.5 + enemy.hit_radius():
+			hook_state = 4   # esperando a resposta da máquina do alvo
+			hook_target = enemy
+			hook_tip = c
+			enemy.remote_call("receive_hook", [String(name)])
+			return
+	hook_tip = to
+	hook_dist += step
+	if not wall.is_empty() or hook_dist >= HOOK_RANGE:
+		_hook_miss()
+
+
+func _hook_miss() -> void:
+	_hook_clear()
+	master_cd = minf(master_cd, HOOK_MISS_CD)
+	if Net.online and is_inside_tree():
+		_net_hook_end.rpc()
+
+
+## Na máquina do alvo: escudo bloqueia; senão fica preso e avisa todas as máquinas.
+func receive_hook(from_name: String) -> void:
+	var grabber := get_parent().get_node_or_null(from_name) as Player
+	if grabber == null:
+		return
+	if not alive or is_shielding() or ice_timer > 0.0 or hooked_by:
+		reflect_flash = 1.0
+		Sfx.at(self, "reflect", chest())
+		grabber.remote_call("hook_blocked", [])
+		return
+	if Net.online and is_inside_tree():
+		_net_hooked.rpc(from_name, 2)
+	else:
+		_net_hooked(from_name, 2)
+
+
+func hook_blocked() -> void:
+	_hook_miss()
+
+
+## Estado do gancho (todas as máquinas; chamado pelo alvo): 2 puxando, 3 segurando, 0 solto.
+@rpc("any_peer", "call_local", "reliable")
+func _net_hooked(from_name: String, state: int) -> void:
+	var grabber := get_parent().get_node_or_null(from_name) as Player
+	if grabber == null:
+		return
+	if state == 0:
+		if hooked_by:
+			remove_collision_exception_with(hooked_by)
+			hooked_by.remove_collision_exception_with(self)
+		hooked_by = null
+		grabber._hook_clear()
+		return
+	if state == 2:
+		hooked_by = grabber
+		add_collision_exception_with(grabber)
+		grabber.add_collision_exception_with(self)
+		grabber.hook_target = self
+		grabber.hook_taken = 0.0
+		grabber._hook_visual(true)
+		grabber.hooked_someone.emit()
+		sliding = false
+		dash_timer = 0.0
+		shield_timer = 0.0
+		_end_beam(true)
+		_ride_crash()
+	grabber.hook_state = state
+
+
+## Preso (na máquina do alvo): puxado até a frente de quem segura, depois fica lá.
+func _hooked_step(delta: float) -> void:
+	var g := hooked_by
+	if not is_instance_valid(g) or not g.alive or not alive:
+		_hook_free()
+		return
+	var forward := -g.global_transform.basis.z
+	forward.y = 0.0
+	forward = forward.normalized()
+	var right := forward.cross(Vector3.UP)
+	var spot := g.global_position + forward * HOOK_HOLD_DIST + right * HOOK_HOLD_SIDE + Vector3.UP * 0.2
+	if g.hook_state == 2:
+		# Puxando: parede entre os dois arrebenta a corrente.
+		var los := get_world_3d().direct_space_state.intersect_ray(
+			PhysicsRayQueryParameters3D.create(chest(), g.chest(), 1))
+		if not los.is_empty():
+			_hook_free()
+			return
+		var to := spot - global_position
+		if to.length() <= HOOK_PULL * delta + 0.2:
+			hook_hold = HOOK_HOLD
+			_net_hooked_all(String(g.name), 3)
+		else:
+			velocity = to.normalized() * HOOK_PULL
+			move_and_slide()
+			return
+	hook_hold -= delta
+	if hook_hold <= 0.0:
+		_hook_free()   # cai aos pés de quem segurava
+		return
+	global_position = spot
+	velocity = Vector3.ZERO
+
+
+func _net_hooked_all(from_name: String, state: int) -> void:
+	if Net.online and is_inside_tree():
+		_net_hooked.rpc(from_name, state)
+	else:
+		_net_hooked(from_name, state)
+
+
+## Solta (na máquina do alvo) e avisa todas.
+func _hook_free() -> void:
+	if hooked_by == null:
+		return
+	_net_hooked_all(String(hooked_by.name), 0)
+
+
+## Quem segura arremessa: manda para a máquina do alvo.
+func _hook_throw_now() -> void:
+	if hook_target == null:
+		return
+	var dir := -head.global_transform.basis.z
+	hook_target.remote_call("hook_throw", [dir])
+	hook_state = 0
+	Sfx.at(self, "dash", chest())
+
+
+func hook_throw(dir: Vector3) -> void:
+	var g := hooked_by
+	if g == null:
+		return
+	var from := String(g.name)
+	_hook_free()
+	velocity = dir.normalized() * HOOK_THROW + Vector3.UP * HOOK_THROW_LIFT
+	jump_rising = false
+	slap_flight = SLAP_FLIGHT
+	slap_from = from
+	splat_damage = HOOK_IMPACT
+	bowl = true
+
+
+## Quem segura solta (levou dano demais, congelou, levou tapa, morreu): avisa o alvo.
+func _hook_let_go() -> void:
+	if hook_state >= 2 and hook_target:
+		hook_target.remote_call("hook_release", [])
+	elif hook_state == 1 or hook_state == 4:
+		_hook_miss()
+
+
+func hook_release() -> void:
+	_hook_free()
+
+
+## Levou um jogador arremessado em cima (máquina dele).
+func receive_bowl(from_name: String) -> void:
+	if not alive:
+		return
+	knockback(Vector3.UP * 4.0)
+	take_damage(HOOK_IMPACT, get_parent().get_node_or_null(from_name) as Player)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_hook_end() -> void:
+	_hook_clear()
+
+
+func _hook_clear() -> void:
+	hook_state = 0
+	hook_target = null
+	_hook_visual(false)
+	if hooked_by and is_local:
+		_hook_free()
+
+
+## Corrente: cilindro fino de quem lança até a ponta (ou até quem está preso).
+static var _chain_mesh: CylinderMesh
+
+func _hook_visual(on: bool) -> void:
+	if not on:
+		if hook_fx:
+			hook_fx.queue_free()
+			hook_fx = null
+		return
+	if hook_fx:
+		return
+	if _chain_mesh == null:
+		_chain_mesh = CylinderMesh.new()
+		_chain_mesh.top_radius = 0.05
+		_chain_mesh.bottom_radius = 0.05
+		_chain_mesh.height = 1.0
+		_chain_mesh.radial_segments = 6
+		_chain_mesh.rings = 1
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = HOOK_COLOR
+		mat.metallic = 0.6
+		_chain_mesh.material = mat
+	hook_fx = MeshInstance3D.new()
+	hook_fx.mesh = _chain_mesh
+	hook_fx.top_level = true
+	hook_fx.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(hook_fx)
+
+
+func _update_hook_fx(delta: float) -> void:
+	if hook_state == 1 and not is_local:
+		hook_tip += hook_dir * HOOK_SPEED * delta   # nas outras máquinas a ponta voa sozinha
+	var start := chest() + Vector3.DOWN * (0.35 if is_human else 0.0)
+	if is_human:
+		start = camera.global_position + Vector3.DOWN * 0.4 + camera.global_transform.basis.x * 0.25
+	var end := hook_tip
+	if hook_state >= 2 and is_instance_valid(hook_target):
+		end = hook_target.chest()
+	var axis := end - start
+	var length := axis.length()
+	if length < 0.05 or (is_human and hook_state == 3):
+		hook_fx.visible = false   # segurando, na própria tela a corrente só atrapalha
+		return
+	hook_fx.visible = true
+	axis /= length
+	var x := axis.cross(Vector3.UP if absf(axis.y) < 0.99 else Vector3.RIGHT).normalized()
+	var z := x.cross(axis).normalized()
+	hook_fx.global_transform = Transform3D(Basis(x, axis * length, z), (start + end) / 2.0)
 
 
 # ---------------------------------------------------------------- Foguete
@@ -3851,6 +4178,10 @@ func take_damage(amount: float, from: Player, flash := true) -> void:
 	if from and from != self:
 		last_attacker = from
 		recent_hits[from] = Time.get_ticks_msec()
+	if hook_state >= 2 and hook_target:
+		hook_taken += amount
+		if hook_taken >= HOOK_ESCAPE:
+			_hook_let_go()
 	var absorbed := minf(armor, amount)
 	armor -= absorbed
 	health -= amount - absorbed

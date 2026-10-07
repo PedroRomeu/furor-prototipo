@@ -124,6 +124,11 @@ const MASTERS := {
 	"mega_tapa": {"name": "Mega Tapa", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 10.0,
 		"desc": "Q: um tapa à frente (2,5 m) que causa 15 de dano e arremessa longe e para cima. Se o arremessado bater numa parede no voo, leva mais 25 e fica tonto por 0,6 s (lento e sem atirar). Escudo levantado bloqueia. Recarga de 10 s.",
 		"mods": [{"stat": "slap", "add": 1}]},
+	# Gancho (2026-10-06, ideia do usuário: fundiu as minhas propostas de gancho e de
+	# agarrar e arremessar; números meus, aprovados).
+	"gancho": {"name": "Gancho", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 16.0,
+		"desc": "Q: lança um gancho (até 20 m) que puxa o inimigo até a sua frente e o segura por até 3 s: você anda a 70% e não atira; ele não age. Clique ou Q arremessa na mira: bater numa parede dá 30 e deixa tonto; bater em outro jogador dá 30 nos dois. Levar 40 de dano segurando solta. Escudo levantado bloqueia o gancho. Recarga de 16 s (6 s se errar).",
+		"mods": [{"stat": "hook", "add": 1}]},
 	"ultimo_suspiro": {"name": "Último Suspiro", "cat": "Corpo", "rarity": "mitico", "master": true,
 		"desc": "Uma vez por rodada, o golpe fatal te deixa com 1 de vida e sem morrer por 3 s. Abata alguém nesse tempo e volte com metade da vida.",
 		"mods": [{"stat": "last_stand", "add": 1}]},
