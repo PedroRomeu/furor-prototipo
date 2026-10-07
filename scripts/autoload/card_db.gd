@@ -93,6 +93,11 @@ const MASTERS := {
 	"sniper": {"name": "Sniper", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 15.0,
 		"desc": "Q: troca a arma por uma sniper com UM tiro, por até 8 s. O tiro é um laser: reto, quase instantâneo, atravessa todas as paredes e causa 3x o dano. Botão direito mira com zoom. Recarga de 15 s.",
 		"mods": [{"stat": "sniper", "add": 1}]},
+	# Canhão Arcano (2026-10-06, desenho do usuário, "tipo Kamehameha"; números meus,
+	# aprovados; andar devagar na carga foi escolha dele).
+	"canhao_arcano": {"name": "Canhão Arcano", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 24.0,
+		"desc": "Q: carrega por 1 s (andando devagar) e solta um raio de 40 m por 2,5 s, que atravessa paredes. Parado, no chão ou flutuando no ar, você mira devagar. Cada toque causa 30 de dano e arremessa o alvo para fora do raio (o mesmo alvo a cada 0,6 s). Escudo levantado bloqueia o dano. Levar tapa, congelar ou morrer corta o raio. Recarga de 24 s.",
+		"mods": [{"stat": "beam", "add": 1}]},
 	"perfurante": {"name": "Perfurante", "cat": "Balas", "rarity": "mitico", "master": true, "cooldown": 12.0,
 		"desc": "Q: os próximos 3 tiros vão retos, sem queda, 3x mais rápidos e atravessando paredes. Recarga de 12 s.",
 		"mods": [{"stat": "pierce", "add": 1}]},

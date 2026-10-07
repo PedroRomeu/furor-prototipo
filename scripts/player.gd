@@ -22,6 +22,7 @@ signal got_up       # foi revivido
 signal chaos_drawn(id: String)   # Caos sorteou outra mestra (a HUD avisa)
 signal froze       # ficou preso no gelo (Prisão de Gelo; o registro do autoteste conta)
 signal slapped(splat: bool)   # levou o Mega Tapa / bateu na parede (registro do autoteste)
+signal beamed      # levou um toque do Canhão Arcano (registro do autoteste)
 
 ## Atributos sem nenhuma carta. As cartas (CardDB) alteram estes valores.
 const BASE_STATS := {
@@ -116,6 +117,7 @@ const BASE_STATS := {
 	"chaos": 0,     # Caos: sorteia outra mestra (_chaos_draw)
 	"ice": 0,       # Prisão de Gelo
 	"slap": 0,      # Mega Tapa
+	"beam": 0,      # Canhão Arcano
 	"updraft": 0,
 	"bazooka": 0,
 	"sniper": 0,
@@ -456,7 +458,31 @@ const HIT_FLASH_TIME := 0.14   # o modelo atingido pisca em branco por este temp
 ## Métodos que a outra máquina pode chamar neste jogador (ver remote_call).
 const ASSIST_TIME := 10.0   # placar: dano nos últimos 10 s antes da morte conta assistência
 const REMOTE_METHODS := ["receive_shockwave", "credit_damage", "teleport_to", "swap_to", "receive_stomp",
-	"receive_slash", "ice_shove", "receive_slap"]
+	"receive_slash", "ice_shove", "receive_slap", "receive_beam"]
+## Canhão Arcano (mestra): carga de BEAM_CHARGE (andando a BEAM_CHARGE_SPEED), depois um
+## raio de BEAM_TIME que atravessa o cenário. Parado (no ar, flutua); a mira gira no
+## máximo BEAM_TURN por segundo. Cada toque: BEAM_DAMAGE e arremesso pelo raio; o mesmo
+## alvo de novo só depois de BEAM_REHIT.
+const BEAM_CHARGE := 1.0
+const BEAM_CHARGE_SPEED := 0.4
+const BEAM_TIME := 2.5
+const BEAM_RANGE := 40.0
+const BEAM_RADIUS := 0.8
+const BEAM_DAMAGE := 30.0
+## Empurrão para FORA do raio (escolha do usuário, 2026-10-06: empurrando ao longo, o
+## alvo seguia na linha e levava 4 toques seguidos sem a mira se mexer).
+const BEAM_PUSH_SIDE := 20.0
+const BEAM_PUSH_ALONG := 8.0
+const BEAM_LIFT := 8.0
+const BEAM_REHIT := 0.6
+const BEAM_SHIELD_PUSH := 0.5
+const BEAM_TURN := deg_to_rad(30.0)
+const BEAM_COLOR := Color(0.78, 0.5, 1.0)
+var beam_charge := 0.0     # carregando (todas as máquinas, para o visual)
+var beam_timer := 0.0      # raio ligado
+var beam_hits := {}        # alvo -> tempo até poder levar de novo
+var beam_aim := Vector2.ZERO   # (yaw, pitch) para onde o mouse quer ir; a mira segue devagar
+var beam_fx: Node3D
 ## Mega Tapa (mestra): leque curto à frente; arremessa (SLAP_PUSH para o lado, SLAP_LIFT
 ## para cima). Por SLAP_FLIGHT segundos, bater numa parede ainda rápido (SPLAT_MIN_SPEED)
 ## dá SPLAT_DAMAGE e deixa tonto (DAZE_TIME: lento e sem atirar).
@@ -1021,6 +1047,7 @@ func reset_for_round(spawn: Transform3D) -> void:
 	_ice_visual(false)
 	slap_flight = 0.0
 	daze_timer = 0.0
+	_end_beam(false)
 	global_transform = spawn
 	reset_physics_interpolation()
 	net_pos = spawn.origin
@@ -1120,6 +1147,11 @@ func _input(event: InputEvent) -> void:
 		var sens := GameState.mouse_sens
 		if scoping:
 			sens *= camera.fov / BASE_FOV   # com zoom, o mouse anda na mesma proporção
+		if beam_timer > 0.0:
+			# Canhão Arcano: o mouse move o alvo; a mira vai atrás devagar (_process).
+			beam_aim.x = wrapf(beam_aim.x - motion.relative.x * sens, -PI, PI)
+			beam_aim.y = clampf(beam_aim.y - motion.relative.y * sens, -1.5, 1.5)
+			return
 		look_yaw = wrapf(look_yaw - motion.relative.x * sens, -PI, PI)
 		head.rotate_x(-motion.relative.y * sens)
 		head.rotation.x = clampf(head.rotation.x, -1.5, 1.5)
@@ -1162,6 +1194,11 @@ func _read_local_input() -> void:
 # ---------------------------------------------------------------- visual
 
 func _process(delta: float) -> void:
+	if beam_timer > 0.0 and is_human:
+		look_yaw = rotate_toward(look_yaw, beam_aim.x, BEAM_TURN * delta)
+		head.rotation.x = rotate_toward(head.rotation.x, beam_aim.y, BEAM_TURN * delta)
+	if beam_fx:
+		_update_beam_fx(delta)
 	var shielding := alive and is_shielding()
 	if shielding and not was_shielding:
 		Sfx.at(self, "shield", chest())
@@ -1494,6 +1531,13 @@ func _physics_process(delta: float) -> void:
 		_ice_move(delta)
 		_send_state()
 		return
+	if beam_charge > 0.0 or beam_timer > 0.0:
+		_beam_step(delta)
+		if beam_timer > 0.0:
+			_send_state()
+			return
+		in_jump = false
+		in_dash = false
 	_update_crouch()
 	_move(delta)
 	_act(delta)
@@ -1615,6 +1659,8 @@ func _target_speed() -> float:
 		speed *= 1.0 + AMBUSH_SPEED
 	if speed_orb_timer > 0.0:
 		speed *= 1.0 + SPEED_ORB
+	if beam_charge > 0.0:
+		speed *= BEAM_CHARGE_SPEED
 	if scoping:
 		speed *= SCOPE_SPEED
 	if shrink_timer > 0.0:
@@ -2196,7 +2242,7 @@ func _act(delta: float) -> void:
 		_activate_shield()
 	_shield_bash()
 	shot_queued = maxf(0.0, shot_queued - delta)
-	if daze_timer > 0.0:
+	if daze_timer > 0.0 or beam_charge > 0.0 or beam_timer > 0.0:
 		shot_queued = 0.0
 		shoot_was = in_shoot
 		return
@@ -2349,6 +2395,8 @@ func _use_master() -> void:
 		_fire_ice()
 	if stats["slap"] > 0:
 		_slap()
+	if stats["beam"] > 0:
+		_start_beam()
 	if stats["barrier"] > 0:
 		var pos := global_position + _flat_forward() * 2.5
 		_make_barrier(pos, rotation.y)
@@ -2696,6 +2744,7 @@ func freeze() -> void:
 	if not alive or downed or ice_timer > 0.0:
 		return
 	ice_timer = ICE_TIME
+	_end_beam(true)
 	froze.emit()
 	shield_timer = 0.0
 	dash_timer = 0.0
@@ -2878,6 +2927,7 @@ func receive_slap(from_name: String, dir: Vector3) -> void:
 		Sfx.at(self, "reflect", chest())
 		Effects.burst(get_parent(), chest(), 1.2, Color(0.5, 0.9, 1.0), 0.15)
 		return
+	_end_beam(true)
 	var flat := Vector3(dir.x, 0.0, dir.z).normalized()
 	velocity = flat * SLAP_PUSH + Vector3.UP * SLAP_LIFT
 	jump_rising = false
@@ -2972,6 +3022,173 @@ func _make_hand() -> Node3D:
 		root.add_child(mi)
 	root.rotation = Vector3(PI / 2.0, 0.0, 0.0)   # palma virada para a frente, dedos para cima
 	return root
+
+
+# ---------------------------------------------------------------- Canhão Arcano
+
+func _start_beam() -> void:
+	beam_charge = BEAM_CHARGE
+	beam_timer = 0.0
+	beam_hits.clear()
+	reveal()
+	_beam_visual(1)
+	Sfx.at(self, "pickup", chest())
+	if Net.online and is_inside_tree():
+		_net_beam.rpc(1)
+
+
+## Fim do raio (acabou o tempo, ou cortado por tapa, gelo ou morte).
+func _end_beam(send: bool) -> void:
+	if beam_charge <= 0.0 and beam_timer <= 0.0 and beam_fx == null:
+		return
+	beam_charge = 0.0
+	beam_timer = 0.0
+	_beam_visual(0)
+	if send and Net.online and is_inside_tree() and is_local:
+		_net_beam.rpc(0)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_beam(state: int) -> void:
+	beam_charge = BEAM_CHARGE if state == 1 else 0.0
+	beam_timer = BEAM_TIME if state == 2 else 0.0
+	_beam_visual(state)
+
+
+## Carga (andando devagar) e raio (parado, flutuando no ar). Acertos na máquina dona.
+func _beam_step(delta: float) -> void:
+	if not alive:
+		_end_beam(true)
+		return
+	if beam_charge > 0.0:
+		beam_charge -= delta
+		if beam_charge <= 0.0:
+			beam_charge = 0.0
+			beam_timer = BEAM_TIME
+			beam_aim = Vector2(look_yaw, head.rotation.x)
+			_beam_visual(2)
+			Sfx.at(self, "explosion", chest())
+			if Net.online and is_inside_tree():
+				_net_beam.rpc(2)
+		return
+	beam_timer -= delta
+	velocity = Vector3.ZERO
+	if beam_timer <= 0.0:
+		_end_beam(true)
+		return
+	for k in beam_hits.keys():
+		beam_hits[k] -= delta
+	var origin := head.global_position
+	var dir := -head.global_transform.basis.z
+	for enemy: Player in enemies():
+		if beam_hits.get(enemy, 0.0) > 0.0:
+			continue
+		var c := enemy.chest()
+		var t := (c - origin).dot(dir)
+		if t < 0.0 or t > BEAM_RANGE:
+			continue
+		if (origin + dir * t).distance_to(c) > BEAM_RADIUS + enemy.hit_radius():
+			continue
+		beam_hits[enemy] = BEAM_REHIT
+		# Para o lado em que ele está em relação ao eixo (no meio, para a direita do raio).
+		var side := c - (origin + dir * t)
+		side.y = 0.0
+		if side.length() < 0.1:
+			side = dir.cross(Vector3.UP)
+		var along := Vector3(dir.x, 0.0, dir.z).normalized()
+		var push := side.normalized() * BEAM_PUSH_SIDE + along * BEAM_PUSH_ALONG + Vector3.UP * BEAM_LIFT
+		enemy.remote_call("receive_beam", [String(name), push])
+		Effects.burst(get_parent(), c, 1.3, BEAM_COLOR, 0.15)
+
+
+## Raio acertou (máquina dona do alvo): arremessa para fora do raio (push vem de quem
+## atirou); escudo bloqueia o dano e segura metade do empurrão; bloco de gelo só voa.
+func receive_beam(from_name: String, push: Vector3) -> void:
+	if not alive:
+		return
+	if is_shielding():
+		reflect_flash = 1.0
+		Sfx.at(self, "reflect", chest())
+		velocity = push * BEAM_SHIELD_PUSH
+		return
+	velocity = push
+	jump_rising = false
+	coyote = 0.0
+	sliding = false
+	dash_timer = 0.0
+	beamed.emit()
+	take_damage(BEAM_DAMAGE, get_parent().get_node_or_null(from_name) as Player)
+
+
+## Visual: 1 carga (esfera na mão crescendo), 2 raio (cilindro pela mira), 0 nada.
+static var _beam_mat: StandardMaterial3D
+static var _beam_mesh: CylinderMesh
+static var _orb_mesh: SphereMesh
+
+func _beam_visual(state: int) -> void:
+	if beam_fx:
+		beam_fx.queue_free()
+		beam_fx = null
+	if state == 0:
+		return
+	if _beam_mat == null:
+		_beam_mat = StandardMaterial3D.new()
+		_beam_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_beam_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_beam_mat.albedo_color = Color(BEAM_COLOR.lightened(0.3), 0.75)
+		_beam_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_beam_mesh = CylinderMesh.new()
+		_beam_mesh.top_radius = 1.0
+		_beam_mesh.bottom_radius = 1.0
+		_beam_mesh.height = 1.0
+		_beam_mesh.radial_segments = 12
+		_beam_mesh.rings = 1
+		_orb_mesh = SphereMesh.new()
+		_orb_mesh.radius = 1.0
+		_orb_mesh.height = 2.0
+		_orb_mesh.radial_segments = 12
+		_orb_mesh.rings = 6
+	beam_fx = Node3D.new()
+	beam_fx.top_level = true
+	add_child(beam_fx)
+	var mi := MeshInstance3D.new()
+	mi.mesh = _beam_mesh if state == 2 else _orb_mesh
+	mi.material_override = _beam_mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	beam_fx.add_child(mi)
+	_update_beam_fx(0.0)
+
+
+## A cada quadro: a esfera cresce na carga; o raio acompanha a mira. Na própria tela o
+## raio é mais fino e começa mais à frente (cobrir a tela custa caro na Intel HD).
+func _update_beam_fx(_delta: float) -> void:
+	var dir := -head.global_transform.basis.z
+	var own := is_human
+	if beam_timer > 0.0:
+		# Na própria tela o raio sai da mão (embaixo à direita) e vai até o ponto da mira;
+		# de frente para a câmera ele virava um disco no meio da tela.
+		var radius := BEAM_RADIUS * (0.3 if own else 1.0)
+		var right := dir.cross(Vector3.UP if absf(dir.y) < 0.99 else Vector3.RIGHT).normalized()
+		var start := head.global_position + dir * 0.6 + Vector3.DOWN * 0.3
+		if own:
+			start = head.global_position + dir * 0.9 + Vector3.DOWN * 0.42 + right * 0.32
+		var end := head.global_position + dir * BEAM_RANGE
+		var axis := (end - start).normalized()
+		var length := start.distance_to(end)
+		var center := (start + end) / 2.0
+		# O cilindro tem o eixo em Y: Y vira a direção do raio.
+		var x := axis.cross(Vector3.UP if absf(axis.y) < 0.99 else Vector3.RIGHT).normalized()
+		var z := x.cross(axis).normalized()
+		dir = axis
+		var pulse := 1.0 + 0.08 * sin(Time.get_ticks_msec() * 0.03)
+		beam_fx.global_transform = Transform3D(Basis(x * radius * pulse, dir * length, z * radius * pulse), center)
+	elif beam_charge > 0.0:
+		# Carga: esfera na mão que cresce. Na própria tela, pequena e embaixo à direita.
+		var k := 1.0 - beam_charge / BEAM_CHARGE
+		var right := dir.cross(Vector3.UP).normalized()
+		var pos := head.global_position + dir * (1.2 if own else 0.7) + Vector3.DOWN * (0.35 if own else 0.3) 			+ right * (0.25 if own else 0.0)
+		var size := (0.04 + 0.1 * k) if own else (0.12 + 0.3 * k)
+		beam_fx.global_transform = Transform3D(Basis().scaled(Vector3.ONE * size), pos)
 
 
 ## Bazuca: foguete reto, lento, com o dobro do dano e explosão grande.
@@ -3549,6 +3766,8 @@ func bench() -> void:
 
 ## Usado pelo bot para mirar: gira o corpo (horizontal) e a cabeça (vertical) até o ponto.
 func look_at_point(point: Vector3, max_step: float) -> void:
+	if beam_timer > 0.0:
+		max_step = minf(max_step, BEAM_TURN * get_physics_process_delta_time())
 	var to := point - head.global_position
 	rotation.y = rotate_toward(rotation.y, atan2(-to.x, -to.z), max_step)
 	var pitch := atan2(to.y, Vector2(to.x, to.z).length())

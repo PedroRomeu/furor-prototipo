@@ -132,6 +132,9 @@ func _master(foe: Player, sees: bool) -> void:
 	elif p.stats["ice"] > 0 and foe.ice_timer <= 0.0 \
 			and p.global_position.distance_to(foe.global_position) < Player.ICE_RANGE * 0.6:
 		p.in_master = true   # Prisão de Gelo: com o alvo à vista a menos de ~25 m
+	elif p.stats["beam"] > 0 and p.global_position.distance_to(foe.global_position) > 8.0 \
+			and p.global_position.distance_to(foe.global_position) < 30.0:
+		p.in_master = true   # Canhão Arcano: alvo à vista entre 8 e 30 m
 	elif p.stats["slap"] > 0 and p.global_position.distance_to(foe.global_position) < Player.SLAP_RANGE + 0.5:
 		p.in_master = true   # Mega Tapa: tira quem chegou perto
 	elif p.stats["sword"] > 0 and p.global_position.distance_to(foe.global_position) < NEAR:
