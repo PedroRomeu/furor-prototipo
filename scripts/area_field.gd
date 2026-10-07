@@ -322,9 +322,9 @@ func _pull(delta: float) -> void:
 		if p.is_on_floor():
 			# No chão o atrito anularia a puxada a cada quadro: arrasta direto, sem tirar do
 			# chão, respeitando paredes (HOLE_GROUND m/s para cada m/s² da puxada).
-			p.move_and_collide(Vector3(dir.x, 0.0, dir.z) * strength * HOLE_GROUND * delta)
+			p.move_and_collide(Vector3(dir.x, 0.0, dir.z) * strength * HOLE_GROUND * delta * p.push_mult())
 		else:
-			p.velocity += dir * strength * delta
+			p.velocity += dir * strength * delta * p.push_mult()
 			p.jump_rising = false
 
 

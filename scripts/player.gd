@@ -109,6 +109,12 @@ const BASE_STATS := {
 	"toxic": 0,           # Nuvem Tóxica e Buraco Negro: nascem onde a bala bate (AreaField)
 	"black_hole": 0,
 	"stomp": 0,           # Pisão
+	"heavy": 0.0,         # Peso Pesado: fração a menos dos empurrões
+	"armor_regen": 0.0,   # Segunda Pele: colete a cada SKIN_DELAY sem levar dano
+	"parkour": 0,         # Parkour: pulo de parede devolve dash no ar e dá velocidade
+	"perfect_reload": 0,  # Recarga Perfeita
+	"tough": 0,           # Casca Dura
+	"dash_echo": 0,       # Dash Duplo: dashes extras automáticos depois do seu
 	"bloodlust": 0.0,
 	"rage": 0.0,
 	"revives": 0,
@@ -698,6 +704,38 @@ var echo_timer := 0.0
 var echo_left := 0        # Eco: levantadas automáticas que ainda faltam neste ciclo
 var adrenaline_used := false   # Adrenalina: já cortou a recarga neste escudo levantado
 var haste_timer := 0.0    # Passo Ligeiro: mais rápido por mais quanto tempo
+## Cartas de 2026-10-07 (números meus, aprovados; Parkour com 1 s a pedido do usuário).
+## Segunda Pele: a cada SKIN_DELAY sem levar dano, +armor_regen de colete, até SKIN_CAP por
+## cópia (no máximo ARMOR_MAX). Parkour: pulo de parede devolve um dash no ar e dá
+## PARKOUR_SPEED por cópia durante PARKOUR_TIME. Recarga Perfeita: R de novo com o anel entre
+## PERFECT_START e PERFECT_END termina a recarga e o pente vale +PERFECT_DAMAGE; fora da
+## faixa, a recarga atrasa PERFECT_MISS. Uma tentativa por recarga.
+const SKIN_DELAY := 5.0
+const SKIN_CAP := 30.0
+const PARKOUR_SPEED := 0.2
+const PARKOUR_TIME := 1.0
+const PERFECT_START := 0.5
+const PERFECT_END := 0.7
+const PERFECT_DAMAGE := 0.15
+const PERFECT_MISS := 0.4
+const PERFECT_COLOR := Color(1.0, 0.82, 0.3)
+## Casca Dura: um golpe de TOUGH_TRIGGER ou mais deixa TOUGH_TIME levando TOUGH_REDUCE a
+## menos. Dash Duplo (como o Escudo Duplo): cada cópia é um dash a mais, sozinho,
+## DASH_ECHO_DELAY depois do anterior acabar, para onde você estiver apertando; repete os
+## efeitos do dash (Atropelar, Saque Rápido, Esquiva) e no ar não gasta dash.
+const TOUGH_TRIGGER := 30.0
+const TOUGH_TIME := 1.0
+const TOUGH_REDUCE := 0.5
+const TOUGH_COLOR := Color(0.85, 0.7, 0.45)
+const DASH_ECHO_DELAY := 0.1
+var tough_timer := 0.0
+var dash_echo_left := 0
+var dash_echo_wait := 0.0
+var skin_timer := 0.0
+var parkour_timer := 0.0
+var perfect_tried := false   # já tentou nesta recarga
+var perfect_mag := false     # pente atual veio de uma recarga perfeita
+signal perfect_reloaded(ok: bool)   # registro do autoteste
 var glided := false       # Planador: planou neste salto (vale até tocar o chão)
 var boot_fuel := BOOT_FUEL   # Bota Foguete: jato que sobra (s)
 var boot_armed := false   # apertou pular no ar sem pulos sobrando; vale enquanto segurar
@@ -1168,6 +1206,13 @@ func reset_for_round(spawn: Transform3D) -> void:
 	echo_timer = 0.0
 	echo_left = 0
 	haste_timer = 0.0
+	skin_timer = 0.0
+	parkour_timer = 0.0
+	tough_timer = 0.0
+	dash_echo_left = 0
+	dash_echo_wait = 0.0
+	perfect_tried = false
+	perfect_mag = false
 	stomp_hits.clear()
 	downed = false
 	downs = 0
@@ -1733,6 +1778,18 @@ func _tick(delta: float) -> void:
 	bloodlust_timer = maxf(0.0, bloodlust_timer - delta)
 	blind_timer = maxf(0.0, blind_timer - delta)
 	since_damage += delta
+	parkour_timer = maxf(0.0, parkour_timer - delta)
+	tough_timer = maxf(0.0, tough_timer - delta)
+	if dash_echo_wait > 0.0 and (ice_timer > 0.0 or hooked_by or slap_flight > 0.0 or ride_timer > 0.0):
+		dash_echo_wait = 0.0   # preso, congelado ou arremessado: o dash extra se perde
+		dash_echo_left = 0
+	if stats["armor_regen"] > 0.0 and alive:
+		skin_timer += delta
+		var cap := minf(ARMOR_MAX, SKIN_CAP * ceilf(float(stats["armor_regen"]) / 15.0))
+		if skin_timer >= SKIN_DELAY:
+			skin_timer = 0.0
+			if armor < cap:
+				armor = minf(cap, armor + float(stats["armor_regen"]))
 	if echo_timer > 0.0:
 		echo_timer -= delta
 		if echo_timer <= 0.0 and alive and silence_timer <= 0.0:
@@ -1776,6 +1833,8 @@ func _target_speed() -> float:
 		speed *= 1.0 + SPEED_ORB
 	if haste_timer > 0.0:
 		speed *= 1.0 + stats["shield_haste"]
+	if parkour_timer > 0.0:
+		speed *= 1.0 + PARKOUR_SPEED * float(stats["parkour"])
 	if beam_charge > 0.0:
 		speed *= BEAM_CHARGE_SPEED
 	if hook_state == 3:
@@ -1899,6 +1958,9 @@ func _move(delta: float) -> void:
 			var climb := wish == Vector3.ZERO or wish.normalized().dot(-wall_normal) > 0.3
 			h = h - wall_normal * h.dot(wall_normal) + wall_normal * (WALL_CLIMB_PUSH if climb else WALL_JUMP_PUSH)
 			jumped = true
+			if stats["parkour"] > 0:
+				air_dashes_left = mini(air_dashes_left + 1, maxi(1, stats["air_dashes"]))
+				parkour_timer = PARKOUR_TIME
 		elif jumps_left > 0:
 			jumps_left -= 1
 			# O pulo no ar deixa trocar de direção sem perder velocidade.
@@ -1925,17 +1987,29 @@ func _move(delta: float) -> void:
 	elif not on_floor and _try_mantle(wish):
 		h = Vector3(velocity.x, 0.0, velocity.z)
 
-	if in_dash and not slamming and dash_cd <= 0.0 and dash_timer <= 0.0:
+	if dash_echo_wait > 0.0:
+		dash_echo_wait -= delta
+		if dash_echo_wait <= 0.0 and dash_timer <= 0.0 and not slamming:
+			# Dash Duplo: o extra não mexe na recarga nem gasta dash no ar.
+			dash_echo_left -= 1
+			var cd := dash_cd
+			_start_dash(wish if wish != Vector3.ZERO else dash_dir, h, target, not on_floor)
+			dash_cd = cd
+	elif in_dash and not slamming and dash_cd <= 0.0 and dash_timer <= 0.0:
 		if on_floor and wish != Vector3.ZERO:
 			_start_dash(wish, h, target, false)
+			dash_echo_left = stats["dash_echo"]
 		elif not on_floor and air_dashes_left > 0:
 			air_dashes_left -= 1
 			_start_dash(wish, h, target, true)
+			dash_echo_left = stats["dash_echo"]
 
 	var dashing := dash_timer > 0.0
 	dash_timer = maxf(0.0, dash_timer - delta)
 	if dashing and dash_timer <= 0.0:
 		_end_dash()
+		if dash_echo_left > 0:
+			dash_echo_wait = DASH_ECHO_DELAY
 		h = Vector3(velocity.x, 0.0, velocity.z)
 	elif dashing:
 		h = dash_dir * DASH_SPEED
@@ -2252,8 +2326,13 @@ func launch(v: Vector3) -> void:
 
 
 func knockback(v: Vector3) -> void:
-	velocity += v
+	velocity += v * push_mult()
 	jump_rising = false
+
+
+## Peso Pesado: quanto dos empurrões chega (explosões, ondas, tapa, raio, buraco negro).
+func push_mult() -> float:
+	return 1.0 - float(stats["heavy"])
 
 
 # ---------------------------------------------------------------- rede
@@ -2397,7 +2476,9 @@ func _act(delta: float) -> void:
 			shot_queued = 0.0
 			_swing()
 		return
-	if in_reload and reload_timer <= 0.0 and ammo < stats["mag_size"] and burst_left == 0:
+	if in_reload and reload_timer > 0.0 and stats["perfect_reload"] > 0 and not perfect_tried:
+		_try_perfect_reload()
+	elif in_reload and reload_timer <= 0.0 and ammo < stats["mag_size"] and burst_left == 0:
 		_start_reload()
 	if burst_left > 0:
 		burst_timer -= delta
@@ -3080,7 +3161,7 @@ func receive_slap(from_name: String, dir: Vector3) -> void:
 	_ride_crash()
 	_hook_let_go()
 	var flat := Vector3(dir.x, 0.0, dir.z).normalized()
-	velocity = flat * SLAP_PUSH + Vector3.UP * SLAP_LIFT
+	velocity = (flat * SLAP_PUSH + Vector3.UP * SLAP_LIFT) * push_mult()
 	jump_rising = false
 	coyote = 0.0
 	sliding = false
@@ -3786,9 +3867,9 @@ func receive_beam(from_name: String, push: Vector3) -> void:
 	if is_shielding():
 		reflect_flash = 1.0
 		Sfx.at(self, "reflect", chest())
-		velocity = push * BEAM_SHIELD_PUSH
+		velocity = push * BEAM_SHIELD_PUSH * push_mult()
 		return
-	velocity = push
+	velocity = push * push_mult()
 	jump_rising = false
 	coyote = 0.0
 	sliding = false
@@ -3903,6 +3984,29 @@ func _shield_bash() -> void:
 
 func _start_reload() -> void:
 	reload_timer = stats["reload_time"]
+	perfect_tried = false
+	perfect_mag = false
+
+
+## Quanto da recarga já passou (0 a 1).
+func reload_progress() -> float:
+	return clampf(1.0 - reload_timer / maxf(0.01, float(stats["reload_time"])), 0.0, 1.0)
+
+
+## Recarga Perfeita: R de novo durante a recarga.
+func _try_perfect_reload() -> void:
+	perfect_tried = true
+	var p := reload_progress()
+	var ok := p >= PERFECT_START and p <= PERFECT_END
+	if ok:
+		ammo = stats["mag_size"]
+		reload_timer = 0.0
+		perfect_mag = true
+		if is_human:
+			Sfx.ui(self, "hitmarker")
+	else:
+		reload_timer += PERFECT_MISS
+	perfect_reloaded.emit(ok)
 
 
 func _fire() -> void:
@@ -3958,6 +4062,8 @@ func _volley() -> void:
 
 func shot_damage() -> float:
 	var dmg: float = stats["damage"]
+	if perfect_mag:
+		dmg *= 1.0 + PERFECT_DAMAGE
 	if health < stats["max_health"] * RAGE_THRESHOLD:
 		dmg *= 1.0 + stats["rage"]
 	if ambush_timer > 0.0:
@@ -4223,6 +4329,13 @@ func take_damage(amount: float, from: Player, flash := true) -> void:
 	if from and from != self and not is_ally(from):   # tiro do parceiro (escudo humano) não conta
 		last_attacker = from
 		recent_hits[from] = Time.get_ticks_msec()
+	skin_timer = 0.0
+	if stats["tough"] > 0:
+		var hit := amount
+		if tough_timer > 0.0:
+			amount *= 1.0 - TOUGH_REDUCE
+		if hit >= TOUGH_TRIGGER:
+			tough_timer = TOUGH_TIME
 	if hook_state >= 2 and hook_target:
 		hook_taken += amount
 		if hook_taken >= HOOK_ESCAPE:

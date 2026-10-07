@@ -140,7 +140,7 @@ shows in a corner during the match.
 ## Match rules
 
 - Decks of 30 to 50 cards, up to 3 copies each. More copies = more chance of the card
-  showing up. With 94 cards there are always some left out.
+  showing up. With 105 cards there are always some left out.
 - **Baralhos** (decks) screen: create as many named decks as you want, starting from a
   template (Equilibrado, Atirador, Muralha, Acrobata, Caos, Aleatório or Vazio). The editor
   has the card collection on the left and your deck on the right. Click a card to add it,
@@ -154,18 +154,18 @@ shows in a corner during the match.
   random master; an active one is used once and 8 s after its effect ends another comes, a
   passive one lasts 15 s), **Prisão de Gelo** (Shield, Q: an ice shard that traps the target
   in a sliding ice block for 3 s; they take no damage, but shots, explosions and bodies push
-  the block), **Mega Tapa** (Body, Q: a short slap that launches far; hitting a wall deals 25
+  the block), **Mega Tapa** (Body, Q: a short slap that launches far; hitting a wall deals 20
   more and dazes), **Canhão Arcano** (Weapon, Q: charge 1 s, then a 2.5 s beam through walls
-  that you aim slowly; each touch deals 30 and throws the target out of the beam),
+  that you aim slowly; each touch deals 22 and throws the target out of the beam),
   **Plataformas Suspensas** (Movement, Q in the air: platforms under your feet as you jump,
   up to 4, 5 s each, anyone can stand on them), **Chuva de Meteoros** (Bullets, Q: the next
   3 shots mark the ground; 1.5 s later a meteor falls on each mark), **Foguete** (Weapon, Q:
   ride a slow, hard-to-steer rocket that explodes on impact; Q again to jump off and send it
-  flying fast) and **Gancho** (Body, Q: a hook that pulls the enemy to you and holds them;
-  click to throw them into a wall or another player). Also: **Espada** (Weapon, Q: a big
+  flying fast) and **Gancho** (Body, Q: a hook that pulls the enemy to you and holds them as
+  a human shield; click to throw them: a wall hurts them, another enemy hurts and dazes both). Also: **Espada** (Weapon, Q: a big
   sword for 8 s with a 3-hit combo: slash right, slash left and a lunging thrust; a raised
   shield blocks it), **Sniper** (Weapon, Q: a sniper with ONE laser shot
-  that goes through every wall and deals 3x damage; right click to aim with the scope),
+  that goes through every wall and deals 4x damage; right click to aim with the scope),
   **Bazuca** (Weapon, Q: 6 s of
   bazooka, 3 rockets), **Perfurante** (Bullets, Q: 3 straight fast shots that go through
   walls), **Bastião** (Shield, Q: a wall that returns bullets for 4 s), **Último Suspiro**
@@ -180,7 +180,11 @@ shows in a corner during the match.
 - Shooting: 4 bullets per magazine, 25 damage (4 hits kill), visible bullets that drop
   with distance. Aim a bit higher from afar. Reflected bullets fly straight. A bullet's size
   grows with its damage, also mid-flight (Bola de Neve, Tabelinha): huge bullets are
-  possible. A bullet that already bounced off a wall can hit its shooter.
+  possible, and every bounce gives the bullet 2 more seconds of life (up to 12 bounces), so
+  a "nuke" shot at the sky can keep growing. A bullet that already bounced off a wall can
+  hit its shooter. Explosions start at the bullet's edge: bigger bullets explode bigger.
+- Shield (E): every card that improves it adds to its cooldown (+1 s for strong effects,
+  +0.5 s for weak ones); Reflexos, Defensor, Passo Ligeiro and Escudo de Papel lower it.
 - Your character gets a bit bigger with more max health and smaller with less, and the
   camera height follows.
 - At the start, everyone sees 3 different cards from their own deck and keeps 1.
@@ -188,7 +192,8 @@ shows in a corner during the match.
   than 2 players, everyone who died.
 - **2x2** (online with 4, or in Treino with 3 bots: you and an allied bot): the team with
   someone standing wins, and both losers pick a card. Bullets and explosions pass through
-  your teammate. Your teammate has a team-colored outline and an arrow over their name,
+  your teammate, except when an enemy Gancho holds them: then they lose the outline and your
+  shots hit them. Your teammate has a team-colored outline and an arrow over their name,
   visible through walls, with their health under the name; the team score is at the top.
   **Downed:** if you take a fatal hit while your teammate is still standing, you go down
   instead of dying. You crawl slowly and can't shoot, and nobody can finish you off. Your
@@ -199,7 +204,8 @@ shows in a corner during the match.
 - Cards never leave the deck: you can pick the same one several times and the effects
   stack. A few (Adrenalina, Radar, Fênix...) can only be picked once.
 - Every 5 rounds the game asks: 5 more rounds or finish (online, everyone's vote shows
-  live). Most rounds wins. The match ends on a final scoreboard with everyone's cards.
+  live). Most rounds wins. The match ends on a final scoreboard with everyone's cards;
+  online, **Voltar à sala** takes you back to the lobby to play again.
 - Each round rolls a new arena from one of 12 maps: 4 styles (Pátio, Ruínas, Torres and
   Fábrica) in 3 sizes (small, medium, large), plus one of 6 color ambiences. Medium and
   large maps have proportionally more pieces; large maps add tall dividing walls with
@@ -216,24 +222,26 @@ shows in a corner during the match.
   8 s), **green cross** (30 health; 25 s) and, rarer, **blue shield** (25 armor, up to 50,
   absorbs damage before health and resets every round; 30 s).
 - **Void**: some maps have no edge walls and some have holes. Below (1 m under the floor)
-  is the purple void: falling in bounces you and costs 20 health. The bounce is low and
+  is the purple void: falling in bounces you and costs 15 health. The bounce is low and
   short, so far from the edge it takes several (each one hurts). With the **shield (E) up
   as you hit it**, you lose no health and bounce high. Whoever pushed you in the last 4 s
   gets credit for the damage.
-- Practice: Jogar > Treino, against 1, 2 or 3 bots.
+- Practice: Jogar > Treino, against 1, 2 or 3 bots, on **Fácil**, **Médio** or **Difícil**
+  (easy bots aim and react slower and only block bullets they see coming).
 
 All numbers are provisional, to be tuned by playing.
 
 ## Cards
 
-94 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst...), **Balas**
+105 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst...), **Balas**
 (bullets: ricochet, homing, explosive, poison, freezing, a toxic cloud or a short black hole
 where the bullet lands...), **Escudo** (shield: what happens when raising it or reflecting;
 Pancada, Escudo Duplo, Couraça and Fortaleza make a close-range shield build, and Serra,
 Chamas, Geada and Mina add a spinning saw, a ring of fire, a frost wave or a mine), **Corpo**
-(body: health, size, Fênix, Radar...) and **Movimento** (movement: double jump, extra air
-dash, longer dash, Esquiva, Atropelar, Planador, Pisão to bounce on heads...), for those who
-prefer mobility over damage. Furor has no public card list; the ideas come from
+(body: health, size, Fênix, Radar, Blindado against explosions, Peso Pesado against
+knockback, Segunda Pele and Casca Dura...) and **Movimento** (movement: double jump, extra air
+dash, longer dash, Dash Duplo, Esquiva, Atropelar, Planador, Parkour, Pisão to bounce on
+heads...), for those who prefer mobility over damage. Furor has no public card list; the ideas come from
 two similar games: OVERKILL (Roblox) and ROUNDS (Landfall), where "the loser picks a card"
 comes from.
 
@@ -251,7 +259,7 @@ needs a new attribute in `BASE_STATS` and the code that uses it.
 | `scripts/autoload/net.gd` | Networking: hosting, joining, lobby, chat, who is ready. |
 | `scripts/player.gd` | Base attributes, movement (constants at the top), shooting, shield, effects, skins. |
 | `scripts/bullet.gd` | Projectile: reflection, ricochet, explosion, poison etc. |
-| `scripts/bot_brain.gd` | Bot AI. Constants at the top tune the difficulty. |
+| `scripts/bot_brain.gd` | Bot AI. `LEVELS` at the top holds the Easy, Medium and Hard numbers. |
 | `scripts/match.gd` | Match flow: picks, countdown, round, 5-round blocks, end. |
 | `scripts/spectator.gd` | Camera when dead: follow a living player or fly freely. |
 | `scripts/arena/` | Arena generator, color themes, moving pieces, jump pads, map items. |
@@ -269,7 +277,8 @@ reflections, score and a CPU timing summary:
 Godot_v4.7.2-stable_win64_console.exe --headless --path . res://scenes/match.tscn -- --autotest
 ```
 
-Options: `--bots=2` or `--bots=3`, `--2x2` (with 3 bots), `--cartas=a,b,c` (gives those cards
+Options: `--bots=2` or `--bots=3`, `--2x2` (with 3 bots), `--dificuldade=facil|medio|dificil`
+(Hard by default), `--cartas=a,b,c` (gives those cards
 to everyone), `--mestra=<id>`, `--tema=<n>`, `--nome=<name>`, `--visual=<skin>,<gun>`.
 Network test on one machine (one terminal per player, a bot in each; `--host` starts with 1
 guest, `--host3` waits for 2 and `--host4` for 3, each with its own `--join`):
@@ -281,10 +290,10 @@ Godot_v4.7.2-stable_win64_console.exe --headless --path . -- --autotest --join
 
 ## Next steps
 
-1. Card balancing and new cards.
-2. Rematch directly online (today it goes back to the menu and reconnects).
+1. A release focused on performance: frame spikes in busy fights and at round start, one
+   suspect at a time, and the cost of huge bullets on weak GPUs.
+2. Card balancing and new cards.
 3. Footstep, landing and slide sounds.
 4. Progression: start with some cards and earn the rest from purchases or chests, with
    rarity tokens (common to mythic) from recycling duplicates. Today everyone has every card
    and rarity is only a label.
-5. Find the remaining frame spikes in busy fights, one suspect at a time.

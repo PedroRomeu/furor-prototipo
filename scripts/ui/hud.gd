@@ -8,6 +8,7 @@ const AMMO_RADIUS := 26.0       # arco do pente, à direita da mira (px)
 const AMMO_SPAN := 80.0         # graus que o arco ocupa
 const AMMO_SEGMENTS_MAX := 24   # acima disso vira barra contínua
 const RELOAD_RING := 11.0       # anel da recarga no lugar da mira (px)
+const RELOAD_RING_PERFECT := 18.0   # com a Recarga Perfeita: maior, para dar para mirar a faixa
 const DOWN_RING := 46.0         # caído: anel do prazo (vermelho) no lugar da mira...
 const DOWN_REVIVE_RING := 36.0  # ...e o do reviver (verde) por dentro
 
@@ -444,15 +445,23 @@ func _draw_crosshair() -> void:
 		var pts := PackedVector2Array()
 		var cols := PackedColorArray()
 		var cut := -PI / 2.0 + TAU * done
+		# Recarga Perfeita: a faixa dourada (some depois da tentativa).
+		var band: bool = me.stats["perfect_reload"] > 0 and not me.perfect_tried
+		var gold := Player.PERFECT_COLOR
+		var ring := RELOAD_RING_PERFECT if me.stats["perfect_reload"] > 0 else RELOAD_RING
 		# Anel inteiro em 40 pedaços: até o corte branco (já recarregado), depois apagado.
 		for k in 40:
 			var a0 := -PI / 2.0 + TAU * k / 40.0
 			var a1 := -PI / 2.0 + TAU * (k + 1) / 40.0
+			var mid := (k + 0.5) / 40.0
+			var in_band := band and mid > Player.PERFECT_START and mid < Player.PERFECT_END
+			var full := gold if in_band else white
+			var dim := Color(gold, 0.6) if in_band else Color(1, 1, 1, 0.22)
 			if a0 < cut and a1 > cut:
-				_arc_piece(pts, cols, RELOAD_RING, a0, cut, white)
-				_arc_piece(pts, cols, RELOAD_RING, cut, a1, Color(1, 1, 1, 0.22))
+				_arc_piece(pts, cols, ring, a0, cut, full)
+				_arc_piece(pts, cols, ring, cut, a1, dim)
 			else:
-				_arc_piece(pts, cols, RELOAD_RING, a0, a1, white if a1 <= cut else Color(1, 1, 1, 0.22))
+				_arc_piece(pts, cols, ring, a0, a1, full if a1 <= cut else dim)
 		crosshair.draw_multiline(pts, Color(0, 0, 0, 0.45), 4.5, true)
 		crosshair.draw_multiline_colors(pts, cols, 2.5, true)
 	else:
@@ -646,6 +655,9 @@ func _update_ammo() -> void:
 	elif me.reload_timer > 0.0:
 		sub = "RECARREGANDO"
 		sub_color = Color(1, 1, 1, 0.75)
+	elif me.perfect_mag:
+		sub = "RECARGA PERFEITA +15%"
+		sub_color = Player.PERFECT_COLOR
 	if me.pierce_left > 0 and me.bazooka_timer <= 0.0:
 		sub = ("%s  ·  " % sub if sub != "" else "") + "PERFURANTES %d" % me.pierce_left
 	if me.meteor_left > 0 and me.bazooka_timer <= 0.0:
@@ -690,6 +702,8 @@ func _update_status() -> void:
 		items.append(["PLATAFORMAS %d  ·  %.1f s" % [me.plat_left, me.plat_mode], Color(0.6, 0.85, 1.0)])
 	if me.daze_timer > 0.0:
 		items.append(["TONTO %.1f" % me.daze_timer, Player.SLAP_COLOR])
+	if me.tough_timer > 0.0:
+		items.append(["CASCA DURA %.1f" % me.tough_timer, Player.TOUGH_COLOR])
 	if me.ice_timer > 0.0:
 		items.append(["CONGELADO %.1f" % me.ice_timer, Player.ICE_COLOR])
 	if me.speed_orb_timer > 0.0:

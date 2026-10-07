@@ -14,11 +14,11 @@ extends Node
 const LEVEL_NAMES := ["Fácil", "Médio", "Difícil"]
 const LEVELS := [
 	{"aim": 1.4, "turn": 3.5, "lead": 0.3, "react": 0.6, "click": [0.25, 0.33], "shield": 0.15,
-		"front": true, "seen": 0.35, "void": 0.15, "master_wait": 3.0},
+		"front": true, "seen": 0.35, "void": 0.15, "master_wait": 3.0, "perfect": 0.2},
 	{"aim": 0.9, "turn": 5.0, "lead": 0.5, "react": 0.35, "click": [0.17, 0.25], "shield": 0.3,
-		"front": true, "seen": 0.2, "void": 0.3, "master_wait": 0.0},
+		"front": true, "seen": 0.2, "void": 0.3, "master_wait": 0.0, "perfect": 0.4},
 	{"aim": 0.5, "turn": 7.0, "lead": 0.7, "react": 0.0, "click": [0.12, 0.17], "shield": 0.5,
-		"front": false, "seen": 0.0, "void": 0.5, "master_wait": 0.0},
+		"front": false, "seen": 0.0, "void": 0.5, "master_wait": 0.0, "perfect": 0.7},
 ]
 const FRONT_CONE := 60.0   # graus para cada lado da mira
 const NEAR := 8.0
@@ -49,6 +49,7 @@ var cfg: Dictionary = LEVELS[2]
 var aim_seen := 0.0      # tempo vendo o alvo atual (reação antes do 1o tiro)
 var aim_target: Player
 var master_ready := 0.0  # tempo com a carta mestra pronta
+var reload_roll := -1    # Recarga Perfeita: -1 sem recarga, 0 vai deixar passar, 1 vai acertar a faixa
 
 
 func set_level(l: int) -> void:
@@ -70,6 +71,7 @@ func think(delta: float) -> void:
 	if p.stats["platforms"] > 0 and p.master_cd <= 0.0 and not p.is_on_floor() \
 			and p.global_position.y < Arena.VOID_Y + 1.5 and p.velocity.y < 0.0:
 		p.in_master = true   # Plataformas Suspensas: plataforma para não cair no vazio
+	_perfect_reload()
 	if p.downed and not p.frozen:
 		_crawl_to_ally(delta)
 		return
@@ -101,6 +103,20 @@ func think(delta: float) -> void:
 	_aim_and_shoot(delta, foe, sees, wish)
 	_defend()
 	_master(foe, sees)
+
+
+## Recarga Perfeita: sorteia uma vez por recarga (chance pela dificuldade) e, se ganhou,
+## aperta recarregar no meio da faixa; se perdeu, nem tenta.
+func _perfect_reload() -> void:
+	var p := player
+	if p.stats["perfect_reload"] <= 0 or p.reload_timer <= 0.0:
+		reload_roll = -1
+		return
+	if reload_roll < 0:
+		reload_roll = 1 if randf() < float(cfg["perfect"]) else 0
+	var at := p.reload_progress()
+	if reload_roll == 1 and not p.perfect_tried and at > Player.PERFECT_START + 0.04 and at < Player.PERFECT_END - 0.04:
+		p.in_reload = true
 
 
 ## 2x2: o parceiro caído (ou null).
@@ -281,8 +297,8 @@ func _aim_and_shoot(delta: float, foe: Player, sees: bool, wish: Vector3) -> voi
 		# Sem ver o inimigo, olha para onde está indo.
 		if wish != Vector3.ZERO:
 			p.look_at_point(eye + wish * 5.0, float(cfg["turn"]) * delta)
-		if p.ammo < p.stats["mag_size"]:
-			p.in_reload = true
+		if p.ammo < p.stats["mag_size"] and p.reload_timer <= 0.0:
+			p.in_reload = true   # durante a recarga, R de novo seria a Recarga Perfeita
 		return
 	aim_timer -= delta
 	if aim_timer <= 0.0:

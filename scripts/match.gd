@@ -185,6 +185,7 @@ func _spawn_player(peer: int, side: int, pname: String, team := -1) -> Player:
 	p.rocket_exploded.connect(func(): _log("foguete de %s explodiu" % p.player_name))
 	p.meteor_marked.connect(func(): _log("%s marcou um meteoro" % p.player_name))
 	p.platform_made.connect(func(): _log("%s fez uma plataforma" % p.player_name))
+	p.perfect_reloaded.connect(func(ok): _log("%s %s a recarga perfeita" % [p.player_name, "acertou" if ok else "errou"]))
 	p.beamed.connect(func(): _log("%s levou o raio" % p.player_name))
 	p.slapped.connect(func(splat): _log("%s %s" % [p.player_name, "bateu na parede" if splat else "levou um tapa"]))
 	players.append(p)
