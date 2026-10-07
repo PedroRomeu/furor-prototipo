@@ -61,7 +61,7 @@ const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", 
 	"slow", "push", "shield_break", "target_bounce", "execute", "reflected", "gravity",
 	"boomerang", "returning", "bounce_damage", "sticky", "split", "grow", "swap", "blind",
 	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls",
-	"toxic", "hole", "laser", "ice", "meteor"]
+	"toxic", "hole", "laser", "ice", "meteor", "rocket"]
 ## Bala Fantasma: só paredes contam (superfície quase em pé); no chão e no topo das peças a
 ## bala para ou quica como as outras.
 const GHOST_WALL_NORMAL_Y := 0.7
@@ -112,6 +112,7 @@ var blind := 0.0
 var laser := false   # tiro da Sniper: deixa um feixe reto ao nascer (em todas as máquinas)
 var ice := false     # caco da Prisão de Gelo: congela em vez de ferir; some a ICE_RANGE
 var meteor := false  # Chuva de Meteoros: onde bater marca o chão (uma vez só)
+var rocket := false  # Foguete solto: explode (Player.rocket_blast) no contato ou no tempo
 var toxic := 0   # Nuvem Tóxica: cópias (AreaField)
 var hole := 0    # Buraco Negro: cópias (AreaField)
 var lazy_top := 0.0
@@ -269,6 +270,8 @@ func _ready() -> void:
 		c = Player.ICE_COLOR
 	if meteor:
 		c = MeteorStrike.COLOR
+	if rocket:
+		c = Player.ROCKET_COLOR
 	_set_color(c)
 	if sound:
 		Sfx.at(get_parent(), "shot", global_position)
@@ -342,6 +345,10 @@ func _orient() -> void:
 
 func _physics_process(delta: float) -> void:
 	age += delta
+	if rocket and age > Player.ROCKET_FREE_TIME:
+		Player.rocket_blast(get_parent(), global_position, shooter)
+		queue_free()
+		return
 	if age > LIFETIME or (ice and age * velocity.length() > Player.ICE_RANGE):
 		queue_free()
 		return
@@ -524,6 +531,10 @@ func _steer_to(point: Vector3, rate: float, delta: float) -> void:
 func _hit_world(hit: Dictionary) -> void:
 	var point: Vector3 = hit["position"]
 	var normal: Vector3 = hit["normal"]
+	if rocket:
+		Player.rocket_blast(get_parent(), point + normal * 0.3, shooter)
+		queue_free()
+		return
 	if normal.is_zero_approx():
 		normal = -velocity.normalized()   # o raio começou dentro de uma parede
 	_impact_fields(point, normal)
@@ -584,6 +595,12 @@ func _hit_player(target: Player, point: Vector3) -> void:
 		ignore_remote_until = age + REMOTE_WAIT + 0.25
 		visible = false
 		global_position = point
+		return
+	if rocket:
+		Player.rocket_blast(get_parent(), point, shooter)
+		if Net.online:
+			get_parent().net_bullet_hit.rpc(id, point, -1.0)
+		queue_free()
 		return
 	if target.ice_timer > 0.0:
 		# Bloco de gelo: não leva dano nem efeito; o tiro só empurra.
@@ -738,6 +755,10 @@ func remote_reflect(point: Vector3, dir: Vector3, owner_name: String, new_damage
 
 ## Resposta da outra máquina: o alvo levou esta bala.
 func remote_hit(point: Vector3, dmg: float) -> void:
+	if rocket:
+		Player.rocket_blast(get_parent(), point, shooter)
+		queue_free()
+		return
 	if dmg <= 0.0:
 		# Gelo (congelou ou bateu num bloco): sem número nem explosão.
 		Effects.burst(get_parent(), point, 0.8, Player.ICE_COLOR, 0.15)

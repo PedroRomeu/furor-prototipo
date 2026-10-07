@@ -122,6 +122,11 @@ func _sword_fight(delta: float, foe: Player, sees: bool) -> void:
 ## (O Bastião sobe em _defend, contra uma bala que vem quando o escudo não está pronto.)
 func _master(foe: Player, sees: bool) -> void:
 	var p := player
+	if p.ride_timer > 0.0:
+		# Foguete: salta perto do alvo (o foguete solto segue até ele).
+		if p.global_position.distance_to(foe.global_position) < 9.0 and p.ride_age > 0.3:
+			p.in_master = true
+		return
 	if not sees or p.master_cd > 0.0 or p.global_position.distance_to(foe.global_position) > FAR:
 		return
 	if p.stats["updraft"] > 0 and randf() < 0.01:
@@ -138,6 +143,8 @@ func _master(foe: Player, sees: bool) -> void:
 	elif p.stats["beam"] > 0 and p.global_position.distance_to(foe.global_position) > 8.0 \
 			and p.global_position.distance_to(foe.global_position) < 30.0:
 		p.in_master = true   # Canhão Arcano: alvo à vista entre 8 e 30 m
+	elif p.stats["rocket_ride"] > 0 and p.global_position.distance_to(foe.global_position) > 12.0:
+		p.in_master = true   # Foguete: monta e vai na direção do alvo
 	elif p.stats["meteor"] > 0 and p.meteor_left == 0 and p.global_position.distance_to(foe.global_position) > 6.0:
 		p.in_master = true   # Chuva de Meteoros: os próximos tiros marcam
 	elif p.stats["slap"] > 0 and p.global_position.distance_to(foe.global_position) < Player.SLAP_RANGE + 0.5:

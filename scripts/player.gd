@@ -25,6 +25,7 @@ signal slapped(splat: bool)   # levou o Mega Tapa / bateu na parede (registro do
 signal beamed      # levou um toque do Canhão Arcano (registro do autoteste)
 signal platform_made   # criou (ou recebeu pela rede) uma plataforma suspensa (registro do autoteste)
 signal meteor_marked   # marca de meteoro no chão (registro do autoteste)
+signal rocket_exploded # um Foguete explodiu (registro do autoteste)
 
 ## Atributos sem nenhuma carta. As cartas (CardDB) alteram estes valores.
 const BASE_STATS := {
@@ -122,6 +123,7 @@ const BASE_STATS := {
 	"beam": 0,      # Canhão Arcano
 	"platforms": 0, # Plataformas Suspensas
 	"meteor": 0,    # Chuva de Meteoros
+	"rocket_ride": 0,   # Foguete
 	"updraft": 0,
 	"bazooka": 0,
 	"sniper": 0,
@@ -501,6 +503,24 @@ const METEOR_WINDOW := 8.0
 var meteor_left := 0
 var meteor_window := 0.0
 var meteor_shot := false   # o disparo atual marca o chão
+## Foguete (mestra): montado por RIDE_TIME a RIDE_SPEED, sem gravidade, na direção da mira
+## (que gira devagar, como no Canhão Arcano; inclinação até RIDE_PITCH). Q de novo salta e
+## solta o foguete (bala `rocket`, ROCKET_FREE_SPEED, explode no contato ou em
+## ROCKET_FREE_TIME). Explosão: ROCKET_BLAST_DAMAGE no centro até ROCKET_BLAST_RADIUS.
+const RIDE_TIME := 5.0
+const RIDE_SPEED := 12.0
+const RIDE_PITCH := deg_to_rad(20.0)
+const RIDE_TURN := deg_to_rad(45.0)
+const RIDE_JUMP := 10.0
+const ROCKET_FREE_SPEED := 40.0
+const ROCKET_FREE_TIME := 2.0
+const ROCKET_BLAST_DAMAGE := 60.0
+const ROCKET_BLAST_RADIUS := 5.0
+const ROCKET_LIFT := 14.0      # quem estava montado quando explodiu é lançado para cima
+const ROCKET_COLOR := Color(1.0, 0.55, 0.2)
+var ride_timer := 0.0
+var ride_age := 0.0
+var ride_fx: Node3D
 ## Mega Tapa (mestra): leque curto à frente; arremessa (SLAP_PUSH para o lado, SLAP_LIFT
 ## para cima). Por SLAP_FLIGHT segundos, bater numa parede ainda rápido (SPLAT_MIN_SPEED)
 ## dá SPLAT_DAMAGE e deixa tonto (DAZE_TIME: lento e sem atirar).
@@ -1070,6 +1090,8 @@ func reset_for_round(spawn: Transform3D) -> void:
 	plat_left = 0
 	meteor_left = 0
 	meteor_window = 0.0
+	ride_timer = 0.0
+	_ride_visual(false)
 	get_tree().call_group("meteor_strikes", "queue_free")
 	global_transform = spawn
 	reset_physics_interpolation()
@@ -1170,8 +1192,8 @@ func _input(event: InputEvent) -> void:
 		var sens := GameState.mouse_sens
 		if scoping:
 			sens *= camera.fov / BASE_FOV   # com zoom, o mouse anda na mesma proporção
-		if beam_timer > 0.0:
-			# Canhão Arcano: o mouse move o alvo; a mira vai atrás devagar (_process).
+		if beam_timer > 0.0 or ride_timer > 0.0:
+			# Canhão Arcano e Foguete: o mouse move o alvo; a mira vai atrás devagar (_process).
 			beam_aim.x = wrapf(beam_aim.x - motion.relative.x * sens, -PI, PI)
 			beam_aim.y = clampf(beam_aim.y - motion.relative.y * sens, -1.5, 1.5)
 			return
@@ -1217,9 +1239,13 @@ func _read_local_input() -> void:
 # ---------------------------------------------------------------- visual
 
 func _process(delta: float) -> void:
-	if beam_timer > 0.0 and is_human:
-		look_yaw = rotate_toward(look_yaw, beam_aim.x, BEAM_TURN * delta)
-		head.rotation.x = rotate_toward(head.rotation.x, beam_aim.y, BEAM_TURN * delta)
+	if (beam_timer > 0.0 or ride_timer > 0.0) and is_human:
+		var turn := (BEAM_TURN if beam_timer > 0.0 else RIDE_TURN) * delta
+		look_yaw = rotate_toward(look_yaw, beam_aim.x, turn)
+		var pitch_aim := beam_aim.y if beam_timer > 0.0 else clampf(beam_aim.y, -RIDE_PITCH, RIDE_PITCH)
+		head.rotation.x = rotate_toward(head.rotation.x, pitch_aim, turn)
+	if ride_fx:
+		_update_ride_fx()
 	if beam_fx:
 		_update_beam_fx(delta)
 	var shielding := alive and is_shielding()
@@ -1480,7 +1506,7 @@ func _camera_feel(delta: float) -> void:
 		fov = SCOPE_FOV
 	camera.fov = lerpf(camera.fov, fov, minf(1.0, delta * (18.0 if scoping else 6.0)))
 	if viewmodel:
-		viewmodel.visible = not downed and not scoping and ice_timer <= 0.0
+		viewmodel.visible = not downed and not scoping and ice_timer <= 0.0 and ride_timer <= 0.0
 	var roll := -in_move.x * 0.012 + (0.04 if sliding else 0.0)
 	cam_roll = lerpf(cam_roll, roll, minf(1.0, delta * 8.0))
 	recoil = move_toward(recoil, 0.0, delta * 6.0)
@@ -1552,6 +1578,10 @@ func _physics_process(delta: float) -> void:
 		return
 	if ice_timer > 0.0:
 		_ice_move(delta)
+		_send_state()
+		return
+	if ride_timer > 0.0:
+		_ride_step(delta)
 		_send_state()
 		return
 	if beam_charge > 0.0 or beam_timer > 0.0:
@@ -2268,6 +2298,8 @@ func credit_damage(amount: float, lethal := false) -> void:
 # ---------------------------------------------------------------- combate
 
 func _act(delta: float) -> void:
+	if ride_timer > 0.0:
+		return   # montado: o Q (saltar) é tratado em _ride_step
 	if in_master and shrink_timer > 0.0:
 		_end_shrink(true)   # Formiga: Q de novo volta ao tamanho antes do tempo
 	elif in_master and master_cd <= 0.0 and master_id != "" and CardDB.CARDS[master_id].has("cooldown") \
@@ -2370,7 +2402,7 @@ func _chaos_tick(delta: float) -> void:
 	if not chaos_used:
 		return
 	if bazooka_timer > 0.0 or sniper_timer > 0.0 or sword_timer > 0.0 or shrink_timer > 0.0 or pierce_left > 0 \
-			or beam_timer > 0.0 or beam_charge > 0.0 or plat_mode > 0.0 or meteor_left > 0:
+			or beam_timer > 0.0 or beam_charge > 0.0 or plat_mode > 0.0 or meteor_left > 0 or ride_timer > 0.0:
 		master_cd = CHAOS_WAIT
 	elif master_cd <= 0.0:
 		_chaos_draw()
@@ -2433,6 +2465,8 @@ func _use_master() -> void:
 		_slap()
 	if stats["beam"] > 0:
 		_start_beam()
+	if stats["rocket_ride"] > 0:
+		_start_ride()
 	if stats["meteor"] > 0:
 		meteor_left = METEOR_SHOTS
 		meteor_window = METEOR_WINDOW
@@ -2792,6 +2826,7 @@ func freeze() -> void:
 		return
 	ice_timer = ICE_TIME
 	_end_beam(true)
+	_ride_crash()
 	froze.emit()
 	shield_timer = 0.0
 	dash_timer = 0.0
@@ -2975,6 +3010,7 @@ func receive_slap(from_name: String, dir: Vector3) -> void:
 		Effects.burst(get_parent(), chest(), 1.2, Color(0.5, 0.9, 1.0), 0.15)
 		return
 	_end_beam(true)
+	_ride_crash()
 	var flat := Vector3(dir.x, 0.0, dir.z).normalized()
 	velocity = flat * SLAP_PUSH + Vector3.UP * SLAP_LIFT
 	jump_rising = false
@@ -3069,6 +3105,184 @@ func _make_hand() -> Node3D:
 		root.add_child(mi)
 	root.rotation = Vector3(PI / 2.0, 0.0, 0.0)   # palma virada para a frente, dedos para cima
 	return root
+
+
+# ---------------------------------------------------------------- Foguete
+
+func _ride_dir() -> Vector3:
+	var pitch := clampf(head.rotation.x, -RIDE_PITCH, RIDE_PITCH)
+	return Basis.from_euler(Vector3(pitch, rotation.y, 0.0)) * Vector3.FORWARD
+
+
+func _start_ride() -> void:
+	ride_timer = RIDE_TIME
+	ride_age = 0.0
+	beam_aim = Vector2(look_yaw, clampf(head.rotation.x, -RIDE_PITCH, RIDE_PITCH))
+	reveal()
+	sliding = false
+	dash_timer = 0.0
+	_ride_visual(true)
+	Sfx.at(self, "explosion", chest())
+	if Net.online and is_inside_tree():
+		_net_ride.rpc(true)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_ride(on: bool) -> void:
+	ride_timer = RIDE_TIME if on else 0.0
+	_ride_visual(on)
+
+
+## Montado: sempre para a frente, sem gravidade. Q de novo salta (depois de 0,2 s, para o
+## mesmo aperto não montar e saltar). Parede, chão de frente, inimigo ou fim do tempo:
+## explode com você em cima.
+func _ride_step(delta: float) -> void:
+	ride_timer -= delta
+	ride_age += delta
+	if not alive:
+		_ride_crash()
+		return
+	if in_master and ride_age > 0.2:
+		_ride_jump()
+		return
+	if ride_timer <= 0.0:
+		_ride_crash()
+		return
+	var dir := _ride_dir()
+	velocity = dir * RIDE_SPEED
+	move_and_slide()
+	for i in get_slide_collision_count():
+		var c := get_slide_collision(i)
+		var other := c.get_collider() as Player
+		if other:
+			if is_enemy(other) and other.alive:
+				_ride_crash()
+				return
+			continue
+		if c.get_normal().dot(-dir) > 0.3:   # bateu de frente (parede, ou o chão descendo a 20 graus)
+			_ride_crash()
+			return
+	if global_position.y < Arena.VOID_Y and velocity.y <= 0.0:
+		_void_bounce()
+
+
+## Salta do foguete: ele segue reto, rápido, e explode no primeiro contato.
+func _ride_jump() -> void:
+	var dir := _ride_dir()
+	ride_timer = 0.0
+	_ride_visual(false)
+	if Net.online and is_inside_tree():
+		_net_ride.rpc(false)
+	Bullet.fire(self, chest() + dir * 1.6, dir, 0.0, false,
+		{"speed": ROCKET_FREE_SPEED, "rocket": true, "radius": 0.35, "gravity": 0.0, "bounces": 0,
+		"ghost_walls": 0, "explosion": 0.0, "poison": 0.0, "slow": 0.0, "push": 0.0, "shield_break": false,
+		"execute": 0.0, "split": 0, "sticky": false, "boomerang": false, "guided": false, "seek": 0.0,
+		"homing": 0.0, "target_bounce": 0.0, "lazy_top": 0.0, "grow": 0.0, "swap": false, "blind": 0.0,
+		"toxic": 0, "hole": 0, "bounce_damage": 0.0})
+	velocity = dir * RIDE_SPEED + Vector3.UP * RIDE_JUMP
+	jump_rising = false
+	Sfx.at(self, "pad", chest())
+
+
+## O foguete explode com você em cima (onde estiver).
+func _ride_crash() -> void:
+	if ride_timer <= 0.0 and ride_fx == null:
+		return
+	ride_timer = 0.0
+	_ride_visual(false)
+	if Net.online and is_inside_tree():
+		_net_ride.rpc(false)
+	var pos := global_position + Vector3.UP * 0.3
+	if Net.online and is_inside_tree():
+		_net_rocket_blast.rpc(pos)
+	else:
+		_net_rocket_blast(pos)
+
+
+@rpc("authority", "call_local", "reliable")
+func _net_rocket_blast(pos: Vector3) -> void:
+	rocket_blast(get_parent(), pos, self)
+
+
+## Explosão do Foguete (em cada máquina, só nos jogadores dela; nunca no dono, que é
+## lançado para cima se estava perto, nem no aliado).
+static func rocket_blast(parent: Node, pos: Vector3, owner_p: Player) -> void:
+	if is_instance_valid(owner_p):
+		owner_p.rocket_exploded.emit()
+	Effects.burst(parent, pos, ROCKET_BLAST_RADIUS, ROCKET_COLOR, 0.35)
+	Effects.sparks(parent, pos, ROCKET_COLOR, 16, 9.0)
+	Sfx.at(parent, "explosion", pos)
+	for node in parent.get_tree().get_nodes_in_group("players"):
+		var p := node as Player
+		if p == null or not p.is_local or not p.alive:
+			continue
+		var d := p.chest().distance_to(pos)
+		if d > ROCKET_BLAST_RADIUS + p.hit_radius():
+			continue
+		var away := p.chest() - pos
+		away.y = 0.0
+		if p == owner_p:
+			p.launch(away.normalized() * 4.0 + Vector3.UP * ROCKET_LIFT)
+			continue
+		if is_instance_valid(owner_p) and owner_p.is_ally(p):
+			continue
+		p.knockback(away.normalized() * 8.0 + Vector3.UP * 5.0)
+		p.take_damage(ROCKET_BLAST_DAMAGE * (1.0 - 0.5 * clampf(d / ROCKET_BLAST_RADIUS, 0.0, 1.0)),
+			owner_p if is_instance_valid(owner_p) else null)
+
+
+## Foguete sob os pés (todas as máquinas): corpo, ponta e chama, montado em código.
+static var _rocket_parts: Array = []
+
+func _ride_visual(on: bool) -> void:
+	if ride_fx:
+		ride_fx.queue_free()
+		ride_fx = null
+	if not on:
+		return
+	if _rocket_parts.is_empty():
+		var body := StandardMaterial3D.new()
+		body.albedo_color = Color(0.85, 0.86, 0.9)
+		var red := StandardMaterial3D.new()
+		red.albedo_color = Color(0.85, 0.2, 0.15)
+		var flame := StandardMaterial3D.new()
+		flame.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		flame.albedo_color = Color(1.0, 0.7, 0.2)
+		var tube := CylinderMesh.new()
+		tube.top_radius = 0.28; tube.bottom_radius = 0.28; tube.height = 2.2; tube.radial_segments = 12
+		tube.material = body
+		var nose := CylinderMesh.new()
+		nose.top_radius = 0.0; nose.bottom_radius = 0.28; nose.height = 0.6; nose.radial_segments = 12
+		nose.material = red
+		var fire := CylinderMesh.new()
+		fire.top_radius = 0.22; fire.bottom_radius = 0.0; fire.height = 0.7; fire.radial_segments = 8
+		fire.material = flame
+		# [malha, posição ao longo do foguete (+ = frente)]
+		_rocket_parts = [[tube, 0.0], [nose, 1.4], [fire, -1.45]]
+	ride_fx = Node3D.new()
+	ride_fx.top_level = true
+	add_child(ride_fx)
+	for part in _rocket_parts:
+		var mi := MeshInstance3D.new()
+		mi.mesh = part[0]
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# Cilindro em pé (Y): deita para apontar para -Z (frente do nó).
+		mi.rotation.x = -PI / 2.0
+		mi.position = Vector3(0, 0, -part[1])
+		ride_fx.add_child(mi)
+	_update_ride_fx()
+
+
+func _update_ride_fx() -> void:
+	var dir := _ride_dir()
+	var up := Vector3.UP if absf(dir.y) < 0.99 else Vector3.BACK
+	if is_human:
+		# Na própria tela o foguete fica embaixo e à frente da câmera (nos pés não aparece).
+		var pos := camera.global_position + Vector3.DOWN * 0.75 + dir * 1.3
+		ride_fx.global_transform = Transform3D(Basis.looking_at(dir, up).scaled(Vector3.ONE * 0.6), pos)
+		return
+	var pos := get_global_transform_interpolated().origin + Vector3.UP * 0.05 + dir * 0.3
+	ride_fx.global_transform = Transform3D(Basis.looking_at(dir, up), pos)
 
 
 # ---------------------------------------------------------------- Chuva de Meteoros
@@ -3856,8 +4070,8 @@ func bench() -> void:
 
 ## Usado pelo bot para mirar: gira o corpo (horizontal) e a cabeça (vertical) até o ponto.
 func look_at_point(point: Vector3, max_step: float) -> void:
-	if beam_timer > 0.0:
-		max_step = minf(max_step, BEAM_TURN * get_physics_process_delta_time())
+	if beam_timer > 0.0 or ride_timer > 0.0:
+		max_step = minf(max_step, (BEAM_TURN if beam_timer > 0.0 else RIDE_TURN) * get_physics_process_delta_time())
 	var to := point - head.global_position
 	rotation.y = rotate_toward(rotation.y, atan2(-to.x, -to.z), max_step)
 	var pitch := atan2(to.y, Vector2(to.x, to.z).length())
