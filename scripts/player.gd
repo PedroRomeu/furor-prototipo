@@ -47,7 +47,7 @@ const BASE_STATS := {
 	"slide_boost": 1.0,
 	# Tiro no estilo ROUNDS: poucas balas por pente, cada uma pesa (3 acertos matam),
 	# projétil visível que cai com a distância.
-	"damage": 34.0,
+	"damage": 25.0,   # 4 tiros na vida base (2026-10-07; era 34)
 	"fire_interval": 0.3,
 	"mag_size": 4,
 	"reload_time": 1.3,
@@ -305,7 +305,7 @@ const SHIELD_HIT_RADIUS := 0.9
 # Vazio (Arena.VOID_Y, 1 m abaixo do chão): quem cai quica e leva dano. O quique normal é
 # baixo e curto: perto da borda dá para voltar, longe precisa de vários (e cada um fere).
 # Com o escudo de pé na hora, não leva dano e o quique é alto e longo.
-const VOID_DAMAGE := 20.0
+const VOID_DAMAGE := 15.0
 const VOID_BOUNCE := 11.1         # sobe ~2 m (1 m acima do chão), ~0,7 s no ar
 const VOID_BOUNCE_SHIELD := 18.7  # sobe ~5,8 m, ~1,2 s no ar
 const VOID_CREDIT := 4.0          # quem acertou você nestes segundos leva o crédito da queda
@@ -367,13 +367,13 @@ const AMBUSH_COLOR := Color(0.72, 0.4, 1.0)
 const SLAM_SPEED := 32.0
 const SLAM_MIN_HEIGHT := 2.5
 const SLAM_RANGE := 5.0
-const SLAM_DAMAGE := 25.0
+const SLAM_DAMAGE := 20.0
 ## Pisão (2026-10-06, ideia do usuário; números meus): cair na cabeça de um inimigo, pulando
 ## ou no dash pelo ar, fere e quica para cima, devolvendo o dash e os pulos no ar (escolha
 ## dele) para emendar outro pisão. No dash a área é mais generosa: de lado é difícil
 ## acertar a cabeça. A mesma pessoa só leva outro pisão depois de STOMP_REPEAT.
-const STOMP_DAMAGE := 25.0
-const STOMP_DAMAGE_STEP := 15.0   # por cópia a mais
+const STOMP_DAMAGE := 20.0
+const STOMP_DAMAGE_STEP := 10.0   # por cópia a mais
 const STOMP_BOUNCE := 14.0        # sobe ~3,3 m com GRAVITY_RISE
 const STOMP_REPEAT := 0.5
 ## Caído no 2x2 (2026-10-06, pedido do usuário; números meus, com base no Apex, que revive
@@ -406,11 +406,11 @@ const ROCKET_EXPLOSION := 4.0
 const LAST_STAND_TIME := 3.0     # Último Suspiro
 ## Sniper (2026-10-06, desenho do usuário; números meus): Q dá a sniper por SNIPER_TIME
 ## ou até o único tiro. O tiro é um laser: reto, SNIPER_SPEED (quase instantâneo),
-## atravessa todas as paredes e causa SNIPER_DAMAGE x o dano da arma (3x 34 = 102: mata
+## atravessa todas as paredes e causa SNIPER_DAMAGE x o dano da arma (4x 25 = 100: mata
 ## quem tem a vida base). Botão direito mira com zoom (campo de visão SCOPE_FOV, mouse
 ## mais lento na mesma proporção, anda a SCOPE_SPEED).
 const SNIPER_TIME := 8.0
-const SNIPER_DAMAGE := 3.0
+const SNIPER_DAMAGE := 4.0
 const SNIPER_SPEED := 400.0
 const SNIPER_DRAW := 0.35        # tempo para sacar a sniper antes de poder atirar
 const SNIPER_COLOR := Color(1.0, 0.35, 0.3)
@@ -448,7 +448,7 @@ const SHRINK_TIME := 6.0
 const SHRINK_SCALE := 0.4
 const SHRINK_SPEED := 0.6
 const SHRINK_SLAM_RANGE := 4.0
-const SHRINK_SLAM_DAMAGE := 20.0
+const SHRINK_SLAM_DAMAGE := 15.0
 const SHRINK_SLAM_PUSH := 1.25    # empurrão um pouco maior que o da Onda de Choque (pedido do usuário: nada exagerado)
 const PIERCE_SHOTS := 3          # Perfurante: tiros por uso...
 const PIERCE_SPEED := 3.0        # ...quantas vezes mais rápidos
@@ -479,8 +479,8 @@ const HOOK_HOLD_DIST := 2.0
 const HOOK_HOLD_SIDE := 0.9    # à direita de quem segura: no meio da tela tapava a mira
 const HOOK_THROW := 25.0
 const HOOK_THROW_LIFT := 6.0   # arco do arremesso (~0,5 s no ar, ~12 m em campo aberto)
-const HOOK_IMPACT := 30.0
-const HOOK_ESCAPE := 40.0
+const HOOK_IMPACT := 22.0
+const HOOK_ESCAPE := 30.0
 const HOOK_MISS_CD := 6.0
 const HOOK_CARRY_SPEED := 0.7
 const HOOK_COLOR := Color(0.75, 0.75, 0.8)
@@ -504,7 +504,7 @@ const BEAM_CHARGE_SPEED := 0.4
 const BEAM_TIME := 2.5
 const BEAM_RANGE := 40.0
 const BEAM_RADIUS := 0.8
-const BEAM_DAMAGE := 30.0
+const BEAM_DAMAGE := 22.0
 ## Empurrão para FORA do raio (escolha do usuário, 2026-10-06: empurrando ao longo, o
 ## alvo seguia na linha e levava 4 toques seguidos sem a mira se mexer).
 const BEAM_PUSH_SIDE := 20.0
@@ -545,7 +545,7 @@ const RIDE_TURN := deg_to_rad(45.0)
 const RIDE_JUMP := 10.0
 const ROCKET_FREE_SPEED := 40.0
 const ROCKET_FREE_TIME := 2.0
-const ROCKET_BLAST_DAMAGE := 60.0
+const ROCKET_BLAST_DAMAGE := 45.0
 const ROCKET_BLAST_RADIUS := 5.0
 const ROCKET_LIFT := 14.0      # quem estava montado quando explodiu é lançado para cima
 const ROCKET_COLOR := Color(1.0, 0.55, 0.2)
@@ -559,11 +559,11 @@ var ride_fx: Node3D
 ## dá SPLAT_DAMAGE e deixa tonto (DAZE_TIME: lento e sem atirar).
 const SLAP_RANGE := 2.5
 const SLAP_ARC := 50.0
-const SLAP_DAMAGE := 15.0
+const SLAP_DAMAGE := 10.0
 const SLAP_PUSH := 22.0
 const SLAP_LIFT := 12.0
 const SLAP_FLIGHT := 1.0
-const SPLAT_DAMAGE := 25.0
+const SPLAT_DAMAGE := 20.0
 const SPLAT_MIN_SPEED := 6.0
 const DAZE_TIME := 0.6
 const DAZE_SLOW := 0.5
@@ -3987,7 +3987,7 @@ func _activate_shield() -> void:
 		Effects.burst(get_parent(), chest(), SHOCKWAVE_RANGE, Color(0.5, 0.9, 1.0))
 		for enemy in enemies():
 			if chest().distance_to(enemy.chest()) < SHOCKWAVE_RANGE:
-				enemy.remote_call("receive_shockwave", [global_position, 10.0 * stats["shield_shockwave"], String(name)])
+				enemy.remote_call("receive_shockwave", [global_position, 8.0 * stats["shield_shockwave"], String(name)])
 	var nova: int = stats["shield_nova"]
 	for k in nova:
 		var dir := _flat_forward().rotated(Vector3.UP, TAU * k / nova)

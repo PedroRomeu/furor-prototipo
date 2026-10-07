@@ -413,8 +413,8 @@ func _on_me_damaged(amount: float, from: Player) -> void:
 
 ## O X cresce com o dano do acerto (vários no mesmo quadro, como na escopeta, somam).
 func _on_damage_dealt(amount: float, lethal: bool) -> void:
-	var stacked := amount + (hit_size * 34.0 if hit_time >= HIT_SHOW - 0.02 else 0.0)
-	hit_size = clampf(stacked / 34.0, 0.8, 1.6)
+	var stacked := amount + (hit_size * float(Player.BASE_STATS["damage"]) if hit_time >= HIT_SHOW - 0.02 else 0.0)
+	hit_size = clampf(stacked / float(Player.BASE_STATS["damage"]), 0.8, 1.6)
 	hit_time = HIT_SHOW
 	if lethal:
 		kill_time = KILL_SHOW

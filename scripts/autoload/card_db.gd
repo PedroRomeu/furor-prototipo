@@ -95,22 +95,22 @@ const MASTERS := {
 		"mods": [{"stat": "sword", "add": 1}]},
 	# Sniper (2026-10-06, desenho do usuário; números meus): como a Bazuca, troca de arma no Q.
 	"sniper": {"name": "Sniper", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 15.0,
-		"desc": "Q: troca a arma por uma sniper com UM tiro, por até 8 s. O tiro é um laser: reto, quase instantâneo, atravessa todas as paredes e causa 3x o dano. Botão direito mira com zoom. Recarga de 15 s.",
+		"desc": "Q: troca a arma por uma sniper com UM tiro, por até 8 s. O tiro é um laser: reto, quase instantâneo, atravessa todas as paredes e causa 4x o dano (100 na base). Botão direito mira com zoom. Recarga de 15 s.",
 		"mods": [{"stat": "sniper", "add": 1}]},
 	# Canhão Arcano (2026-10-06, desenho do usuário, "tipo Kamehameha"; números meus,
 	# aprovados; andar devagar na carga foi escolha dele).
 	"canhao_arcano": {"name": "Canhão Arcano", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 24.0,
-		"desc": "Q: carrega por 1 s (andando devagar) e solta um raio de 40 m por 2,5 s, que atravessa paredes. Parado, no chão ou flutuando no ar, você mira devagar. Cada toque causa 30 de dano e arremessa o alvo para fora do raio (o mesmo alvo a cada 0,6 s). Escudo levantado bloqueia o dano. Levar tapa, congelar ou morrer corta o raio. Recarga de 24 s.",
+		"desc": "Q: carrega por 1 s (andando devagar) e solta um raio de 40 m por 2,5 s, que atravessa paredes. Parado, no chão ou flutuando no ar, você mira devagar. Cada toque causa 22 de dano e arremessa o alvo para fora do raio (o mesmo alvo a cada 0,6 s). Escudo levantado bloqueia o dano. Levar tapa, congelar ou morrer corta o raio. Recarga de 24 s.",
 		"mods": [{"stat": "beam", "add": 1}]},
 	# Chuva de Meteoros (2026-10-06, ideia do usuário; números meus, aprovados; ignorar
 	# telhados foi escolha dele).
 	"chuva_de_meteoros": {"name": "Chuva de Meteoros", "cat": "Balas", "rarity": "mitico", "master": true, "cooldown": 16.0,
-		"desc": "Q: os próximos 3 tiros (em até 8 s) marcam o chão onde batem. 1,5 s depois cai um meteoro em cada marca: 45 de dano no centro, até 4 m, e empurra. A marca aparece para todos. Recarga de 16 s.",
+		"desc": "Q: os próximos 3 tiros (em até 8 s) marcam o chão onde batem. 1,5 s depois cai um meteoro em cada marca: 35 de dano no centro, até 4 m, e empurra. A marca aparece para todos. Recarga de 16 s.",
 		"mods": [{"stat": "meteor", "add": 1}]},
 	# Foguete (2026-10-06, desenho do usuário; números meus, aprovados; subir e descer,
 	# explodir montado ao bater e o grupo Arma foram escolhas dele).
 	"foguete": {"name": "Foguete", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 18.0,
-		"desc": "Q: monta num foguete que voa sempre para a frente (12 m/s) e vira bem devagar, por até 5 s. Q de novo: você salta e o foguete segue reto, acelera muito e explode no primeiro contato. Montado, ele explode se bater numa parede, encostar num inimigo ou o tempo acabar (você é lançado para cima, sem dano). Explosão de 60 no centro, até 5 m. Recarga de 18 s.",
+		"desc": "Q: monta num foguete que voa sempre para a frente (12 m/s) e vira bem devagar, por até 5 s. Q de novo: você salta e o foguete segue reto, acelera muito e explode no primeiro contato. Montado, ele explode se bater numa parede, encostar num inimigo ou o tempo acabar (você é lançado para cima, sem dano). Explosão de 45 no centro, até 5 m. Recarga de 18 s.",
 		"mods": [{"stat": "rocket_ride", "add": 1}]},
 	"perfurante": {"name": "Perfurante", "cat": "Balas", "rarity": "mitico", "master": true, "cooldown": 12.0,
 		"desc": "Q: os próximos 3 tiros vão retos, sem queda, 3x mais rápidos e atravessando paredes. Recarga de 12 s.",
@@ -126,12 +126,12 @@ const MASTERS := {
 	# Mega Tapa (2026-10-06, ideia do usuário: tirar quem joga de perto; números meus e o
 	# impacto na parede, escolhido por ele entre 3 extras).
 	"mega_tapa": {"name": "Mega Tapa", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 10.0,
-		"desc": "Q: um tapa à frente (2,5 m) que causa 15 de dano e arremessa longe e para cima. Se o arremessado bater numa parede no voo, leva mais 25 e fica tonto por 0,6 s (lento e sem atirar). Escudo levantado bloqueia. Recarga de 10 s.",
+		"desc": "Q: um tapa à frente (2,5 m) que causa 10 de dano e arremessa longe e para cima. Se o arremessado bater numa parede no voo, leva mais 20 e fica tonto por 0,6 s (lento e sem atirar). Escudo levantado bloqueia. Recarga de 10 s.",
 		"mods": [{"stat": "slap", "add": 1}]},
 	# Gancho (2026-10-06, ideia do usuário: fundiu as minhas propostas de gancho e de
 	# agarrar e arremessar; números meus, aprovados).
 	"gancho": {"name": "Gancho", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 16.0,
-		"desc": "Q: lança um gancho (até 20 m) que puxa o inimigo até a sua frente e o segura por até 3 s: você anda a 70% e não atira; ele não age. Clique ou Q arremessa na mira: bater numa parede dá 30 e deixa tonto; bater em outro jogador dá 30 nos dois. Levar 40 de dano segurando solta. Escudo levantado bloqueia o gancho. Recarga de 16 s (6 s se errar).",
+		"desc": "Q: lança um gancho (até 20 m) que puxa o inimigo até a sua frente e o segura por até 3 s: você anda a 70% e não atira; ele não age. Clique ou Q arremessa na mira: bater numa parede dá 22 e deixa tonto; bater em outro jogador dá 22 nos dois. Levar 30 de dano segurando solta. Escudo levantado bloqueia o gancho. Recarga de 16 s (6 s se errar).",
 		"mods": [{"stat": "hook", "add": 1}]},
 	"ultimo_suspiro": {"name": "Último Suspiro", "cat": "Corpo", "rarity": "mitico", "master": true,
 		"desc": "Uma vez por rodada, o golpe fatal te deixa com 1 de vida e sem morrer por 3 s. Abata alguém nesse tempo e volte com metade da vida.",
@@ -154,7 +154,7 @@ const MASTERS := {
 		"desc": "Q no ar: cria uma plataforma sob os seus pés e, por 6 s, pular no ar sem pulos sobrando cria outra (até 4 no total). Cada plataforma dura 5 s; qualquer jogador pode pisar nelas, e as balas atravessam. Recarga de 12 s depois que acaba.",
 		"mods": [{"stat": "platforms", "add": 1}]},
 	"formiga": {"name": "Formiga", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 16.0,
-		"desc": "Q: por 6 s você fica com 40% do tamanho (mais difícil de acertar) e 60% mais rápido. Q de novo volta antes. Ao voltar ao tamanho, um impacto empurra quem estiver a até 4 m e causa 20 de dano. Recarga de 16 s.",
+		"desc": "Q: por 6 s você fica com 40% do tamanho (mais difícil de acertar) e 60% mais rápido. Q de novo volta antes. Ao voltar ao tamanho, um impacto empurra quem estiver a até 4 m e causa 15 de dano. Recarga de 16 s.",
 		"mods": [{"stat": "shrink", "add": 1}]},
 	# Caos (2026-10-06, ideia do usuário; ritmo meu, aprovado; grupo Balas, escolha minha
 	# com o voto dele de manter os 5 grupos): sorteia outra mestra. Entram todas as de
@@ -229,8 +229,8 @@ const HEALTH_SIZE_EXP := 0.3
 var CARDS := {
 	# Arma
 	"calibre_pesado": {"name": "Calibre Pesado", "cat": "Arma", "rarity": "comum",
-		"desc": "+35% de dano, mas atira 10% mais devagar.",
-		"mods": [{"stat": "damage", "mul": 1.35}, {"stat": "fire_interval", "mul": 1.1}]},
+		"desc": "+30% de dano, mas atira 10% mais devagar.",
+		"mods": [{"stat": "damage", "mul": 1.3}, {"stat": "fire_interval", "mul": 1.1}]},
 	"gatilho_leve": {"name": "Gatilho Leve", "cat": "Arma", "rarity": "comum",
 		"desc": "Atira 30% mais rápido, -10% de dano.",
 		"mods": [{"stat": "fire_interval", "mul": 0.7}, {"stat": "damage", "mul": 0.9}]},
@@ -244,18 +244,18 @@ var CARDS := {
 		"desc": "Balas 50% mais rápidas.",
 		"mods": [{"stat": "bullet_speed", "mul": 1.5}]},
 	"cano_duplo": {"name": "Cano Duplo", "cat": "Arma", "rarity": "raro",
-		"desc": "+1 bala por tiro e +1 no pente, -25% de dano.",
-		"mods": [{"stat": "bullet_count", "add": 1}, {"stat": "mag_size", "add": 1}, {"stat": "damage", "mul": 0.75}]},
-	"escopeta": {"name": "Escopeta", "cat": "Arma", "rarity": "raro",
-		"desc": "+4 balas por tiro, bem abertas. -55% de dano, +2 no pente.",
+		"desc": "+1 bala por tiro e +1 no pente, -35% de dano.",
+		"mods": [{"stat": "bullet_count", "add": 1}, {"stat": "mag_size", "add": 1}, {"stat": "damage", "mul": 0.65}]},
+	"escopeta": {"name": "Escopeta", "cat": "Arma", "rarity": "raro", "max": 1,
+		"desc": "+4 balas por tiro, bem abertas. -70% de dano, +2 no pente.",
 		"mods": [{"stat": "bullet_count", "add": 4}, {"stat": "spread", "add": 3.0},
-			{"stat": "mag_size", "add": 2}, {"stat": "damage", "mul": 0.45}]},
+			{"stat": "mag_size", "add": 2}, {"stat": "damage", "mul": 0.3}]},
 	"rajada": {"name": "Rajada", "cat": "Arma", "rarity": "raro",
-		"desc": "Cada tiro vira uma rajada de 3, gastando 1 bala. -40% de dano.",
-		"mods": [{"stat": "burst", "add": 2}, {"stat": "damage", "mul": 0.6}]},
+		"desc": "Cada tiro vira uma rajada de 3, gastando 1 bala. -50% de dano.",
+		"mods": [{"stat": "burst", "add": 2}, {"stat": "damage", "mul": 0.5}]},
 	"combinar": {"name": "Combinar", "cat": "Arma", "rarity": "raro",
-		"desc": "+75% de dano, -2 balas no pente.",
-		"mods": [{"stat": "damage", "mul": 1.75}, {"stat": "mag_size", "add": -2}]},
+		"desc": "+60% de dano, -2 balas no pente.",
+		"mods": [{"stat": "damage", "mul": 1.6}, {"stat": "mag_size", "add": -2}]},
 	"transbordar": {"name": "Transbordar", "cat": "Arma", "rarity": "raro",
 		"desc": "+9 balas no pente, -33% de dano, recarga +0,8 s.",
 		"mods": [{"stat": "mag_size", "add": 9}, {"stat": "damage", "mul": 0.67}, {"stat": "reload_time", "add": 0.8}]},
@@ -263,8 +263,8 @@ var CARDS := {
 		"desc": "Balas 3x maiores e +25% de dano. Recarga +0,25 s.",
 		"mods": [{"stat": "bullet_radius", "mul": 3.0}, {"stat": "damage", "mul": 1.25}, {"stat": "reload_time", "add": 0.25}]},
 	"bala_de_canhao": {"name": "Bala de Canhão", "cat": "Arma", "rarity": "raro",
-		"desc": "+60% de dano e balas 2x maiores, mas 40% mais lentas.",
-		"mods": [{"stat": "damage", "mul": 1.6}, {"stat": "bullet_radius", "mul": 2.0}, {"stat": "bullet_speed", "mul": 0.6}]},
+		"desc": "+50% de dano e balas 2x maiores, mas 40% mais lentas.",
+		"mods": [{"stat": "damage", "mul": 1.5}, {"stat": "bullet_radius", "mul": 2.0}, {"stat": "bullet_speed", "mul": 0.6}]},
 	"imprudente": {"name": "Imprudente", "cat": "Arma", "rarity": "epico",
 		"desc": "Atira 2x mais rápido. Recarga 50% mais lenta e -15% de vida.",
 		"mods": [{"stat": "fire_interval", "mul": 0.5}, {"stat": "reload_time", "mul": 1.5}, {"stat": "max_health", "mul": 0.85}]},
@@ -305,8 +305,8 @@ var CARDS := {
 		"desc": "As balas explodem ao bater (raio de 3 m). -15% de dano.",
 		"mods": [{"stat": "explosion", "add": 3.0}, {"stat": "damage", "mul": 0.85}]},
 	"veneno": {"name": "Veneno", "cat": "Balas", "rarity": "raro",
-		"desc": "Quem você acerta perde mais 50% do dano ao longo de 3 s.",
-		"mods": [{"stat": "poison", "add": 0.5}]},
+		"desc": "Quem você acerta perde mais 35% do dano ao longo de 3 s.",
+		"mods": [{"stat": "poison", "add": 0.35}]},
 	"congelante": {"name": "Congelante", "cat": "Balas", "rarity": "raro",
 		"desc": "Quem você acerta fica 35% mais lento por 1,5 s.",
 		"mods": [{"stat": "slow", "add": 0.35}]},
@@ -398,7 +398,7 @@ var CARDS := {
 		"desc": "Levantar o escudo te lança para frente. Escudo +0,5 s de recarga.",
 		"mods": [{"stat": "shield_dash", "add": 1}, {"stat": "shield_cooldown", "add": 0.5}]},
 	"onda_de_choque": {"name": "Onda de Choque", "cat": "Escudo", "rarity": "raro",
-		"desc": "O escudo empurra o inimigo a até 8 m e causa 10 de dano. Escudo +1 s de recarga.",
+		"desc": "O escudo empurra o inimigo a até 8 m e causa 8 de dano. Escudo +1 s de recarga.",
 		"mods": [{"stat": "shield_shockwave", "add": 1}, {"stat": "shield_cooldown", "add": 1.0}]},
 	"restauracao": {"name": "Restauração", "cat": "Escudo", "rarity": "comum",
 		"desc": "Levantar o escudo cura 10 de vida. Escudo +0,5 s de recarga.",
@@ -421,8 +421,8 @@ var CARDS := {
 		"desc": "Quando o pente esvazia, o escudo levanta sozinho (se estiver pronto). Escudo +0,5 s de recarga.",
 		"mods": [{"stat": "shield_on_empty", "add": 1}, {"stat": "shield_cooldown", "add": 0.5}]},
 	"pancada": {"name": "Pancada", "cat": "Escudo", "rarity": "raro",
-		"desc": "Com o escudo de pé, quem estiver colado em você leva 25 de dano e é empurrado. Escudo +1 s de recarga.",
-		"mods": [{"stat": "shield_bash", "add": 25.0}, {"stat": "shield_cooldown", "add": 1.0}]},
+		"desc": "Com o escudo de pé, quem estiver colado em você leva 20 de dano e é empurrado. Escudo +1 s de recarga.",
+		"mods": [{"stat": "shield_bash", "add": 20.0}, {"stat": "shield_cooldown", "add": 1.0}]},
 	# Escudo Duplo (2026-10-07, pedido do usuário: sem o limite de 1 e repetindo os efeitos):
 	# cada cópia é uma levantada a mais, 0,5 s depois, com todos os efeitos. Os +30% vêm
 	# depois do teto das somas, então quanto mais efeitos no escudo, mais ela cobra: a partir
@@ -445,16 +445,16 @@ var CARDS := {
 	# Áreas do escudo (2026-10-06, cartas do Furor lembradas pelo usuário; números meus, dano
 	# fixo por escolha dele). Desde 2026-10-07 sem recarga própria: o custo é o +1 s no E.
 	"serra": {"name": "Serra", "cat": "Escudo", "rarity": "epico", "max": 3,
-		"desc": "O escudo faz uma serra girar em volta de você por 2 s: 24 de dano por segundo em quem estiver perto. Raio de 2,5 m, +1 m por cópia. Escudo +1 s de recarga.",
+		"desc": "O escudo faz uma serra girar em volta de você por 2 s: 18 de dano por segundo em quem estiver perto. Raio de 2,5 m, +1 m por cópia. Escudo +1 s de recarga.",
 		"mods": [{"stat": "shield_saw", "add": 1}, {"stat": "shield_cooldown", "add": 1.0}]},
 	"chamas": {"name": "Chamas", "cat": "Escudo", "rarity": "epico", "max": 3,
-		"desc": "O escudo acende um círculo de fogo em volta de você por 3 s, que te acompanha: quem estiver dentro queima (12 por segundo) e segue queimando 1 s depois de sair. Raio de 4 m, +1 m por cópia. Escudo +1 s de recarga.",
+		"desc": "O escudo acende um círculo de fogo em volta de você por 3 s, que te acompanha: quem estiver dentro queima (9 por segundo) e segue queimando 1 s depois de sair. Raio de 4 m, +1 m por cópia. Escudo +1 s de recarga.",
 		"mods": [{"stat": "shield_flames", "add": 1}, {"stat": "shield_cooldown", "add": 1.0}]},
 	"geada": {"name": "Geada", "cat": "Escudo", "rarity": "epico", "max": 3,
-		"desc": "O escudo solta uma onda de gelo de 5 m: 8 de dano e 45% mais lento por 2 s. Mais cópias: +1,5 m e +0,5 s. Escudo +1 s de recarga.",
+		"desc": "O escudo solta uma onda de gelo de 5 m: 6 de dano e 45% mais lento por 2 s. Mais cópias: +1,5 m e +0,5 s. Escudo +1 s de recarga.",
 		"mods": [{"stat": "shield_frost", "add": 1}, {"stat": "shield_cooldown", "add": 1.0}]},
 	"mina": {"name": "Mina", "cat": "Escudo", "rarity": "epico", "max": 3,
-		"desc": "O escudo larga uma bomba no chão que pisca e explode 1 s depois: 40 de dano (metade na borda), raio de 4 m. Mais cópias: +20 de dano e +0,5 m. Escudo +1 s de recarga.",
+		"desc": "O escudo larga uma bomba no chão que pisca e explode 1 s depois: 30 de dano (metade na borda), raio de 4 m. Mais cópias: +15 de dano e +0,5 m. Escudo +1 s de recarga.",
 		"mods": [{"stat": "shield_mine", "add": 1}, {"stat": "shield_cooldown", "add": 1.0}]},
 
 	# Corpo
@@ -462,8 +462,8 @@ var CARDS := {
 		"desc": "+40 de vida máxima.",
 		"mods": [{"stat": "max_health", "add": 40.0}]},
 	"fragil": {"name": "Frágil", "cat": "Corpo", "rarity": "comum",
-		"desc": "+50% de dano, -25% de vida.",
-		"mods": [{"stat": "damage", "mul": 1.5}, {"stat": "max_health", "mul": 0.75}]},
+		"desc": "+40% de dano, -25% de vida.",
+		"mods": [{"stat": "damage", "mul": 1.4}, {"stat": "max_health", "mul": 0.75}]},
 	"tanque": {"name": "Tanque", "cat": "Corpo", "rarity": "comum",
 		"desc": "+60% de vida, 12% mais lento.",
 		"mods": [{"stat": "max_health", "mul": 1.6}, {"stat": "move_speed", "mul": 0.88}]},
@@ -515,7 +515,7 @@ var CARDS := {
 		"desc": "As balas explodem (raio de 2 m), e suas explosões te lançam longe sem te ferir.",
 		"mods": [{"stat": "rocket_jump", "add": 1}, {"stat": "explosion", "add": 2.0}]},
 	"meteoro": {"name": "Meteoro", "cat": "Movimento", "rarity": "epico",
-		"desc": "No alto, olhe para baixo e aperte Ctrl para despencar: ao bater no chão, 25 de dano e empurrão a até 5 m.",
+		"desc": "No alto, olhe para baixo e aperte Ctrl para despencar: ao bater no chão, 20 de dano e empurrão a até 5 m.",
 		"mods": [{"stat": "ground_slam", "add": 1}]},
 	"folego": {"name": "Fôlego", "cat": "Movimento", "rarity": "comum",
 		"desc": "O dash volta 40% mais rápido.",
@@ -527,8 +527,8 @@ var CARDS := {
 		"desc": "Durante o dash as balas te atravessam. O dash volta 0,3 s mais devagar.",
 		"mods": [{"stat": "dash_dodge", "add": 1}, {"stat": "dash_cooldown", "add": 0.3}]},
 	"atropelar": {"name": "Atropelar", "cat": "Movimento", "rarity": "raro",
-		"desc": "Passar por um inimigo no dash causa 20 de dano e o empurra.",
-		"mods": [{"stat": "dash_hit", "add": 20.0}]},
+		"desc": "Passar por um inimigo no dash causa 15 de dano e o empurra.",
+		"mods": [{"stat": "dash_hit", "add": 15.0}]},
 	"saque_rapido": {"name": "Saque Rápido", "cat": "Movimento", "rarity": "raro",
 		"desc": "Cada dash põe 2 balas no pente.",
 		"mods": [{"stat": "dash_ammo", "add": 2}]},
@@ -546,7 +546,7 @@ var CARDS := {
 		"mods": [{"stat": "jump_velocity", "mul": 1.2}, {"stat": "max_health", "mul": 0.9}]},
 	# Pisão (2026-10-06, ideia do usuário; números meus). Código em Player._check_stomp.
 	"pisao": {"name": "Pisão", "cat": "Movimento", "rarity": "raro", "max": 3,
-		"desc": "Cair na cabeça de um inimigo (pulando ou no dash pelo ar) causa 25 de dano e te quica para cima, devolvendo o dash e os pulos no ar. +15 de dano por cópia.",
+		"desc": "Cair na cabeça de um inimigo (pulando ou no dash pelo ar) causa 20 de dano e te quica para cima, devolvendo o dash e os pulos no ar. +10 de dano por cópia.",
 		"mods": [{"stat": "stomp", "add": 1}]},
 }
 
@@ -736,7 +736,12 @@ func compute_stats(base: Dictionary, card_ids: Array) -> Dictionary:
 		if stat != "shield_cooldown":
 			stats[stat] *= muls[stat]
 	for stat in HIGHER_BETTER:
-		stats[stat] = maxf(stats[stat], PENALTY_FLOOR_ABS.get(stat, base[stat] * PENALTY_FLOOR))
+		var floor_value: float = PENALTY_FLOOR_ABS.get(stat, base[stat] * PENALTY_FLOOR)
+		if stat == "damage":
+			# O piso do dano vale para o clique inteiro (2026-10-07): com várias balas por
+			# tiro, cada uma pode ficar abaixo dele. Senão Escopetas somadas passavam de 4x.
+			floor_value /= maxf(1.0, stats["bullet_count"]) * maxf(1.0, stats["burst"])
+		stats[stat] = maxf(stats[stat], floor_value)
 	for stat in LOWER_BETTER:
 		var ceil_value: float = SHIELD_COST_MAX if stat == "shield_cooldown" else base[stat] * PENALTY_CEIL
 		stats[stat] = minf(stats[stat], ceil_value)

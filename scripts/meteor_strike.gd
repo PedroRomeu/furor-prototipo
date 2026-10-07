@@ -9,7 +9,7 @@ const DELAY := 1.5
 const FALL := 0.4          # o meteoro aparece nos últimos FALL segundos e cai
 const FALL_HEIGHT := 30.0
 const RADIUS := 4.0
-const DAMAGE := 45.0       # no centro; 50% na borda
+const DAMAGE := 35.0       # no centro; 50% na borda
 const COLOR := Color(1.0, 0.5, 0.15)
 const RING_SHADER := """
 shader_type spatial;

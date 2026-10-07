@@ -27,7 +27,7 @@ const SAW_TIME := 2.0
 const SAW_RADIUS := 2.5
 const SAW_RADIUS_STEP := 1.0
 const SAW_TICK := 0.33
-const SAW_DAMAGE := 8.0        # por toque: uns 24 por segundo
+const SAW_DAMAGE := 6.0        # por toque: uns 18 por segundo
 const SAW_SPIN := 14.0         # rad/s
 # Chamas: acompanham o dono (escolha do usuário); quem fica dentro queima e continua
 # queimando um pouco depois de sair (Player.apply_burn).
@@ -35,12 +35,12 @@ const FLAMES_TIME := 3.0
 const FLAMES_RADIUS := 4.0
 const FLAMES_RADIUS_STEP := 1.0
 const FLAMES_TICK := 0.25
-const FLAMES_DPS := 12.0
+const FLAMES_DPS := 9.0
 const BURN_AFTER := 1.0
 # Geada: onda instantânea.
 const FROST_RADIUS := 5.0
 const FROST_RADIUS_STEP := 1.5
-const FROST_DAMAGE := 8.0
+const FROST_DAMAGE := 6.0
 const FROST_SLOW := 0.45
 const FROST_TIME := 2.0
 const FROST_TIME_STEP := 0.5
@@ -48,8 +48,8 @@ const FROST_TIME_STEP := 0.5
 const MINE_FUSE := 1.0
 const MINE_RADIUS := 4.0
 const MINE_RADIUS_STEP := 0.5
-const MINE_DAMAGE := 40.0
-const MINE_DAMAGE_STEP := 20.0
+const MINE_DAMAGE := 30.0
+const MINE_DAMAGE_STEP := 15.0
 # Nuvem Tóxica: por segundo, CLOUD_DPS x o dano da bala que a criou.
 const CLOUD_TIME := 3.0
 const CLOUD_TIME_STEP := 1.0

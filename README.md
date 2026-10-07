@@ -177,7 +177,7 @@ shows in a corner during the match.
   hold jump for a short rocket burst, refilled on landing) and **Formiga** (Movement, Q:
   6 s at 40% size and +60% speed; Q again to grow back early; growing back knocks away
   and hurts whoever is within 4 m).
-- Shooting: 4 bullets per magazine, 34 damage (3 hits kill), visible bullets that drop
+- Shooting: 4 bullets per magazine, 25 damage (4 hits kill), visible bullets that drop
   with distance. Aim a bit higher from afar. Reflected bullets fly straight. A bullet's size
   grows with its damage, also mid-flight (Bola de Neve, Tabelinha): huge bullets are
   possible. A bullet that already bounced off a wall can hit its shooter.
