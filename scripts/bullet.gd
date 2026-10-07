@@ -64,12 +64,16 @@ const SEEK_TURN_MIN := 4.0
 const SEEK_TURN_GAIN := 2.0
 const SEEK_TURN_K := 3.0
 const SEEK_COLOR := Color(0.1, 1.0, 0.25)   # saturado: o brilho (x2,2) deixa cor clara branca
-## Quique Certeiro (refeito em 2026-10-04: antes virava a bala direto para o inimigo em todo
-## quique, uma mira automática). Junta com a Teleguiada: n = 1 (a carta) + cópias de
-## Teleguiada. No quique a bala vira para o inimigo só até um ângulo, que cresce com
-## n / (n + k): n=1 19 graus, n=2 29, n=4 38, n=10 48. Depois do quique ela vira uma bala
-## teleguiada de força n (raio e curva de SEEK_*), mesmo que não tenha ganhado o sorteio.
-const BOUNCE_AIM_MAX := 1.0   # radianos
+## Quique Certeiro (refeito em 2026-10-04 e de novo em 2026-10-07). Junta com a Teleguiada:
+## n = 1 (a carta) + cópias de Teleguiada. Cada quique sorteia com a chance da Teleguiada de
+## força n (35% com n=1, teto 70%); ganhou, a bala vira para passar até BOUNCE_AIM_* metros
+## mais perto do inimigo (0,6 m com n=1, 1,1 com n=5, teto 1,5) e passa a procurá-lo como a
+## Teleguiada de força n. Perdeu, quica normal. Antes não havia sorteio e a virada era de até
+## 19 graus medidos da parede: com a parede longe a janela cobria metros e a bala ia direto no
+## peito. Simulação (inimigo a 8-25 m, parede 1-15 m atrás): erros de 0,65-2 m viravam acerto
+## 70% com 1 carta, de 2-4 m 46%; agora 32% e 8% (Teleguiada sozinha: 20% e 0%).
+const BOUNCE_AIM_MIN := 0.6    # metros
+const BOUNCE_AIM_GAIN := 0.9
 const BOUNCE_AIM_K := 2.0
 ## O tamanho acompanha o dano, de leve (como no Furor): dano dobrado = bala 41% maior.
 ## Vale no disparo (crítico e Última Bala saem maiores) e durante o voo (Bola de Neve,
@@ -626,17 +630,24 @@ func _bounce(point: Vector3, normal: Vector3) -> void:
 		_scale_damage((1.0 + bounce_damage * bounce_hits) / (1.0 + bounce_damage * (bounce_hits - 1)))
 	var dir := velocity.normalized().bounce(normal)
 	var enemy := _enemy()
-	if target_bounce > 0.0:
+	if target_bounce > 0.0 and _bounce_roll() < _seek_term(target_bounce, SEEK_CHANCE_MIN, SEEK_CHANCE_GAIN, SEEK_CHANCE_K):
 		seek = maxf(seek, target_bounce)
 		if enemy:
-			var to_enemy := (enemy.chest() - point).normalized()
-			var limit := BOUNCE_AIM_MAX * target_bounce / (target_bounce + BOUNCE_AIM_K)
+			var to := enemy.chest() - point
+			var to_enemy := to.normalized()
+			var limit := atan(_seek_term(target_bounce, BOUNCE_AIM_MIN, BOUNCE_AIM_GAIN, BOUNCE_AIM_K) / maxf(to.length(), 0.1))
 			var angle := dir.angle_to(to_enemy)
 			if to_enemy.dot(normal) > 0.0 and angle > 0.001:
 				dir = dir.slerp(to_enemy, minf(1.0, limit / angle)).normalized()
 	velocity = dir * velocity.length()
 	global_position = point + normal * 0.05
 	_orient()
+
+
+
+## Sorteio do Quique Certeiro, igual em todas as máquinas: sai do id da bala e do quique.
+func _bounce_roll() -> float:
+	return float(absi(hash("%s:%d" % [id, bounces])) % 10000) / 10000.0
 
 
 ## Fragmentação: estilhaços menores saem da parede em leque. Só a máquina de quem atirou

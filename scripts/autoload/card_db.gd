@@ -322,7 +322,7 @@ var CARDS := {
 		"desc": "As balas empurram quem levar o tiro. Recarga +0,25 s.",
 		"mods": [{"stat": "knockback", "add": 12.0}, {"stat": "reload_time", "add": 0.25}]},
 	"quique_certeiro": {"name": "Quique Certeiro", "cat": "Balas", "rarity": "epico", "max": 1,
-		"desc": "+1 quique. Ao quicar, a bala vira um pouco para o inimigo e passa a procurá-lo como a Teleguiada. Cópias de Teleguiada deixam isso mais forte. -20% de dano.",
+		"desc": "+1 quique. Ao quicar, a bala pode virar um pouco para o inimigo e passar a procurá-lo como a Teleguiada (35% de chance). Cópias de Teleguiada deixam isso mais forte. -20% de dano.",
 		"mods": [{"stat": "target_bounce", "add": 1}, {"stat": "bounces", "add": 1}, {"stat": "damage", "mul": 0.8}]},
 	"atordoante": {"name": "Atordoante", "cat": "Balas", "rarity": "epico", "max": 1,
 		"desc": "Acertar o inimigo bloqueia o escudo dele por 1,5 s. Atira 10% mais devagar.",
