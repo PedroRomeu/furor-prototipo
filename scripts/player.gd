@@ -518,6 +518,8 @@ const ROCKET_BLAST_DAMAGE := 60.0
 const ROCKET_BLAST_RADIUS := 5.0
 const ROCKET_LIFT := 14.0      # quem estava montado quando explodiu é lançado para cima
 const ROCKET_COLOR := Color(1.0, 0.55, 0.2)
+const ROCKET_FAT := 0.5        # raio do corpo do foguete montado
+const RIDE_LIFT := 0.6         # sobe ao montar, para o foguete caber embaixo
 var ride_timer := 0.0
 var ride_age := 0.0
 var ride_fx: Node3D
@@ -3118,6 +3120,8 @@ func _start_ride() -> void:
 	ride_timer = RIDE_TIME
 	ride_age = 0.0
 	beam_aim = Vector2(look_yaw, clampf(head.rotation.x, -RIDE_PITCH, RIDE_PITCH))
+	if is_on_floor():
+		global_position.y += RIDE_LIFT
 	reveal()
 	sliding = false
 	dash_timer = 0.0
@@ -3248,17 +3252,22 @@ func _ride_visual(on: bool) -> void:
 		var flame := StandardMaterial3D.new()
 		flame.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		flame.albedo_color = Color(1.0, 0.7, 0.2)
+		# Gordo (pedido do usuário: o primeiro, de 0,28 m de raio, ficou fininho).
 		var tube := CylinderMesh.new()
-		tube.top_radius = 0.28; tube.bottom_radius = 0.28; tube.height = 2.2; tube.radial_segments = 12
+		tube.top_radius = ROCKET_FAT; tube.bottom_radius = ROCKET_FAT; tube.height = 2.4; tube.radial_segments = 14
 		tube.material = body
 		var nose := CylinderMesh.new()
-		nose.top_radius = 0.0; nose.bottom_radius = 0.28; nose.height = 0.6; nose.radial_segments = 12
+		nose.top_radius = 0.0; nose.bottom_radius = ROCKET_FAT; nose.height = 0.9; nose.radial_segments = 14
 		nose.material = red
 		var fire := CylinderMesh.new()
-		fire.top_radius = 0.22; fire.bottom_radius = 0.0; fire.height = 0.7; fire.radial_segments = 8
+		fire.top_radius = ROCKET_FAT * 0.8; fire.bottom_radius = 0.0; fire.height = 0.9; fire.radial_segments = 10
 		fire.material = flame
-		# [malha, posição ao longo do foguete (+ = frente)]
-		_rocket_parts = [[tube, 0.0], [nose, 1.4], [fire, -1.45]]
+		var fin := BoxMesh.new()
+		fin.size = Vector3(0.08, 0.6, ROCKET_FAT * 1.1)
+		fin.material = red
+		# [malha, posição ao longo do foguete (+ = frente), giro da aleta em volta do eixo]
+		_rocket_parts = [[tube, 0.0, -1.0], [nose, 1.65, -1.0], [fire, -1.65, -1.0],
+			[fin, -0.95, 0.0], [fin, -0.95, PI / 2.0], [fin, -0.95, PI], [fin, -0.95, PI * 1.5]]
 	ride_fx = Node3D.new()
 	ride_fx.top_level = true
 	add_child(ride_fx)
@@ -3266,9 +3275,15 @@ func _ride_visual(on: bool) -> void:
 		var mi := MeshInstance3D.new()
 		mi.mesh = part[0]
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		# Cilindro em pé (Y): deita para apontar para -Z (frente do nó).
-		mi.rotation.x = -PI / 2.0
-		mi.position = Vector3(0, 0, -part[1])
+		if part[2] < 0.0:
+			# Cilindro em pé (Y): deita para apontar para -Z (frente do nó).
+			mi.rotation.x = -PI / 2.0
+			mi.position = Vector3(0, 0, -part[1])
+		else:
+			# Aleta: em volta do corpo, para fora a partir da superfície.
+			var out := Vector3(cos(part[2]), sin(part[2]), 0.0)
+			mi.rotation.z = part[2] + PI / 2.0
+			mi.position = Vector3(0, 0, -part[1]) + out * (ROCKET_FAT + 0.25)
 		ride_fx.add_child(mi)
 	_update_ride_fx()
 
@@ -3278,10 +3293,11 @@ func _update_ride_fx() -> void:
 	var up := Vector3.UP if absf(dir.y) < 0.99 else Vector3.BACK
 	if is_human:
 		# Na própria tela o foguete fica embaixo e à frente da câmera (nos pés não aparece).
-		var pos := camera.global_position + Vector3.DOWN * 0.75 + dir * 1.3
+		var pos := camera.global_position + Vector3.DOWN * 0.95 + dir * 1.6
 		ride_fx.global_transform = Transform3D(Basis.looking_at(dir, up).scaled(Vector3.ONE * 0.6), pos)
 		return
-	var pos := get_global_transform_interpolated().origin + Vector3.UP * 0.05 + dir * 0.3
+	# Logo abaixo dos pés (o jogador sobe RIDE_LIFT ao montar, para o foguete não entrar no chão).
+	var pos := get_global_transform_interpolated().origin + Vector3.UP * (0.05 - ROCKET_FAT) + dir * 0.3
 	ride_fx.global_transform = Transform3D(Basis.looking_at(dir, up), pos)
 
 
