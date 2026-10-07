@@ -100,6 +100,12 @@ func think(delta: float) -> void:
 	if p.sword_timer > 0.0:
 		_sword_fight(delta, foe, sees)
 		return
+	if p.slap_windup > 0.0:
+		# Mega Tapa: mão erguida, corre para cima do alvo até o tapa sair.
+		_set_move(_follow_path(delta, foe.global_position) if not sees else \
+			Vector3(foe.global_position.x - p.global_position.x, 0.0, foe.global_position.z - p.global_position.z).normalized())
+		p.look_at_point(foe.chest(), float(cfg["turn"]) * delta)
+		return
 	var wish := _movement(delta, foe, sees)
 	_aim_and_shoot(delta, foe, sees, wish)
 	_defend()

@@ -547,7 +547,7 @@ var beam_fx: Node3D
 const PLAT_MAX := 3
 const PLAT_LAUNCH := 14.0   # ~3,3 m de subida (o pulo normal sobe ~2,4)
 const PLAT_CHAIN := 2.0
-const PLAT_COOLDOWN := 6.0
+const PLAT_COOLDOWN := 8.0   # era 6 (2026-10-07, pedido do usuário: forte demais)
 var plat_left := PLAT_MAX
 var plat_chain := 0.0   # prazo para a próxima plataforma da sequência
 var plat_cd := 0.0      # recarga da passiva
@@ -579,11 +579,16 @@ const RIDE_LIFT := 0.6         # sobe ao montar, para o foguete caber embaixo
 var ride_timer := 0.0
 var ride_age := 0.0
 var ride_fx: Node3D
-## Mega Tapa (mestra): leque curto à frente; arremessa (SLAP_PUSH para o lado, SLAP_LIFT
-## para cima). Por SLAP_FLIGHT segundos, bater numa parede ainda rápido (SPLAT_MIN_SPEED)
+## Mega Tapa (mestra): Q ergue a mão por SLAP_WINDUP (aviso para o inimigo; anda normal,
+## sem atirar) e então o tapa sai no leque curto à frente; arremessa (SLAP_PUSH para o lado, SLAP_LIFT
+## para cima, sem controle no ar até pousar: slap_lock). Por SLAP_FLIGHT segundos, bater numa parede ainda rápido (SPLAT_MIN_SPEED)
 ## dá SPLAT_DAMAGE e deixa tonto (DAZE_TIME: lento e sem atirar).
-const SLAP_RANGE := 3.2   # era 2,5 (2026-10-07, pedido do usuário; recarga 10 -> 8 s)
+const SLAP_RANGE := 3.6   # era 2,5 e depois 3,2 (2026-10-07, pedidos do usuário; recarga 10 -> 8 s)
 const SLAP_ARC := 50.0
+const SLAP_SWIPE := 0.09    # a passada da mão (na tela e no modelo)
+const SLAP_GHOSTS := 4      # cópias do rastro por tapa
+const SLAP_GHOST_FADE := 0.18
+const SLAP_WINDUP := 0.6   # 2026-10-07, pedido do usuário (ele pensou em 1 s; 0,6 escolhido por ele)
 const SLAP_DAMAGE := 10.0
 const SLAP_PUSH := 22.0
 const SLAP_LIFT := 12.0
@@ -594,9 +599,14 @@ const DAZE_TIME := 0.6
 const DAZE_SLOW := 0.5
 const SLAP_COLOR := Color(1.0, 0.75, 0.55)
 var slap_flight := 0.0     # arremessado por um tapa: ainda pode bater na parede
+var slap_lock := false     # no voo do tapa: sem controle no ar e sem o teto MAX_HSPEED até pousar
 var slap_from := ""        # quem deu o tapa (crédito do impacto)
 var daze_timer := 0.0      # tonto: não atira
 var hand_pivot: Node3D     # primeira pessoa: a mão do tapa
+var hand_3p: Node3D        # terceira pessoa: a mão grande erguida (o aviso que os outros veem)
+var slap_windup := 0.0     # preparando o tapa (máquina dona)
+var _hand_tween: Tween
+var _hand_3p_tween: Tween
 ## Prisão de Gelo (mestra): caco reto que congela por ICE_TIME. Congelado: não age, não
 ## leva dano, desliza (ICE_FRICTION) e é empurrado por tiros (ICE_PUSH por ponto de dano,
 ## 5 m/s no tiro base de 25), explosões e encontrões (ice_shove). No vazio quica e o dano
@@ -950,7 +960,7 @@ func _build_viewmodel() -> void:
 	hand_pivot.visible = false
 	viewmodel.add_child(hand_pivot)
 	var hand := _make_hand()
-	hand.scale = Vector3.ONE * 1.3   # acompanha o alcance de 3,2 m (era 2,5)
+	hand.scale = Vector3.ONE * 1.5   # acompanha o alcance de 3,6 m (era 1,3 com 3,2 m)
 	_no_shadows(hand)
 	hand_pivot.add_child(hand)
 	muzzle = Marker3D.new()
@@ -973,6 +983,19 @@ func _build_body() -> void:
 	anim.play("idle")
 	_rigidify(model.find_children("*", "Skeleton3D", true, false)[0], skin_model(id))
 	body_meshes = model.find_children("*", "MeshInstance3D", true, false)
+	# Mão do Mega Tapa: dentro do modelo (acompanha tamanho e achatamento), num nó que desfaz
+	# o giro e a escala do modelo, para as posições serem em metros no espaço do jogador.
+	var holder := Node3D.new()
+	holder.rotation.y = PI
+	holder.scale = Vector3.ONE / MODEL_SCALE
+	model.add_child(holder)
+	hand_3p = Node3D.new()
+	hand_3p.visible = false
+	holder.add_child(hand_3p)
+	var big_hand := _make_hand()
+	big_hand.scale = Vector3.ONE * 3.0
+	_no_shadows(big_hand)
+	hand_3p.add_child(big_hand)
 	flash_mat = StandardMaterial3D.new()
 	flash_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	flash_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -1177,6 +1200,9 @@ func reset_for_round(spawn: Transform3D) -> void:
 	ice_debt = 0.0
 	_ice_visual(false)
 	slap_flight = 0.0
+	slap_lock = false
+	if slap_windup > 0.0:
+		_cancel_slap(false)
 	daze_timer = 0.0
 	_end_beam(false)
 	plat_left = PLAT_MAX
@@ -1745,6 +1771,13 @@ func _tick(delta: float) -> void:
 		_chaos_tick(delta)
 	speed_orb_timer = maxf(0.0, speed_orb_timer - delta)
 	daze_timer = maxf(0.0, daze_timer - delta)
+	if slap_windup > 0.0 and is_local:
+		if not alive or ice_timer > 0.0 or hooked_by or daze_timer > 0.0 or slap_lock or ride_timer > 0.0:
+			_cancel_slap()
+		else:
+			slap_windup -= delta
+			if slap_windup <= 0.0:
+				_slap()
 	if plat_chain > 0.0:
 		plat_chain -= delta
 		if plat_chain <= 0.0:
@@ -2048,6 +2081,8 @@ func _move(delta: float) -> void:
 		if dash_air:
 			velocity.y = 0.0
 		_dash_hits()
+	elif slap_lock:
+		pass   # voo do tapa: segurar para trás anulava o empurrão (medido: 17 m parado, 1 m voltando)
 	elif on_floor and sliding:
 		h = _friction(h, SLIDE_FRICTION, delta)
 		# Ladeira abaixo o deslize ganha velocidade.
@@ -2068,7 +2103,10 @@ func _move(delta: float) -> void:
 		h = _accelerate(h, wish, target, AIR_ACCEL * float(stats["air_control"]), delta)
 	if on_floor:
 		glided = false
-	h = h.limit_length(MAX_HSPEED)
+	if on_floor and velocity.y <= 0.0:
+		slap_lock = false
+	if not slap_lock:
+		h = h.limit_length(MAX_HSPEED)
 	velocity.x = h.x
 	velocity.z = h.z
 
@@ -2113,6 +2151,7 @@ func _check_wall() -> void:
 
 ## Dash: tiro curto e reto na direção em que anda (ou para a frente, sem tecla).
 func _start_dash(wish: Vector3, h: Vector3, target: float, air: bool) -> void:
+	slap_lock = false   # dash no voo do tapa devolve o controle (a fuga de quem levou)
 	dash_dir = wish.normalized() if wish != Vector3.ZERO else _flat_forward()
 	dash_timer = DASH_TIME * float(stats["dash_power"])
 	dash_cd = stats["dash_cooldown"]
@@ -2483,7 +2522,7 @@ func _act(delta: float) -> void:
 	shot_queued = maxf(0.0, shot_queued - delta)
 	if hook_state == 3 and (in_click or (in_shoot and not shoot_was) or in_master):
 		_hook_throw_now()
-	if daze_timer > 0.0 or beam_charge > 0.0 or beam_timer > 0.0 or hook_state >= 1:
+	if daze_timer > 0.0 or beam_charge > 0.0 or beam_timer > 0.0 or hook_state >= 1 or slap_windup > 0.0:
 		shot_queued = 0.0
 		shoot_was = in_shoot
 		return
@@ -2579,7 +2618,7 @@ func _chaos_tick(delta: float) -> void:
 		return
 	if bazooka_timer > 0.0 or sniper_timer > 0.0 or sword_timer > 0.0 or shrink_timer > 0.0 or pierce_left > 0 \
 			or beam_timer > 0.0 or beam_charge > 0.0 or meteor_left > 0 or ride_timer > 0.0 \
-			or hook_state > 0:
+			or hook_state > 0 or slap_windup > 0.0:
 		master_cd = CHAOS_WAIT
 	elif master_cd <= 0.0:
 		_chaos_draw()
@@ -2639,7 +2678,7 @@ func _use_master() -> void:
 	if stats["ice"] > 0:
 		_fire_ice()
 	if stats["slap"] > 0:
-		_slap()
+		_start_slap()
 	if stats["beam"] > 0:
 		_start_beam()
 	if stats["rocket_ride"] > 0:
@@ -3147,8 +3186,71 @@ func _place_ice_camera() -> void:
 
 # ---------------------------------------------------------------- Mega Tapa
 
+## Q: ergue a mão; o tapa sai sozinho em SLAP_WINDUP (_tick).
+func _start_slap() -> void:
+	slap_windup = SLAP_WINDUP
+	_show_windup(true)
+	if Net.online:
+		_net_windup.rpc(true)
+
+
+## Preparação cortada (morreu, congelou, foi fisgado, levou tapa, ficou tonto, montou).
+func _cancel_slap(send := true) -> void:
+	slap_windup = 0.0
+	_show_windup(false)
+	if send and Net.online and is_inside_tree():
+		_net_windup.rpc(false)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_windup(on: bool) -> void:
+	_show_windup(on)
+
+
+## Mão erguida: na própria tela sobe do canto e fica puxada para trás, tremendo de leve;
+## para os outros, a mão grande sobe acima do ombro direito.
+func _show_windup(on: bool) -> void:
+	if not on:
+		if hand_pivot and hand_pivot.visible:
+			_hand_tween = _retween(_hand_tween)
+			_hand_tween.tween_property(hand_pivot, "position", Vector3(0.4, -0.6, -0.44), 0.12)
+			_hand_tween.tween_callback(func(): hand_pivot.visible = false)
+		if hand_3p:
+			if _hand_3p_tween and _hand_3p_tween.is_valid():
+				_hand_3p_tween.kill()
+			hand_3p.visible = false
+		return
+	Sfx.at(self, "pickup", chest())
+	if hand_pivot and is_human:
+		hand_pivot.visible = true
+		hand_pivot.position = Vector3(0.4, -0.6, -0.44)
+		hand_pivot.rotation = Vector3(0.25, 0.1, -0.25)
+		_hand_tween = _retween(_hand_tween)
+		_hand_tween.tween_property(hand_pivot, "position", Vector3(0.33, 0.16, -0.44), 0.15) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		# Puxa para trás devagar (a "carga") até a hora do tapa.
+		_hand_tween.tween_property(hand_pivot, "position", Vector3(0.42, 0.2, -0.38), SLAP_WINDUP - 0.15) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		_hand_tween.parallel().tween_property(hand_pivot, "rotation", Vector3(0.4, 0.2, -0.35), SLAP_WINDUP - 0.15)
+	if hand_3p and not is_human:
+		hand_3p.visible = true
+		hand_3p.position = Vector3(0.55, 1.2, 0.1)
+		hand_3p.rotation = Vector3(0.0, 0.7, 0.3)
+		_hand_3p_tween = _retween(_hand_3p_tween)
+		_hand_3p_tween.tween_property(hand_3p, "position", Vector3(0.8, 2.0, 0.2), 0.15) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_hand_3p_tween.tween_property(hand_3p, "position", Vector3(0.9, 2.05, 0.35), SLAP_WINDUP - 0.15)
+
+
+func _retween(t: Tween) -> Tween:
+	if t and t.is_valid():
+		t.kill()
+	return create_tween()
+
+
 ## Tapa: quem está no leque curto à frente leva (a máquina do alvo decide o escudo).
 func _slap() -> void:
+	slap_windup = 0.0
 	var forward := _flat_forward()
 	var arc := deg_to_rad(SLAP_ARC)
 	reveal()
@@ -3195,6 +3297,7 @@ func receive_slap(from_name: String, dir: Vector3) -> void:
 	if ice_timer > 0.0:
 		return
 	slap_flight = SLAP_FLIGHT
+	slap_lock = true
 	slap_from = from_name
 	splat_damage = SPLAT_DAMAGE
 	bowl = false
@@ -3273,16 +3376,50 @@ func _show_slap() -> void:
 		swing_anim = 0.4
 		anim.play("attack-melee-right", 0.05)
 		anim.speed_scale = 1.3
+	# Passada rápida da direita para a esquerda, deixando cópias da mão que somem (rastro).
 	if hand_pivot and is_human:
 		hand_pivot.visible = true
-		hand_pivot.position = Vector3(0.35, -0.12, -0.05)
-		hand_pivot.rotation = Vector3(0.0, 0.9, 0.2)
-		var t := create_tween()
-		t.tween_property(hand_pivot, "position", Vector3(-0.25, -0.05, -0.32), 0.12) \
+		_hand_tween = _retween(_hand_tween)
+		_hand_tween.tween_property(hand_pivot, "position", Vector3(-0.9, 0.02, -0.47), SLAP_SWIPE) \
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		t.parallel().tween_property(hand_pivot, "rotation", Vector3(0.0, -0.6, -0.1), 0.12)
-		t.tween_interval(0.08)
-		t.tween_callback(func(): hand_pivot.visible = false)
+		_hand_tween.parallel().tween_property(hand_pivot, "rotation", Vector3(0.0, -0.4, 0.15), SLAP_SWIPE)
+		for k in SLAP_GHOSTS:
+			_hand_tween.parallel().tween_callback(_hand_ghost.bind(hand_pivot)).set_delay(SLAP_SWIPE * (k + 1) / (SLAP_GHOSTS + 1))
+		_hand_tween.tween_interval(0.12)
+		_hand_tween.tween_property(hand_pivot, "position", Vector3(-0.9, -0.6, -0.4), 0.15) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		_hand_tween.tween_callback(func(): hand_pivot.visible = false)
+	if hand_3p and not is_human:
+		hand_3p.visible = true
+		_hand_3p_tween = _retween(_hand_3p_tween)
+		_hand_3p_tween.tween_property(hand_3p, "position", Vector3(-0.6, 1.3, -0.9), SLAP_SWIPE) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		_hand_3p_tween.parallel().tween_property(hand_3p, "rotation", Vector3(0.0, -0.7, -0.2), SLAP_SWIPE)
+		for k in SLAP_GHOSTS:
+			_hand_3p_tween.parallel().tween_callback(_hand_ghost.bind(hand_3p)).set_delay(SLAP_SWIPE * (k + 1) / (SLAP_GHOSTS + 1))
+		_hand_3p_tween.tween_interval(0.2)
+		_hand_3p_tween.tween_callback(func(): hand_3p.visible = false)
+
+
+## Rastro do tapa: cópia da mão no lugar atual, translúcida, que some em SLAP_GHOST_FADE.
+## Só nasce no tapa (SLAP_GHOSTS por golpe), então o custo é desprezível.
+func _hand_ghost(pivot: Node3D) -> void:
+	if not is_instance_valid(pivot) or not pivot.visible:
+		return
+	var ghost := pivot.get_child(0).duplicate() as Node3D
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(SLAP_COLOR, 0.45)
+	for mi in ghost.get_children():
+		(mi as MeshInstance3D).material_override = mat
+	var holder := Node3D.new()
+	holder.transform = pivot.transform
+	holder.add_child(ghost)
+	pivot.get_parent().add_child(holder)
+	var t := holder.create_tween()
+	t.tween_property(mat, "albedo_color:a", 0.0, SLAP_GHOST_FADE)
+	t.tween_callback(holder.queue_free)
 
 
 ## Mão aberta montada em código (palma e quatro dedos juntos, polegar de lado), cor de pele.

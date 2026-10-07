@@ -130,7 +130,7 @@ const MASTERS := {
 	# Mega Tapa (2026-10-06, ideia do usuário: tirar quem joga de perto; números meus e o
 	# impacto na parede, escolhido por ele entre 3 extras).
 	"mega_tapa": {"name": "Mega Tapa", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 8.0,
-		"desc": "Q: um tapa à frente (3,2 m) que causa 10 de dano e arremessa longe e para cima. Se o arremessado bater numa parede no voo, leva mais 20 e fica tonto por 0,6 s (lento e sem atirar). Escudo levantado bloqueia. Recarga de 8 s.",
+		"desc": "Q: ergue a mão e, 0,6 s depois, dá um tapa à frente (3,6 m) que causa 10 de dano e arremessa longe e para cima, sem controle no ar até cair. Se o arremessado bater numa parede no voo, leva mais 20 e fica tonto por 0,6 s (lento e sem atirar). Escudo levantado bloqueia. Recarga de 8 s.",
 		"mods": [{"stat": "slap", "add": 1}]},
 	# Gancho (2026-10-06, ideia do usuário: fundiu as minhas propostas de gancho e de
 	# agarrar e arremessar; números meus, aprovados).
@@ -157,7 +157,7 @@ const MASTERS := {
 	# plataformas e 14 m/s meus, aprovados; a cor por jogador foi ideia dele; recarga de 6 s
 	# dele e prazo de 2 s meu).
 	"plataformas_suspensas": {"name": "Plataformas Suspensas", "cat": "Movimento", "rarity": "mitico", "master": true,
-		"desc": "Sem pulos no ar sobrando, pular cria uma plataforma sob os seus pés. Dá para fazer até 3 seguidas, com 2 s para usar cada próxima; ao usar a 3ª, passar o prazo ou tocar o chão, recarga de 6 s. A plataforma é um propulsor: lança para cima quem pisa nela, uma vez por jogador (verde: ainda te lança; roxa: já te lançou). Dura 5 s; qualquer jogador pode pisar, e as balas atravessam.",
+		"desc": "Sem pulos no ar sobrando, pular cria uma plataforma sob os seus pés. Dá para fazer até 3 seguidas, com 2 s para usar cada próxima; ao usar a 3ª, passar o prazo ou tocar o chão, recarga de 8 s. A plataforma é um propulsor: lança para cima quem pisa nela, uma vez por jogador (verde: ainda te lança; roxa: já te lançou). Dura 5 s; qualquer jogador pode pisar, e as balas atravessam.",
 		"mods": [{"stat": "platforms", "add": 1}]},
 	"formiga": {"name": "Formiga", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 16.0,
 		"desc": "Q: por 6 s você fica com 40% do tamanho (mais difícil de acertar) e 60% mais rápido. Q de novo volta antes. Ao voltar ao tamanho, um impacto empurra quem estiver a até 4 m e causa 15 de dano. Recarga de 16 s.",
