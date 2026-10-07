@@ -514,6 +514,7 @@ const BEAM_LIFT := 8.0
 const BEAM_REHIT := 0.6
 const BEAM_SHIELD_PUSH := 0.5
 const BEAM_TURN := deg_to_rad(30.0)
+const SLOW_AIM_LEAD := deg_to_rad(75.0)   # Canhão e Foguete: quanto o alvo do mouse pode ir à frente
 const BEAM_COLOR := Color(0.78, 0.5, 1.0)
 var beam_charge := 0.0     # carregando (todas as máquinas, para o visual)
 var beam_timer := 0.0      # raio ligado
@@ -1228,13 +1229,22 @@ func _input(event: InputEvent) -> void:
 			sens *= camera.fov / BASE_FOV   # com zoom, o mouse anda na mesma proporção
 		if beam_timer > 0.0 or ride_timer > 0.0:
 			# Canhão Arcano e Foguete: o mouse move o alvo; a mira vai atrás devagar (_process).
-			beam_aim.x = wrapf(beam_aim.x - motion.relative.x * sens, -PI, PI)
-			beam_aim.y = clampf(beam_aim.y - motion.relative.y * sens, -1.5, 1.5)
+			slow_aim_input(motion.relative * sens)
 			return
 		look_yaw = wrapf(look_yaw - motion.relative.x * sens, -PI, PI)
 		head.rotate_x(-motion.relative.y * sens)
 		head.rotation.x = clampf(head.rotation.x, -1.5, 1.5)
 		sway = (sway - motion.relative * 0.0004).limit_length(0.05)
+
+
+## Mira lenta (Canhão Arcano e Foguete): o mouse move o alvo (beam_aim), que fica no
+## máximo SLOW_AIM_LEAD à frente da mira: arrastando muito, ele passava de meia volta e a
+## mira ia pelo lado mais curto, ao contrário do mouse (relato do usuário, 2026-10-06).
+func slow_aim_input(rel: Vector2) -> void:
+	var lead := clampf(angle_difference(look_yaw, beam_aim.x) - rel.x, -SLOW_AIM_LEAD, SLOW_AIM_LEAD)
+	beam_aim.x = wrapf(look_yaw + lead, -PI, PI)
+	var pitch_limit := 1.5 if beam_timer > 0.0 else RIDE_PITCH
+	beam_aim.y = clampf(beam_aim.y - rel.y, -pitch_limit, pitch_limit)
 
 
 func _read_local_input() -> void:

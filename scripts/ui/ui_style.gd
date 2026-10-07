@@ -285,6 +285,17 @@ static func scroll_text(text: String, height: float, size := 13, color := MUTED)
 	box.custom_minimum_size.y = height
 	box.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	box.mouse_filter = Control.MOUSE_FILTER_PASS
+	thin_scrollbar(box)
+	var desc := label(text, size, color)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(desc)
+	return box
+
+
+## Barra de rolagem vertical fina e discreta.
+static func thin_scrollbar(box: ScrollContainer) -> void:
 	var bar := box.get_v_scroll_bar()
 	var track := StyleBoxFlat.new()
 	track.bg_color = Color(1, 1, 1, 0.04)
@@ -298,12 +309,6 @@ static func scroll_text(text: String, height: float, size := 13, color := MUTED)
 		g.bg_color.a = 0.55 if state == "grabber" else 0.85
 		g.set_corner_radius_all(2)
 		bar.add_theme_stylebox_override(state, g)
-	var desc := label(text, size, color)
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(desc)
-	return box
 
 
 ## Título de seção (letras pequenas) com uma linha fina embaixo; extra vai à direita.

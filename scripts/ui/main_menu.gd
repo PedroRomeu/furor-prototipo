@@ -26,7 +26,8 @@ var lobby_info: Label
 var start_button: Button
 var deck_picks: Array = []   # OptionButton do baralho em Jogar e na Sala, sempre iguais
 var solo_modes: ModePicker   # modo do treino
-var solo_bots: Array = []    # botões de 1, 2 e 3 bots
+var solo_bots: HSlider       # quantos bots (1 a 3; slider, pedido do usuário)
+var solo_bots_label: Label
 var bots_hint: Label         # frase da linha dos bots: que tamanhos de mapa saem
 var start_solo: Button
 var lobby_modes: ModePicker  # modo da sala (só o anfitrião mexe)
@@ -176,10 +177,25 @@ func _play_page() -> Control:
 		_refresh_solo())
 	solo.add_child(solo_modes)
 	Ui.section(solo, "ADVERSÁRIOS", null, 14)
-	var bots := Ui.tabs(["1 bot", "2 bots", "3 bots"], bot_count - 1, func(i):
-		bot_count = i + 1
+	# Slider de 1 a 3 com o número ao lado (como os de volume e sensibilidade).
+	var bots := Ui.hbox(12)
+	solo_bots = HSlider.new()
+	solo_bots.min_value = 1
+	solo_bots.max_value = 3
+	solo_bots.step = 1
+	solo_bots.tick_count = 3
+	solo_bots.ticks_on_borders = true
+	solo_bots.value = bot_count
+	solo_bots.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	solo_bots.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bots.add_child(solo_bots)
+	solo_bots_label = Ui.label("", 15, Ui.TEXT)
+	solo_bots_label.custom_minimum_size.x = 56
+	solo_bots_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	bots.add_child(solo_bots_label)
+	solo_bots.value_changed.connect(func(v):
+		bot_count = int(v)
 		_refresh_solo())
-	solo_bots = bots.get_children()
 	bots_hint = Ui.option_row(solo, "Bots", "", bots, 260)
 	solo.add_child(Ui.grow())
 	start_solo = Ui.accent(Ui.button("Começar treino", _play_bots))
@@ -547,8 +563,7 @@ func _open_decks_from_lobby() -> void:
 
 func _set_bots(n: int) -> void:
 	bot_count = n
-	for i in solo_bots.size():
-		solo_bots[i].set_pressed_no_signal(i == n - 1)
+	solo_bots.set_value_no_signal(n)
 
 
 ## Treino: o modo precisa caber no número de bots (2x2 = 3 bots); senão, avisa e trava.
@@ -563,6 +578,7 @@ func _refresh_solo() -> void:
 		solo_modes.set_note("")
 	start_solo.disabled = reason != ""
 	bots_hint.visible = true
+	solo_bots_label.text = "%d bot%s" % [bot_count, "" if bot_count == 1 else "s"]
 	bots_hint.text = ["Só mapas pequenos.", "Mapas pequenos e médios.", "Mapas de todos os tamanhos."][bot_count - 1]
 
 

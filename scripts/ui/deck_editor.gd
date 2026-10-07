@@ -43,6 +43,7 @@ var rarity_buttons := {}
 var only_deck: CheckButton
 var empty_grid: Label
 var picker: Control   # escolha da carta mestra (por cima de tudo)
+var picker_group := FILTER_ALL   # grupo mostrado na escolha da mestra
 var side_panel: PanelContainer
 
 
@@ -557,21 +558,50 @@ func _build_picker() -> void:
 	var close := Ui.flat(Ui.button("Fechar", func(): picker.visible = false))
 	close.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	head.add_child(close)
+	# Grupos em abas (como na coleção) e a grade rolando: as mestras não cabem numa tela.
+	var cats: Array = [FILTER_ALL] + CardDB.CATEGORY_COLORS.keys()
+	var colors: Array = [Ui.ACCENT] + CardDB.CATEGORY_COLORS.values()
+	col.add_child(Ui.tabs(cats, 0, func(i):
+		picker_group = cats[i]
+		_fill_picker(), colors))
+	var options_scroll := ScrollContainer.new()
+	options_scroll.name = "OptionsScroll"
+	options_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	Ui.thin_scrollbar(options_scroll)
+	col.add_child(options_scroll)
 	var options := GridContainer.new()
 	options.name = "Options"
 	options.columns = 3
 	options.add_theme_constant_override("h_separation", 12)
 	options.add_theme_constant_override("v_separation", 12)
-	col.add_child(options)
+	options_scroll.add_child(options)
 
 
 func _open_picker() -> void:
+	picker.visible = true
+	_fill_picker()
+
+
+## Mestras do grupo escolhido, na ordem dos grupos; a área rola acima de ~70% da tela.
+func _fill_picker() -> void:
 	var options: GridContainer = picker.find_child("Options", true, false)
 	for c in options.get_children():
+		options.remove_child(c)
 		c.queue_free()
-	for id in CardDB.master_ids():
+	var cats: Array = CardDB.CATEGORY_COLORS.keys()
+	var ids: Array = CardDB.master_ids().filter(func(id):
+		return picker_group == FILTER_ALL or CardDB.CARDS[id]["cat"] == picker_group)
+	ids.sort_custom(func(a, b):
+		return cats.find(CardDB.CARDS[a]["cat"]) < cats.find(CardDB.CARDS[b]["cat"]))
+	for id in ids:
 		options.add_child(_master_option(id))
-	picker.visible = true
+	var options_scroll: ScrollContainer = picker.find_child("OptionsScroll", true, false)
+	# Largura fixa de 3 cartas mais a barra (não pula ao trocar de grupo); altura medida
+	# depois de as descrições quebrarem a linha.
+	options_scroll.custom_minimum_size.x = 3 * 250 + 2 * 12 + 14
+	options_scroll.scroll_vertical = 0
+	await get_tree().process_frame
+	options_scroll.custom_minimum_size.y = minf(options.get_combined_minimum_size().y, size.y * 0.7 - 120.0)
 
 
 func _master_option(id: String) -> Control:
