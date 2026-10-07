@@ -86,7 +86,7 @@ const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", 
 	"slow", "push", "shield_break", "target_bounce", "execute", "reflected", "gravity",
 	"boomerang", "returning", "bounce_damage", "sticky", "split", "grow", "swap", "blind",
 	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls",
-	"toxic", "hole", "laser", "ice", "meteor", "rocket", "blast_radius", "blast_damage", "life"]
+	"toxic", "hole", "laser", "ice", "meteor", "rocket", "blast_radius", "blast_damage", "life", "drill"]
 ## Bala Fantasma: só paredes contam (superfície quase em pé); no chão e no topo das peças a
 ## bala para ou quica como as outras.
 const GHOST_WALL_NORMAL_Y := 0.7
@@ -148,7 +148,11 @@ var lazy_top := 0.0
 var crit := false
 var bounced := false   # já quicou numa parede: pode acertar quem atirou (como no Furor)
 var guided := false    # Piloto (mestra guardada): segue a mira de quem atirou
-var pierce := false    # Perfurante: só muda a cor e o formato (o resto vem por ghost/gravity)
+var pierce := false    # Perfurante e Sniper: só muda a cor e o formato (o resto vem por ghost/gravity)
+## Perfurante (desde 2026-10-07): atravessa jogadores (cada um leva uma vez), o escudo (E) e
+## a parede do Bastião sem ser devolvida, e o dano ignora o colete.
+var drill := false
+var _drilled: Array = []
 var sound := false
 var age := 0.0
 var waiting := 0.0
@@ -500,6 +504,8 @@ static func _seek_term(n: float, base: float, gain: float, k: float) -> float:
 ## Parede do Bastião no caminho: devolve a bala de quem não é o dono dela. Quem decide é a
 ## máquina do dono da parede; as outras escondem a bala e esperam a resposta.
 func _check_barriers(from: Vector3, end: Vector3) -> bool:
+	if drill:
+		return false
 	for node in _barriers:
 		if not is_instance_valid(node):
 			continue
@@ -535,7 +541,7 @@ func _player_on_segment(from: Vector3, end: Vector3) -> Dictionary:
 		if not is_instance_valid(node):
 			continue
 		var p := node as Player
-		if not p.alive or (p == shooter and (not bounced or returning)):
+		if not p.alive or (p == shooter and (not bounced or returning)) or p in _drilled:
 			continue
 		# Descarte rápido: longe demais do trecho para a cápsula (ou o escudo) alcançar.
 		var body: float = p.height * 0.5 * float(p.stats["body_scale"])
@@ -663,6 +669,10 @@ func _shatter(point: Vector3, normal: Vector3) -> void:
 
 
 func _hit_player(target: Player, point: Vector3) -> void:
+	if drill:
+		_drilled.append(target)
+		if not target.is_local:
+			return   # segue voando; a máquina do alvo decide o dano e avisa
 	if not target.is_local:
 		# Quem decide é a máquina do alvo. Espera a resposta escondida no ponto do contato.
 		waiting = REMOTE_WAIT
@@ -682,9 +692,10 @@ func _hit_player(target: Player, point: Vector3) -> void:
 		if Net.online:
 			get_parent().net_bullet_hit.rpc(id, point, 0.0)
 		Effects.burst(get_parent(), point, 0.5, Player.ICE_COLOR, 0.12)
-		queue_free()
+		if not drill:
+			queue_free()
 		return
-	if target.is_shielding():
+	if target.is_shielding() and not drill:
 		_reflect(target, point)
 		return
 	if ice:
@@ -709,7 +720,7 @@ func _hit_player(target: Player, point: Vector3) -> void:
 		target.apply_blind(blind)
 	if swap and is_instance_valid(shooter) and shooter.alive:
 		target.begin_swap(shooter)
-	target.take_damage(dmg, shooter)
+	target.take_damage(dmg, shooter, true, drill)
 	if Net.online:
 		get_parent().net_bullet_hit.rpc(id, point, dmg)
 	_show_damage(point, dmg)
@@ -731,7 +742,8 @@ func _finish_hit(point: Vector3, skip: Player) -> void:
 		# Clarão branco do tamanho da bala e faíscas vermelhas: o acerto se vê de longe.
 		Effects.burst(get_parent(), point, maxf(0.45, radius * 3.0), Color(1, 1, 1), 0.1)
 		Effects.sparks(get_parent(), point, Color(1.0, 0.35, 0.3))
-	queue_free()
+	if not drill:
+		queue_free()   # Perfurante segue voando
 
 
 ## Sniper: o feixe vai do cano até onde a bala chega em 0,4 s (atravessa as paredes).
@@ -843,7 +855,8 @@ func remote_hit(point: Vector3, dmg: float) -> void:
 	if dmg <= 0.0:
 		# Gelo (congelou ou bateu num bloco): sem número nem explosão.
 		Effects.burst(get_parent(), point, 0.8, Player.ICE_COLOR, 0.15)
-		queue_free()
+		if not drill:
+			queue_free()
 		return
 	_show_damage(point, dmg)
 	_finish_hit(point, null)

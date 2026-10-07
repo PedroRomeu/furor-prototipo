@@ -136,7 +136,16 @@ func _draw_health() -> void:
 # ---------------------------------------------------------------- carta mestra
 
 func _master_ready() -> bool:
-	return not CardDB.CARDS[me.master_id].has("cooldown") or me.master_cd <= 0.0
+	if not CardDB.CARDS[me.master_id].has("cooldown"):
+		return me.plat_cd <= 0.0   # passiva: só as Plataformas Suspensas têm recarga
+	return me.master_cd <= 0.0
+
+
+## Recarga que falta e a total (ativa: a da carta; Plataformas Suspensas: a da passiva).
+func _master_wait() -> Vector2:
+	if CardDB.CARDS[me.master_id].has("cooldown"):
+		return Vector2(me.master_cd, me.master_cd_total())
+	return Vector2(me.plat_cd, Player.PLAT_COOLDOWN)
 
 
 ## Moldura (sombra, fundo e borda); o ícone, a recarga e a tecla vêm depois.
@@ -169,10 +178,11 @@ func _draw_master_top() -> void:
 		var tint := cat.lerp(Color.WHITE, 0.25)
 		tint.a = 1.0 if ready else 0.4
 		draw_texture_rect(tex, rect.grow(-14), false, tint)
-	if has_cd and me.master_cd > 0.0:
-		var left: float = clampf(me.master_cd / me.master_cd_total(), 0.0, 1.0)
+	var wait := _master_wait()
+	if wait.x > 0.0:
+		var left: float = clampf(wait.x / wait.y, 0.0, 1.0)
 		_blit(R_FRAME, rect, Color(0, 0, 0, 0.45), left, true)
-		var secs := str(ceili(me.master_cd))
+		var secs := str(ceili(wait.x))
 		_text(_bold, rect.get_center() + Vector2(-_width(_bold, secs, 24) / 2.0, 9), secs, 24, Color.WHITE)
 	var key := GameState.key_text("master") if has_cd else "passiva"
 	var lit := ready and has_cd

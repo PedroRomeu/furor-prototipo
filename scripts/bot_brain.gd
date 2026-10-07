@@ -68,9 +68,10 @@ func think(delta: float) -> void:
 	p.in_dash = false
 	p.in_reload = false
 	p.in_master = false
-	if p.stats["platforms"] > 0 and p.master_cd <= 0.0 and not p.is_on_floor() \
-			and p.global_position.y < Arena.VOID_Y + 1.5 and p.velocity.y < 0.0:
-		p.in_master = true   # Plataformas Suspensas: plataforma para não cair no vazio
+	var plat_save: bool = p.stats["platforms"] > 0 and p.plat_left > 0 and p.plat_cd <= 0.0 and not p.is_on_floor() \
+			and p.global_position.y < Arena.VOID_Y + 1.5 and p.velocity.y < 0.0
+	if plat_save:
+		p.in_jump = true   # Plataformas Suspensas: plataforma para não cair no vazio
 	_perfect_reload()
 	if p.downed and not p.frozen:
 		_crawl_to_ally(delta)
@@ -239,7 +240,7 @@ func _movement(delta: float, foe: Player, sees: bool) -> Vector3:
 			strafe_timer = randf_range(0.4, 1.4)
 			if randf() < 0.6:
 				strafe_dir = -strafe_dir
-			p.in_jump = randf() < 0.2
+			p.in_jump = p.in_jump or randf() < 0.2
 			p.in_dash = randf() < 0.25
 		var to := foe.global_position - p.global_position
 		to.y = 0.0

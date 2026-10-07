@@ -157,8 +157,9 @@ shows in a corner during the match.
   the block), **Mega Tapa** (Body, Q: a short slap that launches far; hitting a wall deals 20
   more and dazes), **Canhão Arcano** (Weapon, Q: charge 1 s, then a 2.5 s beam through walls
   that you aim slowly; each touch deals 22 and throws the target out of the beam),
-  **Plataformas Suspensas** (Movement, Q in the air: platforms under your feet as you jump,
-  up to 4, 5 s each, anyone can stand on them), **Chuva de Meteoros** (Bullets, Q: the next
+  **Plataformas Suspensas** (Movement, passive: out of air jumps, jumping makes a platform
+  under your feet, up to 3 in a row with 2 s to use each next one, then a 6 s cooldown; each one launches whoever steps on it
+  once, green while it can still launch you and purple after; 5 s each), **Chuva de Meteoros** (Bullets, Q: the next
   3 shots mark the ground; 1.5 s later a meteor falls on each mark), **Foguete** (Weapon, Q:
   ride a slow, hard-to-steer rocket that explodes on impact; Q again to jump off and send it
   flying fast) and **Gancho** (Body, Q: a hook that pulls the enemy to you and holds them as
@@ -167,8 +168,8 @@ shows in a corner during the match.
   shield blocks it), **Sniper** (Weapon, Q: a sniper with ONE laser shot
   that goes through every wall and deals 4x damage; right click to aim with the scope),
   **Bazuca** (Weapon, Q: 6 s of
-  bazooka, 3 rockets), **Perfurante** (Bullets, Q: 3 straight fast shots that go through
-  walls), **Bastião** (Shield, Q: a wall that returns bullets for 4 s), **Último Suspiro**
+  bazooka, 3 rockets), **Perfurante** (Bullets, Q: 3 straight fast shots with +30% damage that go
+  through walls, players, shields and Bastião, and ignore armor), **Bastião** (Shield, Q: a wall that returns bullets for 4 s), **Último Suspiro**
   (Body: a fatal hit leaves you at 1 health for 3 s; get a kill in that time and come back
   with half), **Camuflagem** (Body: stand still 0.6 s to vanish, crouch-walk while hidden;
   showing up after 1 s hidden gives Ambush, 3 s of +40% shot damage and +20% speed),

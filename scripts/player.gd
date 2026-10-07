@@ -461,6 +461,8 @@ const SHRINK_SLAM_DAMAGE := 15.0
 const SHRINK_SLAM_PUSH := 1.25    # empurrão um pouco maior que o da Onda de Choque (pedido do usuário: nada exagerado)
 const PIERCE_SHOTS := 3          # Perfurante: tiros por uso...
 const PIERCE_SPEED := 3.0        # ...quantas vezes mais rápidos
+const PIERCE_CONVERGE := 30.0   # ...e convergem com a mira a pelo menos 30 m (atravessar a fila)
+const PIERCE_DAMAGE := 1.3       # ...e +30% de dano (2026-10-07; com atravessar jogadores, escudo e colete)
 # Câmera e arma em primeira pessoa
 ## FOV vertical (o Godot mede na altura). 74 graus dão uns 105 na horizontal em 16:9,
 ## perto do padrão de Apex, Valorant e Overwatch; mais que isso distorce as bordas.
@@ -537,13 +539,19 @@ var beam_timer := 0.0      # raio ligado
 var beam_hits := {}        # alvo -> tempo até poder levar de novo
 var beam_aim := Vector2.ZERO   # (yaw, pitch) para onde o mouse quer ir; a mira segue devagar
 var beam_fx: Node3D
-## Plataformas Suspensas (mestra): Q no ar cria uma plataforma e liga o modo por PLAT_MODE; nesse
-## tempo, pular no ar sem pulos sobrando cria outra (até PLAT_MAX). Recarga do card (18 s)
-## = os 6 s do modo + 12 s.
-const PLAT_MODE := 6.0
-const PLAT_MAX := 4
-var plat_mode := 0.0
-var plat_left := 0
+## Plataformas Suspensas (mestra, passiva desde 2026-10-07): sem pulos no ar sobrando, pular
+## cria uma plataforma sob os pés, até PLAT_MAX em sequência, com PLAT_CHAIN para usar a
+## próxima. A sequência acaba na última, quando o prazo passa ou ao tocar o chão, e então
+## entra a recarga PLAT_COOLDOWN, que devolve as 3. A plataforma é um propulsor: lança quem
+## pisa a PLAT_LAUNCH para cima, uma vez por jogador (SkyPlatform).
+const PLAT_MAX := 3
+const PLAT_LAUNCH := 14.0   # ~3,3 m de subida (o pulo normal sobe ~2,4)
+const PLAT_CHAIN := 2.0
+const PLAT_COOLDOWN := 6.0
+var plat_left := PLAT_MAX
+var plat_chain := 0.0   # prazo para a próxima plataforma da sequência
+var plat_cd := 0.0      # recarga da passiva
+var on_sky_floor := false   # pisando numa plataforma no último passo (posto em _check_sky_pad)
 ## Chuva de Meteoros (mestra): METEOR_SHOTS tiros marcados por até METEOR_WINDOW; o meteoro
 ## em si está em MeteorStrike.
 const METEOR_SHOTS := 3
@@ -574,7 +582,7 @@ var ride_fx: Node3D
 ## Mega Tapa (mestra): leque curto à frente; arremessa (SLAP_PUSH para o lado, SLAP_LIFT
 ## para cima). Por SLAP_FLIGHT segundos, bater numa parede ainda rápido (SPLAT_MIN_SPEED)
 ## dá SPLAT_DAMAGE e deixa tonto (DAZE_TIME: lento e sem atirar).
-const SLAP_RANGE := 2.5
+const SLAP_RANGE := 3.2   # era 2,5 (2026-10-07, pedido do usuário; recarga 10 -> 8 s)
 const SLAP_ARC := 50.0
 const SLAP_DAMAGE := 10.0
 const SLAP_PUSH := 22.0
@@ -942,6 +950,7 @@ func _build_viewmodel() -> void:
 	hand_pivot.visible = false
 	viewmodel.add_child(hand_pivot)
 	var hand := _make_hand()
+	hand.scale = Vector3.ONE * 1.3   # acompanha o alcance de 3,2 m (era 2,5)
 	_no_shadows(hand)
 	hand_pivot.add_child(hand)
 	muzzle = Marker3D.new()
@@ -1170,8 +1179,9 @@ func reset_for_round(spawn: Transform3D) -> void:
 	slap_flight = 0.0
 	daze_timer = 0.0
 	_end_beam(false)
-	plat_mode = 0.0
-	plat_left = 0
+	plat_left = PLAT_MAX
+	plat_chain = 0.0
+	plat_cd = 0.0
 	meteor_left = 0
 	meteor_window = 0.0
 	ride_timer = 0.0
@@ -1712,6 +1722,8 @@ func _physics_process(delta: float) -> void:
 	if slap_flight > 0.0:
 		_check_splat(before_h, delta)
 	_check_wall()
+	if is_local:   # todos pisam: qualquer jogador é lançado
+		_check_sky_pad()
 	if is_on_floor() and not was_on_floor:
 		_on_landed(fall_speed)
 	was_on_floor = is_on_floor()
@@ -1733,7 +1745,14 @@ func _tick(delta: float) -> void:
 		_chaos_tick(delta)
 	speed_orb_timer = maxf(0.0, speed_orb_timer - delta)
 	daze_timer = maxf(0.0, daze_timer - delta)
-	plat_mode = maxf(0.0, plat_mode - delta)
+	if plat_chain > 0.0:
+		plat_chain -= delta
+		if plat_chain <= 0.0:
+			_plat_end()
+	if plat_cd > 0.0:
+		plat_cd -= delta
+		if plat_cd <= 0.0:
+			plat_left = PLAT_MAX
 	if meteor_window > 0.0:
 		meteor_window -= delta
 		if meteor_window <= 0.0:
@@ -1948,6 +1967,8 @@ func _move(delta: float) -> void:
 		air_time = 0.0
 		jumps_left = stats["extra_jumps"]
 		wall_jumps_left = stats["wall_jumps"]
+		if not on_sky_floor and plat_chain > 0.0:
+			_plat_end()   # o chão de verdade fecha a sequência (pousar numa plataforma não)
 		if dash_timer <= 0.0:
 			air_dashes_left = stats["air_dashes"]
 	if in_jump:
@@ -1977,12 +1998,13 @@ func _move(delta: float) -> void:
 			if wish != Vector3.ZERO:
 				h = wish.normalized() * maxf(h.length(), target)
 			jumped = true
-		elif plat_mode > 0.0 and plat_left > 0:
-			# Plataformas Suspensas: plataforma sob os pés e pula dela.
-			_make_platform()
+		elif stats["platforms"] > 0 and plat_left > 0 and plat_cd <= 0.0:
+			# Plataformas Suspensas: plataforma sob os pés, que já lança (sem o pulo comum).
 			if wish != Vector3.ZERO:
 				h = wish.normalized() * maxf(h.length(), target)
-			jumped = true
+			_make_platform().use_by(self)
+			_platform_launch()
+			jump_buffer = 0.0
 	# Bota Foguete: o aperto que não virou pulo (sem pulos sobrando) arma o jato.
 	if stats["rocket_boots"] > 0 and in_jump and not jumped and not on_floor:
 		boot_armed = true
@@ -2453,7 +2475,7 @@ func _act(delta: float) -> void:
 	if in_master and shrink_timer > 0.0:
 		_end_shrink(true)   # Formiga: Q de novo volta ao tamanho antes do tempo
 	elif in_master and master_cd <= 0.0 and master_id != "" and CardDB.CARDS[master_id].has("cooldown") \
-			and not (stats["platforms"] > 0 and is_on_floor()) and hook_state == 0:
+			and hook_state == 0:
 		_use_master()
 	if in_shield and shield_cd <= 0.0 and silence_timer <= 0.0:
 		_activate_shield()
@@ -2556,7 +2578,7 @@ func _chaos_tick(delta: float) -> void:
 	if not chaos_used:
 		return
 	if bazooka_timer > 0.0 or sniper_timer > 0.0 or sword_timer > 0.0 or shrink_timer > 0.0 or pierce_left > 0 \
-			or beam_timer > 0.0 or beam_charge > 0.0 or plat_mode > 0.0 or meteor_left > 0 or ride_timer > 0.0 \
+			or beam_timer > 0.0 or beam_charge > 0.0 or meteor_left > 0 or ride_timer > 0.0 \
 			or hook_state > 0:
 		master_cd = CHAOS_WAIT
 	elif master_cd <= 0.0:
@@ -2629,12 +2651,6 @@ func _use_master() -> void:
 		meteor_window = METEOR_WINDOW
 		Effects.burst(get_parent(), muzzle.global_position, 0.6, MeteorStrike.COLOR, 0.2)
 		Sfx.at(self, "pickup", chest())
-	if stats["platforms"] > 0:
-		plat_mode = PLAT_MODE
-		plat_left = PLAT_MAX
-		_make_platform()
-		# Pousa na primeira: a queda para (salva do vazio).
-		velocity.y = maxf(velocity.y, 0.0)
 	if stats["barrier"] > 0:
 		var pos := global_position + _flat_forward() * 2.5
 		_make_barrier(pos, rotation.y)
@@ -3799,14 +3815,50 @@ func _net_meteor(pos: Vector3) -> void:
 # ---------------------------------------------------------------- Plataformas Suspensas
 
 ## Plataforma sob os pés, nesta e nas outras máquinas (para todo mundo poder pisar).
-func _make_platform() -> void:
+func _make_platform() -> SkyPlatform:
 	plat_left -= 1
+	if plat_left <= 0:
+		_plat_end()
+	else:
+		plat_chain = PLAT_CHAIN
 	var pos := global_position + Vector3.DOWN * (SkyPlatform.SIZE.y / 2.0 + 0.02)
-	SkyPlatform.spawn(get_parent(), pos, color)
+	var plat := SkyPlatform.spawn(get_parent(), pos, color)
 	platform_made.emit()
-	Sfx.at(self, "pad", pos)
 	if Net.online and is_inside_tree():
 		_net_platform.rpc(pos)
+	return plat
+
+
+## Pisou numa plataforma que ainda não te lançou: propulsor para cima, sem perder o embalo.
+## on_sky_floor: parado no chão, o Godot às vezes não registra colisão no passo; aí fica o
+## valor anterior.
+func _plat_end() -> void:
+	plat_chain = 0.0
+	plat_left = 0
+	plat_cd = PLAT_COOLDOWN
+
+
+func _check_sky_pad() -> void:
+	if not is_on_floor():
+		on_sky_floor = false
+	for i in get_slide_collision_count():
+		var c := get_slide_collision(i)
+		if c.get_normal().y <= 0.7:
+			continue
+		var plat := c.get_collider() as SkyPlatform
+		on_sky_floor = plat != null
+		if plat and plat.use_by(self):
+			_platform_launch()
+			return
+
+
+func _platform_launch() -> void:
+	velocity.y = maxf(velocity.y, PLAT_LAUNCH)
+	jump_rising = false
+	coyote = 0.0
+	sliding = false
+	slamming = false
+	Sfx.at(self, "pad", global_position)
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -4069,6 +4121,10 @@ func _volley() -> void:
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + aim * 300.0, mask, [get_rid()])
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	var target: Vector3 = hit["position"] if not hit.is_empty() else origin + aim * 300.0
+	if pierce_shot:
+		# O cano fica abaixo da mira: convergindo no 1o jogador, a bala subiria por cima de
+		# quem está atrás dele. Convergindo mais longe, a fila inteira fica na linha.
+		target = origin + aim * maxf(origin.distance_to(target), PIERCE_CONVERGE)
 	var count: int = stats["bullet_count"]
 	var spread := deg_to_rad(stats["spread"])
 	for k in count:
@@ -4083,7 +4139,8 @@ func _volley() -> void:
 		if pierce_shot:
 			# Perfurante: reta, bem mais rápida e atravessando paredes.
 			extra.merge({"speed": float(stats["bullet_speed"]) * PIERCE_SPEED, "gravity": 0.0,
-				"ghost": true, "pierce": true})
+				"ghost": true, "pierce": true, "drill": true})
+			mult *= PIERCE_DAMAGE
 		if meteor_shot and k == 0:
 			extra["meteor"] = true   # só a primeira bala do disparo marca (escopeta)
 		Bullet.fire(self, muzzle.global_position, dir, mult, k == 0, extra)
@@ -4358,7 +4415,8 @@ func take_area_damage(amount: float, from: Player) -> void:
 
 
 ## Só é chamado na máquina dona deste jogador.
-func take_damage(amount: float, from: Player, flash := true) -> void:
+## ignore_armor: o Perfurante bate direto na vida.
+func take_damage(amount: float, from: Player, flash := true, ignore_armor := false) -> void:
 	if not alive or amount <= 0.0 or protect_timer > 0.0 or ice_timer > 0.0:
 		return
 	if from and from != self and not is_ally(from):   # tiro do parceiro (escudo humano) não conta
@@ -4375,7 +4433,7 @@ func take_damage(amount: float, from: Player, flash := true) -> void:
 		hook_taken += amount
 		if hook_taken >= HOOK_ESCAPE:
 			_hook_let_go()
-	var absorbed := minf(armor, amount)
+	var absorbed := 0.0 if ignore_armor else minf(armor, amount)
 	armor -= absorbed
 	health -= amount - absorbed
 	if last_stand_timer > 0.0:

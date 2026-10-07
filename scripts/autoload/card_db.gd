@@ -117,7 +117,7 @@ const MASTERS := {
 		"desc": "Q: monta num foguete que voa sempre para a frente (12 m/s) e vira bem devagar, por até 5 s. Q de novo: você salta e o foguete segue reto, acelera muito e explode no primeiro contato. Montado, ele explode se bater numa parede, encostar num inimigo ou o tempo acabar (você é lançado para cima, sem dano). Explosão de 45 no centro, até 5 m. Recarga de 18 s.",
 		"mods": [{"stat": "rocket_ride", "add": 1}]},
 	"perfurante": {"name": "Perfurante", "cat": "Balas", "rarity": "mitico", "master": true, "cooldown": 12.0,
-		"desc": "Q: os próximos 3 tiros vão retos, sem queda, 3x mais rápidos e atravessando paredes. Recarga de 12 s.",
+		"desc": "Q: os próximos 3 tiros vão retos, sem queda, 3x mais rápidos, com +30% de dano e atravessando tudo: paredes, jogadores (cada um leva uma vez), o escudo e o Bastião, que não os devolvem. O dano ignora o colete e vai direto na vida. Recarga de 12 s.",
 		"mods": [{"stat": "pierce", "add": 1}]},
 	"bastiao": {"name": "Bastião", "cat": "Escudo", "rarity": "mitico", "master": true, "cooldown": 14.0,
 		"desc": "Q: ergue à sua frente uma parede de energia por 4 s que devolve as balas inimigas. As suas passam. Recarga de 14 s.",
@@ -129,8 +129,8 @@ const MASTERS := {
 		"mods": [{"stat": "ice", "add": 1}]},
 	# Mega Tapa (2026-10-06, ideia do usuário: tirar quem joga de perto; números meus e o
 	# impacto na parede, escolhido por ele entre 3 extras).
-	"mega_tapa": {"name": "Mega Tapa", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 10.0,
-		"desc": "Q: um tapa à frente (2,5 m) que causa 10 de dano e arremessa longe e para cima. Se o arremessado bater numa parede no voo, leva mais 20 e fica tonto por 0,6 s (lento e sem atirar). Escudo levantado bloqueia. Recarga de 10 s.",
+	"mega_tapa": {"name": "Mega Tapa", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 8.0,
+		"desc": "Q: um tapa à frente (3,2 m) que causa 10 de dano e arremessa longe e para cima. Se o arremessado bater numa parede no voo, leva mais 20 e fica tonto por 0,6 s (lento e sem atirar). Escudo levantado bloqueia. Recarga de 8 s.",
 		"mods": [{"stat": "slap", "add": 1}]},
 	# Gancho (2026-10-06, ideia do usuário: fundiu as minhas propostas de gancho e de
 	# agarrar e arremessar; números meus, aprovados).
@@ -153,9 +153,11 @@ const MASTERS := {
 	# Formiga (2026-10-06, ideia do usuário; números meus, aprovados; cancelar no Q e o
 	# impacto ao crescer foram sugestões minhas aceitas).
 	# Plataformas Suspensas (2026-10-06, ideia e nome do usuário; números meus, aprovados;
-	# todos pisam, escolha dele).
-	"plataformas_suspensas": {"name": "Plataformas Suspensas", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 18.0,
-		"desc": "Q no ar: cria uma plataforma sob os seus pés e, por 6 s, pular no ar sem pulos sobrando cria outra (até 4 no total). Cada plataforma dura 5 s; qualquer jogador pode pisar nelas, e as balas atravessam. Recarga de 12 s depois que acaba.",
+	# todos pisam, escolha dele). Passiva com propulsor desde 2026-10-07 (pedido dele; 3
+	# plataformas e 14 m/s meus, aprovados; a cor por jogador foi ideia dele; recarga de 6 s
+	# dele e prazo de 2 s meu).
+	"plataformas_suspensas": {"name": "Plataformas Suspensas", "cat": "Movimento", "rarity": "mitico", "master": true,
+		"desc": "Sem pulos no ar sobrando, pular cria uma plataforma sob os seus pés. Dá para fazer até 3 seguidas, com 2 s para usar cada próxima; ao usar a 3ª, passar o prazo ou tocar o chão, recarga de 6 s. A plataforma é um propulsor: lança para cima quem pisa nela, uma vez por jogador (verde: ainda te lança; roxa: já te lançou). Dura 5 s; qualquer jogador pode pisar, e as balas atravessam.",
 		"mods": [{"stat": "platforms", "add": 1}]},
 	"formiga": {"name": "Formiga", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 16.0,
 		"desc": "Q: por 6 s você fica com 40% do tamanho (mais difícil de acertar) e 60% mais rápido. Q de novo volta antes. Ao voltar ao tamanho, um impacto empurra quem estiver a até 4 m e causa 15 de dano. Recarga de 16 s.",
