@@ -491,6 +491,14 @@ const HOOK_THROW_LIFT := 6.0   # arco do arremesso (~0,5 s no ar, ~12 m em campo
 const HOOK_IMPACT := 22.0
 const HOOK_ESCAPE := 30.0
 const HOOK_MISS_CD := 6.0
+## Ímã leve (2026-10-07, o usuário achou difícil acertar): a menos de HOOK_MAGNET_RANGE da
+## ponta, um inimigo à frente dela (até HOOK_MAGNET_CONE do rumo) e à vista puxa a ponta a
+## HOOK_MAGNET_TURN rad/s. Medido: pega quem passa a até 1,3 m da ponta (sem o ímã, 0,9;
+## com 2 rad/s seriam só 1,1 m).
+## Nas outras máquinas a ponta desenhada segue reta (só o desenho; quem decide é quem lança).
+const HOOK_MAGNET_RANGE := 4.0
+const HOOK_MAGNET_TURN := 4.0
+const HOOK_MAGNET_CONE := 0.5   # cosseno: 60 graus
 const HOOK_CARRY_SPEED := 0.7
 const HOOK_COLOR := Color(0.75, 0.75, 0.8)
 var hook_state := 0
@@ -583,12 +591,14 @@ var daze_timer := 0.0      # tonto: não atira
 var hand_pivot: Node3D     # primeira pessoa: a mão do tapa
 ## Prisão de Gelo (mestra): caco reto que congela por ICE_TIME. Congelado: não age, não
 ## leva dano, desliza (ICE_FRICTION) e é empurrado por tiros (ICE_PUSH por ponto de dano,
-## ~5 m/s no tiro base), explosões e encontrões (ice_shove). No vazio quica e o dano fica
-## guardado (ice_debt) até derreter.
+## 5 m/s no tiro base de 25), explosões e encontrões (ice_shove). No vazio quica e o dano
+## fica guardado (ice_debt) até derreter. Congelado, a área de acerto é a do bloco
+## (ICE_HIT_RADIUS; antes era o corpo e o tiro na borda do gelo atravessava sem empurrar).
 const ICE_TIME := 3.0
 const ICE_SPEED := 60.0
 const ICE_RANGE := 40.0
-const ICE_PUSH := 0.15
+const ICE_PUSH := 0.2   # era 0,15 até 2026-10-07
+const ICE_HIT_RADIUS := 0.625   # metade da largura do bloco (1,25 m)
 const ICE_FRICTION := 2.5
 const ICE_SHOVE_DASH := 1.5
 const ICE_COLOR := Color(0.7, 0.95, 1.0)
@@ -3311,6 +3321,7 @@ func _net_hook_fire(dir: Vector3) -> void:
 ## A ponta voa (na máquina de quem lança): parede ou fim do alcance = errou; um inimigo
 ## perto da linha = manda o gancho para a máquina dele decidir.
 func _hook_fly(delta: float) -> void:
+	_hook_magnet(delta)
 	var step := HOOK_SPEED * delta
 	var from := hook_tip
 	var to := hook_tip + hook_dir * step
@@ -3330,6 +3341,28 @@ func _hook_fly(delta: float) -> void:
 	hook_dist += step
 	if not wall.is_empty() or hook_dist >= HOOK_RANGE:
 		_hook_miss()
+
+
+func _hook_magnet(delta: float) -> void:
+	var best: Player = null
+	var best_dist := HOOK_MAGNET_RANGE
+	for enemy: Player in enemies():
+		if enemy.ice_timer > 0.0 or enemy.hooked_by:
+			continue
+		var to := enemy.chest() - hook_tip
+		var d := to.length()
+		if d < best_dist and d > 0.01 and hook_dir.dot(to / d) > HOOK_MAGNET_CONE:
+			best = enemy
+			best_dist = d
+	if best == null:
+		return
+	var space := get_world_3d().direct_space_state
+	if not space.intersect_ray(PhysicsRayQueryParameters3D.create(hook_tip, best.chest(), 1)).is_empty():
+		return
+	var want := (best.chest() - hook_tip).normalized()
+	var angle := hook_dir.angle_to(want)
+	if angle > 0.001:
+		hook_dir = hook_dir.slerp(want, minf(1.0, HOOK_MAGNET_TURN * delta / angle)).normalized()
 
 
 func _hook_miss() -> void:
@@ -4284,6 +4317,8 @@ func hit_radius() -> float:
 	var s: float = stats["body_scale"]
 	if is_shielding():
 		return SHIELD_HIT_RADIUS * maxf(s, 1.0) * float(stats["shield_size"])
+	if ice_timer > 0.0:
+		return ICE_HIT_RADIUS * s
 	return RADIUS * s
 
 

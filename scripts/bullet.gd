@@ -26,6 +26,12 @@ const EXPLOSION_SIZE_GAIN := 1.5
 const EXPLOSION_MIN := 0.5
 const TRAIL_MAX_WIDTH := 1.5   # rastro de bala gigante: faixa translúcida enorme pesa na placa
 const SPLIT_ANGLE := 10.0
+## Teto invisível (2026-10-07, como no Furor): a CEILING_Y a bala quica como numa parede
+## (gasta um quique, soma na Tabelinha, depois pode acertar quem atirou) e desce. Sem
+## quiques sobrando, some lá em cima. No teto não há explosão, nuvem, buraco nem marca de
+## meteoro (ninguém está lá, e o meteoro cairia em quem atirou). Perfurante, Sniper, caco de
+## gelo e foguete solto passam. O muro mais alto tem 18 m e jogador nenhum chega a 30.
+const CEILING_Y := 30.0
 const MAX_BULLETS := 300   # teto de segurança para combinações extremas de cartas
 const REMOTE_WAIT := 0.3
 const TRAIL_POINTS := 6
@@ -44,17 +50,18 @@ const GROW_TIME := 2.0
 ## em 2026-10-07): nem toda bala procura alvo, e a que procura só curva quando um inimigo
 ## passa perto dela, mas aí curva forte, para dar para ver (e fica verde, SEEK_COLOR).
 ## As cópias (n) aumentam sobretudo a chance, com retorno decrescente e teto de 70%: nunca
-## é toda bala. Medido (simulação, balas que passariam a 0,65-2 m do alvo): viram acerto
-## 18/31/41/53/61% com n = 1/2/3/5/10 (antes 7/27/54/71/83%: invisível com 1 e quase
-## mira automática com 4+). Fórmula de cada termo: MIN + GAIN x (n - 1) / (n + K).
+## é toda bala. Simulação (balas que passariam a 0,65-2 m do alvo): viram acerto
+## 9/19/27/42/61% com n = 1/2/3/5/10. Antes do ajuste de 2026-10-07 (raio 4, curva 4,5 com
+## 1 cópia) eram 15/25/37/53/61%: forte demais no começo da partida, achou o usuário.
+## Fórmula de cada termo: MIN + GAIN x (n - 1) / (n + K).
 const SEEK_CHANCE_MIN := 0.35
 const SEEK_CHANCE_GAIN := 0.35
 const SEEK_CHANCE_K := 2.0
-const SEEK_RADIUS_MIN := 4.0
-const SEEK_RADIUS_GAIN := 2.0
+const SEEK_RADIUS_MIN := 3.5   # era 4 (e curva 4,5) até 2026-10-07: forte com 1 cópia
+const SEEK_RADIUS_GAIN := 2.5
 const SEEK_RADIUS_K := 3.0
-const SEEK_TURN_MIN := 4.5
-const SEEK_TURN_GAIN := 1.5
+const SEEK_TURN_MIN := 4.0
+const SEEK_TURN_GAIN := 2.0
 const SEEK_TURN_K := 3.0
 const SEEK_COLOR := Color(0.1, 1.0, 0.25)   # saturado: o brilho (x2,2) deixa cor clara branca
 ## Quique Certeiro (refeito em 2026-10-04: antes virava a bala direto para o inimigo em todo
@@ -395,6 +402,11 @@ func _physics_process(delta: float) -> void:
 			_passed.append(world_hit["rid"])
 			Effects.burst(get_parent(), world_hit["position"], maxf(0.35, radius * 2.5), Color(0.75, 0.6, 1.0), 0.15)
 			world_hit = _world_ray(from, to)
+		if not ice and not rocket:
+			var ceiling := _ceiling_hit(from, to)
+			if not ceiling.is_empty() and (world_hit.is_empty()
+					or from.distance_to(world_hit["position"]) > from.distance_to(ceiling["position"])):
+				world_hit = ceiling
 	var end: Vector3 = to if world_hit.is_empty() else world_hit["position"]
 	if _check_barriers(from, end):
 		_remember_point(from)
@@ -408,6 +420,15 @@ func _physics_process(delta: float) -> void:
 		global_position = to
 		_orient()
 	_remember_point(from)
+
+
+## Cruzou o teto invisível neste passo (a borda da bala, para a bala gigante da nuke)?
+func _ceiling_hit(from: Vector3, to: Vector3) -> Dictionary:
+	var top := CEILING_Y - radius
+	if velocity.y <= 0.0 or to.y < top:
+		return {}
+	var t := clampf((top - from.y) / maxf(to.y - from.y, 0.0001), 0.0, 1.0)
+	return {"position": from.lerp(to, t), "normal": Vector3.DOWN, "ceiling": true}
 
 
 func _world_ray(from: Vector3, to: Vector3) -> Dictionary:
@@ -564,6 +585,13 @@ func _hit_world(hit: Dictionary) -> void:
 		Player.rocket_blast(get_parent(), point + normal * 0.3, shooter)
 		queue_free()
 		return
+	if hit.get("ceiling", false):
+		if bounces <= 0:
+			queue_free()
+			return
+		Effects.burst(get_parent(), point, 0.35, Color(color.r * 2.2, color.g * 2.2, color.b * 2.2), 0.12)
+		_bounce(point, normal)
+		return
 	if normal.is_zero_approx():
 		normal = -velocity.normalized()   # o raio começou dentro de uma parede
 	_impact_fields(point, normal)
@@ -584,6 +612,11 @@ func _hit_world(hit: Dictionary) -> void:
 			_shatter(point, normal)
 		queue_free()
 		return
+	_bounce(point, normal)
+
+
+## Quique (parede, chão ou teto invisível): gasta um, ganha vida e Tabelinha, Quique Certeiro.
+func _bounce(point: Vector3, normal: Vector3) -> void:
 	bounces -= 1
 	bounced = true
 	life += BOUNCE_LIFE
