@@ -48,6 +48,7 @@ var team_mode: bool:
 		return mode == "teams"
 ## Saiu da sala online para mexer nos baralhos: o menu volta direto para a sala.
 var from_lobby := false
+var autotest_room_done := false   # autoteste "--sala": já voltou à sala uma vez
 ## Times: nomes e cores (Azul e Vermelho), duas cores por time, uma para cada jogador.
 const TEAM_NAMES := ["Azul", "Vermelho"]
 const TEAM_COLORS := [[Color(0.25, 0.55, 1.0), Color(0.3, 0.85, 0.95)],

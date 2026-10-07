@@ -73,6 +73,10 @@ func _ready() -> void:
 			if p.is_local:
 				me = p
 		Net.disconnected.connect(_on_connection_lost)
+		# Partida nova começada pelo anfitrião enquanto este ainda está no placar final.
+		Net.match_starting.connect(func():
+			if phase == Phase.MATCH_OVER:
+				GameState.go_to_match())
 		if GameState.autotest:
 			# Teste do chat: cada máquina manda uma mensagem e registra o que chega.
 			Net.chat_received.connect(func(e): _log("chat: %s: %s" % [e["name"] if not e["system"] else "*", e["text"]]))
@@ -604,6 +608,8 @@ func net_ask_continue() -> void:
 func net_end_match() -> void:
 	phase = Phase.MATCH_OVER
 	draft.close()
+	if Net.online:
+		Net.end_match()
 	if mode == "duels":
 		_end_duels()
 		return
@@ -624,7 +630,7 @@ func net_end_match() -> void:
 	if GameState.autotest:
 		_log(_perf_report())
 		await get_tree().create_timer(0.5).timeout
-		_quit()
+		_autotest_finish()
 		return
 	_show_end(text, color, "%d rodadas  ·  %s" % [round_num, GameModes.label(mode, GameState.lives)])
 
@@ -634,7 +640,7 @@ func _show_end(result: String, color: Color, detail: String) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	hud.round_text = detail
 	if Net.online:
-		hud.show_end(result, color, {"Voltar ao menu": _to_menu})
+		hud.show_end(result, color, {"Voltar à sala": _to_room, "Voltar ao menu": _to_menu})
 	else:
 		hud.show_end(result, color, {"Jogar de novo": get_tree().reload_current_scene, "Voltar ao menu": _to_menu})
 
@@ -655,7 +661,7 @@ func _end_duels() -> void:
 	if GameState.autotest:
 		_log(_perf_report())
 		await get_tree().create_timer(0.5).timeout
-		_quit()
+		_autotest_finish()
 		return
 	_show_end(text, Ui.OK if winner == me else Ui.TEXT, "   ".join(lines))
 
@@ -753,6 +759,32 @@ func _to_menu() -> void:
 	Net.stop()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+
+
+## Fim da partida online: volta para a sala sem fechar a conexão (o menu abre na página
+## da sala pelo GameState.from_lobby; se o anfitrião saiu, avisa que a sala caiu).
+func _to_room() -> void:
+	pause_menu.close()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	GameState.from_lobby = true
+	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+
+
+## Autoteste: sai no fim. Com "--sala" em rede, a primeira partida volta à sala (o host
+## começa outra quando todos estiverem lá) e só a segunda sai; com "--sala-fica", fica no
+## placar final e a partida nova do anfitrião o puxa.
+func _autotest_finish() -> void:
+	if Net.online and "--sala" in OS.get_cmdline_user_args() and not GameState.autotest_room_done:
+		GameState.autotest_room_done = true
+		_log("voltando à sala")
+		_to_room()
+		return
+	if Net.online and "--sala-fica" in OS.get_cmdline_user_args() and not GameState.autotest_room_done:
+		# Fica no placar final: a partida nova do anfitrião tem de puxá-lo.
+		GameState.autotest_room_done = true
+		_log("ficou no placar final")
+		return
+	_quit()
 
 
 func _quit() -> void:

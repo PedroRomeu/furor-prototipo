@@ -78,6 +78,7 @@ func _ready() -> void:
 	map_picker = MapPicker.new()
 	add_child(map_picker)
 	_show(Page.HOME)
+	var came_back := GameState.from_lobby
 	if GameState.from_lobby:
 		# Voltando dos Baralhos com a sala aberta.
 		GameState.from_lobby = false
@@ -95,7 +96,9 @@ func _ready() -> void:
 	# e "--join".
 	# Adiado: trocar de cena dentro do _ready da cena inicial dá erro.
 	var args := OS.get_cmdline_user_args()
-	if _autotest_players() > 0:
+	if came_back:
+		pass   # de volta à sala: a conexão já existe
+	elif _autotest_players() > 0:
 		_host.call_deferred()
 	elif "--solo" in args:
 		_play_bots.call_deferred()

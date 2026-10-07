@@ -2253,7 +2253,7 @@ func knockback(v: Vector3) -> void:
 
 ## Manda o estado deste jogador para a outra máquina, a cada quadro de física.
 func _send_state() -> void:
-	if not Net.online or not Net.all_ready():
+	if not Net.online or Net.match_peers.is_empty() or not Net.all_ready():
 		return
 	var flags := (1 if is_on_floor() else 0) | (2 if crouching else 0) | (4 if sliding else 0) \
 		| (8 if boosting else 0)

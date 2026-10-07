@@ -236,6 +236,16 @@ func _start(ids: Array, all_names: Dictionary, match_teams: Dictionary, all_look
 	match_starting.emit()
 
 
+## Fim da partida (2026-10-07, "Voltar à sala"): a conexão volta a ser só a sala, mesmo
+## com gente ainda no placar final. Quem sai daí sai da sala, não derruba a partida, e um
+## convidado novo já pode entrar. Chamado em todas as máquinas.
+func end_match() -> void:
+	match_peers.clear()
+	ready_peers.clear()
+	if online and is_host():
+		_broadcast_lobby()
+
+
 func announce_ready() -> void:
 	if online and not is_host():
 		_mark_ready.rpc_id(1)
