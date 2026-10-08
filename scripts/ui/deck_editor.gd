@@ -41,6 +41,7 @@ var filter_popup: PopupPanel
 var arch_buttons := {}
 var rarity_buttons := {}
 var only_deck: CheckButton
+var only_owned: CheckButton   # coleção (Collection): por enquanto só filtra, não bloqueia nada
 var empty_grid: Label
 var picker: Control   # escolha da carta mestra (por cima de tudo)
 var picker_group := FILTER_ALL   # grupo mostrado na escolha da mestra
@@ -182,6 +183,11 @@ func _build_filter_popup() -> void:
 	only_deck.text = "Só cartas do baralho"
 	only_deck.toggled.connect(func(_on): _apply_filter())
 	bottom.add_child(only_deck)
+	only_owned = CheckButton.new()
+	only_owned.text = "Só da coleção"
+	only_owned.tooltip_text = "Cartas que você já tem na coleção (Loja)"
+	only_owned.toggled.connect(func(_on): _apply_filter())
+	bottom.add_child(only_owned)
 	bottom.add_child(Ui.spacer())
 	bottom.add_child(Ui.flat(Ui.button("Limpar filtros", _clear_filters)))
 
@@ -213,6 +219,7 @@ func _clear_filters() -> void:
 	for b in arch_buttons.values() + rarity_buttons.values():
 		b.set_pressed_no_signal(false)
 	only_deck.set_pressed_no_signal(false)
+	only_owned.set_pressed_no_signal(false)
 	_apply_filter()
 
 
@@ -227,6 +234,7 @@ func _tile(id: String) -> Control:
 	var archs := CardDB.archetypes_of(id)
 	if not archs.is_empty():
 		tip += "\n\nArquétipos: " + ", ".join(archs)
+	tip += "\n\nNa coleção: %d/%d" % [Collection.has_card(id), Collection.max_copies(id)]
 	panel.tooltip_text = tip + "\n\nClique: põe uma cópia   ·   Botão direito: tira"
 	panel.gui_input.connect(_on_tile_input.bind(id))
 	panel.mouse_entered.connect(func(): hovered = id; _style_tile(id))
@@ -331,6 +339,8 @@ func _apply_filter() -> void:
 			show = false
 		if only_deck.button_pressed and not deck.has(id):
 			show = false
+		if only_owned.button_pressed and Collection.has_card(id) == 0:
+			show = false
 		if text != "" and not (card["name"].to_lower().contains(text) or card["desc"].to_lower().contains(text)
 				or " ".join(CardDB.archetypes_of(id)).to_lower().contains(text)):
 			show = false
@@ -338,7 +348,7 @@ func _apply_filter() -> void:
 		shown += 1 if show else 0
 	empty_grid.visible = shown == 0
 	# O botão mostra quantos filtros estão ligados (e fica laranja).
-	var active := (1 if arch != "" else 0) + (1 if rarity != "" else 0) + (1 if only_deck.button_pressed else 0)
+	var active := (1 if arch != "" else 0) + (1 if rarity != "" else 0) + (1 if only_deck.button_pressed else 0) 		+ (1 if only_owned.button_pressed else 0)
 	filter_button.text = "Filtros" if active == 0 else "Filtros  %d" % active
 	if active > 0:
 		filter_button.add_theme_stylebox_override("normal", Ui.box(Ui.SURFACE, 8, Ui.ACCENT))

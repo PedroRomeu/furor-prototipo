@@ -21,6 +21,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 CardDB="*res://scripts/autoload/card_db.gd"
 GameState="*res://scripts/autoload/game_state.gd"
 Net="*res://scripts/autoload/net.gd"
+Collection="*res://scripts/autoload/collection.gd"
 
 [display]
 

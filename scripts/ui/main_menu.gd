@@ -1,5 +1,5 @@
 extends Control
-## Menu principal, em páginas: Início (Jogar, Baralhos, Personalizar, Configurações, Sair),
+## Menu principal, em páginas: Início (Jogar, Baralhos, Loja, Personalizar, Configurações, Sair),
 ## Jogar (treino contra bots ou online), Sala (quem entrou; o anfitrião começa quando
 ## quiser), Personalizar (personagem e arma, só aparência) e Configurações. Esc volta uma
 ## página.
@@ -150,6 +150,7 @@ func _home_page() -> Control:
 	play.add_theme_font_size_override("font_size", 22)
 	menu.add_child(play)
 	menu.add_child(_menu_button("Baralhos", _open_decks))
+	menu.add_child(_menu_button("Loja", func(): get_tree().change_scene_to_file("res://scenes/shop.tscn")))
 	menu.add_child(_menu_button("Personalizar", _open_custom))
 	menu.add_child(_menu_button("Configurações", func(): _show(Page.SETTINGS)))
 	menu.add_child(_menu_button("Sair", func(): get_tree().quit()))
