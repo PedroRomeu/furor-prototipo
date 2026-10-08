@@ -130,3 +130,10 @@ parkour.svg <- boot-kick (Lorc)
 recarga_perfeita.svg <- sands-of-time (Lorc)
 casca_dura.svg <- turtle-shell (Lorc)
 dash_duplo.svg <- back-forth (Lorc)
+
+Símbolos dos grupos (canto das cartas):
+grupo_arma.svg <- pistol-gun (John Colburn)
+grupo_balas.svg <- heavy-bullets (Delapouite)
+grupo_escudo.svg <- shield (Sbed)
+grupo_corpo.svg <- hearts (Skoll)
+grupo_movimento.svg <- feathered-wing (Lorc)

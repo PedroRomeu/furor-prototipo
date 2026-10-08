@@ -18,7 +18,7 @@ static func make(id: String, size := 36.0, count := 1, tooltip := true) -> CardI
 	var color: Color = CardDB.CATEGORY_COLORS[CardDB.CARDS[id]["cat"]]
 	var master := CardDB.is_master(id)
 	var style := Ui.box(color.darkened(0.78), int(size * 0.2),
-		CardDB.rarity_color(id) if master else color.darkened(0.35), 2 if master else 1)
+		color.darkened(0.1) if master else color.darkened(0.35), 2 if master else 1)
 	style.set_content_margin_all(size * 0.14)
 	icon.add_theme_stylebox_override("panel", style)
 	var tex := TextureRect.new()

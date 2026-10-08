@@ -21,7 +21,7 @@ const RARITY_FILTERS := ["comum", "raro", "epico", "lendario"]
 var index := 0
 var deck: Array = []
 var master := ""
-var tiles := {}   # id -> {panel, badge, color}
+var tiles := {}   # id -> {panel, badge, cat}
 var hovered := ""
 
 var name_edit: LineEdit
@@ -248,7 +248,13 @@ func _tile(id: String) -> Control:
 	title.clip_text = true
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	names.add_child(title)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Nome e, no canto de cima, o símbolo do grupo.
+	var title_row := Ui.hbox(6)
+	title_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	names.add_child(title_row)
+	title_row.add_child(title)
+	title_row.add_child(CardFrame.symbol_rect(card["cat"], 18))
 	var sub := CardDB.rarity_name(id)
 	if card.has("max"):
 		sub += "  ·  " + CardDB.limit_short(id)
@@ -275,7 +281,7 @@ func _tile(id: String) -> Control:
 	sub_row.add_child(badge)
 
 	col.add_child(_desc_box(card["desc"]))
-	tiles[id] = {"panel": panel, "badge": badge, "color": color}
+	tiles[id] = {"panel": panel, "badge": badge, "cat": card["cat"]}
 	return panel
 
 
@@ -287,12 +293,10 @@ func _desc_box(text: String) -> ScrollContainer:
 func _style_tile(id: String) -> void:
 	var t: Dictionary = tiles[id]
 	var copies := deck.count(id)
-	var color: Color = t["color"]
 	var hot := id == hovered
-	var border: Color = color.darkened(0.15) if copies > 0 else (Ui.LINE.lightened(0.25) if hot else Ui.LINE)
-	var style := Ui.box(Ui.SURFACE_HI if hot else Ui.SURFACE, 10, border, 2 if copies > 0 else 1)
-	style.set_content_margin_all(12)
-	t["panel"].add_theme_stylebox_override("panel", style)
+	# Moldura do grupo acesa (com brilho) para as cartas do baralho, apagada para as outras.
+	var look := ("hot" if hot else "lit") if copies > 0 else ("dim_hot" if hot else "dim")
+	t["panel"].add_theme_stylebox_override("panel", CardFrame.style(t["cat"], look, false, 12))
 	t["badge"].visible = copies > 0
 	t["badge"].text = "x%d" % copies
 
@@ -611,10 +615,7 @@ func _master_option(id: String) -> Control:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(250, 0)
 	panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	var style := Ui.box(Ui.SURFACE_HI if chosen else Ui.BG.lightened(0.03), 10,
-		color if chosen else Ui.LINE, 2 if chosen else 1)
-	style.set_content_margin_all(14)
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", CardFrame.style(card["cat"], "hot" if chosen else "lit", true, 14))
 	panel.gui_input.connect(func(event: InputEvent):
 		var mb := event as InputEventMouseButton
 		if mb and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:

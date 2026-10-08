@@ -14,7 +14,7 @@ var _count := 0
 var _voting := false
 var _vote_rows := {}          # nome do nó -> [Label do estado, Player]
 var _vote_buttons: Array = []
-var _cards: Array = []        # [PanelContainer, cor] de cada carta, para o realce
+var _cards: Array = []        # [PanelContainer, grupo] de cada carta, para o realce
 
 
 func _ready() -> void:
@@ -177,8 +177,8 @@ func _wait(count: int, hide_after := true) -> int:
 	return index
 
 
-## Carta da escolha, no visual do editor: faixa da cor do grupo no topo, tecla e cópias,
-## ícone, nome, grupo e raridade, e a descrição numa área fixa que rola.
+## Carta da escolha, no visual do editor: moldura do grupo, símbolo do grupo e tecla no
+## topo, ícone, nome, grupo, raridade e cópias, e a descrição numa área fixa que rola.
 func _card(id: String, index: int, owned: int) -> Control:
 	var card: Dictionary = CardDB.CARDS[id]
 	var color: Color = CardDB.CATEGORY_COLORS[card["cat"]]
@@ -191,7 +191,7 @@ func _card(id: String, index: int, owned: int) -> Control:
 			picked.emit(index))
 	panel.mouse_entered.connect(_style_card.bind(index, true))
 	panel.mouse_exited.connect(_style_card.bind(index, false))
-	_cards.append([panel, color])
+	_cards.append([panel, card["cat"]])
 	_style_card(index, false)
 	var col := Ui.vbox(8)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -200,12 +200,9 @@ func _card(id: String, index: int, owned: int) -> Control:
 	var top := Ui.hbox(6)
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(top)
-	top.add_child(_chip(str(index + 1), Ui.SURFACE_HI, Ui.MUTED))
+	top.add_child(CardFrame.symbol_rect(card["cat"], 20))
 	top.add_child(Ui.spacer())
-	if owned > 0:
-		var have := _chip("você tem x%d" % owned, color, Ui.BG)
-		have.tooltip_text = "Pegar de novo soma o efeito"
-		top.add_child(have)
+	top.add_child(_chip(str(index + 1), Ui.SURFACE_HI, Ui.MUTED))
 
 	var icon := CardIcon.make(id, 76, 1, false)
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -224,6 +221,11 @@ func _card(id: String, index: int, owned: int) -> Control:
 		var l := Ui.label(t[0], 13, t[1], true)
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		tags.add_child(l)
+	if owned > 0:
+		var have := _chip("você tem x%d" % owned, color, Ui.BG)
+		have.tooltip_text = "Pegar de novo soma o efeito"
+		have.mouse_filter = Control.MOUSE_FILTER_PASS
+		tags.add_child(have)
 	col.add_child(HSeparator.new())
 	var desc := Ui.scroll_text(card["desc"], DESC_HEIGHT, 14, Ui.TEXT.darkened(0.15))
 	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -235,15 +237,9 @@ func _style_card(index: int, hot: bool) -> void:
 	if index >= _cards.size():
 		return
 	var panel: PanelContainer = _cards[index][0]
-	var color: Color = _cards[index][1]
-	# Borda na cor do grupo, mais grossa no topo; com o mouse em cima acende e cresce um pouco.
-	var style := Ui.box(Ui.SURFACE_HI if hot else Ui.SURFACE, 12, color if hot else color.darkened(0.5), 2 if hot else 1)
-	style.border_width_top = 4
-	style.set_content_margin_all(16)
+	# Moldura do grupo (CardFrame); com o mouse em cima brilha mais e cresce um pouco.
+	var style := CardFrame.style(_cards[index][1], "hot" if hot else "lit")
 	style.content_margin_top = 14
-	if hot:
-		style.shadow_color = Color(color, 0.22)
-		style.shadow_size = 16
 	panel.add_theme_stylebox_override("panel", style)
 	panel.pivot_offset = CARD_SIZE / 2.0
 	panel.scale = Vector2.ONE * (1.03 if hot else 1.0)
