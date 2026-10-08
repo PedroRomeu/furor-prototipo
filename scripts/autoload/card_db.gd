@@ -130,7 +130,7 @@ const MASTERS := {
 	# Mega Tapa (2026-10-06, ideia do usuário: tirar quem joga de perto; números meus e o
 	# impacto na parede, escolhido por ele entre 3 extras).
 	"mega_tapa": {"name": "Mega Tapa", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 8.0,
-		"desc": "Q: ergue a mão e, 0,6 s depois, dá um tapa à frente (3,6 m) que causa 10 de dano e arremessa longe e para cima, sem controle no ar até cair. Se o arremessado bater numa parede no voo, leva mais 20 e fica tonto por 0,6 s (lento e sem atirar). Escudo levantado bloqueia. Recarga de 8 s.",
+		"desc": "Q: ergue a mão e, 0,6 s depois, dá um tapa à frente (4,5 m) que causa 10 de dano e arremessa longe e para cima, sem controle no ar até cair. Se o arremessado bater numa parede no voo, leva mais 20 e fica tonto por 0,6 s (lento e sem atirar). Escudo levantado bloqueia. Recarga de 8 s.",
 		"mods": [{"stat": "slap", "add": 1}]},
 	# Gancho (2026-10-06, ideia do usuário: fundiu as minhas propostas de gancho e de
 	# agarrar e arremessar; números meus, aprovados).

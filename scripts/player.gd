@@ -583,15 +583,15 @@ var ride_fx: Node3D
 ## sem atirar) e então o tapa sai no leque curto à frente; arremessa (SLAP_PUSH para o lado, SLAP_LIFT
 ## para cima, sem controle no ar até pousar: slap_lock). Por SLAP_FLIGHT segundos, bater numa parede ainda rápido (SPLAT_MIN_SPEED)
 ## dá SPLAT_DAMAGE e deixa tonto (DAZE_TIME: lento e sem atirar).
-const SLAP_RANGE := 3.6   # era 2,5 e depois 3,2 (2026-10-07, pedidos do usuário; recarga 10 -> 8 s)
+const SLAP_RANGE := 4.5   # era 2,5, 3,2 e 3,6 (2026-10-07/08, pedidos do usuário; recarga 10 -> 8 s)
 const SLAP_ARC := 50.0
 const SLAP_SWIPE := 0.09    # a passada da mão (na tela e no modelo)
 const SLAP_GHOSTS := 4      # cópias do rastro por tapa
 const SLAP_GHOST_FADE := 0.18
 const SLAP_WINDUP := 0.6   # 2026-10-07, pedido do usuário (ele pensou em 1 s; 0,6 escolhido por ele)
 const SLAP_DAMAGE := 10.0
-const SLAP_PUSH := 24.5   # era 22 (2026-10-07, pedido do usuário: um pouco mais, perto do Gancho; 16,9 -> 18,8 m)
-const SLAP_LIFT := 12.0
+const SLAP_PUSH := 30.0   # era 22 e 24,5 (2026-10-08, pedido do usuário: a carta para tirar alguém de perto)
+const SLAP_LIFT := 14.0   # era 12; subir junto alonga o voo (2026-10-08)
 const SLAP_FLIGHT := 1.0
 const SPLAT_DAMAGE := 20.0
 const SPLAT_MIN_SPEED := 6.0
