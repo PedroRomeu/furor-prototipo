@@ -63,7 +63,7 @@ const LIMITS := {
 	"bounce_damage": [0.0, 1.0],
 	"grow": [0.0, 1.6],
 	"blast_radius": [-1.0, 3.0],
-	"blast_damage": [0.0, 1.5],
+	"blast_damage": [0.0, 1.0],   # era 1,5 até 2026-10-08: o centro passava de 1,5x o tiro
 	"blast_resist": [0.0, 0.7],
 	"heavy": [0.0, 0.6],
 	"regen": [0.0, 12.0],

@@ -24,6 +24,12 @@ const EXPLOSION_DAMAGE := 0.6
 ## (2026-10-07; a bala base soma 0,2 m, a Bala Gigante 0,7, uma nuke de 9 m uns 14).
 const EXPLOSION_SIZE_GAIN := 1.5
 const EXPLOSION_MIN := 0.5
+## Explosão grande perde força (2026-10-08, o usuário achou a build de Dinamite forte demais:
+## grande, fácil de acertar e com dano alto). Acima de EXPLOSION_FULL_SIZE de raio, cada metro
+## a mais tira EXPLOSION_SIZE_LOSS do dano, até EXPLOSION_SIZE_FLOOR. Raio de 8,3 m: 74%.
+const EXPLOSION_FULL_SIZE := 4.0
+const EXPLOSION_SIZE_LOSS := 0.06
+const EXPLOSION_SIZE_FLOOR := 0.7
 const TRAIL_MAX_WIDTH := 1.5   # rastro de bala gigante: faixa translúcida enorme pesa na placa
 const SPLIT_ANGLE := 10.0
 ## Teto invisível (2026-10-07, como no Furor): a CEILING_Y a bala quica como numa parede
@@ -769,7 +775,7 @@ func _impact_fields(point: Vector3, normal: Vector3) -> void:
 ## o tiro direto não leva de novo. Com Pulo-Foguete, a explosão lança o próprio dono.
 func _explode(point: Vector3, skip: Player) -> void:
 	var r := blast_size()
-	var power := damage * EXPLOSION_DAMAGE * (1.0 + blast_damage)
+	var power := damage * EXPLOSION_DAMAGE * (1.0 + blast_damage) * blast_size_mult(r)
 	Effects.explosion(get_parent(), point, r, Color(1.0, 0.6, 0.2))
 	Sfx.at(get_parent(), "explosion", point)
 	_refresh_cache()
@@ -796,6 +802,10 @@ func _explode(point: Vector3, skip: Player) -> void:
 ## Raio da explosão: cartas (explosion + blast_radius) mais a borda da bala.
 func blast_size() -> float:
 	return maxf(EXPLOSION_MIN, explosion + blast_radius + EXPLOSION_SIZE_GAIN * radius)
+
+
+static func blast_size_mult(r: float) -> float:
+	return maxf(EXPLOSION_SIZE_FLOOR, 1.0 - EXPLOSION_SIZE_LOSS * maxf(0.0, r - EXPLOSION_FULL_SIZE))
 
 
 ## Reflexo: a bala muda de dono e segue na direção de quem atirou.
