@@ -164,6 +164,12 @@ func setup(p_me: Player, all_players: Array, p_teams := false, p_mode := "ffa", 
 		_place_toast(96)
 
 
+## Sala de teste: sem placar de rodadas no topo.
+func set_practice() -> void:
+	mode_label.text = "Sala de teste"
+	score_box.visible = false
+
+
 ## Duelos, no topo: [nome] [vidas]  x  [vidas] [nome], e embaixo a fila de quem vem depois.
 func _build_duel_bar() -> void:
 	var row := HBoxContainer.new()

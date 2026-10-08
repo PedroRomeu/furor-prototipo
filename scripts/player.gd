@@ -12,6 +12,7 @@ extends CharacterBody3D
 ## velocidade que, segurando, vira deslize; no ar dá uma corridinha reta, uma vez por pulo.
 
 signal died(player: Player)
+signal fired       # um disparo da arma (o painel da sala de teste conta)
 signal damaged(amount: float, from: Player)
 signal damage_dealt(amount: float, lethal: bool)
 signal reflected
@@ -779,6 +780,7 @@ var burn_from: Player = null
 ## tratam como fora. Só a máquina dona decide cair, levantar e morrer; as outras só contam
 ## o tempo para mostrar.
 static var downs_enabled := false   # a partida liga no 2x2
+var immortal := false   # sala de teste: a vida para em 1
 var downed := false
 var bleed_timer := 0.0
 var bleed_total := 1.0
@@ -4235,6 +4237,7 @@ func _try_perfect_reload() -> void:
 
 func _fire() -> void:
 	ammo -= 1
+	fired.emit()
 	pierce_shot = pierce_left > 0
 	if pierce_shot:
 		pierce_left -= 1
@@ -4583,6 +4586,8 @@ func take_damage(amount: float, from: Player, flash := true, ignore_armor := fal
 		health = 1.0
 		poisons.clear()
 		Effects.burst(get_parent(), chest(), 2.0, Color(1.0, 0.3, 0.3), 0.3)
+	if immortal:
+		health = maxf(health, 1.0)
 	since_damage = 0.0
 	reveal()
 	if flash:

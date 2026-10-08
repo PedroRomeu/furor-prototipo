@@ -116,6 +116,9 @@ var quality := 1
 var show_fps := false
 ## Rodando com "-- --autotest", os dois lados são bots e o jogo fecha ao fim da partida.
 var autotest := false
+## Sala de teste (botão Testar do editor): a partida abre a TestRoom com o baralho
+## GameState.editing, sem rodadas; sair volta ao editor.
+var practice := false
 ## Menu de pausa aberto na partida: o jogador desta máquina não recebe comandos.
 var menu_open := false
 ## Campo do chat aberto na partida: o personagem fica parado enquanto a pessoa digita.
@@ -136,6 +139,7 @@ var map_choices := {}
 func _ready() -> void:
 	randomize()
 	autotest = "--autotest" in OS.get_cmdline_user_args()
+	practice = "--sala-teste" in OS.get_cmdline_user_args()   # teste: abre a sala de teste direto
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--mestra=") and CardDB.is_master(arg.trim_prefix("--mestra=")):
 			test_master = arg.trim_prefix("--mestra=")

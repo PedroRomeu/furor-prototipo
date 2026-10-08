@@ -43,6 +43,25 @@ var last_losers: Array = []
 ## Placar (Tab): nome do nó -> [abates, assistências, mortes]. Contado em todas as máquinas
 ## com o que vem no aviso de morte (Player.death_killer, death_assists).
 var kda := {}
+## Sala de teste (GameState.practice): bonecos (lados 1 a 4; o último é o alvo móvel).
+const DUMMY_NAMES := ["Boneco 8 m", "Boneco 20 m", "Boneco 40 m", "Alvo móvel"]
+const DUMMY_HEAL_TIME := 3.0
+const DUMMY_SPEED := 4.0
+## Atiradores (lados 5 e 6): parados, só atiram em você quando te veem, com a mira do bot
+## Médio (BotBrain.LEVELS[1]). Ritmo no painel B (PracticeCards.shooter_mode): 0 desligado,
+## 1 lento (um tiro a cada 2 s), 2 normal (clica como o bot Médio), 3 rajada (3 seguidos a
+## cada 3 s).
+const SHOOTER_NAMES := ["Atirador 15 m", "Atirador do mezanino"]
+const SHOOTER_SLOW := 2.0
+const SHOOTER_BURST := 3
+const SHOOTER_BURST_GAP := 0.35
+const SHOOTER_BURST_PAUSE := 3.0
+var dummies: Array = []
+var shooters: Array = []
+var _shooter_state := {}   # Player -> {wait, seen, burst, offset, offset_wait}
+var dummy_dir := 1.0
+var practice_panel: PracticePanel
+var practice_cards: PracticeCards
 var _board_open := false
 var _board_took_mouse := false
 
@@ -52,6 +71,9 @@ func _ready() -> void:
 		Engine.time_scale = 2.0
 	_apply_quality()
 	GameState.quality_changed.connect(_apply_quality)
+	if GameState.practice:
+		_ready_practice()
+		return
 	mode = Net.mode if Net.online else GameState.mode
 	if GameModes.blocked_reason(mode, (Net.match_peers.size() if Net.online else GameState.bot_count + 1)) != "":
 		mode = "ffa"
@@ -129,6 +151,177 @@ func _ready() -> void:
 	Net.announce_ready()
 
 
+## Sala de teste (TestRoom): só você, com a mestra do baralho aberto no editor e nenhuma
+## carta pegada; sem rodadas, sem morrer. Esc > "Voltar ao editor".
+func _ready_practice() -> void:
+	Player.downs_enabled = false
+	me = _spawn_player(1, 0, "Você")
+	me.immortal = true
+	Player.viewer = me
+	me.team = 0   # bonecos e atiradores no time 1: as balas dos atiradores não param nos bonecos
+	for i in DUMMY_NAMES.size():
+		var d := _spawn_player(1, i + 1, DUMMY_NAMES[i], 1)
+		d.immortal = true
+		dummies.append(d)
+	for i in SHOOTER_NAMES.size():
+		var s := _spawn_player(1, DUMMY_NAMES.size() + 1 + i, SHOOTER_NAMES[i], 1)
+		s.immortal = true
+		shooters.append(s)
+		_shooter_state[s] = {"wait": 0.0, "seen": 0.0, "burst": 0, "offset": Vector3.ZERO, "offset_wait": 0.0}
+	var deck: Dictionary = GameState.decks[clampi(GameState.editing, 0, GameState.decks.size() - 1)]
+	me.cards = [deck["master"]]
+	hud.setup(me, players)
+	hud.set_practice()
+	hud.set_kda(kda)
+	hud.refresh_cards()
+	pause_menu = PauseMenu.new()
+	pause_menu.practice = true
+	add_child(pause_menu)
+	pause_menu.resumed.connect(_on_resumed)
+	pause_menu.visibility_changed.connect(func(): hud.visible = not pause_menu.visible)
+	pause_menu.leave_requested.connect(_leave_practice)
+	pause_menu.quit_requested.connect(_quit)
+	practice_panel = PracticePanel.new()
+	practice_panel.anchor_left = 1.0
+	practice_panel.anchor_right = 1.0
+	practice_panel.anchor_top = 0.5
+	practice_panel.anchor_bottom = 0.5
+	practice_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	practice_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	practice_panel.offset_right = -24
+	hud.add_child(practice_panel)
+	me.damage_dealt.connect(practice_panel.add_damage)
+	me.fired.connect(practice_panel.add_shot)
+	practice_cards = PracticeCards.new()
+	add_child(practice_cards)
+	practice_cards.applied.connect(_practice_apply)
+	practice_cards.closed.connect(_capture_mouse)
+	_build_arena(0, 0)
+	_reset_players()
+	for d in dummies:
+		d.frozen = false
+		TestRoom.make_hologram(d)
+	for s in shooters:
+		s.frozen = false
+		TestRoom.make_hologram(s, TestRoom.SHOOTER_TINT, true)
+	phase = Phase.FIGHT
+	me.frozen = false
+	_capture_mouse()
+
+
+## Bonecos da sala de teste: 3 s sem levar dano, a vida volta cheia e, se algo o tirou
+## do lugar (tapa, gancho, explosão), volta para a marca. O alvo móvel anda de um lado
+## para o outro do trilho a DUMMY_SPEED.
+func _physics_process(_delta: float) -> void:
+	if not GameState.practice or arena == null:
+		return
+	if practice_cards.no_cooldown:
+		me.master_cd = 0.0
+		me.plat_cd = 0.0
+	for s in shooters:
+		_shooter_step(s, _delta)
+	# Você também: 3 s sem dano, a vida volta cheia (senão ficava em 1 depois dos atiradores).
+	if me.since_damage >= DUMMY_HEAL_TIME and me.health < me.stats["max_health"]:
+		me.health = me.stats["max_health"]
+		me.poisons.clear()
+	var all: Array = dummies + shooters
+	for i in all.size():
+		var d: Player = all[i]
+		var home: Transform3D = arena.spawns[d.side]
+		var moving := i == dummies.size() - 1
+		if d.since_damage >= DUMMY_HEAL_TIME and d.ice_timer <= 0.0 and d.hooked_by == null:
+			if d.health < d.stats["max_health"]:
+				d.health = d.stats["max_health"]
+				d.poisons.clear()
+			var off := d.global_position - home.origin
+			if moving:
+				off.x = 0.0   # no trilho, só conta sair da linha
+			if off.length() > 1.5:
+				d.global_position = home.origin
+				d.velocity = Vector3.ZERO
+		if moving:
+			var x := d.global_position.x
+			if x <= TestRoom.RAIL[0].x + 0.5:
+				dummy_dir = 1.0
+			elif x >= TestRoom.RAIL[1].x - 0.5:
+				dummy_dir = -1.0
+			var right := d.global_transform.basis.x
+			d.in_move = Vector2(signf(right.x) * dummy_dir * DUMMY_SPEED / float(d.stats["move_speed"]), 0.0)
+
+
+## Um atirador: mira em você (erro e antecipação do bot Médio) e clica no ritmo escolhido,
+## só com você à vista (sem parede no meio) e depois do tempo de reação.
+func _shooter_step(s: Player, delta: float) -> void:
+	var st: Dictionary = _shooter_state[s]
+	s.in_click = false
+	var mode: int = practice_cards.shooter_mode
+	var cfg: Dictionary = BotBrain.LEVELS[1]
+	var eye := s.head.global_position
+	var ray := PhysicsRayQueryParameters3D.create(eye, me.chest(), 1)
+	var sees := mode > 0 and me.alive and get_world_3d().direct_space_state.intersect_ray(ray).is_empty()
+	st["wait"] = maxf(0.0, st["wait"] - delta)
+	if not sees:
+		st["seen"] = 0.0
+		if s.ammo < s.stats["mag_size"] and s.reload_timer <= 0.0:
+			s.in_reload = true
+		return
+	s.in_reload = false
+	st["seen"] += delta
+	st["offset_wait"] -= delta
+	if st["offset_wait"] <= 0.0:
+		st["offset_wait"] = 0.4
+		st["offset"] = Vector3(randf_range(-1, 1), randf_range(-0.6, 0.6), randf_range(-1, 1)) * float(cfg["aim"])
+	var travel := eye.distance_to(me.global_position) / float(s.stats["bullet_speed"])
+	var target: Vector3 = me.chest() + me.velocity * travel * float(cfg["lead"]) + st["offset"]
+	target.y += 0.5 * float(s.stats["bullet_gravity"]) * travel * travel
+	s.look_at_point(target, float(cfg["turn"]) * delta)
+	var forward := -s.head.global_transform.basis.z
+	if st["wait"] > 0.0 or st["seen"] < float(cfg["react"]) or forward.angle_to(target - eye) > 0.06 			or s.fire_timer > 0.0 or s.reload_timer > 0.0:
+		return
+	s.in_click = true
+	match mode:
+		1:
+			st["wait"] = SHOOTER_SLOW
+		2:
+			st["wait"] = randf_range(cfg["click"][0], cfg["click"][1])
+		3:
+			st["burst"] += 1
+			st["wait"] = SHOOTER_BURST_GAP if st["burst"] < SHOOTER_BURST else SHOOTER_BURST_PAUSE
+			if st["burst"] >= SHOOTER_BURST:
+				st["burst"] = 0
+
+
+func _practice_key(event: InputEvent) -> bool:
+	var key := event as InputEventKey
+	if key == null or not key.pressed or key.echo or GameState.chat_open:
+		return false
+	if key.physical_keycode == KEY_Z:
+		practice_panel.reset()
+		return true
+	if key.physical_keycode == KEY_B:
+		var deck: Dictionary = GameState.decks[clampi(GameState.editing, 0, GameState.decks.size() - 1)]
+		practice_cards.open(me.cards, deck["cards"], practice_cards.no_cooldown)
+		return true
+	return false
+
+
+## Cartas trocadas no painel (B): recalcula você no mesmo lugar, olhando para o mesmo lado
+## (vida, munição e recargas voltam ao começo, como numa rodada nova).
+func _practice_apply(new_cards: Array) -> void:
+	var pitch := me.head.rotation.x
+	me.cards = new_cards.duplicate()
+	me.reset_for_round(Transform3D(me.global_transform.basis, me.global_position))
+	me.head.rotation.x = pitch
+	hud.refresh_cards()
+
+
+func _leave_practice() -> void:
+	pause_menu.close()
+	GameState.practice = false
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	get_tree().change_scene_to_file("res://scenes/deck_editor.tscn")
+
+
 ## Qualidade gráfica (Configurações). Medido num Intel HD (OpenGL via ANGLE), 1280x720:
 ## Alta ~14 FPS (o brilho é o que mais pesa), Média ~45, Baixa ~50 a 60. Reduzir a
 ## resolução 3D piorou nessa placa, por isso não entra.
@@ -136,7 +329,7 @@ func _apply_quality() -> void:
 	var env: Environment = $WorldEnvironment.environment
 	var sun: DirectionalLight3D = $Sun
 	var q := GameState.quality
-	sun.shadow_enabled = q >= 1
+	sun.shadow_enabled = q >= 1 and not GameState.practice   # a sala de teste é fechada e sem sombras
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL if q == 1 		else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	sun.directional_shadow_max_distance = 50.0 if q == 1 else 90.0
 	env.glow_enabled = q >= 2
@@ -151,6 +344,10 @@ func _apply_quality() -> void:
 ## 1080p na Intel HD. A luz do ambiente é cor fixa, então a iluminação não muda.
 func _apply_sky() -> void:
 	var env: Environment = $WorldEnvironment.environment
+	if arena is TestRoom:
+		env.background_mode = Environment.BG_COLOR
+		env.background_color = arena.palette["sky_top"]
+		return
 	if GameState.quality > 0:
 		env.background_mode = Environment.BG_SKY
 		return
@@ -702,7 +899,7 @@ func _build_arena(map_index: int, seed_value: int, count := -1) -> void:
 	if arena:
 		remove_child(arena)
 		arena.queue_free()
-	arena = Arena.new()
+	arena = TestRoom.new() if GameState.practice else Arena.new()
 	add_child(arena)
 	arena.build(map_index, seed_value, players.size() if count < 0 else count)
 	ArenaTheme.apply_environment(arena.palette, $WorldEnvironment.environment, $Sun)
@@ -822,6 +1019,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
 		_open_pause()
+	elif GameState.practice and _practice_key(event):
+		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseButton and event.pressed and _in_fight() and not draft.visible 			and not _board_open and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		_capture_mouse()
 
@@ -838,6 +1037,8 @@ func _open_pause() -> void:
 		hud.show_scoreboard(false)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var info := "Rodada %d" % round_num if round_num > 0 else "Escolha de cartas"
+	if GameState.practice:
+		info = "Sala de teste"
 	if mode == "duels":
 		info = "Duelos  ·  duelo %d  ·  suas vidas: %d" % [round_num, lives.get(String(me.name), 0)]
 	elif teams_on:
@@ -848,7 +1049,7 @@ func _open_pause() -> void:
 		info += "  ·  %d jogadores" % players.size()
 	else:
 		info += "  ·  Treino contra %d bot%s" % [players.size() - 1, "s" if players.size() > 2 else ""]
-	pause_menu.open(info, hud.score_text(score))
+	pause_menu.open(info, "" if GameState.practice else hud.score_text(score))
 
 
 func _on_resumed() -> void:

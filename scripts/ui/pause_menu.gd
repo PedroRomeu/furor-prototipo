@@ -14,6 +14,8 @@ signal quit_requested    # fechar o jogo
 const PANEL_WIDTH := 400.0
 
 var online := false
+var practice := false   # sala de teste: "Voltar ao editor" sem confirmar, sem placar
+var _score_title: Label
 var _root: Control
 var _title: Label
 var _subtitle: Label
@@ -134,11 +136,16 @@ func _main_panel() -> Control:
 		_main.visible = false
 		_settings_page.visible = true))
 	menu.add_child(Ui.gap(14))
-	menu.add_child(_menu_button("Sair para o menu", _ask_leave))
+	if practice:
+		menu.add_child(_menu_button("Voltar ao editor", func(): leave_requested.emit()))
+	else:
+		menu.add_child(_menu_button("Sair para o menu", _ask_leave))
 	menu.add_child(_menu_button("Sair do jogo", _ask_quit))
 
 	col.add_child(Ui.grow())
-	col.add_child(Ui.label("PLACAR", 12, Ui.MUTED, true))
+	_score_title = Ui.label("PLACAR", 12, Ui.MUTED, true)
+	_score_title.visible = not practice
+	col.add_child(_score_title)
 	col.add_child(Ui.gap(4))
 	_score = Ui.label("", 16, Ui.TEXT)
 	_score.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

@@ -423,6 +423,16 @@ func _build_deck_panel() -> PanelContainer:
 	deck_empty = Ui.label("Clique nas cartas à esquerda para montar o baralho.", 14, Ui.MUTED)
 	deck_empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(deck_empty)
+
+	# Sala de teste (TestRoom): só fora da sala online (lá a conexão segue aberta).
+	var test := Ui.accent(Ui.button("Testar na sala de teste", _open_practice))
+	test.custom_minimum_size.y = 44
+	if Net.online:
+		test.disabled = true
+		test.tooltip_text = "Saia da sala online para usar a sala de teste"
+	else:
+		test.tooltip_text = "Bonecos de alvo, parkour e defesa, com a mestra deste baralho"
+	col.add_child(test)
 	return panel
 
 
@@ -749,6 +759,13 @@ func _unhandled_input(event: InputEvent) -> void:
 func _on_match_starting() -> void:
 	_save()
 	GameState.go_to_match()
+
+
+func _open_practice() -> void:
+	_save()
+	GameState.editing = index
+	GameState.practice = true
+	get_tree().change_scene_to_file("res://scenes/match.tscn")
 
 
 func _back() -> void:
