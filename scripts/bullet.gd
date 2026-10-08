@@ -760,7 +760,7 @@ func _impact_fields(point: Vector3, normal: Vector3) -> void:
 	# Chuva de Meteoros: só a máquina de quem atirou marca (e avisa as outras).
 	if meteor and is_instance_valid(shooter) and shooter.is_local:
 		meteor = false
-		shooter.meteor_mark(point)
+		shooter.meteor_mark(point, damage)
 	if (toxic > 0 or hole > 0) and is_instance_valid(shooter):
 		AreaField.on_impact(shooter, point, normal, toxic, hole, damage)
 

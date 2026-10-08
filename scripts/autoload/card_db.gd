@@ -109,12 +109,12 @@ const MASTERS := {
 	# Chuva de Meteoros (2026-10-06, ideia do usuário; números meus, aprovados; ignorar
 	# telhados foi escolha dele).
 	"chuva_de_meteoros": {"name": "Chuva de Meteoros", "cat": "Balas", "rarity": "mitico", "master": true, "cooldown": 16.0,
-		"desc": "Q: os próximos 3 tiros (em até 8 s) marcam o chão onde batem. 1,5 s depois cai um meteoro em cada marca: 35 de dano no centro, até 4 m, e empurra. A marca aparece para todos. Recarga de 16 s.",
+		"desc": "Q: os próximos 3 tiros (em até 8 s) marcam o chão onde batem. 1,5 s depois cai um meteoro em cada marca: 30 + metade do dano do tiro no centro (até 55), metade disso na borda de 4 m, e empurra. A marca aparece para todos. Recarga de 16 s.",
 		"mods": [{"stat": "meteor", "add": 1}]},
 	# Foguete (2026-10-06, desenho do usuário; números meus, aprovados; subir e descer,
 	# explodir montado ao bater e o grupo Arma foram escolhas dele).
 	"foguete": {"name": "Foguete", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 18.0,
-		"desc": "Q: monta num foguete que voa sempre para a frente (12 m/s) e vira bem devagar, por até 5 s. Q de novo: você salta e o foguete segue reto, acelera muito e explode no primeiro contato. Montado, ele explode se bater numa parede, encostar num inimigo ou o tempo acabar (você é lançado para cima, sem dano). Explosão de 45 no centro, até 5 m. Recarga de 18 s.",
+		"desc": "Q: monta num foguete que voa sempre para a frente (10 m/s) e vira bem devagar, por até 5 s. Q de novo: você salta e o foguete segue reto, acelera muito e explode no primeiro contato. Montado, ele explode se bater numa parede, encostar num inimigo ou o tempo acabar (você é lançado para cima, sem dano). Explosão de 70 no centro, até 7 m. Recarga de 18 s.",
 		"mods": [{"stat": "rocket_ride", "add": 1}]},
 	"perfurante": {"name": "Perfurante", "cat": "Balas", "rarity": "mitico", "master": true, "cooldown": 12.0,
 		"desc": "Q: os próximos 3 tiros vão retos, sem queda, 3x mais rápidos, com +30% de dano e atravessando tudo: paredes, jogadores (cada um leva uma vez), o escudo e o Bastião, que não os devolvem. O dano ignora o colete e vai direto na vida. Recarga de 12 s.",

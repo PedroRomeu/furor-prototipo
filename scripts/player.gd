@@ -564,14 +564,14 @@ var meteor_shot := false   # o disparo atual marca o chão
 ## solta o foguete (bala `rocket`, ROCKET_FREE_SPEED, explode no contato ou em
 ## ROCKET_FREE_TIME). Explosão: ROCKET_BLAST_DAMAGE no centro até ROCKET_BLAST_RADIUS.
 const RIDE_TIME := 5.0
-const RIDE_SPEED := 12.0
+const RIDE_SPEED := 10.0       # era 12 (2026-10-08, pedido do usuário: mais fácil de manobrar)
 const RIDE_PITCH := deg_to_rad(20.0)
 const RIDE_TURN := deg_to_rad(45.0)
 const RIDE_JUMP := 10.0
 const ROCKET_FREE_SPEED := 40.0
 const ROCKET_FREE_TIME := 2.0
-const ROCKET_BLAST_DAMAGE := 45.0
-const ROCKET_BLAST_RADIUS := 5.0
+const ROCKET_BLAST_DAMAGE := 70.0   # era 45 (2026-10-08, pedido do usuário: difícil de acertar)
+const ROCKET_BLAST_RADIUS := 7.0    # era 5 (2026-10-08, idem)
 const ROCKET_LIFT := 14.0      # quem estava montado quando explodiu é lançado para cima
 const ROCKET_COLOR := Color(1.0, 0.55, 0.2)
 const ROCKET_FAT := 0.5        # raio do corpo do foguete montado
@@ -3933,19 +3933,21 @@ func _update_ride_fx() -> void:
 # ---------------------------------------------------------------- Chuva de Meteoros
 
 ## Bala marcada bateu (na máquina de quem atirou): marca o chão logo abaixo e avisa todas.
-func meteor_mark(point: Vector3) -> void:
+## O dano do meteoro sai do dano da bala que marcou (MeteorStrike.damage_for).
+func meteor_mark(point: Vector3, shot_damage: float) -> void:
 	var query := PhysicsRayQueryParameters3D.create(point + Vector3.UP * 0.5, point + Vector3.DOWN * 60.0, 1)
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	var ground: Vector3 = hit["position"] if not hit.is_empty() else point
+	var dmg := MeteorStrike.damage_for(shot_damage)
 	if Net.online and is_inside_tree():
-		_net_meteor.rpc(ground)
+		_net_meteor.rpc(ground, dmg)
 	else:
-		_net_meteor(ground)
+		_net_meteor(ground, dmg)
 
 
 @rpc("authority", "call_local", "reliable")
-func _net_meteor(pos: Vector3) -> void:
-	MeteorStrike.spawn(get_parent(), pos, self)
+func _net_meteor(pos: Vector3, dmg: float) -> void:
+	MeteorStrike.spawn(get_parent(), pos, self, dmg)
 	meteor_marked.emit()
 
 

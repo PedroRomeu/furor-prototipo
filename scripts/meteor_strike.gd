@@ -9,7 +9,12 @@ const DELAY := 1.5
 const FALL := 0.4          # o meteoro aparece nos últimos FALL segundos e cai
 const FALL_HEIGHT := 30.0
 const RADIUS := 4.0
-const DAMAGE := 35.0       # no centro; 50% na borda
+# Dano no centro (50% na borda): DAMAGE_BASE + DAMAGE_SCALE x o dano da bala que marcou, até
+# DAMAGE_MAX (2026-10-08, pedido do usuário: um pouco mais de dano, com escala e teto; era 35
+# fixo). Arma base (25): 42,5; teto a partir de um tiro de 50.
+const DAMAGE_BASE := 30.0
+const DAMAGE_SCALE := 0.5
+const DAMAGE_MAX := 55.0
 const COLOR := Color(1.0, 0.5, 0.15)
 const RING_SHADER := """
 shader_type spatial;
@@ -31,14 +36,20 @@ static var _rock_mesh: SphereMesh
 static var _rock_mat: StandardMaterial3D
 
 var shooter: Player
+var damage := DAMAGE_BASE
 var t := 0.0
 var _ring_mat: ShaderMaterial
 var _rock: MeshInstance3D
 
 
-static func spawn(parent: Node, pos: Vector3, from: Player) -> void:
+static func damage_for(shot_damage: float) -> float:
+	return minf(DAMAGE_BASE + DAMAGE_SCALE * maxf(shot_damage, 0.0), DAMAGE_MAX)
+
+
+static func spawn(parent: Node, pos: Vector3, from: Player, dmg: float) -> void:
 	var m := MeteorStrike.new()
 	m.shooter = from
+	m.damage = minf(dmg, DAMAGE_MAX)
 	m.add_to_group("meteor_strikes")
 	parent.add_child(m)
 	m.global_position = pos
@@ -108,4 +119,4 @@ func _impact() -> void:
 		var away := p.chest() - pos
 		away.y = 0.0
 		p.knockback(away.normalized() * 6.0 + Vector3.UP * 4.0)
-		p.take_area_damage(DAMAGE * (1.0 - 0.5 * clampf(d / RADIUS, 0.0, 1.0)), shooter if is_instance_valid(shooter) else null)
+		p.take_area_damage(damage * (1.0 - 0.5 * clampf(d / RADIUS, 0.0, 1.0)), shooter if is_instance_valid(shooter) else null)
