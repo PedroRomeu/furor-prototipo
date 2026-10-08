@@ -12,6 +12,8 @@ config_version=5
 
 config/name="Furor"
 run/main_scene="res://scenes/main_menu.tscn"
+config/icon="res://icon.png"
+config/windows_native_icon="res://icon.ico"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [autoload]
