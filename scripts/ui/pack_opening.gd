@@ -23,6 +23,7 @@ var can_again := false
 var _stage := 0          # 0 pacote fechado, 1 animando, 2 revelando, 3 fim
 var _next := 0
 var _holders: Array = []  # Control de cada carta (verso e frente dentro)
+var _faces: Array = []    # frentes já montadas (ver open)
 var _strip: Control
 var _body: Control
 var _hint: Label
@@ -36,6 +37,12 @@ func open(p_pack_id: String, p_results: Array, p_can_again: bool) -> void:
 	pack_id = p_pack_id
 	results = p_results
 	can_again = p_can_again
+	# Prepara agora as molduras e os ícones das cartas que vão sair (check-up de 2026-10-08:
+	# gerados na hora de virar, davam um quadro de ~90 ms no meio da animação).
+	for r in results:
+		CardFrame.style(CardDB.CARDS[r["id"]]["cat"], "lit", CardDB.is_master(r["id"]))
+		CardFrame.symbol(CardDB.CARDS[r["id"]]["cat"])
+		CardDB.icon(r["id"])
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	for c in get_children():
@@ -47,6 +54,19 @@ func open(p_pack_id: String, p_results: Array, p_can_again: bool) -> void:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
+	# As frentes são montadas já, quase transparentes atrás do fundo: o primeiro desenho
+	# de cada texto (letras num tamanho novo) acontece agora e não no meio da animação
+	# (check-up de 2026-10-08: um quadro de ~60 ms ao virar a primeira carta).
+	_faces.clear()
+	for r in results:
+		var face := CardFace.make(r["id"], CARD.x)
+		face.custom_minimum_size.y = CARD.y
+		face.size = CARD
+		face.position = size / 2.0 - CARD / 2.0
+		face.modulate.a = 0.01
+		add_child(face)
+		move_child(face, 0)
+		_faces.append(face)
 	_build_pack()
 	_hint = Ui.label("Clique para abrir", 18, Ui.MUTED)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -245,10 +265,10 @@ func _flip(holder: Control, r: Dictionary) -> void:
 	t.tween_property(holder, "scale", Vector2(0.0, base.y), FLIP)
 	await t.finished
 	holder.get_node("Back").visible = false
-	var face := CardFace.make(r["id"], CARD.x)
-	face.custom_minimum_size.y = CARD.y
-	face.size = CARD
-	holder.add_child(face)
+	var face: Control = _faces[_holders.find(holder)]
+	face.reparent(holder, false)
+	face.position = Vector2.ZERO
+	face.modulate.a = 1.0
 	holder.add_child(_badge(r))
 	var color: Color = CardDB.RARITIES[r["rarity"]]["color"]
 	match r["rarity"]:

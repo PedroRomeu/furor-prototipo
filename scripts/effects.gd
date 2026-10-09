@@ -17,7 +17,13 @@ static var _cube: BoxMesh
 static var _spark_mats := {}
 
 
+## Check-up de desempenho (scripts/dev/checkup.gd): tipos de efeito desligados.
+static var disabled_kinds: Array = []
+
+
 static func _allowed(kind: String) -> bool:
+	if kind in disabled_kinds:
+		return false
 	var limit: int = BUDGET[kind]
 	if GameState.quality == 0:
 		limit = maxi(1, limit / 2)

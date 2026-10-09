@@ -32,6 +32,8 @@ func _ready() -> void:
 		1: await _block_match()
 		2: await _block_combat()
 		3: await _block_areas(_part())
+		4: await _block_fight()
+		5: await _block_new(_part())
 		_: _note("bloco desconhecido")
 	_save()
 	get_tree().quit()
@@ -301,3 +303,182 @@ func _masters_part(at: Callable, bots: Array) -> void:
 			b._ice_visual(true), func():
 		for b in bots:
 			b._ice_visual(false))
+
+
+# ---------------------------------------------------------------- travadas
+
+## Bloco 4: luta de verdade (sem pausa), 4 bots com uma build pesada, por FIGHT_TIME
+## segundos. Conta os quadros acima de 50 e 100 ms só durante a luta (a troca de rodada,
+## que monta a arena, fica de fora: bloco 1) e mostra o que havia nos piores. Suspeitos
+## desligados pela linha de comando: --sem-som, --sem-efeitos (clarões, explosões,
+## faíscas, números), --sem-numeros, --sem-faiscas.
+const FIGHT_TIME := 24.0
+const HEAVY := ["metralhadora", "tabelinha", "tabelinha", "teleguiada", "teleguiada", "explosiva",
+	"dinamite", "fragmentacao"]
+
+
+func _block_fight() -> void:
+	var args := OS.get_cmdline_user_args()
+	var off := []
+	if "--sem-som" in args:
+		Sfx.disabled = true
+		off.append("som")
+	for arg in args:
+		if arg.begins_with("--passos="):
+			Engine.max_physics_steps_per_frame = int(arg.trim_prefix("--passos="))
+			off.append("limite de %d passos de física por quadro" % Engine.max_physics_steps_per_frame)
+	if "--som-wav" in args:
+		Sfx.test_wav = true
+		off.append("som em WAV (tom)")
+	if "--sem-efeitos" in args:
+		Effects.disabled_kinds = ["burst", "explosion", "sparks", "number"]
+		off.append("efeitos")
+	if "--sem-numeros" in args:
+		Effects.disabled_kinds.append("number")
+		off.append("números")
+	if "--sem-faiscas" in args:
+		Effects.disabled_kinds.append("sparks")
+		off.append("faíscas")
+	_note("desligado: %s" % (", ".join(off) if not off.is_empty() else "nada"))
+	GameState.test_cards = HEAVY
+	GameState.autotest = true
+	GameState.bot_count = 3
+	GameState.test_size = 0
+	get_tree().change_scene_to_file("res://scenes/match.tscn")
+	await get_tree().create_timer(0.5).timeout
+	game = get_tree().current_scene
+	while game.phase != game.Phase.FIGHT:
+		await get_tree().process_frame
+	Engine.time_scale = 1.0
+	var frames: Array = []   # [ms, balas, efeitos, passos de física, desenho cpu, desenho gpu]
+	var vp := get_viewport().get_viewport_rid()
+	RenderingServer.viewport_set_measure_render_time(vp, true)
+	var t0 := Time.get_ticks_msec()
+	var last := Time.get_ticks_usec()
+	var last_phys := Engine.get_physics_frames()
+	while Time.get_ticks_msec() - t0 < FIGHT_TIME * 1000.0:
+		await get_tree().process_frame
+		var now := Time.get_ticks_usec()
+		var ms := (now - last) / 1000.0
+		last = now
+		var phys := Engine.get_physics_frames()
+		if game.phase == game.Phase.FIGHT:
+			frames.append([ms, get_tree().get_node_count_in_group("bullets"), Effects._live.duplicate(),
+				phys - last_phys, RenderingServer.viewport_get_measured_render_time_cpu(vp),
+				RenderingServer.viewport_get_measured_render_time_gpu(vp)])
+		last_phys = phys
+	var times: Array = frames.map(func(f): return f[0])
+	times.sort()
+	var n := times.size()
+	var sum := 0.0
+	for t in times:
+		sum += t
+	_note("luta: %d quadros, média %.1f ms, 95%% abaixo de %.1f, 99%% abaixo de %.1f, pior %.1f" % [
+		n, sum / maxf(1, n), times[int(n * 0.95)], times[int(n * 0.99)], times[n - 1]])
+	_note("quadros acima de 50 ms: %d   acima de 100 ms: %d" % [times.filter(func(t): return t > 50.0).size(),
+		times.filter(func(t): return t > 100.0).size()])
+	frames.sort_custom(func(a, b): return a[0] > b[0])
+	var steps := {}
+	for f in frames:
+		steps[f[3]] = steps.get(f[3], 0) + 1
+	_note("passos de física por quadro (passos: quadros): %s" % str(steps))
+	for f in frames.slice(0, 8):
+		_note("  %.0f ms  ·  %d passos de física  ·  desenho cpu %.1f gpu %.1f ms  ·  %d balas  ·  efeitos %s" % [
+			f[0], f[3], f[4], f[5], f[1], str(f[2])])
+
+
+# ---------------------------------------------------------------- novidades da release
+
+## Bloco 5: o que entrou na release depois da v0.6.0. Parte 1: tela de escolha com
+## moldura (por cima da partida) e a sala de teste (bonecos, atiradores, painéis). Parte
+## 2: editor de baralho, loja e abertura de pacote (telas de menu). A coleção do jogador
+## é guardada antes e devolvida no fim (a loja abre pacotes).
+func _block_new(part: int) -> void:
+	if part == 1:
+		await _start_match(0)
+		await cost("tela de escolha (3 cartas)", func(on):
+			if on:
+				game.draft.choose(CardDB.all_ids().slice(0, 3), "Teste", [])
+			else:
+				game.draft.close())
+		get_tree().paused = false
+		GameState.autotest = false
+		GameState.practice = true
+		get_tree().change_scene_to_file("res://scenes/match.tscn")
+		await get_tree().create_timer(1.5).timeout
+		game = get_tree().current_scene
+		var me = game.me
+		me.look_yaw = PI / 2.6
+		me.rotation.y = me.look_yaw
+		await get_tree().create_timer(0.3).timeout
+		var base := await measure()
+		_note("%-34s %6.1f ms (pior %.1f)  %d chamadas" % ["sala de teste, olhando o estande", base.x, base.y,
+			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)])
+		await cost("4 bonecos holograma", func(on):
+			for d in game.dummies:
+				d.visible = on)
+		await cost("painel de dano", func(on): game.practice_panel.visible = on)
+		game.practice_cards.shooter_mode = 2
+		me.global_position = TestRoom.DEFENSE_SPOT + Vector3(0, 0.1, 3)
+		me.look_yaw = 0.0
+		me.rotation.y = 0.0
+		await get_tree().create_timer(1.5).timeout
+		var fight := await measure()
+		_note("%-34s %6.1f ms (pior %.1f)" % ["defesa com atiradores (normal)", fight.x, fight.y])
+		game.practice_cards.shooter_mode = 0
+		await cost("painel de cartas (B)", func(on):
+			if on:
+				game.practice_cards.open(me.cards, [], false)
+			else:
+				game.practice_cards.close())
+		GameState.practice = false
+		return
+	var path := Collection.PATH
+	var saved: Variant = FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else null
+	get_tree().change_scene_to_file("res://scenes/deck_editor.tscn")
+	await get_tree().create_timer(1.2).timeout
+	var m := await measure()
+	_note("%-34s %6.1f ms (pior %.1f)  %d chamadas" % ["editor de baralho", m.x, m.y,
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)])
+	get_tree().change_scene_to_file("res://scenes/shop.tscn")
+	await get_tree().create_timer(1.0).timeout
+	var shop = get_tree().current_scene
+	shop.opening.visible = false
+	m = await measure()
+	_note("%-34s %6.1f ms (pior %.1f)" % ["loja, aba Pacotes", m.x, m.y])
+	shop._open("supremo")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var phase_worst := func(label: String, frames: Array) -> void:
+		var worst := 0.0
+		var sum := 0.0
+		for f in frames:
+			worst = maxf(worst, f)
+			sum += f
+		_note("%-34s %6.1f ms (pior %.1f)" % [label, sum / maxf(1, frames.size()), worst])
+	_frames.clear()
+	_sampling = true
+	shop.opening._tear()
+	await get_tree().create_timer(0.35).timeout
+	_sampling = false
+	phase_worst.call("abertura: rasgar", _frames.duplicate())
+	_frames.clear()
+	_sampling = true
+	await get_tree().create_timer(0.9).timeout
+	_sampling = false
+	phase_worst.call("abertura: espalhar as cartas", _frames.duplicate())
+	for k in 7:
+		_frames.clear()
+		_sampling = true
+		var rarity: String = shop.opening.results[k]["rarity"]
+		await shop.opening._reveal_next()
+		_sampling = false
+		phase_worst.call("abertura: revelar %d (%s)" % [k + 1, rarity], _frames.duplicate())
+	m = await measure()
+	_note("%-34s %6.1f ms (pior %.1f)" % ["abertura, 7 cartas reveladas", m.x, m.y])
+	if saved == null:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	else:
+		var f := FileAccess.open(path, FileAccess.WRITE)
+		f.store_string(saved)
+	_note("coleção do jogador devolvida")

@@ -48,13 +48,36 @@ static func _stream(sound: String) -> AudioStream:
 		if not _cache.has(sound):
 			_cache[sound] = _tone(TONES[sound])
 		return _cache[sound]
+	if test_wav:
+		if not _cache.has("_wav"):
+			_cache["_wav"] = _tone(TONES["kill"])
+		return _cache["_wav"]
 	var file: String = SOUNDS[sound].pick_random()
 	if not _cache.has(file):
 		_cache[file] = load("res://assets/sounds/%s.ogg" % file)
 	return _cache[file]
 
 
+## Gera os tons e carrega os sons uma vez, na abertura do jogo (GameState._ready).
+## Check-up de 2026-10-08: o tom do abate era gerado no primeiro uso (~40 ms sem janela,
+## mais no PC do usuário) e travava o primeiro abate da sessão e a abertura de pacote.
+static func prewarm() -> void:
+	for sound in TONES:
+		_stream(sound)
+	for sound in SOUNDS:
+		for file in SOUNDS[sound]:
+			if not _cache.has(file):
+				_cache[file] = load("res://assets/sounds/%s.ogg" % file)
+
+
+## Check-up de desempenho (scripts/dev/checkup.gd, "--sem-som"): nenhum som é criado.
+static var disabled := false
+static var test_wav := false   # "--som-wav": todo som vira o mesmo tom WAV (testa o custo do Ogg)
+
+
 static func _allowed(sound: String) -> bool:
+	if disabled:
+		return false
 	if sound in UNLIMITED:
 		return true
 	return _live_total < MAX_VOICES and _live.get(sound, 0) < VOICES.get(sound, DEFAULT_VOICES)

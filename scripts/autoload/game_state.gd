@@ -138,6 +138,7 @@ var map_choices := {}
 
 func _ready() -> void:
 	randomize()
+	Sfx.prewarm()
 	autotest = "--autotest" in OS.get_cmdline_user_args()
 	practice = "--sala-teste" in OS.get_cmdline_user_args()   # teste: abre a sala de teste direto
 	for arg in OS.get_cmdline_user_args():
