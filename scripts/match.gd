@@ -60,6 +60,7 @@ var dummies: Array = []
 var shooters: Array = []
 var _shooter_state := {}   # Player -> {wait, seen, burst, offset, offset_wait}
 var dummy_dir := 1.0
+var _dummy_calm := {}   # Player -> segundos quieto no chão (sem gancho, voo, gelo)
 var practice_panel: PracticePanel
 var practice_cards: PracticeCards
 var _board_open := false
@@ -229,7 +230,11 @@ func _physics_process(_delta: float) -> void:
 		var d: Player = all[i]
 		var home: Transform3D = arena.spawns[d.side]
 		var moving := i == dummies.size() - 1
-		if d.since_damage >= DUMMY_HEAL_TIME and d.ice_timer <= 0.0 and d.hooked_by == null:
+		# Arremessado pelo Gancho sem levar dano: o voo não pode ser cortado pela volta à
+		# marca, então conta também o tempo quieto no chão.
+		var busy: bool = d.hooked_by != null or d.slap_flight > 0.0 or d.ice_timer > 0.0 or not d.is_on_floor()
+		_dummy_calm[d] = 0.0 if busy else _dummy_calm.get(d, 0.0) + _delta
+		if d.since_damage >= DUMMY_HEAL_TIME and _dummy_calm[d] >= DUMMY_HEAL_TIME:
 			if d.health < d.stats["max_health"]:
 				d.health = d.stats["max_health"]
 				d.poisons.clear()
