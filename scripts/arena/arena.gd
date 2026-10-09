@@ -92,8 +92,11 @@ func build(map_index: int, seed_value: int, player_count := 2) -> void:
 		3: _style_factory()
 	for i in size["items"]:
 		_pickups()
-	# Malha de navegação para o bot achar caminho. Só o que é fixo entra nela.
-	nav.bake_navigation_mesh(false)
+	# Malha de navegação para o bot achar caminho. Só o que é fixo entra nela. Calculada num
+	# fio à parte (check-up de 2026-10-08: era 60 a 80% da travada de montar a arena, 72 /
+	# 137 / 257 ms no pequeno / médio / grande); fica pronta durante a contagem, e até lá o
+	# bot vai reto (BotBrain._follow_path só pede caminho com o mapa pronto).
+	nav.bake_navigation_mesh(true)
 
 
 func _setup_nav() -> void:
