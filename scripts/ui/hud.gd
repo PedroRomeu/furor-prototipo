@@ -9,6 +9,8 @@ const AMMO_SPAN := 80.0         # graus que o arco ocupa
 const AMMO_SEGMENTS_MAX := 24   # acima disso vira barra contínua
 const RELOAD_RING := 11.0       # anel da recarga no lugar da mira (px)
 const RELOAD_RING_PERFECT := 18.0   # com a Recarga Perfeita: maior, para dar para mirar a faixa
+const DAZE_RING := 48.0         # tonto: raio das estrelas em volta da mira (px; o pente fica a 26)
+const DAZE_STAR := 13.0         # tonto: tamanho das estrelas da mira (px)
 const DOWN_RING := 46.0         # caído: anel do prazo (vermelho) no lugar da mira...
 const DOWN_REVIVE_RING := 36.0  # ...e o do reviver (verde) por dentro
 
@@ -485,6 +487,8 @@ func _draw_crosshair() -> void:
 			_draw_ammo_arc()
 			_draw_boot_fuel()
 	crosshair.draw_circle(Vector2.ZERO, 1.6, white)
+	if me != null and me.daze_fx > 0.0:
+		_draw_daze_stars()
 	var color := Color.WHITE
 	var size := 0.0
 	var t := 0.0
@@ -505,6 +509,28 @@ func _draw_crosshair() -> void:
 			x.append(d.normalized() * 16.0 * pop)
 		crosshair.draw_multiline(x, shadow, 5.0)
 		crosshair.draw_multiline(x, color, 2.5)
+
+
+## Tonto: 3 estrelas (só o contorno, numa chamada de sombra e outra de cor) girando em volta
+## da mira; encolhem no fim. Na cabeça, os outros veem as estrelas de verdade (DazeStars).
+func _draw_daze_stars() -> void:
+	var t := Time.get_ticks_msec() * 0.001
+	var k := clampf(me.daze_fx / DazeStars.SHRINK_TIME, 0.0, 1.0)
+	var pts := PackedVector2Array()
+	for i in 3:
+		var a := t * 4.0 + TAU * i / 3.0
+		var center := Vector2(cos(a), sin(a)) * DAZE_RING
+		var spin := t * 3.0 + i
+		var tip := PackedVector2Array()
+		for j in 10:
+			var r := DAZE_STAR * k * (1.0 if j % 2 == 0 else 0.45)
+			var b := spin + TAU * j / 10.0
+			tip.append(center + Vector2(cos(b), sin(b)) * r)
+		for j in 10:
+			pts.append(tip[j])
+			pts.append(tip[(j + 1) % 10])
+	crosshair.draw_multiline(pts, Color(0, 0, 0, 0.5), 5.5, true)
+	crosshair.draw_multiline(pts, Color(1.0, 0.85, 0.2), 3.0, true)
 
 
 ## Bota Foguete: barra fina sob a mira, só enquanto o jato não está cheio.

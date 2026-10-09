@@ -602,11 +602,19 @@ const SPLAT_DAMAGE := 20.0
 const SPLAT_MIN_SPEED := 6.0
 const DAZE_TIME := 0.6
 const DAZE_SLOW := 0.5
+# Visual do tonto (2026-10-09, pedido do usuário): estrelinhas na cabeça para os outros e,
+# na própria tela, estrelas em volta da mira e a câmera balançando. Fica 1 s na tela (a
+# tontura é 0,6 s e passaria quase sem ser vista).
+const DAZE_FX_TIME := 1.0
+const DAZE_ROLL := 0.07    # balanço da câmera (rad)
 const SLAP_COLOR := Color(1.0, 0.75, 0.55)
 var slap_flight := 0.0     # arremessado por um tapa: ainda pode bater na parede
 var slap_lock := false     # no voo do tapa: sem controle no ar e sem o teto MAX_HSPEED até pousar
 var slap_from := ""        # quem deu o tapa (crédito do impacto)
 var daze_timer := 0.0      # tonto: não atira
+var daze_fx := 0.0         # quanto falta do visual do tonto (todas as máquinas)
+var daze_stars: DazeStars
+var _net_dazed := false
 var hand_pivot: Node3D     # primeira pessoa: a mão do tapa
 var hand_3p: Node3D        # terceira pessoa: a mão grande erguida (o aviso que os outros veem)
 var slap_windup := 0.0     # preparando o tapa (máquina dona)
@@ -1212,6 +1220,9 @@ func reset_for_round(spawn: Transform3D) -> void:
 	if slap_windup > 0.0:
 		_cancel_slap(false)
 	daze_timer = 0.0
+	daze_fx = 0.0
+	_net_dazed = false
+	_update_daze_fx(0.0)
 	_end_beam(false)
 	plat_left = PLAT_MAX
 	plat_chain = 0.0
@@ -1407,6 +1418,8 @@ func _process(delta: float) -> void:
 		muzzle_light.visible = muzzle_light.light_energy > 0.0
 	_update_camo(delta)
 	_update_boot_fx()
+	if daze_fx > 0.0 or daze_stars:
+		_update_daze_fx(delta)
 	if not is_human:
 		# Aliado: nome e vida sempre à vista, através das paredes, na cor do time.
 		var ally := viewer != null and viewer.is_ally(self)
@@ -1726,6 +1739,24 @@ func _ceiling_room(eye: float) -> float:
 	return eye if hit.is_empty() else maxf(1.0, hit["position"].y - global_position.y - 0.25)
 
 
+## Estrelinhas do tonto em volta da cabeça. Na própria tela não aparecem (a câmera está
+## dentro da cabeça): lá o aviso é a mira (hud) e o balanço da câmera (_place_camera).
+func _update_daze_fx(delta: float) -> void:
+	daze_fx = maxf(0.0, daze_fx - delta)
+	if not alive:
+		daze_fx = 0.0
+	var show := daze_fx > 0.0 and not is_human
+	if show and daze_stars == null:
+		daze_stars = DazeStars.new()
+		add_child(daze_stars)
+	if daze_stars == null:
+		return
+	daze_stars.visible = show
+	if show:
+		var size: float = stats["body_scale"]
+		daze_stars.tick(delta, daze_fx, size, height * size)
+
+
 ## Põe a câmera na posição interpolada do corpo, com a mira atual do mouse.
 func _place_camera() -> void:
 	if ice_timer > 0.0 and is_human:
@@ -1736,7 +1767,11 @@ func _place_camera() -> void:
 	var jitter := Vector3.ZERO
 	if shake > 0.0:
 		jitter = Vector3(randf_range(-1, 1), randf_range(-1, 1), 0.0) * shake * 0.06
-	var euler := Vector3(head.rotation.x + recoil * RECOIL_KICK + jitter.y, yaw + jitter.x, cam_roll)
+	var roll := cam_roll
+	if daze_fx > 0.0:
+		# Tonto: a câmera balança de um lado para o outro e acalma no fim.
+		roll += sin(Time.get_ticks_msec() * 0.009) * DAZE_ROLL * minf(1.0, daze_fx / 0.4)
+	var euler := Vector3(head.rotation.x + recoil * RECOIL_KICK + jitter.y, yaw + jitter.x, roll)
 	camera.global_transform = Transform3D(Basis.from_euler(euler), origin)
 
 
@@ -2466,7 +2501,7 @@ func _send_state() -> void:
 	if not Net.online or Net.match_peers.is_empty() or not Net.all_ready():
 		return
 	var flags := (1 if is_on_floor() else 0) | (2 if crouching else 0) | (4 if sliding else 0) \
-		| (8 if boosting else 0)
+		| (8 if boosting else 0) | (16 if daze_timer > 0.0 else 0)
 	_net_state.rpc(net_round, global_position, velocity, rotation.y, head.rotation.x, flags, shield_timer, health, armor)
 
 
@@ -2486,6 +2521,10 @@ func _net_state(round_id: int, pos: Vector3, vel: Vector3, yaw: float, pitch: fl
 	armor = vest
 	net_on_floor = (flags & 1) != 0
 	boosting = (flags & 8) != 0
+	var dazed := (flags & 16) != 0
+	if dazed and not _net_dazed:
+		daze_fx = DAZE_FX_TIME
+	_net_dazed = dazed
 	sliding = (flags & 4) != 0
 	var crouch := (flags & 2) != 0
 	if crouch != crouching:
@@ -3403,6 +3442,7 @@ func _check_splat(before_h: Vector3, delta: float) -> void:
 ## Tonto (parede no Mega Tapa, boliche do Gancho): lento e sem atirar por DAZE_TIME.
 func _daze() -> void:
 	daze_timer = DAZE_TIME
+	daze_fx = DAZE_FX_TIME
 	apply_slow(DAZE_SLOW, DAZE_TIME)
 
 
