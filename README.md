@@ -251,6 +251,36 @@ multiplies. Example: `{"stat": "damage", "mul": 1.35}` is +35% damage. A card th
 changes numbers just needs an entry in `CARDS` (`card_db.gd`). A card with a new effect
 needs a new attribute in `BASE_STATS` and the code that uses it.
 
+## Practice room
+
+In the deck editor, **Testar na sala de teste** opens a fixed holographic room with the deck's
+master card and no picked cards. Nobody dies there (health stops at 1 and refills after 3 s
+without damage).
+
+- **Shooting range**: hologram dummies at 8, 20 and 40 m, a moving target and a flat wall
+  for ricochets.
+- **Parkour corner**: 2/4/6 m steps, a 7 m wall, a 10 m gap over the void and a jump pad.
+- **Defense area**: two stationary shooters (off by default; slow, normal or burst).
+- **Damage panel** on the right: DPS over 3 s, best DPS, time to deal 100, total, biggest hit,
+  shots and hits. **Z** resets it.
+- **B** pauses and opens the card panel: add or remove any card (per-match limits apply), swap
+  the master card, take the whole deck, master without cooldown, shooter rhythm. The saved deck
+  never changes.
+
+## Shop (test mode)
+
+**Loja** in the main menu. Everyone starts with a 30-card collection and a free **Master
+Pack** (one random master card). Packs are the main way to get cards: **Básico** (5 cards,
+guarantees a rare), **Avançado** (6, guarantees an epic) and **Supremo** (7, guarantees a
+legendary). **Ofertas** shows an epic, a legendary and a master card that change every 8 hours;
+lock one to keep it while saving coins. Each card goes up to 3 copies (masters up to 1); extra
+copies become **fichas** (tokens) of that rarity, traded for a card of your choice.
+
+This version is a **test**: you start with 999,999 coins (**Repor moedas** refills them,
+**Zerar coleção** starts over), and the collection does not lock anything yet: every deck still
+has every card. How coins are earned (online play, daily and weekly missions) comes later, and
+all prices and odds may change.
+
 ## Where things are
 
 | File | Contents |
@@ -258,15 +288,17 @@ needs a new attribute in `BASE_STATS` and the code that uses it.
 | `scripts/autoload/card_db.gd` | All cards, deck size, attribute limits. |
 | `scripts/autoload/game_state.gd` | Settings (keys, volume, video, look), saved decks. |
 | `scripts/autoload/net.gd` | Networking: hosting, joining, lobby, chat, who is ready. |
+| `scripts/autoload/collection.gd` | Card collection and shop rules: coins, copies, tokens, packs, offers (all numbers in one place). |
 | `scripts/player.gd` | Base attributes, movement (constants at the top), shooting, shield, effects, skins. |
 | `scripts/bullet.gd` | Projectile: reflection, ricochet, explosion, poison etc. |
 | `scripts/bot_brain.gd` | Bot AI. `LEVELS` at the top holds the Easy, Medium and Hard numbers. |
 | `scripts/match.gd` | Match flow: picks, countdown, round, 5-round blocks, end. |
 | `scripts/spectator.gd` | Camera when dead: follow a living player or fly freely. |
-| `scripts/arena/` | Arena generator, color themes, moving pieces, jump pads, map items. |
+| `scripts/arena/` | Arena generator, color themes, moving pieces, jump pads, map items, and the practice room (`test_room.gd`). |
 | `scripts/meteor_strike.gd`, `sky_platform.gd` | Chuva de Meteoros meteor, Plataformas Suspensas platform. |
 | `scripts/ui/` | HUD (`vitals.gd` for the health, master card and ability corner), kill feed, chat, damage feedback, scoreboard, pick screen, menu, settings, customization preview, deck screens and the shared look (`ui_style.gd`). |
 | `scripts/sfx.gd`, `effects.gd`, `aim_arm.gd` | Sounds, visual effects, arm pointing at the aim. |
+| `scripts/dev/checkup.gd` | Performance check-up tool (see below). |
 | `assets/` | Kenney models and sounds (CC0; licenses in each folder). Card icons in `assets/card_icons`, from game-icons.net (CC BY 3.0: credit required, authors listed in that folder's `LICENSE.txt` and in Settings). Character and gun thumbnails in `assets/skins` and `assets/gun_skins`. |
 
 ## Headless test
@@ -289,12 +321,22 @@ Godot_v4.7.2-stable_win64_console.exe --headless --path . -- --autotest --host
 Godot_v4.7.2-stable_win64_console.exe --headless --path . -- --autotest --join
 ```
 
+Performance check-up (opens a window with the saved video settings; each block fits in 40 s):
+
+```
+Godot_v4.7.2-stable_win64_console.exe --path . res://scenes/dev/checkup.tscn -- --bloco=1
+```
+
+Blocks: 1 base match, 2 combat, 3 areas and master visuals (`--parte=1` or `2`), 4 heavy fight
+spikes (`--sem-som`, `--sem-efeitos`, `--passos=3`), 5 new screens (`--parte=1` or `2`).
+`--prints` saves screenshots. Results go to `user://checkup.txt`. `--sala-teste` opens the
+practice room directly.
+
 ## Next steps
 
-1. A release focused on performance: frame spikes in busy fights and at round start, one
-   suspect at a time, and the cost of huge bullets on weak GPUs.
-2. Card balancing and new cards.
-3. Footstep, landing and slide sounds.
-4. Progression: start with some cards and earn the rest from purchases or chests, with
-   rarity tokens (common to mythic) from recycling duplicates. Today everyone has every card
-   and rarity is only a label.
+1. Find the frame spikes in heavy fights (one suspect at a time) and the rest of the round-start
+   hitch (building the arena).
+2. Earning coins: online play, a future single-player mode, daily and weekly missions (a Master
+   Pack as a weekly reward). Then the collection starts locking cards.
+3. Card balancing and new cards.
+4. Footstep, landing and slide sounds.
