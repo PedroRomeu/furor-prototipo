@@ -197,6 +197,9 @@ func _build_duel_bar() -> void:
 func set_duel(pair: Array, p_lives: Dictionary, queue: Array) -> void:
 	if duel_names.is_empty():
 		return
+	scoreboard.lives = p_lives.duplicate()
+	scoreboard.total_lives = start_lives
+	scoreboard.duel_pair = pair.duplicate()
 	for side in 2:
 		var p: Player = null
 		if side < pair.size():
@@ -925,6 +928,9 @@ func show_end(result: String, color: Color, buttons: Dictionary) -> void:
 	add_child(board)
 	board.setup(me, players)
 	board.kda = scoreboard.kda
+	board.lives = scoreboard.lives
+	board.total_lives = scoreboard.total_lives
+	board.duel_pair = scoreboard.duel_pair
 	board.score = round_score
 	board.round_text = round_text
 	board.open()

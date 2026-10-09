@@ -2,23 +2,33 @@ class_name Scoreboard
 extends Control
 ## Placar da partida, aberto segurando Tab (ação "scoreboard"): uma linha por jogador com
 ## rodadas vencidas, abates, assistências e mortes, e embaixo as cartas dele (ícones; passar
-## o mouse mostra o efeito). Ordem: mais rodadas, depois mais abates.
+## o mouse mostra o efeito). Ordem: mais rodadas, depois mais abates. Nos Duelos, uma coluna a
+## mais com as vidas em corações, e a ordem começa por quem tem mais vidas.
 
 const STATS := ["RODADAS", "ABATES", "ASSIST.", "MORTES"]
 const STAT_WIDTH := 76.0
 const ICON_SIZE := 34.0
+const HEART_SIZE := 14.0
+const HEART_FULL := Color(1.0, 0.3, 0.32)
+const HEART_EMPTY := Color(1, 1, 1, 0.18)
+static var _heart_tex: ImageTexture
 
 var me: Player
 var players: Array = []
 var score := {}        # nome do nó -> rodadas vencidas
 var kda := {}          # nome do nó -> [abates, assistências, mortes]
 var round_text := ""
+## Duelos (Hud.set_duel): nome do nó -> vidas, vidas do começo (0 fora dos Duelos) e quem duela.
+var lives := {}
+var total_lives := 0
+var duel_pair: Array = []
 ## Fim da partida (Hud.show_end): resultado no lugar de "PLACAR" e botões embaixo.
 var result_text := ""
 var result_color := Ui.TEXT
 var buttons := {}            # texto -> Callable; o primeiro é o principal
 var _rows: VBoxContainer
 var _round_label: Label
+var _lives_title: Label
 
 
 func _ready() -> void:
@@ -70,6 +80,9 @@ func _ready() -> void:
 	var who := Ui.label("JOGADOR", 12, Ui.MUTED, true)
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	titles.add_child(_indent(who))
+	_lives_title = _cell("VIDAS", 12, Ui.MUTED, true)
+	_lives_title.visible = false
+	titles.add_child(_lives_title)
 	for t in STATS:
 		titles.add_child(_cell(t, 12, Ui.MUTED, true))
 	col.add_child(HSeparator.new())
@@ -116,10 +129,16 @@ func rebuild() -> void:
 	if not visible or me == null:
 		return
 	_round_label.text = round_text
+	_lives_title.visible = total_lives > 0
+	_lives_title.custom_minimum_size.x = _lives_width()
 	for c in _rows.get_children():
 		c.queue_free()
 	var order := players.duplicate()
 	order.sort_custom(func(a: Player, b: Player):
+		var la: int = lives.get(String(a.name), 0)
+		var lb: int = lives.get(String(b.name), 0)
+		if la != lb:
+			return la > lb
 		var sa: int = score.get(String(a.name), 0)
 		var sb: int = score.get(String(b.name), 0)
 		if sa != sb:
@@ -188,8 +207,11 @@ func _row(p: Player) -> Control:
 	swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tag.add_child(swatch)
 	tag.add_child(Ui.label(p.player_name, 18, Ui.TEXT, true))
-	if not p.alive:
-		tag.add_child(Ui.label("fora da rodada", 13, Ui.MUTED))
+	var status := _status(p)
+	if status != "":
+		tag.add_child(Ui.label(status, 13, Ui.MUTED))
+	if total_lives > 0:
+		line.add_child(_hearts(lives.get(String(p.name), 0)))
 	var k := _kda(p)
 	var values := [score.get(String(p.name), 0), k[0], k[1], k[2]]
 	for i in values.size():
@@ -198,7 +220,62 @@ func _row(p: Player) -> Control:
 	var cards := _indent(_card_flow(p))
 	col.add_child(cards)
 	box.modulate.a = 1.0 if p.alive else 0.7
+	if total_lives > 0 and lives.get(String(p.name), 0) <= 0:
+		box.modulate.a = 0.5
 	return box
+
+
+## Texto ao lado do nome. Nos Duelos quem não luta está no banco (alive falso), então diz
+## se está na fila ou eliminado em vez de "fora da rodada".
+func _status(p: Player) -> String:
+	if total_lives > 0:
+		if lives.get(String(p.name), 0) <= 0:
+			return "eliminado"
+		return "" if String(p.name) in duel_pair else "na fila"
+	return "" if p.alive else "fora da rodada"
+
+
+func _lives_width() -> float:
+	return maxf(STAT_WIDTH, total_lives * (HEART_SIZE + 2.0) + 12.0)
+
+
+## Corações das vidas: uma textura só, tingida (cheio = vermelho, perdido = apagado).
+func _hearts(left: int) -> Control:
+	var row := Ui.hbox(2)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.custom_minimum_size.x = _lives_width()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for i in total_lives:
+		var t := TextureRect.new()
+		t.texture = _heart()
+		t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		t.custom_minimum_size = Vector2(HEART_SIZE, HEART_SIZE)
+		t.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		t.modulate = HEART_FULL if i < left else HEART_EMPTY
+		t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(t)
+	return row
+
+
+## Coração branco de 32 px gerado uma vez: (x² + y² - 1)³ - x²y³ <= 0, 4x4 amostras por pixel.
+static func _heart() -> ImageTexture:
+	if _heart_tex:
+		return _heart_tex
+	const N := 32
+	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
+	for py in N:
+		for px in N:
+			var hits := 0
+			for sy in 4:
+				for sx in 4:
+					var x := ((px + (sx + 0.5) / 4.0) / N - 0.5) * 2.6
+					var y := (0.5 - (py + (sy + 0.5) / 4.0) / N) * 2.6 + 0.1
+					var a := x * x + y * y - 1.0
+					if a * a * a - x * x * y * y * y <= 0.0:
+						hits += 1
+			img.set_pixel(px, py, Color(1, 1, 1, hits / 16.0))
+	_heart_tex = ImageTexture.create_from_image(img)
+	return _heart_tex
 
 
 ## Mestra primeiro, depois as cartas na ordem em que foram pegas, uma vez cada com o número
