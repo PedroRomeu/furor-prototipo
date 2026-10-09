@@ -9,7 +9,10 @@ extends Control
 ## abre a escolha, que cabe quantas mestras houver) e a lista do que está nele, por grupo;
 ## clicar numa linha tira uma cópia. Cada mudança é salva na hora.
 
-const TILE_WIDTH := 216.0
+## 252: a menor largura em que nenhum nome nem "Lendário · 1 por partida" ganha
+## reticências de 1280x720 a 2560x1440 (medido em 2026-10-08; com 216 a grade passava
+## da tela).
+const TILE_WIDTH := 252.0
 const TILE_HEIGHT := 138.0
 ## Descrição numa área fixa (pedido do usuário, como nos Yu-Gi-Oh online): texto que não
 ## cabe ganha uma barra de rolagem fina à direita, em vez de esticar ou vazar da carta.
@@ -265,15 +268,19 @@ func _tile(id: String) -> Control:
 	title_row.add_child(CardFrame.symbol_rect(card["cat"], 18))
 	var sub := CardDB.rarity_name(id)
 	if card.has("max"):
-		sub += "  ·  " + CardDB.limit_short(id)
+		sub += " · " + CardDB.limit_short(id)
 	# Raridade e, à direita, as cópias no baralho (fora da linha do nome, que fica inteira).
 	var sub_row := Ui.hbox(6)
 	sub_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	names.add_child(sub_row)
 	var rarity := Ui.label(sub, 12, CardDB.rarity_color(id))
 	rarity.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Encolhe com reticências: com o selo ao lado, "Lendário · 1 por partida" passava dos
+	# TILE_WIDTH e a grade empurrava o painel do baralho para fora da tela.
+	rarity.clip_text = true
+	rarity.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	rarity.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sub_row.add_child(rarity)
-	sub_row.add_child(Ui.spacer())
 	var badge := Label.new()
 	badge.add_theme_font_size_override("font_size", 12)
 	badge.add_theme_font_override("font", Ui.bold())
@@ -501,6 +508,9 @@ func _refresh_list() -> void:
 		head.add_child(Ui.label(cat.to_upper(), 12, CardDB.CATEGORY_COLORS[cat].lerp(Ui.MUTED, 0.3), true))
 		head.add_child(Ui.spacer())
 		head.add_child(Ui.label(str(n), 12, Ui.MUTED, true))
+		var pad := Control.new()   # a mesma folga das linhas: a barra de rolagem fica por cima
+		pad.custom_minimum_size.x = 8
+		head.add_child(pad)
 		for id in ids:
 			deck_list.add_child(_deck_row(id))
 
@@ -679,7 +689,12 @@ func _fit() -> void:
 	# Painel do baralho: um quarto da largura (entre 300 e 400 px); a grade usa o resto.
 	side_panel.custom_minimum_size.x = clampf(size.x * 0.25, 300.0, 400.0)
 	await get_tree().process_frame
-	grid.columns = maxi(2, int((scroll.size.x - 14.0 + GAP) / (TILE_WIDTH + GAP)))
+	# Pela carta mais larga de verdade, não só TILE_WIDTH: se alguma passar, a grade fica
+	# mais larga que a área (sem rolagem lateral) e corta a direita da tela.
+	var tile_w := TILE_WIDTH
+	for t in tiles.values():
+		tile_w = maxf(tile_w, t["panel"].get_combined_minimum_size().x)
+	grid.columns = maxi(2, int((scroll.size.x - 14.0 + GAP) / (tile_w + GAP)))
 
 
 func _change(id: String, delta: int) -> void:
