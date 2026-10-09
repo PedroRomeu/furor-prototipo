@@ -86,8 +86,11 @@ static func explosion(parent: Node, pos: Vector3, radius: float, color: Color, t
 	var mat := StandardMaterial3D.new()
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mat.albedo_color = Color(color, 0.5)
+	# Só a face de trás, com a opacidade de duas camadas (check-up de 2026-10-08: as duas
+	# faces pintavam cada pixel duas vezes; 7 explosões de 6 m custavam +4,4 ms, assim +1,2).
+	# A face de trás aparece por fora e de dentro da explosão.
+	mat.cull_mode = BaseMaterial3D.CULL_FRONT
+	mat.albedo_color = Color(color, 0.75)
 	mi.mesh = sphere_mesh()
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
