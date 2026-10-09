@@ -367,6 +367,10 @@ const AMBUSH_TIME := 3.0
 const AMBUSH_COOLDOWN := 6.0
 const AMBUSH_DAMAGE := 0.4
 const AMBUSH_SPEED := 0.2
+## Invisível, a arma da própria tela fica translúcida (pedido do usuário, 2026-10-09):
+## CAMO_VIEW_ALPHA de transparência, chegando nela em 1 / CAMO_VIEW_FADE s.
+const CAMO_VIEW_ALPHA := 0.6
+const CAMO_VIEW_FADE := 6.0
 ## Orbes do mapa (2026-10-06, no lugar do orbe de reset; ideia do usuário, números meus,
 ## aprovados): Velocidade dá +30% de velocidade por 4 s; Impulso lança uns 6 m para cima
 ## (com GRAVITY_RISE 30) e devolve dash, pulos e jato no ar.
@@ -844,6 +848,8 @@ var look_yaw := 0.0
 var hit_flash := 0.0
 var flash_mat: StandardMaterial3D
 var body_meshes: Array = []
+var viewmodel_meshes: Array = []
+var viewmodel_fade := 0.0
 static var _hit_sound_frame := -1
 ## 2x2 (2026-10-05, era difícil achar o parceiro): o aliado ganha um contorno na cor do
 ## time que aparece através das paredes (camada por cima do modelo, como no Valorant e no
@@ -1539,7 +1545,9 @@ func _update_camo(delta: float) -> void:
 			_restore_overlay()
 	if stats["camo"] <= 0 or not alive:
 		still_time = 0.0
+		_fade_viewmodel(0.0, delta)
 		return
+	_fade_viewmodel(CAMO_VIEW_ALPHA if is_hidden() else 0.0, delta)
 	var hspeed := Vector2(velocity.x, velocity.z).length()
 	var still := velocity.length() < 0.6
 	var sneaking := is_hidden() and hspeed <= float(stats["move_speed"]) * CAMO_SNEAK and absf(velocity.y) < 2.0
@@ -1552,6 +1560,49 @@ func _update_camo(delta: float) -> void:
 		model.visible = show
 		ring.visible = show
 		tag.visible = show
+
+
+## Arma da própria tela translúcida enquanto invisível. No Compatibility a `transparency`
+## do GeometryInstance3D não tem efeito (conferido em print), então cada material da arma
+## ganha uma cópia com alfa, trocada só enquanto o valor não é 0 (opaca, nada muda).
+## viewmodel_meshes: [malha, superfície (-1 = material_override), o que estava posto
+## (volta ao ficar opaca), cópia, alfa original].
+func _fade_viewmodel(target: float, delta: float) -> void:
+	if viewmodel == null or is_equal_approx(viewmodel_fade, target):
+		return
+	var was := viewmodel_fade
+	viewmodel_fade = move_toward(viewmodel_fade, target, CAMO_VIEW_FADE * delta)
+	if viewmodel_meshes.is_empty():
+		_collect_viewmodel_mats()
+	for e in viewmodel_meshes:
+		if not is_instance_valid(e[0]):
+			continue   # rastro do Mega Tapa (Caos), que some sozinho
+		var copy: BaseMaterial3D = e[3]
+		copy.albedo_color.a = float(e[4]) * (1.0 - viewmodel_fade)
+		if was == 0.0 or viewmodel_fade == 0.0:
+			var mat: Material = copy if viewmodel_fade > 0.0 else e[2]
+			var mi: MeshInstance3D = e[0]
+			if e[1] < 0:
+				mi.material_override = mat
+			else:
+				mi.set_surface_override_material(e[1], mat)
+
+
+func _collect_viewmodel_mats() -> void:
+	var copies := {}
+	for mi in viewmodel.find_children("*", "MeshInstance3D", true, false):
+		var slots: Array = [-1] if mi.material_override else range(mi.mesh.get_surface_count() if mi.mesh else 0)
+		for s in slots:
+			var old: Material = mi.material_override if s < 0 else mi.get_active_material(s)
+			if not old is BaseMaterial3D:
+				continue
+			if not copies.has(old):
+				var c: BaseMaterial3D = old.duplicate()
+				c.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				c.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+				copies[old] = c
+			viewmodel_meshes.append([mi, s, mi.material_override if s < 0 else mi.get_surface_override_material(s),
+					copies[old], (old as BaseMaterial3D).albedo_color.a])
 
 
 ## Fogo e som do jato da Bota Foguete, em todas as máquinas (as outras sabem pelo estado).

@@ -34,6 +34,7 @@ func _ready() -> void:
 		3: await _block_areas(_part())
 		4: await _block_fight()
 		5: await _block_new(_part())
+		7: await _block_camo()
 		_: _note("bloco desconhecido")
 	_save()
 	get_tree().quit()
@@ -163,6 +164,17 @@ func _block_match() -> void:
 		_note("%-34s %6.1f ms (pior %.1f)  montar %.0f ms  1o quadro %.0f ms  %d malhas" % [
 			"mapa " + MapList.SIZES[size]["id"] + ", 4", m.x, m.y, build_ms, first_ms, meshes])
 	_note("chamadas de desenho no último: %d" % RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME))
+
+
+## Bloco 7 (2026-10-09): arma da primeira pessoa translúcida da Camuflagem, contra opaca.
+func _block_camo() -> void:
+	await _start_match(0)
+	var me = game.me
+	var base := await measure()
+	_note("%-34s %6.1f ms (pior %.1f)" % ["partida, mapa pequeno, 4", base.x, base.y])
+	await cost("arma translúcida (Camuflagem)", func(on):
+		me._fade_viewmodel(Player.CAMO_VIEW_ALPHA if on else 0.0, 1.0))
+	await cost("arma na tela (primeira pessoa)", func(on): me.viewmodel.visible = on)
 
 
 # ---------------------------------------------------------------- combate
