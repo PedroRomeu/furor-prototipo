@@ -138,7 +138,7 @@ func _draw_health() -> void:
 func _master_ready() -> bool:
 	if not CardDB.CARDS[me.master_id].has("cooldown"):
 		return me.plat_cd <= 0.0   # passiva: só as Plataformas Suspensas têm recarga
-	return me.master_cd <= 0.0
+	return me.master_charges > 0 if me.master_max_charges() > 1 else me.master_cd <= 0.0
 
 
 ## Recarga que falta e a total (ativa: a da carta; Plataformas Suspensas: a da passiva).
@@ -179,7 +179,14 @@ func _draw_master_top() -> void:
 		tint.a = 1.0 if ready else 0.4
 		draw_texture_rect(tex, rect.grow(-14), false, tint)
 	var wait := _master_wait()
-	if wait.x > 0.0:
+	var charges := me.master_max_charges()
+	if charges > 1:
+		# Cargas (Corrente): o número no canto; com alguma sobrando, a próxima enche numa barra fina.
+		_text(_bold, Vector2(rect.end.x - 18, rect.position.y + 20), str(me.master_charges), 16, Color.WHITE)
+		if ready and wait.x > 0.0:
+			var fill := Rect2(rect.position.x + 10, rect.end.y - 18, (rect.size.x - 20) * clampf(1.0 - wait.x / wait.y, 0, 1), 3)
+			_rect(fill, Ui.ACCENT)
+	if wait.x > 0.0 and not (charges > 1 and ready):
 		var left: float = clampf(wait.x / wait.y, 0.0, 1.0)
 		_blit(R_FRAME, rect, Color(0, 0, 0, 0.45), left, true)
 		var secs := str(ceili(wait.x))

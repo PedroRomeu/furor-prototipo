@@ -95,8 +95,8 @@ editor: Project > Export > Windows Desktop > Export Project.
 1. One player opens **Jogar > Online > Criar sala** (Play > Online > Create room). The
    lobby shows their IP and who has joined.
 2. The others open **Jogar > Online**, type that IP and click **Entrar** (Join).
-3. The host clicks **Começar** (Start) whenever they want: the match is played with whoever
-   is in the lobby (2 to 4 players, free-for-all). With 4, **2x2** can be picked under
+3. Each guest clicks **Pronto** (Ready). The host's **Começar** (Start) unlocks once every
+   guest is ready: the match is played with whoever is in the lobby (2 to 4 players, free-for-all). With 4, **2x2** can be picked under
    Formato: the lobby becomes Blue Team and Red Team, the host moves people between teams
    (or clicks **Sortear times** to shuffle) and it only starts with 2 on each side.
    In the lobby everyone can change their name and look (applied right away for everyone),
@@ -173,7 +173,8 @@ shows in a corner during the match.
   (Body: a fatal hit leaves you at 1 health for 3 s; get a kill in that time and come back
   with half), **Camuflagem** (Body: stand still 0.6 s to vanish, crouch-walk while hidden;
   showing up after 1 s hidden gives Ambush, 3 s of +40% shot damage and +20% speed),
-  **Corrente** (Movement, Q: an 8 m upward boost, also in the air), **Bota Foguete**
+  **Corrente** (Movement, Q: an 8 m upward boost, also in the air; holds 2 charges that come
+  back one at a time, 8 s each), **Bota Foguete**
   (Movement: +10% shot damage per second in the air, up to +40%; with no air jumps left,
   hold jump for a short rocket burst, refilled on landing) and **Formiga** (Movement, Q:
   6 s at 40% size and +60% speed; Q again to grow back early; growing back knocks away
@@ -182,8 +183,12 @@ shows in a corner during the match.
   with distance. Aim a bit higher from afar. Reflected bullets fly straight. A bullet's size
   grows with its damage, also mid-flight (Bola de Neve, Tabelinha): huge bullets are
   possible, and every bounce gives the bullet 2 more seconds of life (up to 12 bounces), so
-  a "nuke" shot at the sky can keep growing. A bullet that already bounced off a wall can
-  hit its shooter. Explosions start at the bullet's edge: bigger bullets explode bigger.
+  a "nuke" shot at the sky can keep growing; shots that fire many bullets at once get less
+  extra life per bounce. A bullet that already bounced off a wall can hit its shooter (it
+  still pushes enemies with Propulsão, never you). At most 300 bullets fly at once: when
+  full, the oldest bullet of whoever has the most disappears, so your shot always comes out.
+- Above 30 m (the invisible ceiling bullets bounce off) you take growing damage every
+  second after a 1 s grace: 10% of max health, then 13%, 16%... Explosions start at the bullet's edge: bigger bullets explode bigger.
 - Shield (E): every card that improves it adds to its cooldown (+1 s for strong effects,
   +0.5 s for weak ones); Reflexos, Defensor, Passo Ligeiro and Escudo de Papel lower it.
 - Your character gets a bit bigger with more max health and smaller with less, and the

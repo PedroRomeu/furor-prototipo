@@ -1,7 +1,7 @@
 extends Node
 ## Conexão em rede (ENet, sobre UDP). Um jogador cria a sala, os outros entram pelo IP.
-## A sala cabe até MAX_GUESTS convidados; o host começa quando quiser, com quem estiver
-## na sala (2 a 4 jogadores, cada um por si). Com 4, o host pode escolher 2x2 e arrumar
+## A sala cabe até MAX_GUESTS convidados; o host começa com quem estiver na sala (2 a 4
+## jogadores, cada um por si) quando todos os convidados marcarem "Pronto". Com 4, o host pode escolher 2x2 e arrumar
 ## os times (team_mode, teams). Os convidados falam com o host, e o host repassa as mensagens entre
 ## eles (o ENet do Godot faz esse repasse sozinho).
 ##
@@ -60,6 +60,10 @@ var team_mode: bool:
 ## O host carimba nome e cor e repassa a todos; ninguém escolhe a própria cor.
 var chat_log: Array = []
 var _chat_last := {}
+## Convidados que marcaram "Pronto" na sala (id -> true). O anfitrião conta como pronto e só
+## começa quando todos os convidados marcarem. O host guarda e repassa no _lobby; zera ao
+## começar a partida, então na volta à sala todos marcam de novo.
+var lobby_ready := {}
 
 
 func _ready() -> void:
@@ -116,6 +120,7 @@ func stop() -> void:
 	lives = GameModes.DEFAULT_LIVES
 	maps.clear()
 	teams.clear()
+	lobby_ready.clear()
 	chat_log.clear()
 	_chat_last.clear()
 
@@ -140,7 +145,8 @@ func local_ips() -> Array:
 ## Host: manda todo mundo abrir a partida com quem estiver na sala.
 func start_match() -> void:
 	var ids := _room_ids()
-	if GameModes.blocked_reason(mode, ids.size()) != "" or (team_mode and not teams_ready()):
+	if GameModes.blocked_reason(mode, ids.size()) != "" or (team_mode and not teams_ready()) \
+			or ready_count() < ids.size() - 1:
 		return
 	var all_names := _unique_names(ids)
 	var match_teams := teams.duplicate() if team_mode else {}
@@ -148,6 +154,33 @@ func start_match() -> void:
 		if id != 1:
 			_start.rpc_id(id, ids, all_names, match_teams, looks, mode, lives)
 	_start(ids, all_names, match_teams, looks, mode, lives)
+
+
+## Convidado: marca ou desmarca "Pronto" (o host confere e repassa a todos).
+func set_ready(on: bool) -> void:
+	if online and not multiplayer.is_server() and match_peers.is_empty():
+		_ready_request.rpc_id(1, on)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _ready_request(on: bool) -> void:
+	var id := multiplayer.get_remote_sender_id()
+	if not multiplayer.is_server() or not _raw_names.has(id) or not match_peers.is_empty():
+		return
+	if on:
+		lobby_ready[id] = true
+	else:
+		lobby_ready.erase(id)
+	_broadcast_lobby()
+
+
+func is_ready(id: int) -> bool:
+	return id == 1 or lobby_ready.has(id)
+
+
+## Quantos convidados da sala estão prontos (o anfitrião não entra na conta).
+func ready_count() -> int:
+	return lobby_ids().filter(func(id): return id != 1 and lobby_ready.has(id)).size()
 
 
 ## 2x2 só começa com 4 na sala, 2 em cada time.
@@ -233,6 +266,7 @@ func _start(ids: Array, all_names: Dictionary, match_teams: Dictionary, all_look
 	mode = p_mode
 	lives = p_lives
 	ready_peers.clear()
+	lobby_ready.clear()
 	match_starting.emit()
 
 
@@ -373,15 +407,18 @@ func _broadcast_lobby() -> void:
 	for id in teams.keys():
 		if not id in ids:
 			teams.erase(id)
+	for id in lobby_ready.keys():
+		if not id in ids:
+			lobby_ready.erase(id)
 	for id in ids:
 		if not teams.has(id):
 			teams[id] = 0 if teams.values().count(0) <= teams.values().count(1) else 1
-	_lobby.rpc(ids.size(), _unique_names(ids), mode, lives, teams, looks, maps)
+	_lobby.rpc(ids.size(), _unique_names(ids), mode, lives, teams, looks, maps, lobby_ready)
 
 
 @rpc("authority", "call_local", "reliable")
 func _lobby(count: int, all_names: Dictionary, p_mode: String, p_lives: int, p_teams: Dictionary,
-		all_looks: Dictionary, p_maps: Dictionary) -> void:
+		all_looks: Dictionary, p_maps: Dictionary, p_ready: Dictionary) -> void:
 	lobby_count = count
 	names = all_names
 	looks = all_looks
@@ -389,6 +426,7 @@ func _lobby(count: int, all_names: Dictionary, p_mode: String, p_lives: int, p_t
 	lives = p_lives
 	teams = p_teams
 	maps = p_maps
+	lobby_ready = p_ready
 	lobby_changed.emit(count)
 
 

@@ -719,6 +719,8 @@ func _update_status() -> void:
 		items.append(["ENVENENADO", Color(0.55, 0.95, 0.35)])
 	if me.silence_timer > 0.0:
 		items.append(["ESCUDO BLOQUEADO", Ui.DANGER])
+	if me.is_too_high():
+		items.append(["ALTO DEMAIS  ·  desça  ·  dano em %.1f" % me.sky_timer, Player.SKY_COLOR])
 	if me.is_hidden():
 		items.append(["INVISÍVEL", Color(0.75, 0.6, 1.0)])
 	if me.ambush_timer > 0.0:

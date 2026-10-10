@@ -58,7 +58,7 @@ func _init(nick_field: Control = null) -> void:
 		["Controles", _controls_page()], ["Créditos", _credits_page()]])
 	for entry in pages:
 		var title: String = entry[0]
-		var b := _nav_button(title, group)
+		var b := Ui.nav_button(title, group)
 		b.pressed.connect(_open.bind(title))
 		nav.add_child(b)
 		var page := _scrolled(entry[1])
@@ -66,30 +66,6 @@ func _init(nick_field: Control = null) -> void:
 		holder.add_child(page)
 		_tabs[title] = [b, page]
 	_open(_last_tab if _tabs.has(_last_tab) else String(pages[0][0]))
-
-
-## Item da lista lateral: texto sem caixa; o aberto ganha fundo leve e um traço laranja.
-func _nav_button(title: String, group: ButtonGroup) -> Button:
-	var b := Button.new()
-	b.text = title
-	b.toggle_mode = true
-	b.button_group = group
-	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.custom_minimum_size.y = 42
-	b.add_theme_font_size_override("font_size", 16)
-	for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
-		var on: bool = state == "pressed" or state == "hover_pressed"
-		var s := Ui.box(Ui.SURFACE if on else (Ui.SURFACE.darkened(0.2) if state == "hover" else Color.TRANSPARENT), 8)
-		s.content_margin_left = 16
-		if on:
-			s.border_color = Ui.ACCENT
-			s.border_width_left = 3
-		b.add_theme_stylebox_override(state, StyleBoxEmpty.new() if state == "focus" else s)
-	b.add_theme_color_override("font_color", Ui.MUTED)
-	b.add_theme_color_override("font_hover_color", Ui.TEXT)
-	b.add_theme_color_override("font_pressed_color", Ui.TEXT)
-	b.add_theme_color_override("font_hover_pressed_color", Ui.TEXT)
-	return b
 
 
 func _open(title: String) -> void:

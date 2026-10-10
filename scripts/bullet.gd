@@ -16,6 +16,10 @@ const LIFETIME := 4.0
 ## Cada quique dá mais BOUNCE_LIFE de vida (2026-10-07, para a "nuke" do Furor: atirar para o
 ## céu e esperar quicar). Sem teto de tempo: o teto de quiques (LIMITS) já limita.
 const BOUNCE_LIFE := 2.0
+## Desde 2026-10-10 (pedido do usuário: Escopeta + quiques enchia o mapa com balas de 28 s):
+## o bônus cai com as balas por clique (balas x rajada), BOUNCE_LIFE / raiz delas, no mínimo
+## BOUNCE_LIFE_MIN. Uma bala por clique (nuke) segue com 2 s; 5 (Escopeta) 0,9 s; 13, 0,55 s.
+const BOUNCE_LIFE_MIN := 0.5
 const REFLECTED_COLOR := Color(0.6, 1.0, 1.0)
 const CRIT_COLOR := Color(1.0, 0.85, 0.2)
 const PIERCE_COLOR := Color(0.85, 0.5, 1.0)
@@ -38,7 +42,11 @@ const SPLIT_ANGLE := 10.0
 ## meteoro (ninguém está lá, e o meteoro cairia em quem atirou). Perfurante, Sniper, caco de
 ## gelo e foguete solto passam. O muro mais alto tem 18 m e jogador nenhum chega a 30.
 const CEILING_Y := 30.0
-const MAX_BULLETS := 300   # teto de segurança para combinações extremas de cartas
+## Teto de segurança para combinações extremas de cartas. Cheio, quem atira não perde o tiro:
+## some a bala mais antiga de quem tem mais balas no mapa (2026-10-10; antes o tiro novo de
+## qualquer um era descartado e uma build de muitas balas calava os outros). Foguete solto,
+## caco de gelo e tiro da Sniper não somem.
+const MAX_BULLETS := 300
 const REMOTE_WAIT := 0.3
 const TRAIL_POINTS := 6
 const BOOMERANG_TIME := 0.5
@@ -92,7 +100,8 @@ const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", 
 	"slow", "push", "shield_break", "target_bounce", "execute", "reflected", "gravity",
 	"boomerang", "returning", "bounce_damage", "sticky", "split", "grow", "swap", "blind",
 	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls",
-	"toxic", "hole", "laser", "ice", "meteor", "rocket", "blast_radius", "blast_damage", "life", "drill"]
+	"toxic", "hole", "laser", "ice", "meteor", "rocket", "blast_radius", "blast_damage", "life", "drill",
+	"bounce_life"]
 ## Bala Fantasma: só paredes contam (superfície quase em pé); no chão e no topo das peças a
 ## bala para ou quica como as outras.
 const GHOST_WALL_NORMAL_Y := 0.7
@@ -107,6 +116,8 @@ static var _trail_mat: StandardMaterial3D
 static var _players: Array = []
 static var _barriers: Array = []
 static var _cache_frame := -1
+## Balas no mapa de cada jogador (id da instância -> balas, da mais antiga para a mais nova).
+static var _owned := {}
 
 var id := ""
 var shooter: Player
@@ -125,7 +136,9 @@ var _passed: Array[RID] = []   # paredes já atravessadas: o raio passa a ignor�
 var explosion := 0.0
 var blast_radius := 0.0   # Pólvora / Carga Concentrada: soma ao raio da explosão (só com explosão)
 var blast_damage := 0.0   # ...e ao dano dela (+0,3 = +30%)
-var life := LIFETIME      # cresce BOUNCE_LIFE a cada quique
+var life := LIFETIME      # cresce bounce_life a cada quique
+var bounce_life := BOUNCE_LIFE
+var _owner_key := 0   # em que lista de _owned a bala está (o dono de quando nasceu)
 var poison := 0.0
 var slow := 0.0
 var push := 0.0
@@ -173,11 +186,12 @@ var trail_points: Array = []
 ## (as bombas do escudo, por exemplo). "speed" troca a velocidade.
 static func fire(from: Player, pos: Vector3, dir: Vector3, damage_mult := 1.0, with_sound := false,
 		overrides := {}) -> Bullet:
-	if from.get_tree().get_node_count_in_group("bullets") >= MAX_BULLETS:
+	if not _make_room(from):
 		return null
 	var b := Bullet.new()
 	var s := from.stats
 	b.shooter = from
+	b.bounce_life = maxf(BOUNCE_LIFE_MIN, BOUNCE_LIFE / sqrt(maxf(1.0, s["bullet_count"] * s["burst"])))
 	b.damage = from.shot_damage() * damage_mult
 	var size := pow(b.damage / float(Player.BASE_STATS["damage"]), DAMAGE_SIZE_EXP)
 	b.radius = s["bullet_radius"] * maxf(size, DAMAGE_SIZE_MIN)
@@ -230,7 +244,7 @@ static func fire(from: Player, pos: Vector3, dir: Vector3, damage_mult := 1.0, w
 ## Recria na outra máquina uma bala que nasceu lá (ver match.gd: net_spawn_bullet).
 static func from_data(parent: Node, data: Dictionary) -> void:
 	var owner_player := parent.get_node_or_null(String(data["owner"])) as Player
-	if owner_player == null:
+	if owner_player == null or not _make_room(owner_player):
 		return
 	var b := Bullet.new()
 	b.id = data["id"]
@@ -269,7 +283,7 @@ func _launch(parent: Node, pos: Vector3) -> void:
 
 ## Cópia desta bala noutra direção (Espelho Duplo, estilhaços). overrides como em fire().
 func _clone(dir: Vector3, overrides := {}) -> void:
-	if get_tree().get_node_count_in_group("bullets") >= MAX_BULLETS:
+	if not _make_room(shooter):
 		return
 	var b := Bullet.new()
 	b.shooter = shooter
@@ -283,8 +297,51 @@ func _clone(dir: Vector3, overrides := {}) -> void:
 	b._launch(get_parent(), global_position)
 
 
+## Abre vaga para uma bala nova de who com o mapa cheio (ver MAX_BULLETS). Falso só se não
+## houver bala nenhuma que possa sumir.
+static func _make_room(who: Player) -> bool:
+	if who.get_tree().get_node_count_in_group("bullets") < MAX_BULLETS:
+		return true
+	# Quem tem mais balas; no empate, quem está atirando.
+	var key := who.get_instance_id()
+	var most: int = _owned.get(key, []).size()
+	for k in _owned:
+		if _owned[k].size() > most:
+			most = _owned[k].size()
+			key = k
+	for list in [_owned.get(key, []), _owned.get(who.get_instance_id(), [])]:
+		for b in list:
+			if is_instance_valid(b) and b.is_in_group("bullets") and not (b.rocket or b.ice or b.laser):
+				b._drop()
+				return true
+	return false
+
+
+## Sai do mapa na hora (o grupo e a lista já não contam) e some no fim do quadro.
+func _drop() -> void:
+	remove_from_group("bullets")
+	_forget()
+	queue_free()
+
+
+## Sai da lista de quem a disparou (pela chave guardada: refletida, a bala muda de dono).
+func _forget() -> void:
+	var list: Array = _owned.get(_owner_key, [])
+	list.erase(self)
+	if list.is_empty():
+		_owned.erase(_owner_key)
+
+
+func _exit_tree() -> void:
+	_forget()
+
+
 func _ready() -> void:
 	add_to_group("bullets")
+	_owner_key = shooter.get_instance_id()
+	if not _owned.has(_owner_key):
+		_owned[_owner_key] = []
+	_owned[_owner_key].append(self)
 	if _mesh == null:
 		_mesh = SphereMesh.new()
 		_mesh.radius = 1.0
@@ -353,6 +410,7 @@ static func clear_cache() -> void:
 	_trail_mat = null
 	_players.clear()
 	_barriers.clear()
+	_owned.clear()
 	_cache_frame = -1
 
 
@@ -635,7 +693,7 @@ func _hit_world(hit: Dictionary) -> void:
 func _bounce(point: Vector3, normal: Vector3) -> void:
 	bounces -= 1
 	bounced = true
-	life += BOUNCE_LIFE
+	life += bounce_life
 	if bounce_damage > 0.0:
 		# +bounce_damage do dano de saída a cada quique, somando (3 quiques com +40% = +120%).
 		bounce_hits += 1
@@ -714,7 +772,7 @@ func _hit_player(target: Player, point: Vector3) -> void:
 	var dmg := damage
 	if execute > 0.0 and target.health < target.stats["max_health"] * 0.4:
 		dmg *= 1.0 + execute
-	if push > 0.0:
+	if push > 0.0 and target != shooter:   # a própria bala quicada não empurra (virava elevador)
 		target.knockback(velocity.normalized() * push + Vector3.UP * 3.0)
 	if slow > 0.0:
 		target.apply_slow(slow)

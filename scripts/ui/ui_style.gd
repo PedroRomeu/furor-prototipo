@@ -128,6 +128,30 @@ static func accent(b: Button) -> Button:
 	return b
 
 
+## Item de lista lateral (Configurações, Jogar): texto sem caixa; o aberto ganha fundo leve e um traço laranja.
+static func nav_button(title: String, group: ButtonGroup) -> Button:
+	var b := Button.new()
+	b.text = title
+	b.toggle_mode = true
+	b.button_group = group
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.custom_minimum_size.y = 42
+	b.add_theme_font_size_override("font_size", 16)
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+		var on: bool = state == "pressed" or state == "hover_pressed"
+		var s := box(SURFACE if on else (SURFACE.darkened(0.2) if state == "hover" else Color.TRANSPARENT), 8)
+		s.content_margin_left = 16
+		if on:
+			s.border_color = ACCENT
+			s.border_width_left = 3
+		b.add_theme_stylebox_override(state, StyleBoxEmpty.new() if state == "focus" else s)
+	b.add_theme_color_override("font_color", MUTED)
+	b.add_theme_color_override("font_hover_color", TEXT)
+	b.add_theme_color_override("font_pressed_color", TEXT)
+	b.add_theme_color_override("font_hover_pressed_color", TEXT)
+	return b
+
+
 ## Botão sem fundo (ações secundárias, como "Voltar").
 static func flat(b: Button) -> Button:
 	for s in ["normal", "pressed", "disabled"]:

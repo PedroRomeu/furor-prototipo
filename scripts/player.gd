@@ -34,7 +34,7 @@ const BASE_STATS := {
 	"max_health": 100.0,
 	"move_speed": 9.0,
 	"jump_velocity": 12.0,   # sobe ~2,35 m com GRAVITY_RISE
-	"gravity_mult": 1.0,
+	"gravity_mult": 1.0,   # Pena: só na descida
 	"extra_jumps": 0,
 	"wall_jumps": 2,
 	"air_dashes": 1,
@@ -319,6 +319,16 @@ const VOID_DAMAGE := 15.0
 const VOID_BOUNCE := 11.1         # sobe ~2 m (1 m acima do chão), ~0,7 s no ar
 const VOID_BOUNCE_SHIELD := 18.7  # sobe ~5,8 m, ~1,2 s no ar
 const VOID_CREDIT := 4.0          # quem acertou você nestes segundos leva o crédito da queda
+# Alto demais (2026-10-10, como no Furor): com o centro do corpo acima do teto das balas
+# (Bullet.CEILING_Y), ninguém te acerta. Depois de SKY_GRACE, a cada SKY_TICK leva uma parte
+# da vida máxima que cresce (10%, 13%, 16%...: morre em ~7 s sem cura). A conta só zera
+# depois de SKY_RESET abaixo do teto. Escudo e Blindado não reduzem; o colete absorve.
+const SKY_GRACE := 1.0
+const SKY_TICK := 1.0
+const SKY_FIRST := 0.10
+const SKY_STEP := 0.03
+const SKY_RESET := 2.0
+const SKY_COLOR := Color(1.0, 0.35, 0.3)
 const ARMOR_MAX := 50.0      # colete (item do mapa): absorve dano antes da vida
 # Combate
 const SHOCKWAVE_RANGE := 8.0
@@ -665,6 +675,11 @@ var ice_block: Node3D
 ## Carta mestra que este jogador tem (a primeira de cards; "" se nenhuma).
 var master_id := ""      # mestra da vez (com o Caos, a sorteada)
 var master_cd := 0.0
+## Mestra com cargas ("charges" na carta, desde 2026-10-10: Corrente com 2). master_cd é o
+## tempo até a próxima carga voltar; elas voltam uma de cada vez.
+var master_charges := 1
+var master_gap := 0.0   # espera mínima entre dois usos seguidos (MASTER_CHARGE_GAP)
+const MASTER_CHARGE_GAP := 0.4
 ## Caos: espera depois de usar a ativa sorteada e duração da passiva sorteada.
 const CHAOS_WAIT := 8.0
 const CHAOS_PASSIVE_TIME := 15.0
@@ -758,6 +773,11 @@ var silence_timer := 0.0
 var bloodlust_timer := 0.0
 var since_damage := 0.0
 var last_attacker: Player       # quem causou o último dano (crédito de quem empurra no vazio)
+var sky_active := false         # Alto demais: contando (até SKY_RESET abaixo do teto)
+var sky_timer := 0.0            # tempo até o próximo dano lá em cima
+var sky_ticks := 0              # danos já levados nesta subida
+var sky_low := 0.0              # tempo abaixo do teto desde que desceu
+var sky_credit: Player          # quem acertou antes de subir (leva o abate)
 ## Placar (Tab): quem causou dano e quando (Time.get_ticks_msec), só na máquina dona. Na
 ## morte, o último que causou dano leva o abate e os outros dos últimos ASSIST_TIME s, a
 ## assistência. Vai junto com o aviso de morte, então todas as máquinas contam igual.
@@ -1217,6 +1237,8 @@ func reset_for_round(spawn: Transform3D) -> void:
 	var masters := cards.filter(CardDB.is_master)
 	master_id = masters[0] if not masters.is_empty() else ""
 	master_cd = 0.0
+	master_charges = master_max_charges()
+	master_gap = 0.0
 	chaos = master_id == "caos"
 	if chaos:
 		master_id = ""
@@ -1295,6 +1317,8 @@ func reset_for_round(spawn: Transform3D) -> void:
 	since_damage = 0.0
 	recent_hits.clear()
 	last_attacker = null
+	sky_active = false
+	sky_credit = null
 	revives_left = stats["revives"]
 	blind_timer = 0.0
 	echo_timer = 0.0
@@ -1827,6 +1851,10 @@ func _physics_process(delta: float) -> void:
 		return
 	if not alive:
 		return
+	if is_local:
+		_sky_check(delta)
+		if not alive:
+			return
 	if frozen:
 		velocity.x = 0.0
 		velocity.z = 0.0
@@ -1886,6 +1914,12 @@ func _tick(delta: float) -> void:
 	shield_cd = maxf(0.0, shield_cd - delta)
 	dash_cd = maxf(0.0, dash_cd - delta)
 	master_cd = maxf(0.0, master_cd - delta)
+	master_gap = maxf(0.0, master_gap - delta)
+	var max_charges := master_max_charges()
+	if master_charges < max_charges and master_cd <= 0.0 and max_charges > 1:
+		master_charges += 1
+		if master_charges < max_charges:
+			master_cd = float(CardDB.CARDS[master_id]["cooldown"])
 	if chaos and is_local and alive:
 		_chaos_tick(delta)
 	speed_orb_timer = maxf(0.0, speed_orb_timer - delta)
@@ -2406,6 +2440,32 @@ func receive_stomp(dmg: float, from_name: String) -> void:
 
 ## Bateu no vazio: quica e leva dano, ou, com o escudo de pé, quica alto sem dano. O
 ## quique devolve os pulos e dashes no ar, como tocar o chão, para dar chance de voltar.
+## Alto demais: acima do teto das balas leva dano crescente (ver SKY_*). A máquina dona decide.
+func _sky_check(delta: float) -> void:
+	if chest().y > Bullet.CEILING_Y:
+		if not sky_active:
+			sky_active = true
+			sky_ticks = 0
+			sky_timer = SKY_GRACE + SKY_TICK
+			sky_credit = last_attacker if since_damage < VOID_CREDIT and is_instance_valid(last_attacker) else null
+		sky_low = 0.0
+		sky_timer -= delta
+		if sky_timer <= 0.0:
+			sky_timer += SKY_TICK
+			var part := SKY_FIRST + SKY_STEP * sky_ticks
+			sky_ticks += 1
+			take_damage(stats["max_health"] * part, sky_credit if is_instance_valid(sky_credit) else null)
+	elif sky_active:
+		sky_low += delta
+		if sky_low >= SKY_RESET:
+			sky_active = false
+
+
+## Lá em cima agora (para a HUD).
+func is_too_high() -> bool:
+	return sky_active and sky_low == 0.0
+
+
 func _void_bounce() -> void:
 	var saved := is_shielding()
 	global_position.y = Arena.VOID_Y
@@ -2470,7 +2530,8 @@ func _gravity() -> float:
 	var g := GRAVITY_RISE if velocity.y > 0.0 else GRAVITY_FALL
 	if absf(velocity.y) < APEX_SPEED and in_jump_held:
 		g *= APEX_GRAVITY
-	return g * float(stats["gravity_mult"])
+	# Pena (desde 2026-10-10): só na descida; na subida diminuía a gravidade e passava as Molas.
+	return g * float(stats["gravity_mult"]) if velocity.y <= 0.0 else g
 
 
 ## Escalada de beirada (como em Apex e Titanfall): no ar, empurrando contra uma parede
@@ -2708,8 +2769,7 @@ func _act(delta: float) -> void:
 		return   # montado: o Q (saltar) é tratado em _ride_step
 	if in_master and shrink_timer > 0.0:
 		_end_shrink(true)   # Formiga: Q de novo volta ao tamanho antes do tempo
-	elif in_master and master_cd <= 0.0 and master_id != "" and CardDB.CARDS[master_id].has("cooldown") \
-			and hook_state == 0:
+	elif in_master and master_ready() and hook_state == 0:
 		_use_master()
 	if in_shield and shield_cd <= 0.0 and silence_timer <= 0.0:
 		_activate_shield()
@@ -2819,6 +2879,22 @@ func _chaos_tick(delta: float) -> void:
 		_chaos_draw()
 
 
+## Cargas da mestra (1 nas que não têm "charges"; o Caos usa uma vez e sorteia).
+func master_max_charges() -> int:
+	if master_id == "" or chaos:
+		return 1
+	return int(CardDB.CARDS[master_id].get("charges", 1))
+
+
+## A mestra ativa pode ser usada agora (com cargas: sobrou alguma e passou a espera).
+func master_ready() -> bool:
+	if master_id == "" or not CardDB.CARDS[master_id].has("cooldown"):
+		return false
+	if master_max_charges() > 1:
+		return master_charges > 0 and master_gap <= 0.0
+	return master_cd <= 0.0
+
+
 ## Recarga total mostrada na HUD (com o Caos, a espera até a próxima).
 func master_cd_total() -> float:
 	if chaos:
@@ -2828,7 +2904,13 @@ func master_cd_total() -> float:
 
 ## Habilidade da carta mestra (tecla Q).
 func _use_master() -> void:
-	master_cd = CardDB.CARDS[master_id]["cooldown"]
+	if master_max_charges() > 1:
+		if master_charges >= master_max_charges():
+			master_cd = CardDB.CARDS[master_id]["cooldown"]   # a recarga começa com a 1a gasta
+		master_charges -= 1
+		master_gap = MASTER_CHARGE_GAP
+	else:
+		master_cd = CardDB.CARDS[master_id]["cooldown"]
 	if chaos:
 		master_cd = CHAOS_WAIT
 		chaos_used = true

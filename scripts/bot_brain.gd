@@ -86,7 +86,7 @@ func think(delta: float) -> void:
 		aim_seen = 0.0
 	elif sees:
 		aim_seen += delta
-	master_ready = master_ready + delta if p.master_cd <= 0.0 else 0.0
+	master_ready = master_ready + delta if p.master_ready() else 0.0
 	var hurt := _downed_ally()
 	if hurt and (not sees or p.global_position.distance_to(foe.global_position) > REVIVE_SAFE):
 		# Parceiro caído e nenhum inimigo perto: vai até ele e fica ali (atirando, se vir alguém).
@@ -182,7 +182,7 @@ func _master(foe: Player, sees: bool) -> void:
 		if p.global_position.distance_to(foe.global_position) < 9.0 and p.ride_age > 0.3:
 			p.in_master = true
 		return
-	if not sees or p.master_cd > 0.0 or p.global_position.distance_to(foe.global_position) > FAR \
+	if not sees or not p.master_ready() or p.global_position.distance_to(foe.global_position) > FAR \
 			or master_ready < float(cfg["master_wait"]):
 		return
 	if p.stats["updraft"] > 0 and randf() < 0.01:
