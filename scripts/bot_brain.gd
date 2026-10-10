@@ -262,6 +262,11 @@ func _movement(delta: float, foe: Player, sees: bool) -> Vector3:
 		# Correndo pelo caminho, às vezes desliza.
 		if p.is_on_floor() and Vector2(p.velocity.x, p.velocity.z).length() > 7.0 and randf() < 0.01:
 			crouch_time = 0.5
+	# Meteoro: no ar, com o alvo embaixo e perto, despenca.
+	if p.stats["ground_slam"] > 0 and not p.is_on_floor() and p.slam_cd <= 0.0 and not p.crouching:
+		var below := p.global_position - foe.global_position
+		if below.y > Player.SLAM_MIN_HEIGHT and Vector2(below.x, below.z).length() < Player.SLAM_RANGE * 0.7:
+			crouch_time = 0.2
 	crouch_time -= delta
 	p.in_crouch = crouch_time > 0.0
 

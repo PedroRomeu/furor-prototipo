@@ -332,12 +332,8 @@ func _explode() -> void:
 	var parent := get_parent()
 	Effects.explosion(parent, global_position, radius, Color(1.0, 0.6, 0.2))
 	Sfx.at(parent, "explosion", global_position)
-	if owner_player.is_local and owner_player.alive and owner_player.stats["rocket_jump"] > 0:
-		var d := owner_player.chest().distance_to(global_position)
-		if d < radius + 1.0:
-			var away := (owner_player.chest() - global_position).normalized()
-			var k := 1.0 - 0.5 * d / (radius + 1.0)
-			owner_player.launch(Vector3(away.x * 13.0, maxf(away.y * 15.0, 8.0), away.z * 13.0) * k)
+	if owner_player.stats["rocket_jump"] > 0:
+		owner_player.rocket_jump(global_position, radius)
 	for p: Player in _local_enemies(owner_player):
 		var d := p.chest().distance_to(global_position)
 		if d < radius:

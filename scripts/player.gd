@@ -25,6 +25,7 @@ signal froze       # ficou preso no gelo (Prisão de Gelo; o registro do autotes
 signal slapped(splat: bool)   # levou o Mega Tapa / bateu na parede (registro do autoteste)
 signal beamed      # levou um toque do Canhão Arcano (registro do autoteste)
 signal platform_made   # criou (ou recebeu pela rede) uma plataforma suspensa (registro do autoteste)
+signal slammed(height: float, damage: float)   # Meteoro bateu no chão (registro do autoteste)
 signal meteor_marked   # marca de meteoro no chão (registro do autoteste)
 signal rocket_exploded # um Foguete explodiu (registro do autoteste)
 
@@ -301,7 +302,6 @@ const BOOT_THRUST := 72.0
 const BOOT_MAX_UP := 4.5
 const AIR_DAMAGE_RATE := 0.1
 const AIR_DAMAGE_MAX := 0.4
-const SLAM_LOOK := -0.6      # Meteoro: olhando mais para baixo que isto (uns 35 graus)
 # Corpo
 const RADIUS := 0.4
 const STAND_HEIGHT := 1.8
@@ -378,10 +378,35 @@ const SPEED_ORB := 0.3
 const SPEED_ORB_TIME := 4.0
 const LAUNCH_ORB_SPEED := 19.0
 const AMBUSH_COLOR := Color(0.72, 0.4, 1.0)
+## Meteoro (refeito em 2026-10-09, pedido do usuário: com o Ctrl também no dash, só saía
+## dash; números meus, aprovados; tontura de 0,8 s no alto foi pedido dele). Agachar no ar
+## despenca (no ar não dá dash: o Shift continua dando). A altura no aperto decide a força:
+## dano no centro de SLAM_DAMAGE a SLAM_DAMAGE_MAX entre SLAM_MIN_HEIGHT e SLAM_HIGH, metade
+## na borda; tontura no centro a partir de SLAM_DAZE_HEIGHT. Quica para cima e espera
+## SLAM_COOLDOWN para o próximo.
+## Pulo-Foguete (refeito em 2026-10-09, pedido do usuário: carta para quem sabe se mover,
+## inspirada na mochila da Raze do Valorant, sem ficar absurda; números meus, aprovados).
+## Tiro no pé sobe ~4 m (era ~2,5, quase o pulo), soma o embalo em vez de cortar metade,
+## 2 lançamentos por vez no ar (o 2o a 60%), inimigos levam RJ_ENEMY do empurrão.
+const RJ_UP := 19.0
+const RJ_SIDE := 15.0
+const RJ_MIN_UP := 8.0
+const RJ_CHARGES := 2
+const RJ_SECOND := 0.6
+const RJ_ENEMY := 0.4
 const SLAM_SPEED := 32.0
-const SLAM_MIN_HEIGHT := 2.5
-const SLAM_RANGE := 5.0
+const SLAM_MIN_HEIGHT := 1.2
+const SLAM_HIGH := 8.0
+const SLAM_INNER := 2.5            # centro: dano cheio e tontura
+const SLAM_RANGE := 5.0            # borda: metade do dano
 const SLAM_DAMAGE := 20.0
+const SLAM_DAMAGE_MAX := 40.0
+const SLAM_DAMAGE_STEP := 10.0     # por cópia a mais, no centro
+const SLAM_DAZE_HEIGHT := 4.0
+const SLAM_DAZE := 0.6
+const SLAM_DAZE_TOP := 0.8         # caindo de SLAM_HIGH ou mais
+const SLAM_BOUNCE := 14.0          # ~3,3 m, como o Pisão
+const SLAM_COOLDOWN := 3.0
 ## Pisão (2026-10-06, ideia do usuário; números meus): cair na cabeça de um inimigo, pulando
 ## ou no dash pelo ar, fere e quica para cima, devolvendo o dash e os pulos no ar (escolha
 ## dele) para emendar outro pisão. No dash a área é mais generosa: de lado é difícil
@@ -481,7 +506,7 @@ const HIT_FLASH_TIME := 0.14   # o modelo atingido pisca em branco por este temp
 const ASSIST_TIME := 10.0   # placar: dano nos últimos 10 s antes da morte conta assistência
 const REMOTE_METHODS := ["receive_shockwave", "credit_damage", "teleport_to", "swap_to", "receive_stomp",
 	"receive_slash", "ice_shove", "receive_slap", "receive_beam", "receive_hook", "hook_blocked",
-	"hook_throw", "hook_release", "receive_bowl"]
+	"hook_throw", "hook_release", "receive_bowl", "receive_slam"]
 ## Gancho (mestra). Quem lança move a ponta (HOOK_SPEED, até HOOK_RANGE) e acha o alvo; a
 ## máquina do alvo decide (escudo bloqueia), puxa o próprio corpo (HOOK_PULL) até a frente
 ## de quem segura e fica lá por HOOK_HOLD. Arremesso a HOOK_THROW: parede dá HOOK_IMPACT e
@@ -810,6 +835,10 @@ var ambush_timer := 0.0   # Emboscada ligada por mais quanto tempo (todas as má
 var ambush_cd := 0.0      # falta quanto para poder ganhar outra Emboscada (só a máquina dona)
 var ambush_mat: ShaderMaterial
 var slamming := false     # despencando com o Meteoro
+var slam_height := 0.0    # altura do chão quando o Meteoro começou
+var slam_cd := 0.0
+var rj_charges := RJ_CHARGES   # Pulo-Foguete: lançamentos que ainda valem até tocar o chão
+var slam_pressed := false # Meteoro: agachar apertado no ar neste passo (não vira dash)
 var shot_mult := 1.0      # dano extra do disparo atual (Última Bala)
 
 var in_move := Vector2.ZERO
@@ -1302,6 +1331,8 @@ func reset_for_round(spawn: Transform3D) -> void:
 	ambush_cd = 0.0
 	_restore_overlay()
 	slamming = false
+	slam_cd = 0.0
+	rj_charges = RJ_CHARGES
 	alive = true
 	shape.disabled = false
 	tag.visible = not is_human
@@ -1910,6 +1941,7 @@ func _tick(delta: float) -> void:
 		if last_stand_timer <= 0.0 and alive:
 			_lethal()   # ninguém abatido a tempo
 	haste_timer = maxf(0.0, haste_timer - delta)
+	slam_cd = maxf(0.0, slam_cd - delta)
 	protect_timer = maxf(0.0, protect_timer - delta)
 	ambush_cd = maxf(0.0, ambush_cd - delta)
 	swap_lock = maxf(0.0, swap_lock - delta)
@@ -2018,13 +2050,18 @@ func _wish_dir() -> Vector3:
 
 
 func _update_crouch() -> void:
+	slam_pressed = false
 	var hspeed := Vector2(velocity.x, velocity.z).length()
 	if in_crouch and not crouching:
 		crouching = true
 		_set_height(CROUCH_HEIGHT)
-		if stats["ground_slam"] > 0 and not is_on_floor() and head.rotation.x < SLAM_LOOK 				and _height_above_ground() > SLAM_MIN_HEIGHT:
-			slamming = true
-			velocity = Vector3(velocity.x * 0.3, -SLAM_SPEED, velocity.z * 0.3)
+		if stats["ground_slam"] > 0 and not is_on_floor():
+			slam_pressed = true
+			var h := _height_above_ground()
+			if slam_cd <= 0.0 and h > SLAM_MIN_HEIGHT:
+				slamming = true
+				slam_height = h
+				velocity = Vector3(velocity.x * 0.3, -SLAM_SPEED, velocity.z * 0.3)
 		if is_on_floor() and hspeed > SLIDE_MIN_SPEED and slide_cd <= 0.0:
 			_start_slide(true)
 	elif not in_crouch and crouching and _can_stand():
@@ -2056,17 +2093,40 @@ func _height_above_ground() -> float:
 	return 50.0 if hit.is_empty() else from.y - hit["position"].y
 
 
-## Meteoro: o impacto fere e empurra quem estiver perto.
+## Meteoro: o impacto fere e empurra quem estiver perto, mais forte quanto mais alto
+## começou; quem caiu quica para cima.
 func _slam_impact() -> void:
 	slamming = false
-	eye_dip = 0.35
-	shake = maxf(shake, 0.6)
-	Effects.burst(get_parent(), global_position + Vector3.UP * 0.3, SLAM_RANGE, Color(1.0, 0.55, 0.2))
+	slam_cd = SLAM_COOLDOWN
+	var t := clampf((slam_height - SLAM_MIN_HEIGHT) / (SLAM_HIGH - SLAM_MIN_HEIGHT), 0.0, 1.0)
+	var dmg := lerpf(SLAM_DAMAGE, SLAM_DAMAGE_MAX, t) + SLAM_DAMAGE_STEP * (int(stats["ground_slam"]) - 1)
+	var daze := 0.0
+	if slam_height >= SLAM_HIGH:
+		daze = SLAM_DAZE_TOP
+	elif slam_height >= SLAM_DAZE_HEIGHT:
+		daze = SLAM_DAZE
+	eye_dip = 0.25 + 0.15 * t
+	shake = maxf(shake, 0.4 + 0.4 * t)
+	Effects.burst(get_parent(), global_position + Vector3.UP * 0.3, SLAM_RANGE * (0.8 + 0.3 * t),
+		Color(1.0, 0.55, 0.2))
 	Sfx.at(self, "explosion", global_position)
 	for enemy in enemies():
-		if global_position.distance_to(enemy.global_position) < SLAM_RANGE:
-			enemy.remote_call("receive_shockwave",
-				[global_position, SLAM_DAMAGE * stats["ground_slam"], String(name)])
+		var d := global_position.distance_to(enemy.global_position)
+		if d < SLAM_INNER:
+			enemy.remote_call("receive_slam", [global_position, dmg, String(name), daze])
+		elif d < SLAM_RANGE:
+			enemy.remote_call("receive_slam", [global_position, dmg * 0.5, String(name), 0.0])
+	velocity.y = SLAM_BOUNCE
+	jump_rising = false
+	slammed.emit(slam_height, dmg)
+
+
+## Levou o Meteoro: o empurrão da Onda de Choque, o dano e, no centro de uma queda alta,
+## tontura.
+func receive_slam(from_pos: Vector3, dmg: float, from_name: String, daze: float) -> void:
+	receive_shockwave(from_pos, dmg, from_name)
+	if daze > 0.0 and alive:
+		_daze(daze)
 
 
 func _on_landed(fall_speed: float) -> void:
@@ -2088,6 +2148,8 @@ func _move(delta: float) -> void:
 		air_time = 0.0
 		jumps_left = stats["extra_jumps"]
 		wall_jumps_left = stats["wall_jumps"]
+		if velocity.y <= 0.0:
+			rj_charges = RJ_CHARGES   # ainda subindo do lançamento, o chão do quadro anterior não conta
 		if not on_sky_floor and plat_chain > 0.0:
 			_plat_end()   # o chão de verdade fecha a sequência (pousar numa plataforma não)
 		if dash_timer <= 0.0:
@@ -2148,7 +2210,7 @@ func _move(delta: float) -> void:
 			var cd := dash_cd
 			_start_dash(wish if wish != Vector3.ZERO else dash_dir, h, target, not on_floor)
 			dash_cd = cd
-	elif in_dash and not slamming and dash_cd <= 0.0 and dash_timer <= 0.0:
+	elif in_dash and not slamming and not slam_pressed and dash_cd <= 0.0 and dash_timer <= 0.0:
 		if on_floor and wish != Vector3.ZERO:
 			_start_dash(wish, h, target, false)
 			dash_echo_left = stats["dash_echo"]
@@ -2482,6 +2544,47 @@ func launch(v: Vector3) -> void:
 	jump_rising = false
 	coyote = 0.0
 	sliding = false
+
+
+## Pulo-Foguete: a própria explosão em point (raio r) lança para longe dela. Soma ao
+## embalo (o teto MAX_HSPEED segue valendo) e, para cima, fica com o maior entre o que já
+## tinha e o lançamento. RJ_CHARGES por vez no ar, a 2a mais fraca; voltam no chão.
+func rocket_jump(point: Vector3, r: float) -> void:
+	if not is_local or not alive or rj_charges <= 0:
+		return
+	var v := rocket_jump_push(chest(), point, r)
+	if v == Vector3.ZERO:
+		return
+	if rj_charges < RJ_CHARGES:
+		v *= RJ_SECOND
+	rj_charges -= 1
+	velocity = Vector3(velocity.x + v.x, maxf(velocity.y, v.y), velocity.z + v.z)
+	jump_rising = false
+	coyote = 0.0
+	sliding = false
+
+
+## Empurrão do Pulo-Foguete em quem está em at (zero fora do alcance): mais forte perto.
+static func rocket_jump_push(at: Vector3, point: Vector3, r: float) -> Vector3:
+	var d := at.distance_to(point)
+	if d >= r + 1.0:
+		return Vector3.ZERO
+	var away := (at - point).normalized()
+	var k := 1.0 - 0.5 * d / (r + 1.0)
+	return Vector3(away.x * RJ_SIDE, maxf(away.y * RJ_UP, RJ_MIN_UP), away.z * RJ_SIDE) * k
+
+
+## Inimigo pego na explosão de quem tem Pulo-Foguete: RJ_ENEMY da força, sempre para longe
+## pelo chão e um pouco para cima (pela direção 3D, quem está ao lado do ponto quase só subia).
+static func rocket_jump_enemy_push(at: Vector3, point: Vector3, r: float) -> Vector3:
+	var d := at.distance_to(point)
+	if d >= r + 1.0:
+		return Vector3.ZERO
+	var flat := at - point
+	flat.y = 0.0
+	flat = flat.normalized() if flat.length() > 0.05 else Vector3.ZERO
+	var k := 1.0 - 0.5 * d / (r + 1.0)
+	return (flat * RJ_SIDE + Vector3.UP * RJ_UP) * k * RJ_ENEMY
 
 
 func knockback(v: Vector3) -> void:
@@ -3440,10 +3543,10 @@ func _check_splat(before_h: Vector3, delta: float) -> void:
 
 
 ## Tonto (parede no Mega Tapa, boliche do Gancho): lento e sem atirar por DAZE_TIME.
-func _daze() -> void:
-	daze_timer = DAZE_TIME
-	daze_fx = DAZE_FX_TIME
-	apply_slow(DAZE_SLOW, DAZE_TIME)
+func _daze(time := DAZE_TIME) -> void:
+	daze_timer = maxf(daze_timer, time)
+	daze_fx = maxf(daze_fx, DAZE_FX_TIME + time - DAZE_TIME)
+	apply_slow(DAZE_SLOW, time)
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -4696,6 +4799,12 @@ func take_damage(amount: float, from: Player, flash := true, ignore_armor := fal
 ## Vida zerada: a Fênix segura, senão morre.
 func _lethal() -> void:
 	last_stand_timer = 0.0
+	if immortal:
+		# Sala de teste: o Último Suspiro que acaba sem abate não mata (não há próxima rodada
+		# para renascer) e fica pronto para testar de novo.
+		health = maxf(health, 1.0)
+		last_stand_used = false
+		return
 	if revives_left > 0:
 		revives_left -= 1
 		health = stats["max_health"] * 0.5

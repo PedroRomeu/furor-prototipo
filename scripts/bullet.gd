@@ -779,12 +779,9 @@ func _explode(point: Vector3, skip: Player) -> void:
 	Effects.explosion(get_parent(), point, r, Color(1.0, 0.6, 0.2))
 	Sfx.at(get_parent(), "explosion", point)
 	_refresh_cache()
-	if is_instance_valid(shooter) and shooter.is_local and shooter.alive and shooter.stats["rocket_jump"] > 0:
-		var d := shooter.chest().distance_to(point)
-		if d < r + 1.0:
-			var away := (shooter.chest() - point).normalized()
-			var k := 1.0 - 0.5 * d / (r + 1.0)
-			shooter.launch(Vector3(away.x * 13.0, maxf(away.y * 15.0, 8.0), away.z * 13.0) * k)
+	var rj: bool = is_instance_valid(shooter) and shooter.stats["rocket_jump"] > 0
+	if rj:
+		shooter.rocket_jump(point, r)
 	for node in _players:
 		if not is_instance_valid(node):
 			continue
@@ -795,7 +792,10 @@ func _explode(point: Vector3, skip: Player) -> void:
 		var d := p.chest().distance_to(point)
 		if d < r:
 			var away := (p.chest() - point).normalized()
-			p.knockback(away * 6.0 + Vector3.UP * 2.0)
+			if rj:   # Pulo-Foguete: empurra mais, uma parte do que o dono leva
+				p.knockback(Player.rocket_jump_enemy_push(p.chest(), point, r))
+			else:
+				p.knockback(away * 6.0 + Vector3.UP * 2.0)
 			p.take_area_damage(power * (1.0 - 0.5 * d / r), shooter)
 
 
