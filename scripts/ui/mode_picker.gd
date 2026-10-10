@@ -64,7 +64,7 @@ func _card(m: Dictionary) -> Button:
 	var b := Button.new()
 	b.focus_mode = Control.FOCUS_NONE
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	b.custom_minimum_size = Vector2(0, 112)
+	b.custom_minimum_size = Vector2(0, 126)   # 3 linhas de frase a 1280x720
 	b.pressed.connect(func():
 		if editable and mode != m["id"]:
 			mode = m["id"]

@@ -161,67 +161,100 @@ func _home_page() -> Control:
 	return root
 
 
-## Jogar (refeita em 2026-10-10, no padrão das Configurações): à esquerda os jeitos de
-## jogar, à direita só o que está aberto. Um jeito novo (o singleplayer com moedas, depois)
-## entra como mais uma linha em PLAY_TABS e mais uma página.
+## Jogar (refeita de novo em 2026-10-10, layout A escolhido pelo usuário; referências:
+## Apex/Fortnite, botão de jogar sempre no mesmo canto; Rocket League, modos em cartões;
+## Marvel Snap, baralho colado ao botão). Abas no topo; à esquerda só as opções da aba;
+## à direita uma coluna fixa: painel com setas (Novidades, Baralho; as missões entram
+## depois como mais uma página em SIDE_PAGES), o baralho e o botão principal da aba.
 const PLAY_TABS := ["Treino", "Online"]
-const PLAY_CONTENT_MAX := 940.0
-static var _play_tab := "Treino"   # lembra o último aberto enquanto o jogo roda
-var play_tabs := {}                # nome -> [botão da lista, página]
-var play_footers := {}             # nome -> pé fixo da página (baralho e botão), fora da rolagem
+const PLAY_MAX := 1440.0    # em tela larga a tela inteira para aqui, centralizada
+const PLAY_SIDE := 340.0    # largura da coluna da direita
+const SIDE_PAGES := ["Novidades", "Baralho"]
+## Atualizar a cada versão (texto curto, o que o jogador nota).
+const NEWS_TITLE := "Versão 0.7"
+const NEWS := [
+	"Sala de teste: teste o baralho contra bonecos e atiradores (no editor de baralhos).",
+	"Loja e pacotes de cartas, ainda em modo de teste.",
+	"Cartas com moldura e ícone novo do jogo.",
+	"Sala online com botão Pronto.",
+	"Corrente com 2 cargas.",
+	"Meteoro e Pulo-Foguete refeitos.",
+	"Quem fica acima do teto das balas perde vida.",
+]
+static var _play_tab := "Treino"   # lembra a última aba enquanto o jogo roda
+static var _side_page := 0         # e a última página da coluna da direita
+var play_tabs := {}                # nome -> [aba, página, botão principal]
+var side_title: Label
+var side_dots: Array = []
+var side_body: VBoxContainer
+var play_body: HBoxContainer
+var play_holder: PanelContainer   # painel da esquerda: só a altura do conteúdo (rola se não couber)
 
 
 func _play_page() -> Control:
-	var root := Ui.vbox(24)
-	root.add_child(_header("Jogar", "Escolha como quer jogar."))
-	var body := Ui.hbox(28)
+	# Centraliza um bloco de no máximo PLAY_MAX (espaçadores dos lados).
+	var root := Ui.hbox(0)
+	root.add_child(Ui.spacer())
+	var inner := Ui.vbox(18)
+	inner.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(inner)
+	root.add_child(Ui.spacer())
+	root.resized.connect(func(): inner.custom_minimum_size.x = minf(root.size.x, PLAY_MAX))
+
+	var header := Ui.hbox(16)
+	header.add_child(Ui.flat(Ui.button("< Voltar", func(): _show(Page.HOME))))
+	header.add_child(Ui.label("Jogar", 32, Ui.TEXT, true))
+	inner.add_child(header)
+	var tab_row := Ui.hbox(6)
+	inner.add_child(tab_row)
+
+	var body := Ui.hbox(20)
+	play_body = body
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(body)
-	var nav := Ui.vbox(2)
-	nav.custom_minimum_size.x = 190
-	body.add_child(nav)
+	inner.add_child(body)
 	var holder := PanelContainer.new()
 	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	holder.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	play_holder = holder
 	var style := Ui.box(Ui.SURFACE.darkened(0.15), 14, Ui.LINE)
 	style.set_content_margin_all(0)
 	holder.add_theme_stylebox_override("panel", style)
 	body.add_child(holder)
-	# Em tela larga o painel para em PLAY_CONTENT_MAX (como nas Configurações).
-	body.resized.connect(func():
-		var room := body.size.x - nav.custom_minimum_size.x - body.get_theme_constant("separation")
-		holder.custom_minimum_size.x = minf(room, PLAY_CONTENT_MAX)
-		holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL if room <= PLAY_CONTENT_MAX else Control.SIZE_SHRINK_BEGIN)
+	var side := Ui.vbox(12)
+	side.custom_minimum_size.x = PLAY_SIDE
+	body.add_child(side)
+	side.add_child(_side_panel())
+	side.add_child(_deck_strip())
+
 	var group := ButtonGroup.new()
 	var builders := {"Treino": _solo_page, "Online": _online_page}
 	for title in PLAY_TABS:
-		var b := Ui.nav_button(title, group)
-		b.pressed.connect(_open_play_tab.bind(title))
-		nav.add_child(b)
-		# As opções rolam quando não cabem (1280x720); o pé (baralho e botão) fica sempre à vista.
-		var page := Ui.vbox(0)
-		page.visible = false
-		holder.add_child(page)
-		var scroll := ScrollContainer.new()
+		var tab := Ui.underline_tab(title, group)
+		tab.pressed.connect(_open_play_tab.bind(title))
+		tab_row.add_child(tab)
+		var scroll := ScrollContainer.new()   # as opções rolam quando não cabem (1280x720)
 		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-		scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		scroll.visible = false
 		Ui.thin_scrollbar(scroll)
-		page.add_child(scroll)
+		holder.add_child(scroll)
 		var margin := MarginContainer.new()
 		margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		for side in ["left", "right", "bottom"]:
-			margin.add_theme_constant_override("margin_" + side, 32)
-		margin.add_theme_constant_override("margin_top", 28)
+		for side_name in ["left", "right", "top", "bottom"]:
+			margin.add_theme_constant_override("margin_" + side_name, 30)
 		margin.add_child(builders[title].call())
+		margin.minimum_size_changed.connect(_fit_play_panel)   # Vidas, avisos
 		scroll.add_child(margin)
-		if play_footers.has(title):
-			var foot := MarginContainer.new()
-			for side in ["left", "right", "bottom"]:
-				foot.add_theme_constant_override("margin_" + side, 32)
-			foot.add_theme_constant_override("margin_top", 12)
-			foot.add_child(play_footers[title])
-			page.add_child(foot)
-		play_tabs[title] = [b, page]
+		play_tabs[title] = [tab, scroll, null]
+	body.resized.connect(_fit_play_panel)
+	play_tabs["Treino"][2] = start_solo
+	play_tabs["Online"][2] = host_button
+	for title in PLAY_TABS:
+		var b: Button = play_tabs[title][2]
+		b.custom_minimum_size.y = 52
+		b.add_theme_font_size_override("font_size", 18)
+		side.add_child(b)
 	_open_play_tab(_play_tab)
+	_show_side_page(_side_page)
 	return root
 
 
@@ -230,14 +263,23 @@ func _open_play_tab(title: String) -> void:
 	for t in play_tabs:
 		play_tabs[t][0].set_pressed_no_signal(t == title)
 		play_tabs[t][1].visible = t == title
+		play_tabs[t][2].visible = t == title
+	_fit_play_panel()
 
 
-## Treino: modo, bots e dificuldade; embaixo o baralho e o botão de começar.
+## Painel da esquerda com a altura do conteúdo da aba (sem caixa meio vazia), até o fim da tela.
+func _fit_play_panel() -> void:
+	if not play_tabs.has(_play_tab):
+		return
+	var content: Control = play_tabs[_play_tab][1].get_child(0)
+	var room := play_body.size.y if play_body.size.y > 0 else INF
+	play_holder.custom_minimum_size.y = minf(content.get_combined_minimum_size().y + 2, room)
+
+
+## Treino: modo e adversários; o baralho e "Começar treino" ficam na coluna da direita.
 func _solo_page() -> Control:
 	var solo := Ui.vbox(0)
-	solo.add_child(Ui.label("Treino", 24, Ui.TEXT, true))
-	solo.add_child(Ui.label("Contra bots, no seu computador.", 14, Ui.MUTED))
-	Ui.section(solo, "MODO")
+	Ui.section(solo, "MODO", null, 0)
 	solo.add_child(Ui.gap(10))
 	solo_modes = ModePicker.new(GameState.mode, GameState.lives)
 	solo_modes.changed.connect(func(m, n):
@@ -272,103 +314,181 @@ func _solo_page() -> Control:
 		GameState.set_bot_level(i)
 		level_ref["hint"].text = LEVEL_HINTS[i])
 	level_ref["hint"] = Ui.option_row(solo, "Dificuldade", LEVEL_HINTS[GameState.bot_level], levels, 260)
-	var foot := Ui.vbox(12)
-	foot.add_child(_deck_strip())
 	start_solo = Ui.accent(Ui.button("Começar treino", _play_bots))
-	start_solo.custom_minimum_size.y = 50
-	start_solo.add_theme_font_size_override("font_size", 18)
-	foot.add_child(start_solo)
-	play_footers["Treino"] = foot
 	_refresh_solo()
 	return solo
 
 
-## Online: dois blocos lado a lado, criar ou entrar. O baralho se troca na própria sala.
+## Online: entrar pelo IP aqui; criar sala é o botão da coluna da direita.
 func _online_page() -> Control:
 	var col := Ui.vbox(0)
-	col.add_child(Ui.label("Online", 24, Ui.TEXT, true))
-	col.add_child(Ui.label("Com amigos, até 4 jogadores na sala.", 14, Ui.MUTED))
-	col.add_child(Ui.gap(24))
-	var row := Ui.hbox(16)
-	col.add_child(row)
-
-	var create := _online_block(row, "Criar sala",
-		"Você é o anfitrião: escolhe o modo e os mapas e começa quando todos estiverem prontos. Seu IP aparece na sala para passar aos amigos.")
+	Ui.section(col, "CRIAR SALA", null, 0)
+	col.add_child(Ui.gap(12))
+	var about := Ui.label("Você é o anfitrião: escolhe o modo e os mapas e começa quando todos estiverem prontos. Seu IP aparece na sala para passar aos amigos. Até 4 jogadores.", 14, Ui.MUTED)
+	about.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(about)
 	host_button = Ui.accent(Ui.button("Criar sala", _host))
-	host_button.custom_minimum_size.y = 46
-	host_button.add_theme_font_size_override("font_size", 17)
-	create.add_child(host_button)
-
-	var join := _online_block(row, "Entrar numa sala", "Peça o IP a quem criou a sala: ele aparece na tela da sala.")
+	Ui.section(col, "ENTRAR NUMA SALA")
+	var join := Ui.hbox(10)
 	ip_edit = LineEdit.new()
-	ip_edit.placeholder_text = "IP do anfitrião (ex.: 192.168.0.10)"
+	ip_edit.placeholder_text = "ex.: 192.168.0.10"
 	ip_edit.text = _load_ip()
-	ip_edit.custom_minimum_size.y = 44
+	ip_edit.custom_minimum_size.y = 40
+	ip_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ip_edit.text_submitted.connect(func(_t): _join())
 	join.add_child(ip_edit)
-	join.add_child(Ui.gap(10))
-	join_button = Ui.button("Entrar", _join)
-	join_button.custom_minimum_size.y = 46
-	join_button.add_theme_font_size_override("font_size", 17)
+	join_button = Ui.button("Entrar", _join, 110)
 	join.add_child(join_button)
-
-	col.add_child(Ui.gap(14))
-	play_status = Ui.label("", 15, Ui.WARN)
+	Ui.option_row(col, "IP do anfitrião", "Quem criou a sala vê o IP na tela dela.", join, 380)
+	play_status = Ui.label("", 14, Ui.WARN)
 	play_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	play_status.visible = false
 	col.add_child(play_status)
 	return col
 
 
-## Bloco da página Online: título, frase e, embaixo (pelo grow), o que quem chama puser.
-func _online_block(row: HBoxContainer, title: String, text: String) -> VBoxContainer:
+## Coluna da direita, em cima: painel com setas que troca entre SIDE_PAGES.
+func _side_panel() -> Control:
 	var box := PanelContainer.new()
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var style := Ui.box(Ui.SURFACE, 12, Ui.LINE)
-	style.set_content_margin_all(22)
+	box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var style := Ui.box(Ui.SURFACE.darkened(0.15), 14, Ui.LINE)
+	style.set_content_margin_all(18)
 	box.add_theme_stylebox_override("panel", style)
-	row.add_child(box)
-	var col := Ui.vbox(0)
+	var col := Ui.vbox(10)
 	box.add_child(col)
-	col.add_child(Ui.label(title, 19, Ui.TEXT, true))
-	col.add_child(Ui.gap(6))
-	var l := Ui.label(text, 13, Ui.MUTED)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.custom_minimum_size.y = 56
-	col.add_child(l)
-	col.add_child(Ui.gap(16))
-	col.add_child(Ui.grow())
-	return col
+	var head := Ui.hbox(4)
+	col.add_child(head)
+	head.add_child(_side_arrow("<", -1))
+	side_title = Ui.label("", 15, Ui.TEXT, true)
+	side_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	side_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(side_title)
+	head.add_child(_side_arrow(">", 1))
+	var dots := Ui.hbox(6)
+	dots.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_child(dots)
+	for i in SIDE_PAGES.size():
+		var d := ColorRect.new()
+		d.custom_minimum_size = Vector2(18, 3)
+		dots.add_child(d)
+		side_dots.append(d)
+	col.add_child(HSeparator.new())
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	Ui.thin_scrollbar(scroll)
+	col.add_child(scroll)
+	side_body = Ui.vbox(10)
+	side_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(side_body)
+	return box
 
 
-## Faixa do baralho acima do botão de começar: ícone da mestra, nome e a troca rápida.
+func _side_arrow(text: String, step: int) -> Button:
+	var b := Ui.flat(Ui.button(text, func(): _show_side_page(posmod(_side_page + step, SIDE_PAGES.size())), 36))
+	b.add_theme_font_size_override("font_size", 18)
+	return b
+
+
+func _show_side_page(i: int) -> void:
+	_side_page = i
+	side_title.text = SIDE_PAGES[i]
+	for k in side_dots.size():
+		side_dots[k].color = Ui.ACCENT if k == i else Ui.LINE
+	for c in side_body.get_children():
+		c.queue_free()
+	match SIDE_PAGES[i]:
+		"Novidades":
+			side_body.add_child(Ui.label(NEWS_TITLE, 13, Ui.MUTED, true))
+			for item in NEWS:
+				var row := Ui.hbox(10)
+				var dot := ColorRect.new()
+				dot.color = Ui.ACCENT
+				dot.custom_minimum_size = Vector2(5, 5)
+				dot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+				var dot_box := MarginContainer.new()   # alinha o ponto com a 1a linha do texto
+				dot_box.add_theme_constant_override("margin_top", 8)
+				dot_box.add_child(dot)
+				row.add_child(dot_box)
+				var l := Ui.label(item, 14, Ui.TEXT)
+				l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				row.add_child(l)
+				side_body.add_child(row)
+		"Baralho":
+			_side_deck()
+
+
+## Página Baralho: a mestra, o estado e as cartas por grupo (ícone com o número de cópias).
+func _side_deck() -> void:
+	var cards: Array = GameState.decks[GameState.equipped]["cards"]
+	var top := Ui.hbox(12)
+	top.add_child(CardIcon.make(GameState.player_master, 52))
+	var texts := Ui.vbox(2)
+	texts.alignment = BoxContainer.ALIGNMENT_CENTER
+	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var name_label := Ui.label(GameState.equipped_name(), 17, Ui.TEXT, true)
+	name_label.clip_text = true
+	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	texts.add_child(name_label)
+	texts.add_child(Ui.master_label(GameState.player_master, 13))
+	var status := Ui.deck_status(cards)
+	texts.add_child(Ui.label(status[0], 13, status[1]))
+	top.add_child(texts)
+	side_body.add_child(top)
+	side_body.add_child(Ui.category_bar(cards))
+	var counts := {}
+	for id in cards:
+		counts[id] = counts.get(id, 0) + 1
+	for cat in CardDB.CATEGORY_COLORS:
+		var ids := counts.keys().filter(func(id): return CardDB.CARDS[id]["cat"] == cat)
+		if ids.is_empty():
+			continue
+		var n := 0
+		for id in ids:
+			n += counts[id]
+		side_body.add_child(Ui.gap(2))
+		side_body.add_child(Ui.label("%s  %d" % [cat.to_upper(), n], 12, CardDB.CATEGORY_COLORS[cat], true))
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 6)
+		flow.add_theme_constant_override("v_separation", 6)
+		for id in ids:
+			flow.add_child(CardIcon.make(id, 36, counts[id]))
+		side_body.add_child(flow)
+
+
+## Baralho acima do botão principal: ícone da mestra, a troca rápida e "Editar".
 func _deck_strip() -> Control:
 	var box := PanelContainer.new()
 	var style := Ui.box(Ui.SURFACE, 12, Ui.LINE)
 	style.set_content_margin_all(12)
 	style.content_margin_left = 14
 	box.add_theme_stylebox_override("panel", style)
-	var row := Ui.hbox(14)
-	box.add_child(row)
+	var col := Ui.vbox(6)
+	box.add_child(col)
+	var head := Ui.hbox(8)
+	col.add_child(head)
+	var title := Ui.label("BARALHO", 12, Ui.MUTED, true)
+	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(title)
+	head.add_child(Ui.spacer())
+	var edit := Ui.flat(Ui.button("Editar", _open_decks))
+	edit.custom_minimum_size.y = 26
+	edit.add_theme_font_size_override("font_size", 13)
+	head.add_child(edit)
+	var row := Ui.hbox(12)
+	col.add_child(row)
 	var icon_slot := CenterContainer.new()
-	icon_slot.custom_minimum_size = Vector2(44, 44)
+	icon_slot.custom_minimum_size = Vector2(40, 40)
 	row.add_child(icon_slot)
-	var texts := Ui.vbox(4)
-	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	texts.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_child(texts)
-	texts.add_child(Ui.label("BARALHO", 12, Ui.MUTED, true))
 	var pick := _deck_picker()
-	pick.custom_minimum_size = Vector2(0, 38)
+	pick.custom_minimum_size = Vector2(0, 40)
 	pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	texts.add_child(pick)
-	var edit := Ui.flat(Ui.button("Editar baralhos", _open_decks))
-	edit.size_flags_vertical = Control.SIZE_SHRINK_END
-	edit.custom_minimum_size.y = 38
-	row.add_child(edit)
+	row.add_child(pick)
 	var show_master := func():
 		for c in icon_slot.get_children():
 			c.queue_free()
-		icon_slot.add_child(CardIcon.make(GameState.player_master, 44))
+		icon_slot.add_child(CardIcon.make(GameState.player_master, 40))
 	show_master.call()
 	pick.item_selected.connect(func(_k): show_master.call())
 	return box
@@ -659,7 +779,9 @@ func _deck_picker() -> OptionButton:
 		GameState.equip(pick.get_item_id(k))
 		for other in deck_picks:
 			if other != pick:
-				other.select(GameState.equipped))
+				other.select(GameState.equipped)
+		if side_body and SIDE_PAGES[_side_page] == "Baralho":
+			_show_side_page(_side_page))
 	deck_picks.append(pick)
 	return pick
 
@@ -704,8 +826,6 @@ func _refresh_solo() -> void:
 	if GameState.mode == "teams":
 		reason = "" if bot_count == 3 else "2x2 no treino é com 3 bots: você e um aliado contra dois."
 		solo_modes.set_note("Você e um bot aliado contra dois bots." if reason == "" else reason, reason != "")
-	elif GameState.mode == "duels":
-		solo_modes.set_note("Você e os bots duelam um de cada vez; quem espera assiste.")
 	else:
 		solo_modes.set_note("")
 	start_solo.disabled = reason != ""
@@ -942,6 +1062,7 @@ func _reset_join() -> void:
 
 func _play_error(text: String) -> void:
 	play_status.text = text
+	play_status.visible = text != ""
 	if text != "":
 		_open_play_tab("Online")
 

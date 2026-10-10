@@ -140,7 +140,7 @@ shows in a corner during the match.
 ## Match rules
 
 - Decks of 30 to 50 cards, up to 3 copies each. More copies = more chance of the card
-  showing up. With 105 cards there are always some left out.
+  showing up. With 106 cards there are always some left out.
 - **Baralhos** (decks) screen: create as many named decks as you want, starting from a
   template (Equilibrado, Atirador, Muralha, Acrobata, Caos, Aleatório or Vazio). The editor
   has the card collection on the left and your deck on the right. Click a card to add it,
@@ -239,7 +239,7 @@ All numbers are provisional, to be tuned by playing.
 
 ## Cards
 
-105 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst...), **Balas**
+106 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst...), **Balas**
 (bullets: ricochet, homing, explosive, poison, freezing, a toxic cloud or a short black hole
 where the bullet lands...), **Escudo** (shield: what happens when raising it or reflecting;
 Pancada, Escudo Duplo, Couraça and Fortaleza make a close-range shield build, and Serra,

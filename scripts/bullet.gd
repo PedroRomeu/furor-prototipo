@@ -59,7 +59,9 @@ const SHARD_DAMAGE := 0.4
 const MAX_GROW_RADIUS := 1.2
 ## Bola de Neve: o dano cresce em linha reta até GROW_TIME (por carta, +grow de dano no fim).
 ## Antes crescia em juros compostos e, com 3 cópias, chegava a centenas de vezes o dano.
-const GROW_TIME := 2.0
+## 2026-10-10 (pedido do usuário): 2 -> 5 s e +80% -> +100% por carta; a bala sem quique vive
+## 4 s (LIFETIME), então pura chega a +80% no máximo; os +100% pedem quique, Bumerangue etc.
+const GROW_TIME := 5.0
 ## Teleguiada (refeita em 2026-10-04 como a Seeker do OVERKILL e a do Furor; faixa refeita
 ## em 2026-10-07): nem toda bala procura alvo, e a que procura só curva quando um inimigo
 ## passa perto dela, mas aí curva forte, para dar para ver (e fica verde, SEEK_COLOR).
@@ -522,7 +524,8 @@ func _update_flight(delta: float) -> void:
 			velocity *= minf(1.0 + LAZY_ACCEL * delta, lazy_top / speed)
 	if grow > 0.0 and age <= GROW_TIME + delta:
 		# O crescimento próprio da carta tem teto; o que vem do dano, não.
-		radius = minf(radius * (1.0 + grow * 0.25 * delta), maxf(radius, MAX_GROW_RADIUS))
+		# Raio próprio: ~1,5x no fim do GROW_TIME por carta (era 0,25/s com 2 s).
+		radius = minf(radius * (1.0 + grow * 0.4 / GROW_TIME * delta), maxf(radius, MAX_GROW_RADIUS))
 		var target := 1.0 + grow * minf(age, GROW_TIME) / GROW_TIME
 		_scale_damage(target / grow_mult)
 		grow_mult = target

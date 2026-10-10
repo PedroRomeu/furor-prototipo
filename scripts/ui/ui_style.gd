@@ -152,6 +152,32 @@ static func nav_button(title: String, group: ButtonGroup) -> Button:
 	return b
 
 
+## Aba do topo de uma tela (Jogar): texto sem caixa; a aberta fica clara com um traço laranja embaixo.
+static func underline_tab(title: String, group: ButtonGroup) -> Button:
+	var b := Button.new()
+	b.text = title
+	b.toggle_mode = true
+	b.button_group = group
+	b.custom_minimum_size = Vector2(0, 40)
+	b.add_theme_font_size_override("font_size", 18)
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+		var on: bool = state == "pressed" or state == "hover_pressed"
+		var s := StyleBoxFlat.new()
+		s.bg_color = Color.TRANSPARENT
+		s.content_margin_left = 14
+		s.content_margin_right = 14
+		s.border_width_bottom = 3   # traço transparente nas fechadas: o texto não pula ao abrir
+		s.border_color = ACCENT if on else Color.TRANSPARENT
+		b.add_theme_stylebox_override(state, StyleBoxEmpty.new() if state == "focus" else s)
+	b.add_theme_color_override("font_color", MUTED)
+	b.add_theme_color_override("font_hover_color", TEXT)
+	b.add_theme_color_override("font_pressed_color", TEXT)
+	b.add_theme_color_override("font_hover_pressed_color", TEXT)
+	b.add_theme_font_override("font", bold())
+	return b
+
+
 ## Botão sem fundo (ações secundárias, como "Voltar").
 static func flat(b: Button) -> Button:
 	for s in ["normal", "pressed", "disabled"]:
