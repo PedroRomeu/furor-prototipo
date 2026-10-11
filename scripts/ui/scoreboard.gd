@@ -26,6 +26,7 @@ var duel_pair: Array = []
 var result_text := ""
 var result_color := Ui.TEXT
 var buttons := {}            # texto -> Callable; o primeiro é o principal
+var missions: Array = []     # fim da partida: missões que andaram (Missions.summary)
 var _rows: VBoxContainer
 var _round_label: Label
 var _lives_title: Label
@@ -89,6 +90,9 @@ func _ready() -> void:
 	_rows = Ui.vbox(6)
 	_rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(_rows)
+	if not missions.is_empty():
+		col.add_child(HSeparator.new())
+		col.add_child(_missions_block())
 	if buttons.is_empty():
 		col.add_child(Ui.label("Passe o mouse numa carta para ver o efeito.", 13, Ui.MUTED))
 	else:
@@ -108,6 +112,45 @@ func _ready() -> void:
 			foot.add_child(b)
 			first = false
 	visible = false
+
+
+## Missões que andaram na partida, em blocos pequenos lado a lado (cabe em 1366x689 com 4
+## jogadores: no máximo 2 linhas de 3).
+func _missions_block() -> Control:
+	var col := Ui.vbox(8)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(Ui.label("MISSÕES", 12, Ui.MUTED, true))
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 8)
+	flow.add_theme_constant_override("v_separation", 8)
+	flow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(flow)
+	for m in missions:
+		var chip := PanelContainer.new()
+		var style := Ui.box(Ui.SURFACE, 8, Ui.OK if m["done"] else Ui.LINE)
+		style.set_content_margin_all(8)
+		style.content_margin_left = 12
+		style.content_margin_right = 12
+		chip.add_theme_stylebox_override("panel", style)
+		chip.custom_minimum_size.x = 278
+		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var box := Ui.vbox(5)
+		chip.add_child(box)
+		var top := Ui.hbox(8)
+		var text := Ui.label(m["text"], 13, Ui.TEXT)
+		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		text.clip_text = true
+		text.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		top.add_child(text)
+		var gain: int = m["progress"] - m["before"]
+		top.add_child(Ui.label("Cumprida" if m["done"] else "+" + Missions.num(gain), 13, Ui.OK if m["done"] else Ui.ACCENT, true))
+		box.add_child(top)
+		var bottom := Ui.hbox(8)
+		bottom.add_child(Ui.progress_bar(m["progress"], m["target"], 4.0))
+		bottom.add_child(Ui.label("%s/%s" % [Missions.num(m["progress"]), Missions.num(m["target"])], 12, Ui.MUTED))
+		box.add_child(bottom)
+		flow.add_child(chip)
+	return col
 
 
 func setup(p_me: Player, all_players: Array) -> void:

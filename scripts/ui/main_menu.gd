@@ -178,14 +178,14 @@ func _home_page() -> Control:
 ## Jogar (refeita de novo em 2026-10-10, layout A escolhido pelo usuário; referências:
 ## Apex/Fortnite, botão de jogar sempre no mesmo canto; Rocket League, modos em cartões;
 ## Marvel Snap, baralho colado ao botão). Abas no topo; à esquerda só as opções da aba;
-## à direita uma coluna fixa: painel com setas (Novidades, Baralho; as missões entram
-## depois como mais uma página em SIDE_PAGES), o baralho e o botão principal da aba.
+## à direita uma coluna fixa: painel com setas (Novidades, Missões, Baralho), o baralho e
+## o botão principal da aba.
 const PLAY_TABS := ["Treino", "Online"]
 const PLAY_MAX := 1440.0    # em tela larga a tela inteira para aqui, centralizada
 const PLAY_SIDE := 340.0    # largura da coluna da direita
 const PLAY_GAP := 12        # espaço entre os blocos de cada coluna
 const PLAY_ACTION_H := 52.0 # altura do botão principal da aba
-const SIDE_PAGES := ["Novidades", "Baralho"]
+const SIDE_PAGES := ["Novidades", "Missões", "Baralho"]
 ## Atualizar a cada versão (texto curto, o que o jogador nota).
 const NEWS_TITLE := "Versão 0.7"
 const NEWS := [
@@ -283,6 +283,7 @@ func _play_page() -> Control:
 	play_tabs["Online"][2] = host_button
 	_open_play_tab(_play_tab)
 	_show_side_page(_side_page)
+	Missions.changed.connect(_on_missions_changed)
 	return root
 
 
@@ -423,7 +424,11 @@ func _side_panel() -> Control:
 	col.add_child(scroll)
 	side_body = Ui.vbox(10)
 	side_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(side_body)
+	var pad := MarginContainer.new()   # folga para a barra de rolagem não cobrir a borda
+	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pad.add_theme_constant_override("margin_right", 10)
+	pad.add_child(side_body)
+	scroll.add_child(pad)
 	return box
 
 
@@ -436,11 +441,15 @@ func _side_arrow(text: String, step: int) -> Button:
 func _show_side_page(i: int) -> void:
 	_side_page = i
 	side_title.text = SIDE_PAGES[i]
+	# O traço da página Missões fica verde enquanto há recompensa para resgatar.
+	var to_claim := Missions.claimable() > 0
 	for k in side_dots.size():
-		side_dots[k].color = Ui.ACCENT if k == i else Ui.LINE
+		side_dots[k].color = Ui.ACCENT if k == i else (Ui.OK if to_claim and SIDE_PAGES[k] == "Missões" else Ui.LINE)
 	for c in side_body.get_children():
 		c.queue_free()
 	match SIDE_PAGES[i]:
+		"Missões":
+			_side_missions()
 		"Novidades":
 			side_body.add_child(Ui.label(NEWS_TITLE, 13, Ui.MUTED, true))
 			for item in NEWS:
@@ -460,6 +469,85 @@ func _show_side_page(i: int) -> void:
 				side_body.add_child(row)
 		"Baralho":
 			_side_deck()
+
+
+## Página Missões (2026-10-11): diárias e semanais com progresso, recompensa, Resgatar e a
+## troca da diária. Redesenha quando as missões mudam (resgate, troca, virada do dia).
+func _side_missions() -> void:
+	Missions.check_period()
+	var note := Ui.label("Contam só nas partidas online.", 12, Ui.MUTED)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	side_body.add_child(note)
+	_missions_header("DIÁRIAS", Missions.seconds_to_day())
+	for i in Missions.dailies.size():
+		side_body.add_child(_mission_row("d", i))
+	side_body.add_child(Ui.gap(4))
+	_missions_header("SEMANAIS", Missions.seconds_to_week())
+	for i in Missions.weeklies.size():
+		side_body.add_child(_mission_row("s", i))
+
+
+func _missions_header(title: String, seconds: int) -> void:
+	var row := Ui.hbox(8)
+	row.add_child(Ui.label(title, 12, Ui.MUTED, true))
+	row.add_child(Ui.spacer())
+	row.add_child(Ui.label("trocam em " + _time_left(seconds), 12, Ui.MUTED))
+	side_body.add_child(row)
+
+
+static func _time_left(seconds: int) -> String:
+	var h := seconds / 3600
+	if h >= 24:
+		return "%d d %d h" % [h / 24, h % 24]
+	if h >= 1:
+		return "%d h %d min" % [h, (seconds % 3600) / 60]
+	return "%d min" % maxi(1, seconds / 60)
+
+
+func _mission_row(kind: String, i: int) -> Control:
+	var inf := Missions.info(kind, i)
+	var to_claim: bool = inf["done"] and not inf["claimed"]
+	var box := PanelContainer.new()
+	var style := Ui.box(Ui.SURFACE, 8, Ui.OK if to_claim else Ui.LINE)
+	style.set_content_margin_all(10)
+	box.add_theme_stylebox_override("panel", style)
+	if inf["claimed"]:
+		box.modulate.a = 0.5
+	var col := Ui.vbox(6)
+	box.add_child(col)
+	var text := Ui.label(inf["text"], 14, Ui.TEXT)
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(text)
+	var bar := Ui.hbox(8)
+	bar.add_child(Ui.progress_bar(inf["progress"], inf["target"]))
+	bar.add_child(Ui.label("%s/%s" % [Missions.num(inf["progress"]), Missions.num(inf["target"])], 12, Ui.MUTED))
+	col.add_child(bar)
+	var foot := Ui.hbox(8)
+	var reward := Ui.label(Missions.reward_text(inf["reward"]), 12, Ui.WARN)
+	reward.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	reward.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	reward.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	foot.add_child(reward)
+	if inf["claimed"]:
+		foot.add_child(Ui.label("Resgatada", 12, Ui.OK, true))
+	elif to_claim:
+		var claim := Ui.accent(Ui.button("Resgatar", func(): Missions.claim(kind, i)))
+		claim.custom_minimum_size.y = 28
+		claim.add_theme_font_size_override("font_size", 13)
+		foot.add_child(claim)
+	elif kind == "d" and Missions.can_reroll(i):
+		var swap := Ui.flat(Ui.button("Trocar", func(): Missions.reroll(i)))
+		swap.custom_minimum_size.y = 26
+		swap.add_theme_font_size_override("font_size", 12)
+		swap.tooltip_text = "Troca esta missão por outra. Uma troca por dia, só em missão sem progresso."
+		foot.add_child(swap)
+	col.add_child(foot)
+	return box
+
+
+func _on_missions_changed() -> void:
+	if side_body and is_instance_valid(side_body):
+		_show_side_page(_side_page)
 
 
 ## Página Baralho: a mestra, o estado e as cartas por grupo (ícone com o número de cópias).

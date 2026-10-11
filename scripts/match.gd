@@ -619,8 +619,13 @@ func _missions_setup() -> void:
 		Missions.add("damage", whole))
 	me.reflected.connect(Missions.add.bind("reflects", 1))
 	me.master_used.connect(Missions.add.bind("master_uses", 1))
-	if GameState.autotest:
-		Missions.completed.connect(func(text): _log("missão cumprida: " + text))
+	# Método (não função anônima): a conexão com o autoload cai sozinha quando a partida sai.
+	Missions.completed.connect(_on_mission_completed)
+
+
+func _on_mission_completed(text: String) -> void:
+	hud.toast("Missão cumprida: " + text)
+	_log("missão cumprida: " + text)
 
 
 ## Fim de rodada para as missões: jogou (no Duelos, só quem estava no duelo) e venceu.
@@ -631,11 +636,16 @@ func _missions_round(played: bool, won: bool) -> void:
 		Missions.add("round_wins")
 
 
+## Fim da partida: guarda o que andou nas missões para o placar final (_show_end).
+var _mission_summary: Array = []
+
+
 func _missions_end(won: bool) -> void:
 	if won:
 		Missions.add("match_wins")
+	_mission_summary = Missions.summary()
 	if GameState.autotest:
-		for m in Missions.summary():
+		for m in _mission_summary:
 			_log("missão: %s %d -> %d/%d" % [m["text"], m["before"], m["progress"], m["target"]])
 
 
@@ -899,9 +909,9 @@ func _show_end(result: String, color: Color, detail: String) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	hud.round_text = detail
 	if Net.online:
-		hud.show_end(result, color, {"Voltar à sala": _to_room, "Voltar ao menu": _to_menu})
+		hud.show_end(result, color, {"Voltar à sala": _to_room, "Voltar ao menu": _to_menu}, _mission_summary)
 	else:
-		hud.show_end(result, color, {"Jogar de novo": get_tree().reload_current_scene, "Voltar ao menu": _to_menu})
+		hud.show_end(result, color, {"Jogar de novo": get_tree().reload_current_scene, "Voltar ao menu": _to_menu}, _mission_summary)
 
 
 ## Fim do Duelos: vence quem sobrou com vida; a classificação segue a ordem de saída.

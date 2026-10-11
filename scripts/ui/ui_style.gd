@@ -320,6 +320,24 @@ static func gap(h: float) -> Control:
 	return c
 
 
+## Barra de progresso fina que estica na horizontal (missões). Cheia fica verde.
+static func progress_bar(value: float, total: float, height := 4.0) -> Control:
+	var back := ColorRect.new()
+	back.color = LINE
+	back.custom_minimum_size.y = height
+	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fill := ColorRect.new()
+	var ratio := clampf(value / total, 0.0, 1.0) if total > 0.0 else 0.0
+	fill.color = OK if ratio >= 1.0 else ACCENT
+	fill.anchor_bottom = 1.0
+	fill.anchor_right = ratio
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	back.add_child(fill)
+	return back
+
+
 ## Espaço que estica na vertical (empurra o que vem depois para baixo).
 static func grow() -> Control:
 	var c := Control.new()

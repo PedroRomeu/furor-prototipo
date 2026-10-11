@@ -968,13 +968,14 @@ func refresh_cards() -> void:
 
 ## Fim da partida: o placar final com o resultado em cima e os botões embaixo.
 ## buttons: {"texto": Callable}, o primeiro é o principal.
-func show_end(result: String, color: Color, buttons: Dictionary) -> void:
+func show_end(result: String, color: Color, buttons: Dictionary, missions: Array = []) -> void:
 	show_center("")
 	scoreboard.close()
 	var board := Scoreboard.new()
 	board.result_text = result
 	board.result_color = color
 	board.buttons = buttons
+	board.missions = missions
 	add_child(board)
 	board.setup(me, players)
 	board.kda = scoreboard.kda

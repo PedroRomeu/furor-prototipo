@@ -89,15 +89,25 @@ func info(kind: String, i: int) -> Dictionary:
 	var m: Dictionary = dailies[i] if kind == "d" else weeklies[i]
 	var def: Array = daily_def(m["id"]) if kind == "d" else weekly_def(i, m["id"])
 	var target: int = def[1]
-	return {"text": TEXTS[def[0]] % target, "stat": def[0], "target": target,
+	return {"text": TEXTS[def[0]].replace("%d", num(target)), "stat": def[0], "target": target,
 		"progress": mini(int(m["progress"]), target), "done": int(m["progress"]) >= target,
 		"claimed": m["claimed"], "reward": {"coins": def[2]} if kind == "d" else WEEKLY[i]["reward"]}
+
+
+## Número com ponto nos milhares (10.000), como se escreve em português.
+static func num(n: int) -> String:
+	var s := str(absi(n))
+	var out := ""
+	while s.length() > 3:
+		out = "." + s.right(3) + out
+		s = s.left(s.length() - 3)
+	return ("-" if n < 0 else "") + s + out
 
 
 ## Texto curto da recompensa, para a tela.
 static func reward_text(reward: Dictionary) -> String:
 	if reward.has("coins"):
-		return "%d moedas" % reward["coins"]
+		return num(reward["coins"]) + " moedas"
 	if reward.has("master_pack"):
 		return "Pacote de Mestra"
 	var parts := []
@@ -120,6 +130,17 @@ func seconds_to_week() -> int:
 	if days_left == 0:
 		days_left = 7
 	return (days_left - 1) * 86400 + seconds_to_day()
+
+
+## Missões cumpridas esperando o resgate.
+func claimable() -> int:
+	var n := 0
+	for kind in ["d", "s"]:
+		for i in (dailies if kind == "d" else weeklies).size():
+			var inf := info(kind, i)
+			if inf["done"] and not inf["claimed"]:
+				n += 1
+	return n
 
 
 func can_reroll(i: int) -> bool:
