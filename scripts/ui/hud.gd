@@ -754,6 +754,13 @@ func _update_status() -> void:
 		items.append(["PLATAFORMAS %d  ·  %.1f s" % [me.plat_left, me.plat_chain], SkyPlatform.READY_COLOR])
 	if me.daze_timer > 0.0:
 		items.append(["TONTO %.1f" % me.daze_timer, Player.SLAP_COLOR])
+	# Efeitos bons com duração (2026-10-12, pedido do usuário: antes não apareciam).
+	if me.bloodlust_timer > 0.0:
+		items.append(["SEDE DE SANGUE +%d%%  %.1f" % [roundi(me.stats["bloodlust"] * 100.0), me.bloodlust_timer], CardDB.CATEGORY_COLORS["Corpo"]])
+	if me.haste_timer > 0.0:
+		items.append(["PASSO LIGEIRO +%d%%  %.1f" % [roundi(me.stats["shield_haste"] * 100.0), me.haste_timer], CardDB.CATEGORY_COLORS["Escudo"]])
+	if me.parkour_timer > 0.0 and me.stats["parkour"] > 0:
+		items.append(["PARKOUR +%d%%  %.1f" % [roundi(Player.PARKOUR_SPEED * me.stats["parkour"] * 100.0), me.parkour_timer], CardDB.CATEGORY_COLORS["Movimento"]])
 	if me.tough_timer > 0.0:
 		items.append(["CASCA DURA %.1f" % me.tough_timer, Player.TOUGH_COLOR])
 	if me.ice_timer > 0.0:

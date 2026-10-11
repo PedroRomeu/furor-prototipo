@@ -2,8 +2,8 @@ class_name CardTimers
 extends HBoxContainer
 ## Esperas das cartas comuns acima dos selos de estado (2026-10-12, pedido do usuário): o
 ## ícone da carta escurece de cima para baixo pelo que falta e some quando acaba. Meteoro,
-## Regeneração e Segunda Pele contam em você; Flash e Atordoante, a proteção que você ganhou
-## depois de levar um (Player.blind_guard / silence_guard).
+## Regeneração e Segunda Pele contam em você; Flash, Atordoante e Troca-Troca, a proteção que
+## você ganhou depois de levar um (Player.blind_guard / silence_guard / swap_lock).
 ##
 ## Desempenho: um ícone fixo por carta, só ligado ou desligado; cada um sai numa chamada de
 ## desenho (o shader faz fundo, ícone e escurecido; o que falta vai no self_modulate.r).
@@ -44,6 +44,7 @@ func _ready() -> void:
 		["segunda_pele", func(p: Player): return [p.skin_wait(), Player.SKIN_DELAY]],
 		["flash", func(p: Player): return [p.blind_guard, p.blind_guard_total]],
 		["atordoante", func(p: Player): return [p.silence_guard, Player.SILENCE_TIME + Player.SILENCE_GUARD]],
+		["troca_troca", func(p: Player): return [p.swap_lock, Player.SWAP_DELAY + Player.SWAP_COOLDOWN]],
 	]
 	for e in _entries:
 		var icon := TextureRect.new()

@@ -813,7 +813,7 @@ var revives_left := 0
 var blind_timer := 0.0
 var blind_guard := 0.0   # Flash: enquanto > 0, novo Flash não pega (efeito + BLIND_GUARD)
 var blind_guard_total := 1.0   # ...o tamanho dela quando começou (HUD)
-var net_guards := 0   # outra máquina: bit 1 protegido do Flash, bit 2 da Atordoante
+var net_guards := 0   # outra máquina: bit 1 protegido do Flash, 2 da Atordoante, 4 da Troca-Troca
 var guard_icons := {}   # ícones em cima do nome (Flash/Atordoante), criados no 1o uso
 var echo_timer := 0.0
 var echo_left := 0        # Eco: levantadas automáticas que ainda faltam neste ciclo
@@ -1772,10 +1772,12 @@ func _update_guard_icons() -> void:
 			want["flash"] = true
 		if viewer.stats["shield_break"] > 0 and stun_guarded():
 			want["atordoante"] = true
+		if viewer.stats["swap"] > 0 and swap_guarded():
+			want["troca_troca"] = true
 	if want.is_empty() and guard_icons.is_empty():
 		return
 	var shown := 0
-	for id in ["flash", "atordoante"]:
+	for id in ["flash", "atordoante", "troca_troca"]:
 		var on: bool = want.has(id)
 		if on and not guard_icons.has(id):
 			var s := Sprite3D.new()
@@ -1801,6 +1803,10 @@ func flash_guarded() -> bool:
 
 func stun_guarded() -> bool:
 	return silence_guard > 0.0 or (net_guards & 2) != 0
+
+
+func swap_guarded() -> bool:
+	return swap_lock > 0.0 or (net_guards & 4) != 0
 
 
 ## Invisível há CAMO_TIRE ou mais: a camuflagem começa a falhar (is_camo_tired) e, dentro de
@@ -2791,7 +2797,7 @@ func _send_state() -> void:
 		return
 	var flags := (1 if is_on_floor() else 0) | (2 if crouching else 0) | (4 if sliding else 0) \
 		| (8 if boosting else 0) | (16 if daze_timer > 0.0 else 0) \
-		| (32 if blind_guard > 0.0 else 0) | (64 if silence_guard > 0.0 else 0)
+		| (32 if blind_guard > 0.0 else 0) | (64 if silence_guard > 0.0 else 0) | (128 if swap_lock > 0.0 else 0)
 	_net_state.rpc(net_round, global_position, velocity, rotation.y, head.rotation.x, flags, shield_timer, health, armor)
 
 
@@ -2811,7 +2817,7 @@ func _net_state(round_id: int, pos: Vector3, vel: Vector3, yaw: float, pitch: fl
 	armor = vest
 	net_on_floor = (flags & 1) != 0
 	boosting = (flags & 8) != 0
-	net_guards = (flags >> 5) & 3
+	net_guards = (flags >> 5) & 7
 	var dazed := (flags & 16) != 0
 	if dazed and not _net_dazed:
 		daze_fx = DAZE_FX_TIME
