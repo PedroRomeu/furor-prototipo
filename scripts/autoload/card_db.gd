@@ -41,7 +41,10 @@ const LIMITS := {
 	"mag_size": [1, 99],
 	"fire_interval": [0.08, 5.0],
 	"reload_time": [0.2, 10.0],
-	"bullet_speed": [15.0, 400.0],
+	"bullet_speed": [9.0, 400.0],
+	# Tamanho vindo das cartas (2026-10-12): até 4x a base; o crescimento pelo dano (Bullet,
+	# DAMAGE_SIZE_EXP) vem por cima, então a nuke de quique não muda.
+	"bullet_radius": [0.03, 0.6],
 	"shield_cooldown": [1.0, 20.0],
 	"slow": [0.0, 0.7],
 	"move_speed": [3.0, 20.0],
@@ -83,6 +86,9 @@ const LOWER_BETTER := ["fire_interval", "reload_time", "shield_cooldown", "dash_
 const PENALTY_FLOOR := 0.35
 const PENALTY_CEIL := 2.5
 const PENALTY_FLOOR_ABS := {"mag_size": 1}   # pente: as perdas param em 1 bala
+## Atributos com piso próprio (x a base). Velocidade da bala (2026-10-12, pedido do usuário:
+## a bala "lenta" das cartas de tamanho quase não pesava, parava em 16,8 m/s): 9,6 m/s.
+const PENALTY_FLOOR_BY := {"bullet_speed": 0.2}
 ## Recarga do escudo (2026-10-07): os custos das cartas (+1 s, +0,5 s) somam até este teto,
 ## no lugar do PENALTY_CEIL (2,5x apagaria o custo da 3a carta em diante). As porcentagens
 ## que pioram (Escudo Duplo) entram depois das reduções, sobre o total; LIMITS dá 1 a 20 s.
@@ -116,8 +122,8 @@ const MASTERS := {
 	"foguete": {"name": "Foguete", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 18.0,
 		"desc": "Q: monta num foguete que voa sempre para a frente (10 m/s) e vira bem devagar, por até 5 s. Q de novo: você salta e o foguete segue reto, acelera muito e explode no primeiro contato. Montado, ele explode se bater numa parede, encostar num inimigo ou o tempo acabar (você é lançado para cima, sem dano). Explosão de 70 no centro, até 7 m. Recarga de 18 s.",
 		"mods": [{"stat": "rocket_ride", "add": 1}]},
-	"perfurante": {"name": "Perfurante", "cat": "Balas", "rarity": "mitico", "master": true, "cooldown": 12.0,
-		"desc": "Q: os próximos 3 tiros vão retos, sem queda, 3x mais rápidos, com +30% de dano e atravessando tudo: paredes, jogadores (cada um leva uma vez), o escudo e o Bastião, que não os devolvem. O dano ignora o colete e vai direto na vida. Recarga de 12 s.",
+	"perfurante": {"name": "Perfurante", "cat": "Balas", "rarity": "mitico", "master": true, "cooldown": 20.0,
+		"desc": "Q: os próximos 3 tiros vão retos, sem queda, 3x mais rápidos, com +30% de dano e atravessando tudo: paredes, jogadores (cada um leva uma vez), o escudo e o Bastião, que não os devolvem. O dano ignora o colete e vai direto na vida. Recarga de 20 s.",
 		"mods": [{"stat": "pierce", "add": 1}]},
 	"bastiao": {"name": "Bastião", "cat": "Escudo", "rarity": "mitico", "master": true, "cooldown": 14.0,
 		"desc": "Q: ergue à sua frente uma parede de energia por 4 s que devolve as balas inimigas. As suas passam. Recarga de 14 s.",
@@ -143,7 +149,7 @@ const MASTERS := {
 	# Camuflagem virou mestra em 2026-10-06 (pedido do usuário; números meus, aprovados):
 	# some mais rápido, anda agachada sem aparecer e, ao aparecer, ganha a Emboscada.
 	"camuflagem": {"name": "Camuflagem", "cat": "Corpo", "rarity": "mitico", "master": true,
-		"desc": "Parado por 0,6 s, você some. Invisível, dá para andar agachado sem aparecer; atirar, correr, pular, dash, escudo ou levar dano te revelam. Depois de 1 s invisível, aparecer dá Emboscada: 3 s com +40% de dano nos tiros e +20% de velocidade (no máximo a cada 6 s).",
+		"desc": "Parado por 0,6 s, você some. Invisível, dá para andar agachado sem aparecer; atirar, correr, pular, dash, escudo ou levar dano te revelam. Depois de 1 s invisível, aparecer dá Emboscada: 3 s com +40% de dano nos tiros e +20% de velocidade (no máximo a cada 6 s). Depois de 8 s seguidos invisível, a camuflagem falha: você pisca visível por 0,4 s a cada 2 s até aparecer.",
 		"mods": [{"stat": "camo", "add": 1}]},
 	# Bota Foguete (2026-10-06, desenho do usuário a partir da minha proposta; números meus):
 	# passiva. Bônus por estar no ar e um jato curto como a bota foguete do Terraria.
@@ -168,9 +174,9 @@ const MASTERS := {
 	"caos": {"name": "Caos", "cat": "Balas", "rarity": "mitico", "master": true,
 		"desc": "Você recebe uma mestra sorteada. Ativa: use uma vez; 8 s depois do efeito acabar, vem outra. Passiva: dura 15 s e troca. Nunca repete a anterior; cada rodada começa com um sorteio novo.",
 		"mods": [{"stat": "chaos", "add": 1}]},
-	"corrente": {"name": "Corrente", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 8.0,
+	"corrente": {"name": "Corrente", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 9.0,
 		"charges": 2,
-		"desc": "Q: impulso reto para cima, de uns 8 m. Funciona também no ar. Guarda 2 usos: cada um volta em 8 s, um de cada vez.",
+		"desc": "Q: impulso reto para cima, de uns 8 m. Funciona também no ar. Guarda 2 usos: cada um volta em 9 s, um de cada vez.",
 		"mods": [{"stat": "updraft", "add": 1}]},
 }
 
@@ -236,20 +242,20 @@ const HEALTH_SIZE_EXP := 0.3
 var CARDS := {
 	# Arma
 	"calibre_pesado": {"name": "Calibre Pesado", "cat": "Arma", "rarity": "comum",
-		"desc": "+30% de dano, mas atira 10% mais devagar.",
-		"mods": [{"stat": "damage", "mul": 1.3}, {"stat": "fire_interval", "mul": 1.1}]},
+		"desc": "+20% de dano, mas atira 10% mais devagar e recarrega 0,2 s mais devagar.",
+		"mods": [{"stat": "damage", "mul": 1.2}, {"stat": "fire_interval", "mul": 1.1}, {"stat": "reload_time", "add": 0.2}]},
 	"gatilho_leve": {"name": "Gatilho Leve", "cat": "Arma", "rarity": "comum",
 		"desc": "Atira 30% mais rápido, -10% de dano.",
 		"mods": [{"stat": "fire_interval", "mul": 0.7}, {"stat": "damage", "mul": 0.9}]},
 	"pente_estendido": {"name": "Pente Estendido", "cat": "Arma", "rarity": "comum",
 		"desc": "+4 balas no pente, recarga 15% mais lenta.",
 		"mods": [{"stat": "mag_size", "add": 4}, {"stat": "reload_time", "mul": 1.15}]},
-	"maos_rapidas": {"name": "Mãos Rápidas", "cat": "Arma", "rarity": "comum",
-		"desc": "Recarrega 30% mais rápido.",
-		"mods": [{"stat": "reload_time", "mul": 0.7}]},
+	"maos_rapidas": {"name": "Mãos Rápidas", "cat": "Arma", "rarity": "comum", "max": 3,
+		"desc": "Recarrega 0,25 s mais rápido.",
+		"mods": [{"stat": "reload_time", "add": -0.25}]},
 	"polvora_extra": {"name": "Pólvora Extra", "cat": "Arma", "rarity": "comum",
-		"desc": "Balas 50% mais rápidas.",
-		"mods": [{"stat": "bullet_speed", "mul": 1.5}]},
+		"desc": "Balas 40% mais rápidas, -5% de dano. Cada tiro te empurra um pouco para trás; mais cópias empurram cada vez mais.",
+		"mods": [{"stat": "bullet_speed", "mul": 1.4}, {"stat": "damage", "mul": 0.95}, {"stat": "recoil", "add": 1}]},
 	"cano_duplo": {"name": "Cano Duplo", "cat": "Arma", "rarity": "raro",
 		"desc": "+1 bala por tiro e +1 no pente, -35% de dano.",
 		"mods": [{"stat": "bullet_count", "add": 1}, {"stat": "mag_size", "add": 1}, {"stat": "damage", "mul": 0.65}]},
@@ -257,21 +263,23 @@ var CARDS := {
 		"desc": "+4 balas por tiro, bem abertas. -70% de dano, +2 no pente.",
 		"mods": [{"stat": "bullet_count", "add": 4}, {"stat": "spread", "add": 3.0},
 			{"stat": "mag_size", "add": 2}, {"stat": "damage", "mul": 0.3}]},
-	"rajada": {"name": "Rajada", "cat": "Arma", "rarity": "raro",
-		"desc": "Cada tiro vira uma rajada de 3, gastando 1 bala. -55% de dano.",
-		"mods": [{"stat": "burst", "add": 2}, {"stat": "damage", "mul": 0.45}]},
+	"rajada": {"name": "Rajada", "cat": "Arma", "rarity": "raro", "max": 1,
+		"desc": "Cada clique dispara uma rajada de 3 tiros seguidos, cada um gastando 1 bala do pente. -15% de dano.",
+		"mods": [{"stat": "burst", "add": 2}, {"stat": "damage", "mul": 0.85}]},
 	"combinar": {"name": "Combinar", "cat": "Arma", "rarity": "raro",
-		"desc": "+60% de dano, -2 balas no pente.",
-		"mods": [{"stat": "damage", "mul": 1.6}, {"stat": "mag_size", "add": -2}]},
+		"desc": "+45% de dano, -2 balas no pente.",
+		"mods": [{"stat": "damage", "mul": 1.45}, {"stat": "mag_size", "add": -2}]},
 	"transbordar": {"name": "Transbordar", "cat": "Arma", "rarity": "raro",
 		"desc": "+9 balas no pente, -33% de dano, recarga +0,8 s.",
 		"mods": [{"stat": "mag_size", "add": 9}, {"stat": "damage", "mul": 0.67}, {"stat": "reload_time", "add": 0.8}]},
 	"bala_gigante": {"name": "Bala Gigante", "cat": "Arma", "rarity": "raro",
-		"desc": "Balas 2,5x maiores e +20% de dano. Recarga +0,25 s.",
-		"mods": [{"stat": "bullet_radius", "mul": 2.5}, {"stat": "damage", "mul": 1.2}, {"stat": "reload_time", "add": 0.25}]},
+		"desc": "Balas 2x maiores e +10% de dano, mas 25% mais lentas. Recarga +0,25 s.",
+		"mods": [{"stat": "bullet_radius", "mul": 2.0}, {"stat": "damage", "mul": 1.1}, {"stat": "bullet_speed", "mul": 0.75},
+			{"stat": "reload_time", "add": 0.25}]},
 	"bala_de_canhao": {"name": "Bala de Canhão", "cat": "Arma", "rarity": "raro",
-		"desc": "+40% de dano e balas 2x maiores, mas 40% mais lentas e atira 15% mais devagar.",
-		"mods": [{"stat": "damage", "mul": 1.4}, {"stat": "bullet_radius", "mul": 2.0}, {"stat": "bullet_speed", "mul": 0.6}, {"stat": "fire_interval", "mul": 1.15}]},
+		"desc": "+35% de dano e balas 2x maiores, mas 50% mais lentas, atira 30% mais devagar e recarga +0,3 s.",
+		"mods": [{"stat": "damage", "mul": 1.35}, {"stat": "bullet_radius", "mul": 2.0}, {"stat": "bullet_speed", "mul": 0.5},
+			{"stat": "fire_interval", "mul": 1.3}, {"stat": "reload_time", "add": 0.3}]},
 	"imprudente": {"name": "Imprudente", "cat": "Arma", "rarity": "epico",
 		"desc": "Atira 2x mais rápido. Recarga 50% mais lenta e -15% de vida.",
 		"mods": [{"stat": "fire_interval", "mul": 0.5}, {"stat": "reload_time", "mul": 1.5}, {"stat": "max_health", "mul": 0.85}]},
@@ -281,12 +289,13 @@ var CARDS := {
 		"mods": [{"stat": "auto_fire", "add": 1}, {"stat": "fire_interval", "mul": 0.33}, {"stat": "mag_size", "add": 10},
 			{"stat": "damage", "mul": 0.35}, {"stat": "reload_time", "add": 0.25}]},
 	"canhao_de_vidro": {"name": "Canhão de Vidro", "cat": "Arma", "rarity": "epico",
-		"desc": "+100% de dano, -50% de vida.",
-		"mods": [{"stat": "damage", "mul": 2.0}, {"stat": "max_health", "mul": 0.5}]},
+		"desc": "+75% de dano, -50% de vida.",
+		"mods": [{"stat": "damage", "mul": 1.75}, {"stat": "max_health", "mul": 0.5}]},
 	"olho_de_aguia": {"name": "Olho de Águia", "cat": "Arma", "rarity": "epico",
-		"desc": "Balas 2x mais rápidas e sem queda, +40% de dano. Atira 60% mais devagar, -1 bala no pente.",
-		"mods": [{"stat": "bullet_speed", "mul": 2.0}, {"stat": "bullet_gravity", "mul": 0.0},
-			{"stat": "damage", "mul": 1.4}, {"stat": "fire_interval", "mul": 1.6}, {"stat": "mag_size", "add": -1}]},
+		"desc": "Balas 2x mais rápidas e com metade da queda, +30% de dano. Atira 60% mais devagar, -1 bala no pente, recarga +0,3 s.",
+		"mods": [{"stat": "bullet_speed", "mul": 2.0}, {"stat": "bullet_gravity", "mul": 0.5},
+			{"stat": "damage", "mul": 1.3}, {"stat": "fire_interval", "mul": 1.6}, {"stat": "mag_size", "add": -1},
+			{"stat": "reload_time", "add": 0.3}]},
 	"morteiro": {"name": "Morteiro", "cat": "Arma", "rarity": "epico",
 		"desc": "Balas em arco alto que explodem (raio de 4 m), +30% de dano. 40% mais lentas.",
 		"mods": [{"stat": "bullet_gravity", "mul": 3.5}, {"stat": "bullet_speed", "mul": 0.6},
@@ -315,8 +324,8 @@ var CARDS := {
 		"desc": "Algumas balas (35%) que passam perto do inimigo curvam na direção dele e ficam verdes. Mais cópias: mais balas procuram (nunca todas, no máximo 70%) e de um pouco mais longe. -10% de dano, recarga +0,25 s.",
 		"mods": [{"stat": "homing", "add": 1.0}, {"stat": "damage", "mul": 0.9}, {"stat": "reload_time", "add": 0.25}]},
 	"fantasma": {"name": "Bala Fantasma", "cat": "Balas", "rarity": "lendario", "max": 2,
-		"desc": "Cada bala atravessa a primeira parede em que bater (com 2 cópias, as duas primeiras). -10% de dano.",
-		"mods": [{"stat": "ghost", "add": 1}, {"stat": "damage", "mul": 0.9}]},
+		"desc": "Cada bala atravessa a primeira parede em que bater (com 2 cópias, as duas primeiras). -15% de dano.",
+		"mods": [{"stat": "ghost", "add": 1}, {"stat": "damage", "mul": 0.85}]},
 	"explosiva": {"name": "Explosiva", "cat": "Balas", "rarity": "epico",
 		"desc": "As balas explodem ao bater (raio de 3 m). -15% de dano.",
 		"mods": [{"stat": "explosion", "add": 3.0}, {"stat": "damage", "mul": 0.85}]},
@@ -333,7 +342,7 @@ var CARDS := {
 		"desc": "+1 quique. Ao quicar, a bala pode virar um pouco para o inimigo e passar a procurá-lo como a Teleguiada (35% de chance). Cópias de Teleguiada deixam isso mais forte. -20% de dano.",
 		"mods": [{"stat": "target_bounce", "add": 1}, {"stat": "bounces", "add": 1}, {"stat": "damage", "mul": 0.8}]},
 	"atordoante": {"name": "Atordoante", "cat": "Balas", "rarity": "epico", "max": 1,
-		"desc": "Acertar o inimigo bloqueia o escudo dele por 1,5 s. Atira 10% mais devagar.",
+		"desc": "Acertar o inimigo bloqueia o escudo dele por 2 s. Depois disso, ele fica 3 s sem poder ser atordoado de novo. Atira 10% mais devagar.",
 		"mods": [{"stat": "shield_break", "add": 1}, {"stat": "fire_interval", "mul": 1.1}]},
 	"sanguessuga": {"name": "Sanguessuga", "cat": "Balas", "rarity": "epico",
 		"desc": "Recupera 25% do dano que causar. -10% de dano.",
@@ -360,9 +369,9 @@ var CARDS := {
 	"troca_troca": {"name": "Troca-Troca", "cat": "Balas", "rarity": "lendario", "max": 1,
 		"desc": "Acertar o inimigo marca vocês dois: 0,6 s depois, trocam de lugar. A mesma pessoa só é trocada de novo 2 s depois. -15% de dano.",
 		"mods": [{"stat": "swap", "add": 1}, {"stat": "damage", "mul": 0.85}]},
-	"flash": {"name": "Flash", "cat": "Balas", "rarity": "raro",
-		"desc": "Acertar o inimigo deixa a tela dele branca por 0,6 s.",
-		"mods": [{"stat": "blind", "add": 0.6}]},
+	"flash": {"name": "Flash", "cat": "Balas", "rarity": "raro", "max": 1,
+		"desc": "Acertar o inimigo deixa a tela dele branca por 0,9 s. Depois disso, ele fica 2 s sem poder ser cegado de novo.",
+		"mods": [{"stat": "blind", "add": 0.9}]},
 	"preguicosa": {"name": "Bala Preguiçosa", "cat": "Balas", "rarity": "raro", "max": 1,
 		"desc": "As balas saem devagar e aceleram até 2,5x a velocidade. +25% de dano.",
 		"mods": [{"stat": "lazy", "add": 1}, {"stat": "damage", "mul": 1.25}]},
@@ -484,8 +493,8 @@ var CARDS := {
 		"desc": "+40 de vida máxima.",
 		"mods": [{"stat": "max_health", "add": 40.0}]},
 	"fragil": {"name": "Frágil", "cat": "Corpo", "rarity": "comum",
-		"desc": "+40% de dano, -30% de vida.",
-		"mods": [{"stat": "damage", "mul": 1.4}, {"stat": "max_health", "mul": 0.7}]},
+		"desc": "+30% de dano, -30% de vida.",
+		"mods": [{"stat": "damage", "mul": 1.3}, {"stat": "max_health", "mul": 0.7}]},
 	"tanque": {"name": "Tanque", "cat": "Corpo", "rarity": "comum",
 		"desc": "+60% de vida, 10% mais lento.",
 		"mods": [{"stat": "max_health", "mul": 1.6}, {"stat": "move_speed", "mul": 0.9}]},
@@ -499,7 +508,7 @@ var CARDS := {
 		"desc": "Ao morrer, volta uma vez com metade da vida. -20% de vida.",
 		"mods": [{"stat": "revives", "add": 1}, {"stat": "max_health", "mul": 0.8}]},
 	"regeneracao": {"name": "Regeneração", "cat": "Corpo", "rarity": "raro",
-		"desc": "Recupera 5 de vida por segundo depois de 3 s sem levar dano.",
+		"desc": "Recupera 5 de vida por segundo depois de 5 s sem levar dano e sem atacar (tiro ou Espada).",
 		"mods": [{"stat": "regen", "add": 5.0}]},
 	# Peso Pesado e Segunda Pele (2026-10-07, propostas minhas aprovadas pelo usuário).
 	"peso_pesado": {"name": "Peso Pesado", "cat": "Corpo", "rarity": "raro", "max": 1,
@@ -515,12 +524,12 @@ var CARDS := {
 	"blindado": {"name": "Blindado", "cat": "Corpo", "rarity": "raro",
 		"desc": "Você leva 40% menos dano de explosões e de áreas (minas, serras, chamas, nuvens, meteoros). Cópias somam até 70%.",
 		"mods": [{"stat": "blast_resist", "add": 0.4}]},
-	"radar": {"name": "Radar", "cat": "Corpo", "rarity": "epico", "max": 1,
-		"desc": "Você vê a posição do inimigo através das paredes.",
+	"radar": {"name": "Radar", "cat": "Corpo", "rarity": "epico", "max": 3,
+		"desc": "Você vê o nome e a vida dos inimigos a até 30 m através das paredes. Cada cópia soma +30 m.",
 		"mods": [{"stat": "radar", "add": 1}]},
 	"nanico": {"name": "Nanico", "cat": "Corpo", "rarity": "raro",
-		"desc": "Você fica 30% menor e mais difícil de acertar. -20% de vida.",
-		"mods": [{"stat": "body_scale", "mul": 0.7}, {"stat": "max_health", "mul": 0.8}]},
+		"desc": "Você fica 30% menor e mais difícil de acertar. -20% de vida e -10% de dano.",
+		"mods": [{"stat": "body_scale", "mul": 0.7}, {"stat": "max_health", "mul": 0.8}, {"stat": "damage", "mul": 0.9}]},
 	"gigantao": {"name": "Gigantão", "cat": "Corpo", "rarity": "epico",
 		"desc": "Você fica 40% maior e ganha +80% de vida. 15% mais lento.",
 		"mods": [{"stat": "body_scale", "mul": 1.4}, {"stat": "max_health", "mul": 1.8}, {"stat": "move_speed", "mul": 0.85}]},
@@ -780,11 +789,11 @@ func compute_stats(base: Dictionary, card_ids: Array) -> Dictionary:
 		if stat != "shield_cooldown":
 			stats[stat] *= muls[stat]
 	for stat in HIGHER_BETTER:
-		var floor_value: float = PENALTY_FLOOR_ABS.get(stat, base[stat] * PENALTY_FLOOR)
+		var floor_value: float = PENALTY_FLOOR_ABS.get(stat, base[stat] * PENALTY_FLOOR_BY.get(stat, PENALTY_FLOOR))
 		if stat == "damage":
-			# O piso do dano vale para o clique inteiro (2026-10-07): com várias balas por
+			# O piso do dano vale para o tiro inteiro (2026-10-07): com várias balas por
 			# tiro, cada uma pode ficar abaixo dele. Senão Escopetas somadas passavam de 4x.
-			floor_value /= maxf(1.0, stats["bullet_count"]) * maxf(1.0, stats["burst"])
+			floor_value /= maxf(1.0, stats["bullet_count"])   # a Rajada gasta pente: não divide
 		stats[stat] = maxf(stats[stat], floor_value)
 	for stat in LOWER_BETTER:
 		var ceil_value: float = SHIELD_COST_MAX if stat == "shield_cooldown" else base[stat] * PENALTY_CEIL

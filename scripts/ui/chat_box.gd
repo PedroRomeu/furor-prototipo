@@ -3,7 +3,8 @@ extends VBoxContainer
 ## Chat online (Net.chat_log), o mesmo na sala e na partida. Cada nome sai na cor do
 ## jogador (a da vaga ou do time); avisos de entrada e saída saem apagados.
 ##
-## Na sala: histórico e campo sempre à vista; Enter leva o cursor ao campo, Esc o tira.
+## Na sala: histórico e campo sempre à vista; Enter leva o cursor ao campo e, depois de
+## mandar, ele continua no campo; Esc o tira.
 ## Na partida: as mensagens aparecem no canto e somem depois de FADE_AFTER segundos;
 ## a tecla do chat (Enter) abre o campo, Enter manda e fecha, Esc fecha sem mandar.
 ## Com o campo aberto o personagem fica parado (GameState.chat_open).
@@ -59,6 +60,8 @@ func _ready() -> void:
 		modulate.a = 0.0
 	else:
 		input.placeholder_text = "Mensagem para a sala"
+		# Enter manda e o cursor fica no campo para a próxima (pedido do usuário, 2026-10-12).
+		input.keep_editing_on_text_submit = true
 		var area := Ui.box(Ui.BG, 8)
 		area.set_content_margin_all(12)
 		log_view.add_theme_stylebox_override("normal", area)

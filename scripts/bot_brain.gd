@@ -342,7 +342,7 @@ func _aim_and_shoot(delta: float, foe: Player, sees: bool, wish: Vector3) -> voi
 
 
 func _can_see(foe: Player) -> bool:
-	if foe.is_hidden():
+	if foe.is_hidden() and not foe.camo_blink():
 		return false
 	# O parceiro no meio do caminho não tapa a visão (a bala o atravessa).
 	var skip: Array[RID] = [player.get_rid()]

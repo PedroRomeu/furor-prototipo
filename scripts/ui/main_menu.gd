@@ -207,8 +207,6 @@ var play_body: HBoxContainer
 var play_holder: PanelContainer   # painel da esquerda: só a altura do conteúdo (rola se não couber)
 var play_root: Control
 var play_inner: VBoxContainer
-var play_left: VBoxContainer     # coluna da esquerda: painel e, no Online, o "Criar sala" embaixo
-var side_filler: Control          # vaga do "Começar treino" na coluna quando ele some
 
 
 func _play_page() -> Control:
@@ -239,7 +237,6 @@ func _play_page() -> Control:
 	inner.add_child(body)
 	var left := Ui.vbox(PLAY_GAP)
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	play_left = left
 	body.add_child(left)
 	var holder := PanelContainer.new()
 	holder.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -275,22 +272,15 @@ func _play_page() -> Control:
 		scroll.add_child(margin)
 		play_tabs[title] = [tab, scroll, null]
 	body.resized.connect(_fit_play_panel)
-	# Botão principal de cada aba na linha de baixo, na mesma altura nas duas (2026-10-11,
-	# pedido do usuário): Treino no canto da coluna, junto do baralho; Online centralizado
-	# embaixo do painel da esquerda. Na aba Online a coluna guarda a vaga do botão, para o
-	# painel de Novidades não mudar de tamanho entre as abas.
+	# Botão principal de cada aba no canto da coluna, embaixo do baralho, no mesmo lugar nas
+	# duas abas ("Começar treino" ou "Criar sala"; voltou para cá em 2026-10-12, pedido do
+	# usuário), e o painel de Novidades fica do mesmo tamanho entre as abas.
 	for b in [start_solo, host_button]:
 		b.custom_minimum_size.y = PLAY_ACTION_H
 		b.add_theme_font_size_override("font_size", 18)
+		side.add_child(b)
 	play_tabs["Treino"][2] = start_solo
-	side.add_child(start_solo)
-	side_filler = Ui.gap(PLAY_ACTION_H)
-	side.add_child(side_filler)
-	var host_bar := CenterContainer.new()
-	host_button.custom_minimum_size.x = 360
-	host_bar.add_child(host_button)
-	play_tabs["Online"][2] = host_bar
-	left.add_child(host_bar)
+	play_tabs["Online"][2] = host_button
 	_open_play_tab(_play_tab)
 	_show_side_page(_side_page)
 	return root
@@ -303,7 +293,6 @@ func _open_play_tab(title: String) -> void:
 		play_tabs[t][1].visible = t == title
 		if play_tabs[t][2]:
 			play_tabs[t][2].visible = t == title
-	side_filler.visible = not start_solo.visible
 	_fit_play_panel()
 
 
@@ -319,17 +308,14 @@ func _fit_play_width() -> void:
 	_fit_play_panel()
 
 
-## Painel da esquerda com a altura do conteúdo da aba (sem caixa meio vazia), até o botão
-## de baixo (ou o fim da tela, sem botão).
+## Painel da esquerda com a altura do conteúdo da aba (sem caixa meio vazia), até o fim
+## da tela.
 func _fit_play_panel() -> void:
 	if not play_tabs.has(_play_tab):
 		return
 	var content: Control = play_tabs[_play_tab][1].get_child(0)
 	var area := _play_area()
 	var room := area.y - play_body.position.y - PLAY_GAP if area.y > 0 else INF   # vão do espaçador
-	var bar: Control = play_tabs[_play_tab][2]
-	if bar and bar.get_parent() == play_left:
-		room -= PLAY_ACTION_H + PLAY_GAP
 	play_holder.custom_minimum_size.y = minf(content.get_combined_minimum_size().y + 2, room)
 
 
@@ -376,7 +362,7 @@ func _solo_page() -> Control:
 	return solo
 
 
-## Online: como criar sala (o botão fica embaixo do painel) e entrar pelo IP.
+## Online: como criar sala (o botão fica no canto da coluna da direita) e entrar pelo IP.
 func _online_page() -> Control:
 	var col := Ui.vbox(0)
 	Ui.section(col, "CRIAR SALA", null, 0)
@@ -1128,6 +1114,8 @@ func _reset_join() -> void:
 
 func _play_error(text: String) -> void:
 	play_status.text = text
+	if GameState.autotest and text != "":
+		print("aviso na tela Jogar: " + text)
 	play_status.visible = text != ""
 	if text != "":
 		_open_play_tab("Online")

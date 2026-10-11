@@ -122,6 +122,7 @@ const BASE_STATS := {
 	"revives": 0,
 	"regen": 0.0,
 	"radar": 0,
+	"recoil": 0,          # Pólvora Extra: cópias; o coice cresce mais rápido que elas (_recoil)
 	"body_scale": 1.0,
 	"chase": 0.0,
 	"camo": 0,
@@ -334,12 +335,28 @@ const ARMOR_MAX := 50.0      # colete (item do mapa): absorve dano antes da vida
 const SHOCKWAVE_RANGE := 8.0
 const BASH_RANGE := 2.2         # Pancada: alcance do escudo, do peito de um ao do outro
 const SHIELD_DOUBLE_GAP := 0.5  # Escudo Duplo: espera entre a primeira e a segunda vez
-const SILENCE_TIME := 1.5
+## Atordoante: escudo bloqueado SILENCE_TIME e depois SILENCE_GUARD s sem poder ser atordoado
+## de novo (2026-10-12; era 1,5 s renovando a cada acerto: com muitas balas, sem escudo direto).
+const SILENCE_TIME := 2.0
+const SILENCE_GUARD := 3.0
+## Flash: depois de cegar, o mesmo alvo fica BLIND_GUARD s sem poder ser cegado de novo, de
+## quem for (2026-10-12; renovando a cada acerto, muitas balas deixavam a tela branca direto).
+const BLIND_GUARD := 2.0
 const SLOW_TIME := 1.5
 const POISON_TIME := 3.0
 const BLOODLUST_TIME := 3.0
 const RAGE_THRESHOLD := 0.35
-const REGEN_DELAY := 3.0
+## Regeneração: cura depois de REGEN_DELAY sem levar dano e sem atacar (tiro ou Espada).
+## Era 3 s só sem dano até 2026-10-12 (o usuário achou fácil demais, no começo sobretudo).
+const REGEN_DELAY := 5.0
+## Radar: alcance através das paredes por cópia (2026-10-12; antes via o mapa inteiro com 1).
+const RADAR_RANGE := 30.0
+## Pólvora Extra: coice para trás da mira a cada clique, só na horizontal (para cima viraria
+## voo atirando no chão). RECOIL_BASE x cópias^RECOIL_EXP m/s, até RECOIL_MAX: pouco com uma,
+## incômodo com muitas (pedido do usuário, 2026-10-12; números meus).
+const RECOIL_BASE := 1.2
+const RECOIL_EXP := 1.5
+const RECOIL_MAX := 10.0
 const BURST_GAP := 0.07
 ## Tiro semiautomático (2026-10-05): cada clique é um tiro; segurar não repete, só com a
 ## Metralhadora (auto_fire). Um clique um pouco antes de a arma ficar pronta fica guardado
@@ -381,6 +398,12 @@ const AMBUSH_SPEED := 0.2
 ## CAMO_VIEW_ALPHA de transparência, chegando nela em 1 / CAMO_VIEW_FADE s.
 const CAMO_VIEW_ALPHA := 0.6
 const CAMO_VIEW_FADE := 6.0
+## Camuflagem que falha (2026-10-12, pedido do usuário: dava para ficar num canto e nunca ser
+## achado): depois de CAMO_TIRE s seguidos invisível, pisca visível para todos por
+## CAMO_BLINK_TIME a cada CAMO_BLINK_EVERY, até aparecer (andar agachado não zera). Piscar não dá Emboscada.
+const CAMO_TIRE := 8.0
+const CAMO_BLINK_EVERY := 2.0
+const CAMO_BLINK_TIME := 0.4
 ## Orbes do mapa (2026-10-06, no lugar do orbe de reset; ideia do usuário, números meus,
 ## aprovados): Velocidade dá +30% de velocidade por 4 s; Impulso lança uns 6 m para cima
 ## (com GRAVITY_RISE 30) e devolve dash, pulos e jato no ar.
@@ -770,8 +793,10 @@ var slow_timer := 0.0
 var slow_amount := 0.0
 var poisons: Array = []   # [{dps, time, from}]
 var silence_timer := 0.0
+var silence_guard := 0.0   # Atordoante: enquanto > 0, novo atordoamento não pega
 var bloodlust_timer := 0.0
 var since_damage := 0.0
+var since_attack := 0.0   # tiro ou golpe de Espada (Regeneração)
 var last_attacker: Player       # quem causou o último dano (crédito de quem empurra no vazio)
 var sky_active := false         # Alto demais: contando (até SKY_RESET abaixo do teto)
 var sky_timer := 0.0            # tempo até o próximo dano lá em cima
@@ -786,6 +811,10 @@ var death_killer := ""          # nome do nó de quem matou ("" = ninguém, ex.:
 var death_assists: Array = []
 var revives_left := 0
 var blind_timer := 0.0
+var blind_guard := 0.0   # Flash: enquanto > 0, novo Flash não pega (efeito + BLIND_GUARD)
+var blind_guard_total := 1.0   # ...o tamanho dela quando começou (HUD)
+var net_guards := 0   # outra máquina: bit 1 protegido do Flash, bit 2 da Atordoante
+var guard_icons := {}   # ícones em cima do nome (Flash/Atordoante), criados no 1o uso
 var echo_timer := 0.0
 var echo_left := 0        # Eco: levantadas automáticas que ainda faltam neste ciclo
 var adrenaline_used := false   # Adrenalina: já cortou a recarga neste escudo levantado
@@ -1313,14 +1342,17 @@ func reset_for_round(spawn: Transform3D) -> void:
 	slow_timer = 0.0
 	poisons.clear()
 	silence_timer = 0.0
+	silence_guard = 0.0
 	bloodlust_timer = 0.0
 	since_damage = 0.0
+	since_attack = 0.0
 	recent_hits.clear()
 	last_attacker = null
 	sky_active = false
 	sky_credit = null
 	revives_left = stats["revives"]
 	blind_timer = 0.0
+	blind_guard = 0.0
 	echo_timer = 0.0
 	echo_left = 0
 	haste_timer = 0.0
@@ -1489,11 +1521,13 @@ func _frame_step(delta: float) -> void:
 		var ally := viewer != null and viewer.is_ally(self)
 		if ally != _ally_look:
 			_set_ally_look(ally)
-		tag.no_depth_test = ally or (viewer != null and viewer != self and viewer.stats["radar"] > 0)
+		tag.no_depth_test = ally or (viewer != null and viewer != self and viewer.stats["radar"] > 0 \
+				and global_position.distance_squared_to(viewer.global_position) <= pow(viewer.stats["radar"] * RADAR_RANGE, 2.0))
 		if tag.visible and downed:
 			tag.text = "%s\nCAÍDO" % player_name
 		elif tag.visible:
 			tag.text = "%s\n%d" % [player_name, ceili(health)] + (" +%d" % ceili(armor) if armor > 0.0 else "")
+		_update_guard_icons()
 		if ally_arrow:
 			# Parceiro caído: a seta pisca para chamar atenção.
 			ally_arrow.modulate.a = (0.35 + 0.65 * absf(sin(Time.get_ticks_msec() * 0.008))) if downed else 1.0
@@ -1624,7 +1658,7 @@ func _update_camo(delta: float) -> void:
 		still_time = 0.0
 		_fade_viewmodel(0.0, delta)
 		return
-	_fade_viewmodel(CAMO_VIEW_ALPHA if is_hidden() else 0.0, delta)
+	_fade_viewmodel(CAMO_VIEW_ALPHA if is_hidden() and not camo_blink() else 0.0, delta)
 	var hspeed := Vector2(velocity.x, velocity.z).length()
 	var still := velocity.length() < 0.6
 	var sneaking := is_hidden() and hspeed <= float(stats["move_speed"]) * CAMO_SNEAK and absf(velocity.y) < 2.0
@@ -1633,7 +1667,7 @@ func _update_camo(delta: float) -> void:
 	elif still_time > 0.0:
 		reveal()
 	if model and alive:
-		var show := not is_hidden() or (viewer != null and viewer.is_ally(self))
+		var show := not is_hidden() or camo_blink() or (viewer != null and viewer.is_ally(self))
 		model.visible = show
 		ring.visible = show
 		tag.visible = show
@@ -1709,6 +1743,74 @@ func _update_boot_fx() -> void:
 
 func is_hidden() -> bool:
 	return still_time > CAMO_DELAY
+
+
+## Esperas mostradas na HUD (CardTimers): quanto falta para a Regeneração começar a curar e
+## para o próximo colete da Segunda Pele; 0 sem a carta ou quando não há o que ganhar.
+func regen_wait() -> float:
+	if stats["regen"] <= 0.0 or not alive or health >= stats["max_health"]:
+		return 0.0
+	return maxf(0.0, REGEN_DELAY - minf(since_damage, since_attack))
+
+
+func skin_wait() -> float:
+	if stats["armor_regen"] <= 0.0 or not alive \
+			or armor >= minf(ARMOR_MAX, SKIN_CAP * ceilf(float(stats["armor_regen"]) / 15.0)):
+		return 0.0
+	return maxf(0.0, SKIN_DELAY - skin_timer)
+
+
+## Protegido do Flash / da Atordoante agora. Na máquina dona pelos timers; nas outras pelo
+## estado em rede (bits 32 e 64), que é o que o ícone em cima do nome usa.
+## Em cima do nome do inimigo, para quem tem Flash ou Atordoante: o ícone da carta apagado
+## enquanto ele está protegido dela ("não adianta agora"). Um Sprite3D por carta, criado no
+## 1o uso e só ligado/desligado depois.
+func _update_guard_icons() -> void:
+	var want := {}
+	if viewer != null and viewer != self and viewer.is_enemy(self) and tag.visible:
+		if viewer.stats["blind"] > 0.0 and flash_guarded():
+			want["flash"] = true
+		if viewer.stats["shield_break"] > 0 and stun_guarded():
+			want["atordoante"] = true
+	if want.is_empty() and guard_icons.is_empty():
+		return
+	var shown := 0
+	for id in ["flash", "atordoante"]:
+		var on: bool = want.has(id)
+		if on and not guard_icons.has(id):
+			var s := Sprite3D.new()
+			s.texture = CardDB.icon(id)
+			s.pixel_size = 0.0028
+			s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			s.modulate = Color(0.75, 0.78, 0.85, 0.7)
+			s.no_depth_test = true
+			s.shaded = false
+			tag.add_child(s)
+			guard_icons[id] = s
+		if guard_icons.has(id):
+			var s: Sprite3D = guard_icons[id]
+			s.visible = on
+			if on:
+				s.position = Vector3((shown - (want.size() - 1) * 0.5) * 0.55, 0.5, 0)
+				shown += 1
+
+
+func flash_guarded() -> bool:
+	return blind_guard > 0.0 or (net_guards & 1) != 0
+
+
+func stun_guarded() -> bool:
+	return silence_guard > 0.0 or (net_guards & 2) != 0
+
+
+## Invisível há CAMO_TIRE ou mais: a camuflagem começa a falhar (is_camo_tired) e, dentro de
+## cada CAMO_BLINK_EVERY, fica visível por CAMO_BLINK_TIME (camo_blink).
+func is_camo_tired() -> bool:
+	return still_time > CAMO_DELAY + CAMO_TIRE
+
+
+func camo_blink() -> bool:
+	return is_camo_tired() and fmod(still_time - CAMO_DELAY - CAMO_TIRE, CAMO_BLINK_EVERY) < CAMO_BLINK_TIME
 
 
 func reveal() -> void:
@@ -2011,9 +2113,12 @@ func _tick(delta: float) -> void:
 	jump_buffer = maxf(0.0, jump_buffer - delta)
 	slow_timer = maxf(0.0, slow_timer - delta)
 	silence_timer = maxf(0.0, silence_timer - delta)
+	silence_guard = maxf(0.0, silence_guard - delta)
 	bloodlust_timer = maxf(0.0, bloodlust_timer - delta)
 	blind_timer = maxf(0.0, blind_timer - delta)
+	blind_guard = maxf(0.0, blind_guard - delta)
 	since_damage += delta
+	since_attack += delta
 	parkour_timer = maxf(0.0, parkour_timer - delta)
 	tough_timer = maxf(0.0, tough_timer - delta)
 	if dash_echo_wait > 0.0 and (ice_timer > 0.0 or hooked_by or slap_flight > 0.0 or ride_timer > 0.0):
@@ -2051,7 +2156,7 @@ func _tick(delta: float) -> void:
 			var amount := burn_acc
 			burn_acc = 0.0
 			take_damage(amount, who)
-	if stats["regen"] > 0.0 and since_damage > REGEN_DELAY:
+	if stats["regen"] > 0.0 and since_damage > REGEN_DELAY and since_attack > REGEN_DELAY:
 		heal(stats["regen"] * delta)
 
 
@@ -2685,7 +2790,8 @@ func _send_state() -> void:
 	if not Net.online or Net.match_peers.is_empty() or not Net.all_ready():
 		return
 	var flags := (1 if is_on_floor() else 0) | (2 if crouching else 0) | (4 if sliding else 0) \
-		| (8 if boosting else 0) | (16 if daze_timer > 0.0 else 0)
+		| (8 if boosting else 0) | (16 if daze_timer > 0.0 else 0) \
+		| (32 if blind_guard > 0.0 else 0) | (64 if silence_guard > 0.0 else 0)
 	_net_state.rpc(net_round, global_position, velocity, rotation.y, head.rotation.x, flags, shield_timer, health, armor)
 
 
@@ -2705,6 +2811,7 @@ func _net_state(round_id: int, pos: Vector3, vel: Vector3, yaw: float, pitch: fl
 	armor = vest
 	net_on_floor = (flags & 1) != 0
 	boosting = (flags & 8) != 0
+	net_guards = (flags >> 5) & 3
 	var dazed := (flags & 16) != 0
 	if dazed and not _net_dazed:
 		daze_fx = DAZE_FX_TIME
@@ -2831,7 +2938,10 @@ func _act(delta: float) -> void:
 		if burst_timer <= 0.0:
 			burst_left -= 1
 			burst_timer = BURST_GAP
-			_volley()
+			if ammo > 0:
+				_shoot()
+			else:
+				burst_left = 0
 	elif trigger and not is_shielding() and fire_timer <= 0.0 and reload_timer <= 0.0:
 		shot_queued = 0.0
 		if ammo > 0:
@@ -3184,6 +3294,7 @@ func _rest_sword() -> void:
 
 ## Um golpe do combo: decide os acertos (máquina dona), anima e avisa as outras máquinas.
 func _swing() -> void:
+	since_attack = 0.0
 	var step := combo_step
 	combo_step = (step + 1) % 3
 	combo_idle = COMBO_RESET
@@ -3290,6 +3401,7 @@ func _show_swing(step: int) -> void:
 ## Sniper: um tiro que é um laser. Mira no que está sob a mira (atravessando o cenário: o
 ## raio só procura jogadores) e sai do cano nessa direção.
 func _fire_sniper() -> void:
+	since_attack = 0.0
 	sniper_shots -= 1
 	fire_timer = 0.5   # a arma fica na mão um instante depois do tiro
 	var origin := head.global_position
@@ -4473,6 +4585,7 @@ func _update_beam_fx(_delta: float) -> void:
 
 ## Bazuca: foguete reto, lento, com o dobro do dano e explosão grande.
 func _fire_rocket() -> void:
+	since_attack = 0.0
 	rockets_left -= 1
 	fire_timer = BAZOOKA_INTERVAL
 	var origin := head.global_position
@@ -4531,7 +4644,33 @@ func _try_perfect_reload() -> void:
 	perfect_reloaded.emit(ok)
 
 
+## Coice da Pólvora Extra (ver RECOIL_BASE); o Peso Pesado segura como segura os empurrões.
+func _recoil() -> void:
+	var copies := int(stats["recoil"])
+	if copies <= 0:
+		return
+	var back := head.global_transform.basis.z
+	back.y = 0.0
+	if back.length_squared() < 0.0001:
+		return   # mirando reto para cima ou para baixo: nada para trás
+	var power := minf(RECOIL_MAX, RECOIL_BASE * pow(copies, RECOIL_EXP)) * push_mult()
+	velocity += back.normalized() * power
+
+
+## Clique: um tiro, ou a rajada inteira com a Rajada (os outros saem em _act a cada
+## BURST_GAP). Cada tiro da rajada gasta uma bala (2026-10-12; antes a rajada saía de uma
+## bala só e multiplicava com Cano Duplo e Escopeta).
 func _fire() -> void:
+	burst_left = stats["burst"] - 1
+	burst_timer = BURST_GAP
+	fire_timer = maxf(stats["fire_interval"], stats["burst"] * BURST_GAP)
+	_shoot()
+
+
+## Um tiro: gasta uma bala e dispara (_volley).
+func _shoot() -> void:
+	_recoil()
+	since_attack = 0.0
 	ammo -= 1
 	fired.emit()
 	pierce_shot = pierce_left > 0
@@ -4541,12 +4680,11 @@ func _fire() -> void:
 	if meteor_shot:
 		meteor_left -= 1
 	shot_mult = float(stats["last_shot"]) if ammo == 0 else 1.0
-	burst_left = stats["burst"] - 1
-	burst_timer = BURST_GAP
-	fire_timer = maxf(stats["fire_interval"], stats["burst"] * BURST_GAP)
 	_volley()
-	if ammo == 0 and stats["shield_on_empty"] > 0 and shield_cd <= 0.0 and silence_timer <= 0.0:
-		_activate_shield()
+	if ammo == 0:
+		burst_left = 0   # a rajada acaba com o pente
+		if stats["shield_on_empty"] > 0 and shield_cd <= 0.0 and silence_timer <= 0.0:
+			_activate_shield()
 
 
 ## Um disparo: a mira é o centro da câmera. Um raio acha o ponto mirado e as balas
@@ -4839,11 +4977,18 @@ func apply_poison(total: float, from: Player) -> void:
 
 ## Flash: a tela de quem levou o tiro fica branca (o bot erra mais a mira).
 func apply_blind(time: float) -> void:
-	blind_timer = maxf(blind_timer, time)
+	if blind_guard > 0.0:
+		return   # cego agora ou protegido logo depois: não renova (senão, com muitas balas, ficava cego direto)
+	blind_timer = time
+	blind_guard = time + BLIND_GUARD
+	blind_guard_total = blind_guard
 
 
 func silence() -> void:
+	if silence_guard > 0.0:
+		return   # atordoado agora ou protegido logo depois: não renova
 	silence_timer = SILENCE_TIME
+	silence_guard = SILENCE_TIME + SILENCE_GUARD
 	shield_timer = 0.0
 
 

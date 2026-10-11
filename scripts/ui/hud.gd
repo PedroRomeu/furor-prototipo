@@ -61,6 +61,7 @@ var ammo_label: Label
 var ammo_max: Label
 var ammo_sub: Label
 var status_row: HBoxContainer   # estados (lento, envenenado...) em selos acima da vida
+var card_timers: CardTimers     # esperas das cartas (ícones) acima dos selos
 var _status_key := ""
 var fps_label: Label
 var scoreboard: Scoreboard
@@ -115,6 +116,9 @@ func _ready() -> void:
 	status_row.add_theme_constant_override("separation", 6)
 	_corner(status_row, false, Vector2(28, 132))
 	add_child(status_row)
+	card_timers = CardTimers.new()
+	_corner(card_timers, false, Vector2(28, 162))
+	add_child(card_timers)
 	spectate_label = _label("", 20, Rect2(0.25, 0.835, 0.5, 0.045))
 	spectate_label.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	spectate_hint = _label("", 15, Rect2(0.15, 0.88, 0.7, 0.035))
@@ -390,6 +394,7 @@ func _hide_combat(on: bool) -> void:
 	vitals.combat = not on
 	ammo_box.visible = not on
 	status_row.visible = not on
+	card_timers.visible = not on
 
 
 ## Caído no 2x2: some o que é de luta; a mira vira o anel do prazo e do reviver.
@@ -666,6 +671,7 @@ func _frame_step(delta: float) -> void:
 		fps_label.text = "%d FPS" % Engine.get_frames_per_second()
 
 	_update_status()
+	card_timers.update_from(me)
 	blind_tint.color.a = clampf(me.blind_timer / 0.3, 0.0, 1.0) * 0.97
 	blind_tint.visible = blind_tint.color.a > 0.0   # camada de tela cheia: só quando cega
 	hit_time = maxf(0.0, hit_time - delta)
@@ -731,7 +737,7 @@ func _update_status() -> void:
 	if me.is_too_high():
 		items.append(["ALTO DEMAIS  ·  desça  ·  dano em %.1f" % me.sky_timer, Player.SKY_COLOR])
 	if me.is_hidden():
-		items.append(["INVISÍVEL", Color(0.75, 0.6, 1.0)])
+		items.append(["VISÍVEL" if me.camo_blink() else ("INVISÍVEL  ·  falhando" if me.is_camo_tired() else "INVISÍVEL"), Color(0.75, 0.6, 1.0)])
 	if me.ambush_timer > 0.0:
 		items.append(["EMBOSCADA %.1f" % me.ambush_timer, Color(0.8, 0.55, 1.0)])
 	if me.beam_charge > 0.0:

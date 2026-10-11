@@ -19,6 +19,19 @@ signal disconnected
 signal everyone_ready
 signal chat_received(entry: Dictionary)   # todos: mensagem nova no chat (ver chat_log)
 
+## Código da build. Mudar a CADA zip entregue aos amigos (versão nova ou zip trocado),
+## senão duas builds diferentes se aceitam. O convidado manda o seu ao conectar e o
+## anfitrião recusa quem tiver outro (_check_build); builds sem a conferência nunca mandam
+## e saem depois de BUILD_WAIT. Vai em bytes crus (send_bytes), não por @rpc: com builds
+## diferentes as funções @rpc podem não bater (2026-10-12, convidada invisível no 2x2 com
+## zip provavelmente de outro dia).
+const BUILD := "0.7.0.1"
+const BUILD_TAG := "FUROR_BUILD:"
+const BUILD_WRONG := "FUROR_WRONG:"
+const BUILD_WAIT := 5.0
+## A BUILD deste processo; teste: "-- --build=X" finge outra (para ver a recusa).
+var build := BUILD
+
 const PORT := 7777
 const MAX_GUESTS := 3
 const CHAT_MAX := 120        # letras por mensagem
@@ -64,16 +77,64 @@ var _chat_last := {}
 ## começa quando todos os convidados marcarem. O host guarda e repassa no _lobby; zera ao
 ## começar a partida, então na volta à sala todos marcam de novo.
 var lobby_ready := {}
+## Host: convidados que mandaram a mesma BUILD, e o _hello de quem chegou antes dela.
+var _build_ok := {}
+var _pending_hello := {}
+## Convidado: o anfitrião recusou a build (a queda da conexão que vem depois não avisa de novo).
+var _build_refused := false
 
 
 func _ready() -> void:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--build="):
+			build = arg.trim_prefix("--build=")
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	multiplayer.connected_to_server.connect(func():
+		(multiplayer as SceneMultiplayer).send_bytes((BUILD_TAG + build).to_utf8_buffer(), 1)
 		_hello.rpc_id(1, GameState.nick, GameState.look())
 		joined.emit())
 	multiplayer.connection_failed.connect(_on_connection_failed)
-	multiplayer.server_disconnected.connect(func(): disconnected.emit())
+	multiplayer.server_disconnected.connect(func():
+		if not _build_refused:
+			disconnected.emit())
+	(multiplayer as SceneMultiplayer).peer_packet.connect(_on_packet)
+
+
+## Bytes crus: a BUILD do convidado (no host) ou a recusa do host (no convidado).
+func _on_packet(id: int, packet: PackedByteArray) -> void:
+	var text := packet.get_string_from_utf8()
+	if multiplayer.is_server() and text.begins_with(BUILD_TAG):
+		_check_build(id, text.trim_prefix(BUILD_TAG))
+	elif not multiplayer.is_server() and id == 1 and text.begins_with(BUILD_WRONG):
+		_build_refused = true
+		var theirs := text.trim_prefix(BUILD_WRONG)
+		stop()
+		failed.emit("Sua versão do jogo (%s) é diferente da do anfitrião (%s). Todos precisam baixar o mesmo zip." % [build, theirs])
+
+
+func _check_build(id: int, their_build: String) -> void:
+	if not id in remote_ids or _build_ok.has(id):
+		return
+	if their_build != build:
+		if GameState.autotest:
+			print("[host] recusado: build %s, a desta sala é %s" % [their_build, build])
+		(multiplayer as SceneMultiplayer).send_bytes((BUILD_WRONG + build).to_utf8_buffer(), id)
+		_kick_later(id, 0.5)   # dá tempo da recusa chegar antes de cortar
+		return
+	_build_ok[id] = true
+	if _pending_hello.has(id):
+		var hello: Array = _pending_hello[id]
+		_pending_hello.erase(id)
+		_accept_hello(id, hello[0], hello[1])
+
+
+func _kick_later(id: int, wait: float) -> void:
+	await get_tree().create_timer(wait).timeout
+	if multiplayer.is_server() and id in remote_ids and not _build_ok.has(id):
+		if GameState.autotest:
+			print("[host] convidado %d desconectado: build diferente ou sem conferência" % id)
+		multiplayer.multiplayer_peer.disconnect_peer(id)
 
 
 func host(port := PORT) -> Error:
@@ -95,6 +156,7 @@ func host(port := PORT) -> Error:
 
 func join(ip: String, port := PORT) -> Error:
 	stop()
+	_build_refused = false
 	var peer := ENetMultiplayerPeer.new()
 	var err := peer.create_client(ip, port)
 	if err != OK:
@@ -123,6 +185,8 @@ func stop() -> void:
 	lobby_ready.clear()
 	chat_log.clear()
 	_chat_last.clear()
+	_build_ok.clear()
+	_pending_hello.clear()
 
 
 func is_host() -> bool:
@@ -318,6 +382,7 @@ func _on_peer_connected(id: int) -> void:
 		multiplayer.multiplayer_peer.disconnect_peer(id)
 		return
 	remote_ids.append(id)
+	_kick_later(id, BUILD_WAIT)   # build sem a conferência nunca manda a BUILD
 	_broadcast_lobby()
 
 
@@ -325,6 +390,8 @@ func _on_peer_disconnected(id: int) -> void:
 	var was_in_room := multiplayer.is_server() and _raw_names.has(id) and match_peers.is_empty()
 	var leaving := display_name(id)
 	remote_ids.erase(id)
+	_build_ok.erase(id)
+	_pending_hello.erase(id)
 	if id in match_peers:
 		disconnected.emit()
 	elif multiplayer.is_server():
@@ -349,13 +416,21 @@ func display_name(id: int) -> String:
 @rpc("any_peer", "call_remote", "reliable")
 func _hello(nick: String, look: Dictionary) -> void:
 	var id := multiplayer.get_remote_sender_id()
-	if multiplayer.is_server() and id in remote_ids:
-		var first := not _raw_names.has(id)
-		_raw_names[id] = GameState.clean_nick(nick)
-		looks[id] = Player.clean_look(look)
-		_broadcast_lobby()
-		if first:
-			_system_chat("%s entrou na sala" % display_name(id))
+	if not multiplayer.is_server() or not id in remote_ids:
+		return
+	if _build_ok.has(id):
+		_accept_hello(id, nick, look)
+	else:
+		_pending_hello[id] = [nick, look]   # entra na sala quando a BUILD conferir
+
+
+func _accept_hello(id: int, nick: String, look: Dictionary) -> void:
+	var first := not _raw_names.has(id)
+	_raw_names[id] = GameState.clean_nick(nick)
+	looks[id] = Player.clean_look(look)
+	_broadcast_lobby()
+	if first:
+		_system_chat("%s entrou na sala" % display_name(id))
 
 
 ## Troca de nome na sala: vale na hora para todos (durante a partida os nomes ficam fixos).
