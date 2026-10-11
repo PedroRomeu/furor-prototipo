@@ -8,6 +8,11 @@ extends Control
 ## botão direito tira. Direita: o baralho. Nome, contagem, a carta mestra numa vaga (clicar
 ## abre a escolha, que cabe quantas mestras houver) e a lista do que está nele, por grupo;
 ## clicar numa linha tira uma cópia. Cada mudança é salva na hora.
+##
+## Modo "Criar" (2026-10-11, pedido do usuário, como no Legends of Runeterra; saiu da loja):
+## o botão Criar mostra as fichas, cada carta com quantas você tem e quanto custa, e o clique
+## gasta as fichas da raridade numa cópia (Collection.exchange) depois de uma confirmação; as
+## mestras são criadas na escolha da mestra. A coleção ainda não bloqueia nenhuma carta.
 
 ## 252: a menor largura em que nenhum nome nem "Lendário · 1 por partida" ganha
 ## reticências de 1280x720 a 2560x1440 (medido em 2026-10-08; com 216 a grade passava
@@ -49,6 +54,10 @@ var empty_grid: Label
 var picker: Control   # escolha da carta mestra (por cima de tudo)
 var picker_group := FILTER_ALL   # grupo mostrado na escolha da mestra
 var side_panel: PanelContainer
+var craft_mode := false
+var craft_button: Button
+var token_bar: HBoxContainer   # fichas, só no modo Criar
+var craft_box: Control         # confirmação de criar (por cima de tudo)
 
 
 func _ready() -> void:
@@ -70,6 +79,11 @@ func _ready() -> void:
 	side_panel = _build_deck_panel()
 	row.add_child(side_panel)
 	_build_picker()
+	craft_box = Control.new()
+	craft_box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	craft_box.visible = false
+	add_child(craft_box)
+	Collection.changed.connect(_on_collection_changed)
 	resized.connect(_fit)
 	_refresh()
 	_fit()
@@ -116,6 +130,17 @@ func _build_collection() -> Control:
 	filter_button.add_theme_font_size_override("font_size", 14)
 	bar.add_child(filter_button)
 	_build_filter_popup()
+	craft_button = Button.new()
+	craft_button.text = "Criar"
+	craft_button.toggle_mode = true
+	craft_button.custom_minimum_size = Vector2(84, 40)
+	craft_button.add_theme_font_size_override("font_size", 14)
+	craft_button.tooltip_text = "Criar cartas com as fichas (cópias a mais viram fichas da raridade)"
+	craft_button.toggled.connect(_set_craft)
+	bar.add_child(craft_button)
+	token_bar = Ui.hbox(14)
+	token_bar.visible = false
+	col.add_child(token_bar)
 
 	scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -237,8 +262,6 @@ func _tile(id: String) -> Control:
 	var archs := CardDB.archetypes_of(id)
 	if not archs.is_empty():
 		tip += "\n\nArquétipos: " + ", ".join(archs)
-	tip += "\n\nNa coleção: %d/%d" % [Collection.has_card(id), Collection.max_copies(id)]
-	panel.tooltip_text = tip + "\n\nClique: põe uma cópia   ·   Botão direito: tira"
 	panel.gui_input.connect(_on_tile_input.bind(id))
 	panel.mouse_entered.connect(func(): hovered = id; _style_tile(id))
 	panel.mouse_exited.connect(func(): if hovered == id: hovered = ""; _style_tile(id))
@@ -296,7 +319,7 @@ func _tile(id: String) -> Control:
 	sub_row.add_child(badge)
 
 	col.add_child(_desc_box(card["desc"]))
-	tiles[id] = {"panel": panel, "badge": badge, "cat": card["cat"]}
+	tiles[id] = {"panel": panel, "badge": badge, "cat": card["cat"], "rarity": rarity, "sub": sub, "tip": tip}
 	return panel
 
 
@@ -307,18 +330,42 @@ func _desc_box(text: String) -> ScrollContainer:
 
 func _style_tile(id: String) -> void:
 	var t: Dictionary = tiles[id]
-	var copies := deck.count(id)
 	var hot := id == hovered
+	if craft_mode:
+		# Modo Criar: acesa a que dá para criar agora, apagada a que falta ficha, e a completa
+		# também translúcida; o selo mostra quantas você tem e a raridade, o custo.
+		var have := Collection.has_card(id)
+		var full := Collection.is_full(id)
+		var can := not full and _tokens_for(id) >= _cost(id)
+		var look := ("hot" if hot else "lit") if can else ("dim_hot" if hot else "dim")
+		t["panel"].add_theme_stylebox_override("panel", CardFrame.style(t["cat"], look, false, 12))
+		t["panel"].modulate.a = 0.45 if full else 1.0
+		t["badge"].visible = true
+		t["badge"].text = "%d/%d" % [have, Collection.max_copies(id)]
+		t["rarity"].text = "%s · %s" % [CardDB.rarity_name(id), "completa" if full else "%d fichas" % _cost(id)]
+		t["panel"].tooltip_text = t["tip"] + ("\n\nVocê já tem todas as cópias." if full else
+			"\n\nClique: criar uma cópia por %d fichas %s (você tem %d)" % [_cost(id),
+			Collection.RARITY_FEM_PLURAL[Collection.rarity_of(id)], _tokens_for(id)])
+		return
+	var copies := deck.count(id)
 	# Moldura do grupo acesa (com brilho) para as cartas do baralho, apagada para as outras.
 	var look := ("hot" if hot else "lit") if copies > 0 else ("dim_hot" if hot else "dim")
 	t["panel"].add_theme_stylebox_override("panel", CardFrame.style(t["cat"], look, false, 12))
+	t["panel"].modulate.a = 1.0
 	t["badge"].visible = copies > 0
 	t["badge"].text = "x%d" % copies
+	t["rarity"].text = t["sub"]
+	t["panel"].tooltip_text = t["tip"] + "\n\nNa coleção: %d/%d\n\nClique: põe uma cópia   ·   Botão direito: tira" % [
+		Collection.has_card(id), Collection.max_copies(id)]
 
 
 func _on_tile_input(event: InputEvent, id: String) -> void:
 	var mb := event as InputEventMouseButton
 	if mb == null or not mb.pressed:
+		return
+	if craft_mode:
+		if mb.button_index == MOUSE_BUTTON_LEFT:
+			_ask_craft(id)
 		return
 	if mb.button_index == MOUSE_BUTTON_LEFT:
 		_change(id, 1)
@@ -649,10 +696,18 @@ func _master_option(id: String) -> Control:
 	panel.gui_input.connect(func(event: InputEvent):
 		var mb := event as InputEventMouseButton
 		if mb and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
+			if craft_mode:
+				_ask_craft(id)
+				return
 			master = id
 			_save()
 			_refresh_master()
 			picker.visible = false)
+	if craft_mode:
+		var full := Collection.is_full(id)
+		panel.modulate.a = 0.45 if full else 1.0
+		panel.add_theme_stylebox_override("panel", CardFrame.style(card["cat"],
+			"lit" if not full and _tokens_for(id) >= _cost(id) else "dim", true, 14))
 	var col := Ui.vbox(8)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(col)
@@ -670,7 +725,12 @@ func _master_option(id: String) -> Control:
 	var sub := Ui.label(_master_sub(id), 12, color.lerp(Ui.MUTED, 0.4))
 	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	names.add_child(sub)
-	if chosen:
+	if craft_mode:
+		var own := Ui.label("%d/1 · %s" % [Collection.has_card(id), "completa" if Collection.is_full(id)
+			else "%d fichas" % _cost(id)], 12, CardDB.rarity_color(id), true)
+		own.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		names.add_child(own)
+	elif chosen:
 		var tag := Ui.label("Equipada", 12, Ui.OK, true)
 		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		tag.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -771,9 +831,128 @@ func _refresh() -> void:
 	_apply_filter()
 
 
+# ---------------------------------------------------------------- modo Criar
+
+func _set_craft(on: bool) -> void:
+	craft_mode = on
+	# Ligado: fundo laranja escuro com borda laranja (como o botão Filtros com filtro ligado).
+	for s in ["normal", "hover", "pressed", "hover_pressed"]:
+		if on:
+			craft_button.add_theme_stylebox_override(s, Ui.box(Ui.ACCENT.darkened(0.6 if s == "normal" else 0.5), 8, Ui.ACCENT))
+		else:
+			craft_button.remove_theme_stylebox_override(s)
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
+		if on:
+			craft_button.add_theme_color_override(c, Ui.ACCENT.lightened(0.3))
+		else:
+			craft_button.remove_theme_color_override(c)
+	token_bar.visible = on
+	_refresh_tokens()
+	for id in tiles:
+		_style_tile(id)
+	_fit()
+
+
+func _cost(id: String) -> int:
+	return Collection.TOKEN_RATES[Collection.rarity_of(id)]
+
+
+func _tokens_for(id: String) -> int:
+	return Collection.tokens.get(Collection.rarity_of(id), 0)
+
+
+## Faixa do modo Criar: fichas de cada raridade e quanto custa uma carta.
+func _refresh_tokens() -> void:
+	for c in token_bar.get_children():
+		c.queue_free()
+	if not craft_mode:
+		return
+	token_bar.add_child(_section_title("FICHAS"))
+	for r in Collection.RARITY_ORDER:
+		var pair := Ui.hbox(5)
+		pair.tooltip_text = "Fichas %s: %d por carta" % [Collection.RARITY_FEM_PLURAL[r], Collection.TOKEN_RATES[r]]
+		pair.mouse_filter = Control.MOUSE_FILTER_PASS
+		token_bar.add_child(pair)
+		pair.add_child(Ui.label(CardDB.RARITIES[r]["name"], 13, CardDB.RARITIES[r]["color"]))
+		pair.add_child(Ui.label(str(Collection.tokens.get(r, 0)), 13, Ui.TEXT, true))
+	token_bar.add_child(Ui.spacer())
+	token_bar.add_child(Ui.label("Clique numa carta para criar uma cópia. Mestras: na vaga da carta mestra.", 13, Ui.MUTED))
+
+
+func _on_collection_changed() -> void:
+	if craft_mode:
+		_refresh_tokens()
+		for id in tiles:
+			_style_tile(id)
+		if picker.visible:
+			_fill_picker()
+
+
+## Confirmação de criar: a carta grande, o custo e o que sobra. Sem fichas, avisa quantas
+## faltam (o botão fica desligado).
+func _ask_craft(id: String) -> void:
+	if Collection.is_full(id):
+		return
+	for c in craft_box.get_children():
+		c.queue_free()
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.6)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed:
+			craft_box.visible = false)
+	craft_box.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	craft_box.add_child(center)
+	var box := PanelContainer.new()
+	var style := Ui.box(Ui.SURFACE, 14, Ui.LINE)
+	style.set_content_margin_all(24)
+	box.add_theme_stylebox_override("panel", style)
+	center.add_child(box)
+	var row := Ui.hbox(24)
+	box.add_child(row)
+	row.add_child(CardFace.make(id, 220, 96))
+	var col := Ui.vbox(10)
+	col.custom_minimum_size.x = 300
+	row.add_child(col)
+	col.add_child(Ui.label("Criar carta", 22, Ui.TEXT, true))
+	var rarity := Collection.rarity_of(id)
+	var plural: String = Collection.RARITY_FEM_PLURAL[rarity]
+	var cost := _cost(id)
+	var have := _tokens_for(id)
+	var lines := [
+		"Custa %d fichas %s. Você tem %d." % [cost, plural, have],
+		"Você fica com %d/%d desta carta." % [Collection.has_card(id) + 1, Collection.max_copies(id)],
+	]
+	if have < cost:
+		lines = ["Custa %d fichas %s. Você tem %d: faltam %d." % [cost, plural, have, cost - have],
+			"Cópias além do máximo viram fichas, nos pacotes da Loja."]
+	for text in lines:
+		var l := Ui.label(text, 15, Ui.MUTED)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		col.add_child(l)
+	col.add_child(Ui.grow())
+	var buttons := Ui.hbox(8)
+	col.add_child(buttons)
+	buttons.add_child(Ui.spacer())
+	buttons.add_child(Ui.flat(Ui.button("Cancelar", func(): craft_box.visible = false, 110)))
+	var ok := Ui.accent(Ui.button("Criar  ·  %d fichas" % cost, func():
+		if Collection.exchange(id):
+			Sfx.ui(self, "kill")
+		craft_box.visible = false))
+	ok.custom_minimum_size = Vector2(170, 42)
+	ok.disabled = have < cost
+	buttons.add_child(ok)
+	craft_box.visible = true
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		if picker.visible:
+		if craft_box.visible:
+			craft_box.visible = false
+		elif picker.visible:
 			picker.visible = false
 		else:
 			_back()

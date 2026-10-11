@@ -118,6 +118,18 @@ const BASE_STATS := {
 	"perfect_reload": 0,  # Recarga Perfeita
 	"tough": 0,           # Casca Dura
 	"dash_echo": 0,       # Dash Duplo: dashes extras automáticos depois do seu
+	"speed_damage": 0.0,  # Velocidade Letal: teto do bônus de dano pela velocidade
+	"blur": 0,            # Vulto: cópias (menos dano de balas acima de BLUR_SPEED)
+	"air_reload": 0.0,    # Recarga no Embalo: recarga mais rápida no ar ou deslizando
+	"dash_seek": 0,       # Bote: o dash curva até o inimigo
+	"recycle": 0,         # Reciclagem: bala que acerta devolve 1 ao pente (1 por clique)
+	"still_aim": 0,       # Sangue Frio: cópias (bônus parado ou agachado no chão)
+	"thick_skin": 0,      # Couro Grosso: cópias (redução que acumula por golpe levado)
+	"kill_heal": 0.0,     # Banquete: cura por abate
+	"tenacity": 0.0,      # Tenacidade: fração a menos na duração dos efeitos de controle
+	"heal_mult": 0.0,     # Metabolismo: cura recebida a mais
+	"survival_speed": 0.0,  # Instinto de Sobrevivência: velocidade abaixo de RAGE_THRESHOLD
+	"revenge": 0.0,       # Vingança: dano a mais em quem te matou na rodada anterior
 	"bloodlust": 0.0,
 	"rage": 0.0,
 	"revives": 0,
@@ -538,7 +550,7 @@ const RECOIL_KICK := 0.03
 const HIT_FLASH_TIME := 0.14   # o modelo atingido pisca em branco por este tempo
 ## Métodos que a outra máquina pode chamar neste jogador (ver remote_call).
 const ASSIST_TIME := 10.0   # placar: dano nos últimos 10 s antes da morte conta assistência
-const REMOTE_METHODS := ["receive_shockwave", "credit_damage", "teleport_to", "swap_to", "receive_stomp",
+const REMOTE_METHODS := ["receive_shockwave", "credit_damage", "bullet_refund", "teleport_to", "swap_to", "receive_stomp",
 	"receive_slash", "ice_shove", "receive_slap", "receive_beam", "receive_hook", "hook_blocked",
 	"hook_throw", "hook_release", "receive_bowl", "receive_slam"]
 ## Gancho (mestra). Quem lança move a ponta (HOOK_SPEED, até HOOK_RANGE) e acha o alvo; a
@@ -786,6 +798,13 @@ var dash_air := false        # o dash atual começou no ar (sem gravidade enquan
 var dash_exit := 0.0         # velocidade que sobra quando o dash acaba
 var dodge_timer := 0.0
 var dash_hits: Array = []    # inimigos já atropelados neste dash
+var dash_seek_target: Player = null   # Bote: alvo deste dash
+var dash_seek_left := 0.0             # Bote: quanto o dash ainda pode curvar (rad)
+var click_id := 0       # número do clique (a rajada inteira é um); vai na bala (Reciclagem)
+var recycle_click := -1 # Reciclagem: último clique que já devolveu bala
+var skin_stacks := 0          # Couro Grosso: redução atual por golpe
+var skin_stack_timer := 0.0   # Couro Grosso: tempo desde o último golpe levado
+var revenge_target := ""      # Vingança: nome do nó de quem te matou na rodada anterior
 var was_on_floor := true
 var was_shielding := false
 var eye_dip := 0.0
@@ -829,6 +848,28 @@ var haste_timer := 0.0    # Passo Ligeiro: mais rápido por mais quanto tempo
 const SKIN_DELAY := 5.0
 const SKIN_CAP := 30.0
 const PARKOUR_SPEED := 0.2
+## Build de movimento (2026-10-11). Velocidade Letal: +2% de dano por m/s acima de andar.
+const SPEED_DAMAGE_FROM := 9.0
+const SPEED_DAMAGE_RATE := 0.02
+## Vulto: acima de 12 m/s (não vale andando, só no embalo), menos dano de balas por cópia.
+const BLUR_SPEED := 12.0
+const BLUR_REDUCE := [0.0, 0.2, 0.35]
+## Recarga no Embalo: a recarga no ar ou deslizando anda até 2x mais rápido.
+const AIR_RELOAD_MAX := 1.0
+## Bote: inimigo à vista a até 10 m e até 35 graus da direção do dash; o dash curva até ele
+## a 8 rad/s, no máximo 35 graus no total.
+const DASH_SEEK_RANGE := 10.0
+const DASH_SEEK_ANGLE := deg_to_rad(35.0)
+const DASH_SEEK_TURN := 8.0
+## Sangue Frio: por cópia, +25% de dano e balas 30% mais rápidas parado (abaixo de 1 m/s) ou
+## agachado sem deslizar, no chão.
+const STILL_DAMAGE := 0.25
+const STILL_SPEED := 0.3
+const STILL_MAX_SPEED := 1.0
+## Couro Grosso (desenho do usuário): cada golpe soma 1 de redução nos seguintes, até 5 (8
+## com 2 cópias); 1,5 s sem golpe zera. Dano contínuo (tick) não conta nem é reduzido.
+const SKIN_STACK_MAX := [0, 5, 8]
+const SKIN_STACK_RESET := 1.5
 const PARKOUR_TIME := 1.0
 const PERFECT_START := 0.5
 const PERFECT_END := 0.7
@@ -1263,6 +1304,10 @@ func _set_height(h: float) -> void:
 
 ## Começo de rodada: recalcula os atributos com as cartas e volta ao ponto de partida.
 func reset_for_round(spawn: Transform3D) -> void:
+	# Vingança: quem te matou na rodada que acabou (quem sobreviveu não tem alvo). Igual em
+	# todas as máquinas: death_killer vem do _net_die.
+	revenge_target = death_killer if not alive else ""
+	skin_stacks = 0
 	stats = CardDB.compute_stats(BASE_STATS, cards)
 	var masters := cards.filter(CardDB.is_master)
 	master_id = masters[0] if not masters.is_empty() else ""
@@ -2146,7 +2191,10 @@ func _tick(delta: float) -> void:
 			if echo_left > 0:
 				echo_timer = stats["shield_duration"] + ECHO_DELAY
 	if reload_timer > 0.0:
-		reload_timer -= delta
+		var rate := 1.0
+		if stats["air_reload"] > 0.0 and (not is_on_floor() or sliding):
+			rate += minf(AIR_RELOAD_MAX, stats["air_reload"])
+		reload_timer -= delta * rate
 		if reload_timer <= 0.0:
 			ammo = stats["mag_size"]
 	if not alive:
@@ -2162,7 +2210,11 @@ func _tick(delta: float) -> void:
 			var who := burn_from if is_instance_valid(burn_from) else null
 			var amount := burn_acc
 			burn_acc = 0.0
-			take_damage(amount, who)
+			take_damage(amount, who, true, false, true)
+	if skin_stacks > 0:
+		skin_stack_timer += delta
+		if skin_stack_timer >= SKIN_STACK_RESET:
+			skin_stacks = 0
 	if stats["regen"] > 0.0 and since_damage > REGEN_DELAY and since_attack > REGEN_DELAY:
 		heal(stats["regen"] * delta)
 
@@ -2193,7 +2245,14 @@ func _target_speed() -> float:
 		speed *= 1.0 + SHRINK_SPEED
 	if stats["chase"] > 0.0 and _toward_enemy():
 		speed *= 1.0 + stats["chase"]
+	if is_surviving():
+		speed *= 1.0 + stats["survival_speed"]
 	return speed
+
+
+## Instinto de Sobrevivência valendo agora (mesmo limite de vida da Fúria).
+func is_surviving() -> bool:
+	return stats["survival_speed"] > 0.0 and health < stats["max_health"] * RAGE_THRESHOLD
 
 
 ## Caçador: andando na direção de algum inimigo (até 45 graus de desvio)?
@@ -2393,6 +2452,7 @@ func _move(delta: float) -> void:
 			dash_echo_wait = DASH_ECHO_DELAY
 		h = Vector3(velocity.x, 0.0, velocity.z)
 	elif dashing:
+		_dash_seek_step(delta)
 		h = dash_dir * DASH_SPEED
 		if dash_air:
 			velocity.y = 0.0
@@ -2474,6 +2534,8 @@ func _start_dash(wish: Vector3, h: Vector3, target: float, air: bool) -> void:
 	dash_air = air
 	dash_exit = maxf(h.length(), target * DASH_EXIT)
 	dash_hits.clear()
+	dash_seek_target = _dash_seek_find() if stats["dash_seek"] > 0 else null
+	dash_seek_left = DASH_SEEK_ANGLE
 	jump_rising = false
 	if stats["dash_dodge"] > 0:
 		dodge_timer = DODGE_TIME
@@ -2485,6 +2547,46 @@ func _start_dash(wish: Vector3, h: Vector3, target: float, air: bool) -> void:
 
 
 ## Fim do dash: sobra a velocidade de saída, e se o Ctrl ainda está seguro no chão, desliza.
+## Bote: o inimigo à vista mais perto da direção do dash, dentro do alcance e do ângulo.
+func _dash_seek_find() -> Player:
+	var best: Player = null
+	var best_angle := DASH_SEEK_ANGLE
+	var space := get_world_3d().direct_space_state
+	for enemy: Player in enemies():
+		var to := enemy.global_position - global_position
+		to.y = 0.0
+		var d := to.length()
+		if d < 0.5 or d > DASH_SEEK_RANGE:
+			continue
+		var angle := dash_dir.angle_to(to / d)
+		if angle > best_angle:
+			continue
+		if not space.intersect_ray(PhysicsRayQueryParameters3D.create(chest(), enemy.chest(), 1)).is_empty():
+			continue
+		best = enemy
+		best_angle = angle
+	return best
+
+
+## Bote: vira a direção do dash para o alvo, sem passar do que sobrou da curva. Para quando
+## já passou dele (atrás do jogador) ou ele saiu da partida.
+func _dash_seek_step(delta: float) -> void:
+	if dash_seek_target == null or dash_seek_left <= 0.0:
+		return
+	if not is_instance_valid(dash_seek_target) or not dash_seek_target.alive:
+		dash_seek_target = null
+		return
+	var to := dash_seek_target.global_position - global_position
+	to.y = 0.0
+	if to.length() < 0.3 or dash_dir.dot(to.normalized()) < 0.0:
+		dash_seek_target = null
+		return
+	var turn := dash_dir.signed_angle_to(to.normalized(), Vector3.UP)
+	var step := clampf(turn, -minf(DASH_SEEK_TURN * delta, dash_seek_left), minf(DASH_SEEK_TURN * delta, dash_seek_left))
+	dash_dir = dash_dir.rotated(Vector3.UP, step)
+	dash_seek_left -= absf(step)
+
+
 func _end_dash() -> void:
 	var speed := dash_exit
 	if not dash_air and crouching and is_on_floor():
@@ -2586,7 +2688,7 @@ func _sky_check(delta: float) -> void:
 			sky_timer += SKY_TICK
 			var part := SKY_FIRST + SKY_STEP * sky_ticks
 			sky_ticks += 1
-			take_damage(stats["max_health"] * part, sky_credit if is_instance_valid(sky_credit) else null)
+			take_damage(stats["max_health"] * part, sky_credit if is_instance_valid(sky_credit) else null, true, false, true)
 	elif sky_active:
 		sky_low += delta
 		if sky_low >= SKY_RESET:
@@ -2883,6 +2985,8 @@ func credit_damage(amount: float, lethal := false) -> void:
 	if stats["hit_dash"] > 0:
 		dash_cd = 0.0
 		air_dashes_left = mini(air_dashes_left + 1, stats["air_dashes"])
+	if lethal and stats["kill_heal"] > 0.0:
+		heal(stats["kill_heal"])   # Banquete
 	if lethal and last_stand_timer > 0.0:
 		# Último Suspiro: abateu alguém a tempo, volta com metade da vida.
 		last_stand_timer = 0.0
@@ -3766,9 +3870,10 @@ func _check_splat(before_h: Vector3, delta: float) -> void:
 
 ## Tonto (parede no Mega Tapa, boliche do Gancho): lento e sem atirar por DAZE_TIME.
 func _daze(time := DAZE_TIME) -> void:
+	apply_slow(DAZE_SLOW, time)   # antes da conta: o apply_slow já desconta a Tenacidade
+	time = _control_time(time)
 	daze_timer = maxf(daze_timer, time)
 	daze_fx = maxf(daze_fx, DAZE_FX_TIME + time - DAZE_TIME)
-	apply_slow(DAZE_SLOW, time)
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -4669,6 +4774,7 @@ func _recoil() -> void:
 ## BURST_GAP). Cada tiro da rajada gasta uma bala (2026-10-11; antes a rajada saía de uma
 ## bala só e multiplicava com Cano Duplo e Escopeta).
 func _fire() -> void:
+	click_id += 1
 	burst_left = stats["burst"] - 1
 	burst_timer = BURST_GAP
 	fire_timer = maxf(stats["fire_interval"], stats["burst"] * BURST_GAP)
@@ -4719,7 +4825,7 @@ func _volley() -> void:
 		var crit := randf() < float(stats["crit_chance"])
 		if crit:
 			mult *= CRIT_MULT
-		var extra := {"crit": crit}
+		var extra := {"crit": crit, "click": click_id}
 		if pierce_shot:
 			# Perfurante: reta, bem mais rápida e atravessando paredes.
 			extra.merge({"speed": float(stats["bullet_speed"]) * PIERCE_SPEED, "gravity": 0.0,
@@ -4744,7 +4850,44 @@ func shot_damage() -> float:
 		dmg *= 1.0 + AMBUSH_DAMAGE
 	if stats["rocket_boots"] > 0:
 		dmg *= 1.0 + air_bonus()
+	dmg *= 1.0 + speed_bonus()
+	if is_still_aiming():
+		dmg *= 1.0 + STILL_DAMAGE * stats["still_aim"]
 	return dmg
+
+
+## Sangue Frio valendo agora: parado ou agachado (sem deslizar), no chão.
+func is_still_aiming() -> bool:
+	if stats["still_aim"] <= 0 or not is_on_floor() or sliding:
+		return false
+	return crouching or Vector2(velocity.x, velocity.z).length() < STILL_MAX_SPEED
+
+
+## Reciclagem: uma bala deste clique acertou alguém (chamado pela máquina do alvo).
+func bullet_refund(click: int) -> void:
+	if stats["recycle"] <= 0 or click == recycle_click or not alive:
+		return
+	recycle_click = click
+	ammo = mini(ammo + 1, stats["mag_size"])
+
+
+## Velocidade Letal: bônus de dano pela velocidade de lado agora (0 sem a carta).
+func speed_bonus() -> float:
+	if stats["speed_damage"] <= 0.0:
+		return 0.0
+	# Cada cópia (0,3 de teto) soma 2% por m/s: o teto de 24 m/s de lado dá +30% / +60%.
+	var over := Vector2(velocity.x, velocity.z).length() - SPEED_DAMAGE_FROM
+	var rate: float = SPEED_DAMAGE_RATE * stats["speed_damage"] / 0.3
+	return clampf(over * rate, 0.0, stats["speed_damage"])
+
+
+## Vulto: multiplicador do dano de bala que você leva (1 sem a carta ou devagar). Roda na
+## máquina de quem leva o tiro, que conhece a própria velocidade.
+func bullet_taken_mult() -> float:
+	var n := mini(int(stats["blur"]), BLUR_REDUCE.size() - 1)
+	if n <= 0 or Vector2(velocity.x, velocity.z).length() < BLUR_SPEED:
+		return 1.0
+	return 1.0 - BLUR_REDUCE[n]
 
 
 ## Bota Foguete: bônus de dano pelo tempo no ar (0 sem a carta ou no chão).
@@ -4963,30 +5106,41 @@ func hit_radius() -> float:
 	return RADIUS * s
 
 
+## Metabolismo aumenta toda cura que passa por aqui (itens, Restauração, Sanguessuga,
+## Regeneração, Banquete).
 func heal(amount: float) -> void:
-	health = minf(stats["max_health"], health + amount)
+	health = minf(stats["max_health"], health + amount * (1.0 + float(stats["heal_mult"])))
+
+
+## Tenacidade: duração dos efeitos de controle em você (lentidão, tontura, cegueira, veneno,
+## queimadura).
+func _control_time(time: float) -> float:
+	return time * (1.0 - float(stats["tenacity"]))
 
 
 func apply_slow(amount: float, time := SLOW_TIME) -> void:
 	slow_amount = clampf(maxf(slow_amount if slow_timer > 0.0 else 0.0, amount), 0.0, 0.7)
-	slow_timer = maxf(slow_timer, time)
+	slow_timer = maxf(slow_timer, _control_time(time))
 
 
 ## Chamas: queima por time segundos (renovado enquanto estiver no fogo).
 func apply_burn(dps: float, time: float, from: Player) -> void:
 	burn_dps = dps * (1.0 - float(stats["blast_resist"]))
-	burn_timer = maxf(burn_timer, time)
+	burn_timer = maxf(burn_timer, _control_time(time))
 	burn_from = from
 
 
+## Veneno: o mesmo dano por segundo; com Tenacidade dura menos (e tira menos no total).
 func apply_poison(total: float, from: Player) -> void:
-	poisons.append({"dps": total / POISON_TIME, "time": POISON_TIME, "from": from})
+	var time := _control_time(POISON_TIME)
+	poisons.append({"dps": total / POISON_TIME, "time": time, "from": from})
 
 
 ## Flash: a tela de quem levou o tiro fica branca (o bot erra mais a mira).
 func apply_blind(time: float) -> void:
 	if blind_guard > 0.0:
 		return   # cego agora ou protegido logo depois: não renova (senão, com muitas balas, ficava cego direto)
+	time = _control_time(time)
 	blind_timer = time
 	blind_guard = time + BLIND_GUARD
 	blind_guard_total = blind_guard
@@ -5001,15 +5155,22 @@ func silence() -> void:
 
 
 ## Dano de explosão ou de área (Blindado tira uma parte). Só na máquina dona.
-func take_area_damage(amount: float, from: Player) -> void:
-	take_damage(amount * (1.0 - float(stats["blast_resist"])), from)
+func take_area_damage(amount: float, from: Player, tick := false) -> void:
+	take_damage(amount * (1.0 - float(stats["blast_resist"])), from, true, false, tick)
 
 
 ## Só é chamado na máquina dona deste jogador.
-## ignore_armor: o Perfurante bate direto na vida.
-func take_damage(amount: float, from: Player, flash := true, ignore_armor := false) -> void:
+## ignore_armor: o Perfurante bate direto na vida. tick: dano contínuo (queimadura, nuvem,
+## serra, alto demais; o veneno vem com flash falso), que o Couro Grosso não conta.
+func take_damage(amount: float, from: Player, flash := true, ignore_armor := false, tick := false) -> void:
 	if not alive or amount <= 0.0 or protect_timer > 0.0 or ice_timer > 0.0:
 		return
+	if stats["thick_skin"] > 0 and flash and not tick:
+		# Couro Grosso: este golpe perde o que acumulou (mínimo 1) e soma 1 para o próximo.
+		if skin_stacks > 0:
+			amount = maxf(minf(amount, 1.0), amount - skin_stacks)
+		skin_stacks = mini(skin_stacks + 1, SKIN_STACK_MAX[mini(int(stats["thick_skin"]), SKIN_STACK_MAX.size() - 1)])
+		skin_stack_timer = 0.0
 	if from and from != self and not is_ally(from):   # tiro do parceiro (escudo humano) não conta
 		last_attacker = from
 		recent_hits[from] = Time.get_ticks_msec()

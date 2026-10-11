@@ -140,7 +140,7 @@ shows in a corner during the match.
 ## Match rules
 
 - Decks of 30 to 50 cards, up to 3 copies each. More copies = more chance of the card
-  showing up. With 106 cards there are always some left out.
+  showing up. With 120 cards there are always some left out.
 - **Baralhos** (decks) screen: create as many named decks as you want, starting from a
   template (Equilibrado, Atirador, Muralha, Acrobata, Caos, Aleatório or Vazio). The editor
   has the card collection on the left and your deck on the right. Click a card to add it,
@@ -239,7 +239,7 @@ All numbers are provisional, to be tuned by playing.
 
 ## Cards
 
-106 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst...), **Balas**
+120 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst...), **Balas**
 (bullets: ricochet, homing, explosive, poison, freezing, a toxic cloud or a short black hole
 where the bullet lands...), **Escudo** (shield: what happens when raising it or reflecting;
 Pancada, Escudo Duplo, Couraça and Fortaleza make a close-range shield build, and Serra,
@@ -278,11 +278,14 @@ without damage).
 Pack** (one random master card). Packs are the main way to get cards: **Básico** (5 cards,
 guarantees a rare), **Avançado** (6, guarantees an epic) and **Supremo** (7, guarantees a
 legendary). **Ofertas** shows an epic, a legendary and a master card that change every 8 hours;
-lock one to keep it while saving coins. Each card goes up to 3 copies (masters up to 1); extra
-copies become **fichas** (tokens) of that rarity, traded for a card of your choice.
+lock one to keep it while saving coins. Everything is on one page. Each card goes up to 3
+copies (masters up to 1); extra copies become **fichas** (tokens) of that rarity. Spend them in
+the deck editor: **Criar** turns on crafting mode, showing your tokens, how many copies you own
+of each card and its cost; clicking a card crafts one copy after a confirmation (masters are
+crafted from the master card picker).
 
-This version is a **test**: you start with 999,999 coins (**Repor moedas** refills them,
-**Zerar coleção** starts over), and the collection does not lock anything yet: every deck still
+This version is a **test**: you start with 999,999 coins (the shop's **⋯** menu refills coins
+and tokens or starts the collection over), and the collection does not lock anything yet: every deck still
 has every card. How coins are earned (online play, daily and weekly missions) comes later, and
 all prices and odds may change.
 

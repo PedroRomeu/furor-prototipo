@@ -647,6 +647,9 @@ func _missions_end(won: bool) -> void:
 	if GameState.autotest:
 		for m in _mission_summary:
 			_log("missão: %s %d -> %d/%d" % [m["text"], m["before"], m["progress"], m["target"]])
+		var mine: Array = kda.get(String(me.name), [0, 0, 0])
+		_log("missões contaram %s; placar de %s: %d abates, %d assistências" % [str(Missions.tally),
+			me.player_name, mine[0], mine[1]])
 
 
 func _count_death(dead: Player) -> void:

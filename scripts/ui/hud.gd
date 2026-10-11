@@ -771,6 +771,22 @@ func _update_status() -> void:
 		items.append(["FORMIGA %.1f  ·  [%s] volta" % [me.shrink_timer, GameState.key_text("master")], Color(0.78, 0.64, 1.0)])
 	if me.air_bonus() > 0.0:
 		items.append(["NO AR +%d%% DE DANO" % roundi(me.air_bonus() * 100.0), Ui.ACCENT])
+	# Velocidade Letal em degraus de 5% (o selo só é refeito quando o texto muda) e Vulto.
+	var fast := snappedf(me.speed_bonus() * 100.0, 5.0)
+	if fast > 0.0:
+		items.append(["VELOCIDADE +%d%% DE DANO" % roundi(fast), CardDB.CATEGORY_COLORS["Movimento"]])
+	if me.skin_stacks > 0:
+		items.append(["COURO GROSSO -%d POR GOLPE" % me.skin_stacks, CardDB.CATEGORY_COLORS["Corpo"]])
+	if me.is_surviving():
+		items.append(["INSTINTO +%d%% DE VELOCIDADE" % roundi(me.stats["survival_speed"] * 100.0), CardDB.CATEGORY_COLORS["Corpo"]])
+	if me.stats["revenge"] > 0.0 and me.revenge_target != "":
+		var foe := me.get_parent().get_node_or_null(me.revenge_target) as Player
+		if foe and foe.alive:
+			items.append(["VINGANÇA: %s +%d%%" % [foe.player_name, roundi(me.stats["revenge"] * 100.0)], CardDB.CATEGORY_COLORS["Corpo"]])
+	if me.is_still_aiming():
+		items.append(["SANGUE FRIO +%d%% DE DANO" % roundi(Player.STILL_DAMAGE * me.stats["still_aim"] * 100.0), CardDB.CATEGORY_COLORS["Arma"]])
+	if me.bullet_taken_mult() < 1.0:
+		items.append(["VULTO -%d%% DE DANO" % roundi((1.0 - me.bullet_taken_mult()) * 100.0), CardDB.CATEGORY_COLORS["Movimento"]])
 	if me.last_stand_timer > 0.0:
 		items.append(["ÚLTIMO SUSPIRO %.1f: ABATA ALGUÉM" % me.last_stand_timer, Ui.DANGER])
 	var key := str(items)

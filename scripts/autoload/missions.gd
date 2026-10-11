@@ -62,10 +62,14 @@ var weeklies: Array = []   # idem, uma por vaga de WEEKLY
 var rerolls := REROLLS_PER_DAY
 var _session := {}         # chave "d0"/"s1" -> progresso no começo da partida
 var _force := false        # teste: conta fora do online
+var _path := PATH          # autoteste: "" (nada em disco; vários processos na mesma máquina)
+var tally := {}            # tudo o que contou nesta partida, de todos os eventos (autoteste)
 
 
 func _ready() -> void:
 	_force = "--missoes" in OS.get_cmdline_user_args()
+	if "--autotest" in OS.get_cmdline_user_args():
+		_path = ""
 	_load()
 	check_period()
 
@@ -153,6 +157,7 @@ func can_reroll(i: int) -> bool:
 func begin_match() -> void:
 	check_period()
 	_session = {}
+	tally = {}
 	for i in dailies.size():
 		_session["d%d" % i] = int(dailies[i]["progress"])
 	for i in weeklies.size():
@@ -163,6 +168,7 @@ func begin_match() -> void:
 func add(stat: String, amount: int = 1) -> void:
 	if amount <= 0 or not counting():
 		return
+	tally[stat] = int(tally.get(stat, 0)) + amount
 	check_period()
 	var dirty := false
 	for i in dailies.size():
@@ -290,9 +296,9 @@ func _week_key() -> String:
 
 
 func _load() -> void:
-	if not FileAccess.file_exists(PATH):
+	if _path == "" or not FileAccess.file_exists(_path):
 		return
-	var data = JSON.parse_string(FileAccess.get_file_as_string(PATH))
+	var data = JSON.parse_string(FileAccess.get_file_as_string(_path))
 	if typeof(data) != TYPE_DICTIONARY:
 		return
 	day_key = str(data.get("dia", ""))
@@ -314,7 +320,10 @@ func _load() -> void:
 
 
 func _save() -> void:
-	var f := FileAccess.open(PATH, FileAccess.WRITE)
+	if _path == "":
+		changed.emit()
+		return
+	var f := FileAccess.open(_path, FileAccess.WRITE)
 	if f == null:
 		return
 	f.store_string(JSON.stringify({"dia": day_key, "semana": week_key, "trocas": rerolls,

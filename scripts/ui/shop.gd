@@ -1,18 +1,19 @@
 extends Control
-## Loja (2026-10-08, desenho do usuário): Pacotes (o jeito principal de ganhar cartas),
-## Ofertas (3 cartas que trocam a cada 8 h; travar segura a carta) e Fichas (cópias a mais
-## viram fichas da raridade, trocadas por uma carta à escolha). Regras e números em
-## Collection. Em modo de teste mostra "Repor moedas" e "Zerar coleção".
+## Loja (2026-10-08, desenho do usuário; numa página só desde 2026-10-11): Pacote de Mestra
+## (quando houver), Pacotes (o jeito principal de ganhar cartas) e Ofertas (3 cartas que
+## trocam a cada 8 h; travar segura a carta). As fichas (cópias a mais) são gastas no editor
+## de baralho, no modo "Criar cartas". Regras e números em Collection. Em modo de teste o
+## menu "⋯" repõe moedas e fichas e zera a coleção.
 ## Primeira visita com o Pacote de Mestra fechado: ele abre sozinho.
 
-const TABS := ["Pacotes", "Ofertas", "Fichas"]
+const PAGE_MAX := 1440.0   # largura máxima do conteúdo em tela larga
+const OFFER_WIDTH := 240.0
 
-var tab := 0
 var body: VBoxContainer
 var coins_label: Label
+var tokens_row: HBoxContainer
 var progress_label: Label
 var opening: PackOpening
-var _token_rarity := ""      # Fichas: raridade escolhida para trocar
 var _timer_label: Label
 var _tick := 0.0
 
@@ -25,10 +26,12 @@ func _ready() -> void:
 	for side in ["left", "right"]:
 		margin.add_theme_constant_override("margin_" + side, 48)
 	for side in ["top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 32)
+		margin.add_theme_constant_override("margin_" + side, 28)
 	add_child(margin)
-	var column := Ui.vbox(18)
+	var column := Ui.vbox(14)
+	column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_child(column)
+	resized.connect(_fit_width.bind(column))
 
 	var header := Ui.hbox(16)
 	column.add_child(header)
@@ -37,43 +40,26 @@ func _ready() -> void:
 	header.add_child(back)
 	var titles := Ui.vbox(2)
 	titles.add_child(Ui.label("Loja", 32, Ui.TEXT, true))
-	progress_label = Ui.label("", 15, Ui.MUTED)
+	progress_label = Ui.label("", 14, Ui.MUTED)
 	titles.add_child(progress_label)
 	header.add_child(titles)
 	header.add_child(Ui.spacer())
+	header.add_child(_wallet())
 	if Collection.TEST_MODE:
-		var test := Ui.vbox(4)
-		test.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		test.add_child(Ui.label("MODO DE TESTE", 11, Ui.WARN, true))
-		var row := Ui.hbox(6)
-		row.add_child(Ui.flat(Ui.button("Repor moedas", func(): Collection.test_refill())))
-		row.add_child(Ui.flat(Ui.button("Zerar coleção", _reset)))
-		test.add_child(row)
-		header.add_child(test)
-	var wallet := PanelContainer.new()
-	var ws := Ui.box(Ui.SURFACE, 10, Ui.LINE)
-	ws.content_margin_left = 16
-	ws.content_margin_right = 16
-	ws.content_margin_top = 8
-	ws.content_margin_bottom = 8
-	wallet.add_theme_stylebox_override("panel", ws)
-	wallet.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	coins_label = Ui.label("", 20, Ui.WARN, true)
-	wallet.add_child(coins_label)
-	header.add_child(wallet)
+		header.add_child(_test_menu())
 
-	var tabs := Ui.tabs(TABS, 0, func(i): tab = i; _token_rarity = ""; _fill())
-	tabs.custom_minimum_size.x = 420
-	tabs.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	column.add_child(tabs)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	Ui.thin_scrollbar(scroll)
 	column.add_child(scroll)
-	body = Ui.vbox(18)
+	var pad := MarginContainer.new()   # espaço para a barra de rolagem não cobrir a direita
+	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pad.add_theme_constant_override("margin_right", 14)
+	scroll.add_child(pad)
+	body = Ui.vbox(10)
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(body)
+	pad.add_child(body)
 
 	opening = PackOpening.new()
 	opening.visible = false
@@ -84,8 +70,17 @@ func _ready() -> void:
 	Collection.refresh_offers()
 	_update_header()
 	_fill()
+	_fit_width.call_deferred(column)
 	if Collection.master_packs > 0:
 		_open.call_deferred("mestra")
+
+
+## Em tela larga o conteúdo fica centralizado em até PAGE_MAX.
+func _fit_width(column: VBoxContainer) -> void:
+	var margin: MarginContainer = column.get_parent()
+	var side := maxf(48.0, (size.x - PAGE_MAX) * 0.5)
+	margin.add_theme_constant_override("margin_left", int(side))
+	margin.add_theme_constant_override("margin_right", int(side))
 
 
 func _process(delta: float) -> void:
@@ -98,22 +93,73 @@ func _process(delta: float) -> void:
 		_timer_label.text = "Trocam em %s" % _time_text(Collection.seconds_to_rotation())
 	var before := Collection.offer_window
 	Collection.refresh_offers()
-	if Collection.offer_window != before and tab == 1:
+	if Collection.offer_window != before:
 		_fill()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and not opening.visible:
 		get_viewport().set_input_as_handled()
-		if _token_rarity != "":
-			_token_rarity = ""
-			_fill()
-		else:
-			_back()
+		_back()
+
+
+## Moedas em destaque e as fichas de cada raridade embaixo, pequenas, na cor da raridade.
+func _wallet() -> Control:
+	var wallet := PanelContainer.new()
+	var ws := Ui.box(Ui.SURFACE, 10, Ui.LINE)
+	ws.content_margin_left = 16
+	ws.content_margin_right = 16
+	ws.content_margin_top = 6
+	ws.content_margin_bottom = 8
+	wallet.add_theme_stylebox_override("panel", ws)
+	wallet.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	wallet.tooltip_text = "Cópias além do máximo viram fichas da raridade.\nGaste as fichas no editor de baralho, em \"Criar cartas\"."
+	var col := Ui.vbox(2)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wallet.add_child(col)
+	coins_label = Ui.label("", 20, Ui.WARN, true)
+	coins_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	col.add_child(coins_label)
+	tokens_row = Ui.hbox(10)
+	tokens_row.alignment = BoxContainer.ALIGNMENT_END
+	tokens_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(tokens_row)
+	return wallet
+
+
+func _test_menu() -> Control:
+	var more := MenuButton.new()
+	more.text = "⋯"
+	more.flat = false
+	more.custom_minimum_size = Vector2(40, 40)
+	more.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	more.tooltip_text = "Modo de teste"
+	var popup := more.get_popup()
+	popup.add_separator("Modo de teste")
+	popup.add_item("Repor moedas", 0)
+	popup.add_item("Repor fichas", 1)
+	popup.add_item("Zerar coleção", 2)
+	popup.id_pressed.connect(_test_action)
+	return more
+
+
+func _test_action(id: int) -> void:
+	match id:
+		0: Collection.test_refill()
+		1: Collection.test_refill_tokens()
+		2: _reset()
 
 
 func _update_header() -> void:
 	coins_label.text = "%s moedas" % _thousands(Collection.coins)
+	for c in tokens_row.get_children():
+		c.queue_free()
+	tokens_row.add_child(Ui.label("Fichas", 12, Ui.MUTED))
+	for r in Collection.RARITY_ORDER:
+		var l := Ui.label(str(Collection.tokens.get(r, 0)), 12, CardDB.RARITIES[r]["color"], true)
+		l.tooltip_text = "Fichas %s" % Collection.RARITY_FEM_PLURAL[r]
+		l.mouse_filter = Control.MOUSE_FILTER_PASS
+		tokens_row.add_child(l)
 	var p := Collection.progress()
 	progress_label.text = "Coleção: %d de %d cópias (%d%%)" % [p.x, p.y, roundi(100.0 * p.x / maxf(1.0, p.y))]
 
@@ -122,25 +168,55 @@ func _fill() -> void:
 	for c in body.get_children():
 		c.queue_free()
 	_timer_label = null
-	match tab:
-		0: _packs_page()
-		1: _offers_page()
-		2: _tokens_page()
-
-
-# ---------------------------------------------------------------- pacotes
-
-func _packs_page() -> void:
-	body.add_child(Ui.label("O jeito principal de ganhar cartas. A última carta de cada pacote é a garantida; as mais raras aparecem por último.", 15, Ui.MUTED))
 	if Collection.master_packs > 0:
-		var n := Collection.master_packs
-		var b := Ui.accent(Ui.button("Abrir o Pacote de Mestra" + (" (%d)" % n if n > 1 else ""), _open.bind("mestra")))
-		b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		body.add_child(b)
+		body.add_child(_master_banner())
+	var hint := Ui.label("a última carta é a garantida", 12, Ui.MUTED)
+	Ui.section(body, "PACOTES", hint, 8)
 	var row := Ui.hbox(20)
 	body.add_child(row)
 	for id in Collection.SHOP_PACKS:
 		row.add_child(_pack_tile(id))
+	_timer_label = Ui.label("Trocam em %s" % _time_text(Collection.seconds_to_rotation()), 13, Ui.TEXT, true)
+	Ui.section(body, "OFERTAS DO MOMENTO", _timer_label)
+	if Collection.offers.all(func(o): return o["id"] == ""):
+		body.add_child(Ui.label("Você já tem todas as épicas, lendárias e mestras.", 13, Ui.MUTED))
+		body.add_child(Ui.gap(12))
+		return
+	var note := Ui.label("Uma épica, uma lendária e uma mestra. Trave uma para ela não trocar enquanto junta moedas.", 13, Ui.MUTED)
+	body.add_child(note)
+	var offers := Ui.hbox(28)
+	offers.alignment = BoxContainer.ALIGNMENT_CENTER
+	body.add_child(offers)
+	for i in Collection.offers.size():
+		offers.add_child(_offer_tile(i))
+	body.add_child(Ui.gap(12))
+
+
+# ---------------------------------------------------------------- pacotes
+
+## Faixa do Pacote de Mestra fechado (o do começo e os das missões semanais).
+func _master_banner() -> Control:
+	var pack: Dictionary = Collection.PACKS["mestra"]
+	var color: Color = pack["color"]
+	var panel := PanelContainer.new()
+	var style := Ui.box(color.darkened(0.78), 12, color.darkened(0.15), 2)
+	style.content_margin_left = 20
+	style.content_margin_right = 12
+	style.content_margin_top = 10
+	style.content_margin_bottom = 10
+	panel.add_theme_stylebox_override("panel", style)
+	var row := Ui.hbox(16)
+	panel.add_child(row)
+	var texts := Ui.vbox(2)
+	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(texts)
+	var n := Collection.master_packs
+	texts.add_child(Ui.label("Pacote de Mestra" + (" ×%d" % n if n > 1 else ""), 18, Ui.TEXT, true))
+	texts.add_child(Ui.label("Uma carta mestra. Ganhe mais nas missões semanais.", 13, Ui.MUTED))
+	var b := Ui.accent(Ui.button("Abrir", _open.bind("mestra"), 160))
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(b)
+	return panel
 
 
 func _pack_tile(id: String) -> Control:
@@ -149,40 +225,70 @@ func _pack_tile(id: String) -> Control:
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var style := Ui.box(Ui.SURFACE, 14, color.darkened(0.2), 2)
-	style.set_content_margin_all(20)
+	style.set_content_margin_all(16)
 	panel.add_theme_stylebox_override("panel", style)
-	var col := Ui.vbox(10)
+	panel.tooltip_text = _odds_text(pack)
+	var col := Ui.vbox(8)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(col)
 	# A "arte" do pacote: um retângulo na cor do tier.
 	var art := PanelContainer.new()
-	art.custom_minimum_size = Vector2(0, 120)
+	art.custom_minimum_size = Vector2(0, 92)
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art.add_theme_stylebox_override("panel", Ui.box(color.darkened(0.55), 12, color, 2))
-	var art_col := Ui.vbox(2)
+	var art_col := Ui.vbox(0)
 	art_col.alignment = BoxContainer.ALIGNMENT_CENTER
+	art_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art.add_child(art_col)
-	for t in [["FUROR", 30, Color.WHITE], ["%d cartas" % pack["cards"], 14, color.lightened(0.3)]]:
+	for t in [["FUROR", 28, Color.WHITE], ["%d cartas" % pack["cards"], 13, color.lightened(0.3)]]:
 		var l := Ui.label(t[0], t[1], t[2], true)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		art_col.add_child(l)
 	col.add_child(art)
-	col.add_child(Ui.label(pack["name"], 22, Ui.TEXT, true))
-	col.add_child(Ui.label("Garante %s" % pack["promise"], 15, color.lightened(0.2), true))
-	col.add_child(Ui.label("Chance de cada carta:", 13, Ui.MUTED))
-	for r in Collection.RARITY_ORDER:
-		var chance: float = pack["odds"].get(r, 0.0)
-		if chance <= 0.0:
-			continue
-		var line := Ui.hbox(8)
-		line.add_child(Ui.label(CardDB.RARITIES[r]["name"], 14, CardDB.RARITIES[r]["color"]))
-		line.add_child(Ui.spacer())
-		line.add_child(Ui.label(_percent(chance), 14, Ui.TEXT))
-		col.add_child(line)
-	col.add_child(Ui.grow())
+	var name_row := Ui.hbox(8)
+	name_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(name_row)
+	name_row.add_child(Ui.label(pack["name"], 20, Ui.TEXT, true))
+	name_row.add_child(Ui.spacer())
+	var promise := Ui.label("Garante %s" % pack["promise"], 13, color.lightened(0.2), true)
+	promise.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	name_row.add_child(promise)
+	col.add_child(_odds_bar(pack["odds"]))
 	var buy := Ui.accent(Ui.button("Abrir  ·  %s moedas" % _thousands(pack["price"]), _open.bind(id)))
-	buy.custom_minimum_size.y = 46
+	buy.custom_minimum_size.y = 42
 	buy.disabled = Collection.coins < pack["price"]
 	col.add_child(buy)
 	return panel
+
+
+## Barra fina com as chances de raridade de cada carta, nas cores das raridades (os números
+## estão na dica do pacote). Raridade rara demais ganha um mínimo para não sumir.
+func _odds_bar(odds: Dictionary) -> Control:
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 2)
+	bar.custom_minimum_size.y = 6
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for r in Collection.RARITY_ORDER:
+		var chance: float = odds.get(r, 0.0)
+		if chance <= 0.0:
+			continue
+		var piece := ColorRect.new()
+		piece.color = CardDB.RARITIES[r]["color"]
+		piece.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		piece.size_flags_stretch_ratio = maxf(chance, 0.012)
+		piece.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bar.add_child(piece)
+	return bar
+
+
+func _odds_text(pack: Dictionary) -> String:
+	var lines := PackedStringArray(["Chance de cada carta:"])
+	for r in Collection.RARITY_ORDER:
+		var chance: float = pack["odds"].get(r, 0.0)
+		if chance > 0.0:
+			lines.append("%s  %s" % [CardDB.RARITIES[r]["name"], _percent(chance)])
+	lines.append("A última carta garante %s." % pack["promise"])
+	return "\n".join(lines)
 
 
 func _open(pack_id: String) -> void:
@@ -196,32 +302,26 @@ func _open(pack_id: String) -> void:
 
 # ---------------------------------------------------------------- ofertas
 
-func _offers_page() -> void:
-	var head := Ui.hbox(12)
-	body.add_child(head)
-	head.add_child(Ui.label("Uma épica, uma lendária e uma mestra. Para pegar uma carta específica que falta; trave para ela não trocar enquanto junta moedas.", 15, Ui.MUTED))
-	head.add_child(Ui.spacer())
-	_timer_label = Ui.label("Trocam em %s" % _time_text(Collection.seconds_to_rotation()), 15, Ui.TEXT, true)
-	head.add_child(_timer_label)
-	var row := Ui.hbox(28)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	body.add_child(row)
-	for i in Collection.offers.size():
-		row.add_child(_offer_tile(i))
-
-
 func _offer_tile(slot: int) -> Control:
 	var o: Dictionary = Collection.offers[slot]
-	var col := Ui.vbox(10)
-	col.custom_minimum_size.x = 260
+	var col := Ui.vbox(8)
+	col.custom_minimum_size.x = OFFER_WIDTH
 	if o["id"] == "":
-		var empty := Ui.label("Você já tem todas as cartas %s." % Collection.RARITY_FEM_PLURAL[o["rarity"]], 15, Ui.MUTED)
+		var slot_box := PanelContainer.new()
+		slot_box.custom_minimum_size.y = 300
+		var style := Ui.box(Color.TRANSPARENT, 16, Ui.LINE)
+		style.set_content_margin_all(20)
+		slot_box.add_theme_stylebox_override("panel", style)
+		var empty := Ui.label("Você já tem todas as cartas %s." % Collection.RARITY_FEM_PLURAL[o["rarity"]], 14, Ui.MUTED)
 		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		col.add_child(empty)
+		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		slot_box.add_child(empty)
+		col.add_child(slot_box)
 		return col
-	col.add_child(CardFace.make(o["id"], 260, 96))
+	col.add_child(CardFace.make(o["id"], OFFER_WIDTH, 80))
 	var have := Collection.has_card(o["id"])
-	var info := Ui.label("Você tem %d/%d" % [have, Collection.max_copies(o["id"])], 14, Ui.MUTED)
+	var info := Ui.label("Você tem %d/%d" % [have, Collection.max_copies(o["id"])], 13, Ui.MUTED)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(info)
 	var buttons := Ui.hbox(8)
@@ -243,81 +343,6 @@ func _offer_tile(slot: int) -> Control:
 	buy.disabled = o["bought"] or Collection.coins < price or Collection.is_full(o["id"])
 	buttons.add_child(buy)
 	return col
-
-
-# ---------------------------------------------------------------- fichas
-
-func _tokens_page() -> void:
-	body.add_child(Ui.label("Cada carta vai até 3 cópias (mestra até 1). A cópia a mais vira uma ficha da raridade, e as fichas trocam por uma carta que você escolhe.", 15, Ui.MUTED))
-	for r in Collection.RARITY_ORDER:
-		body.add_child(_token_row(r))
-	if _token_rarity != "":
-		_token_picker()
-
-
-func _token_row(r: String) -> Control:
-	var panel := PanelContainer.new()
-	var on := r == _token_rarity
-	var style := Ui.box(Ui.SURFACE_HI if on else Ui.SURFACE, 10, CardDB.RARITIES[r]["color"].darkened(0.3) if on else Ui.LINE)
-	style.content_margin_left = 18
-	style.content_margin_right = 12
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
-	panel.add_theme_stylebox_override("panel", style)
-	var row := Ui.hbox(16)
-	panel.add_child(row)
-	var name_label := Ui.label("Fichas %s" % Collection.RARITY_FEM_PLURAL[r], 17, CardDB.RARITIES[r]["color"], true)
-	name_label.custom_minimum_size.x = 220
-	row.add_child(name_label)
-	var have: int = Collection.tokens.get(r, 0)
-	var rate: int = Collection.TOKEN_RATES[r]
-	row.add_child(Ui.label("%d" % have, 22, Ui.TEXT, true))
-	row.add_child(Ui.label("%d fichas = 1 carta %s à escolha" % [rate, Collection.RARITY_FEM[r]], 14, Ui.MUTED))
-	row.add_child(Ui.spacer())
-	var pick := Ui.button("Fechar" if on else "Escolher carta", func():
-		_token_rarity = "" if on else r
-		_fill(), 170)
-	pick.disabled = have < rate and not on
-	row.add_child(pick)
-	return panel
-
-
-## Cartas da raridade que ainda não estão completas; clique troca as fichas por uma cópia.
-func _token_picker() -> void:
-	var r := _token_rarity
-	var grid := GridContainer.new()
-	grid.columns = 4
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 12)
-	body.add_child(grid)
-	for id in Collection.ids_of(r):
-		if Collection.is_full(id):
-			continue
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(260, 52)
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.tooltip_text = CardIcon._wrap(CardDB.CARDS[id]["desc"], 52)
-		b.pressed.connect(func():
-			if Collection.exchange(id):
-				Sfx.ui(self, "kill")
-			if Collection.tokens.get(r, 0) < Collection.TOKEN_RATES[r]:
-				_token_rarity = ""
-			_fill())
-		var row := Ui.hbox(10)
-		row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		row.offset_left = 8
-		row.offset_right = -8
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		b.add_child(row)
-		row.add_child(CardIcon.make(id, 34, 1, false))
-		var l := Ui.label(CardDB.card_name(id), 14, Ui.TEXT, true)
-		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(l)
-		var c := Ui.label("%d/%d" % [Collection.has_card(id), Collection.max_copies(id)], 14, Ui.MUTED, true)
-		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(c)
-		grid.add_child(b)
 
 
 # ---------------------------------------------------------------- comum

@@ -211,6 +211,17 @@ func test_refill() -> void:
 	_save()
 
 
+## Fichas para testar o modo "Criar cartas" do editor (dá 4 comuns, 4 raras, 5 épicas, 6
+## lendárias e 10 mestras pelas taxas de hoje).
+const TEST_TOKENS := 20
+
+
+func test_refill_tokens() -> void:
+	for r in RARITY_ORDER:
+		tokens[r] = maxi(tokens.get(r, 0), TEST_TOKENS)
+	_save()
+
+
 ## Volta ao começo: deck inicial, Pacote de Mestra fechado, sem fichas, ofertas novas.
 func test_reset() -> void:
 	_start()

@@ -254,7 +254,7 @@ func _physics_step(delta: float) -> void:
 			tick = SAW_TICK
 			for p: Player in _local_enemies(owner_player):
 				if _inside(p):
-					p.take_area_damage(power, owner_player)
+					p.take_area_damage(power, owner_player, true)
 		Kind.FLAMES:
 			tick = FLAMES_TICK
 			for p: Player in _local_enemies(owner_player):
@@ -267,7 +267,7 @@ func _physics_step(delta: float) -> void:
 				var key := "%s:%s" % [p.name, owner_player.name]
 				if _inside(p) and now - int(_cloud_hit.get(key, -100000)) >= CLOUD_TICK * 900.0:
 					_cloud_hit[key] = now
-					p.take_area_damage(power * CLOUD_TICK, owner_player)
+					p.take_area_damage(power * CLOUD_TICK, owner_player, true)
 
 
 func _process(delta: float) -> void:

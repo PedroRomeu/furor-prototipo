@@ -109,7 +109,7 @@ const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", 
 	"boomerang", "returning", "bounce_damage", "sticky", "split", "grow", "swap", "blind",
 	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls",
 	"toxic", "hole", "laser", "ice", "meteor", "rocket", "blast_radius", "blast_damage", "life", "drill",
-	"bounce_life"]
+	"bounce_life", "click"]
 ## Bala Fantasma: só paredes contam (superfície quase em pé); no chão e no topo das peças a
 ## bala para ou quica como as outras.
 const GHOST_WALL_NORMAL_Y := 0.7
@@ -179,6 +179,7 @@ var pierce := false    # Perfurante e Sniper: só muda a cor e o formato (o rest
 ## Perfurante (desde 2026-10-07): atravessa jogadores (cada um leva uma vez), o escudo (E) e
 ## a parede do Bastião sem ser devolvida, e o dano ignora o colete.
 var drill := false
+var click := 0      # Reciclagem: número do clique de quem atirou (0 = não devolve)
 var _drilled: Array = []
 var sound := false
 var age := 0.0
@@ -232,6 +233,8 @@ static func fire(from: Player, pos: Vector3, dir: Vector3, damage_mult := 1.0, w
 	if b.guided:
 		b.gravity = 0.0
 	var speed := float(s["bullet_speed"])
+	if from.is_still_aiming():
+		speed *= 1.0 + Player.STILL_SPEED * s["still_aim"]   # Sangue Frio
 	if s["lazy"] > 0:
 		b.lazy_top = speed * LAZY_TOP
 		speed *= LAZY_START
@@ -803,6 +806,9 @@ func _hit_player(target: Player, point: Vector3) -> void:
 	var dmg := damage
 	if execute > 0.0 and target.health < target.stats["max_health"] * 0.4:
 		dmg *= 1.0 + execute
+	if is_instance_valid(shooter) and shooter.stats["revenge"] > 0.0 and String(target.name) == shooter.revenge_target:
+		dmg *= 1.0 + shooter.stats["revenge"]   # Vingança
+	dmg *= target.bullet_taken_mult()   # Vulto (o veneno também sai do dano reduzido)
 	if push > 0.0 and target != shooter:   # a própria bala quicada não empurra (virava elevador)
 		target.knockback(velocity.normalized() * push + Vector3.UP * 3.0)
 	if slow > 0.0:
@@ -816,6 +822,8 @@ func _hit_player(target: Player, point: Vector3) -> void:
 	if swap and is_instance_valid(shooter) and shooter.alive:
 		target.begin_swap(shooter)
 	target.take_damage(dmg, shooter, true, drill)
+	if click > 0 and is_instance_valid(shooter) and shooter != target and shooter.stats["recycle"] > 0:
+		shooter.remote_call("bullet_refund", [click])
 	if Net.online:
 		get_parent().net_bullet_hit.rpc(id, point, dmg)
 	_show_damage(point, dmg)
@@ -929,6 +937,7 @@ func _apply_reflect(new_owner: Player, point: Vector3, dir: Vector3, new_damage:
 		_scale_damage(new_damage / damage)
 	homing = new_homing
 	reflected = true
+	click = 0   # o clique era de quem atirou, não de quem refletiu
 	bounced = false
 	returning = false
 	gravity = 0.0
