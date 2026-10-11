@@ -141,8 +141,6 @@ func _home_page() -> Control:
 	root.add_child(title)
 	root.add_child(Ui.label("Tiro com baralho de melhorias. Cada um por si.", 18, Ui.MUTED))
 	root.add_child(Ui.gap(48))
-	# Cartão do baralho ao lado dos botões, alinhado embaixo (2026-10-10: embaixo deles
-	# passava da tela com 720 de altura ou menos).
 	var row := Ui.hbox(24)
 	root.add_child(row)
 	var menu := Ui.vbox(10)
@@ -158,9 +156,22 @@ func _home_page() -> Control:
 	menu.add_child(_menu_button("Personalizar", _open_custom))
 	menu.add_child(_menu_button("Configurações", func(): _show(Page.SETTINGS)))
 	menu.add_child(_menu_button("Sair", func(): get_tree().quit()))
+	root.add_child(Ui.grow())
 	var card := _deck_card()
 	card.size_flags_vertical = Control.SIZE_SHRINK_END
-	row.add_child(card)
+	root.add_child(card)
+	# Cartão no canto de baixo à esquerda; sem altura para ele embaixo dos botões
+	# (1366x768 com a barra de tarefas), vai para o lado deles. Mede pela área da página
+	# (o pai), porque a página cresce além da tela quando o conteúdo não cabe.
+	var place := func():
+		var area: Control = root.get_parent()
+		if area == null or area.size.y <= 0:
+			return
+		var need := row.position.y + menu.get_combined_minimum_size().y + 24 + card.custom_minimum_size.y
+		var target: Container = root if area.size.y >= need else row
+		if card.get_parent() != target:
+			card.reparent(target, false)
+	root.resized.connect(func(): place.call_deferred())
 	return root
 
 
@@ -172,6 +183,8 @@ func _home_page() -> Control:
 const PLAY_TABS := ["Treino", "Online"]
 const PLAY_MAX := 1440.0    # em tela larga a tela inteira para aqui, centralizada
 const PLAY_SIDE := 340.0    # largura da coluna da direita
+const PLAY_GAP := 12        # espaço entre os blocos de cada coluna
+const PLAY_ACTION_H := 52.0 # altura do botão principal da aba
 const SIDE_PAGES := ["Novidades", "Baralho"]
 ## Atualizar a cada versão (texto curto, o que o jogador nota).
 const NEWS_TITLE := "Versão 0.7"
@@ -192,6 +205,10 @@ var side_dots: Array = []
 var side_body: VBoxContainer
 var play_body: HBoxContainer
 var play_holder: PanelContainer   # painel da esquerda: só a altura do conteúdo (rola se não couber)
+var play_root: Control
+var play_inner: VBoxContainer
+var play_left: VBoxContainer     # coluna da esquerda: painel e, no Online, o "Criar sala" embaixo
+var side_filler: Control          # vaga do "Começar treino" na coluna quando ele some
 
 
 func _play_page() -> Control:
@@ -202,7 +219,12 @@ func _play_page() -> Control:
 	inner.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(inner)
 	root.add_child(Ui.spacer())
-	root.resized.connect(func(): inner.custom_minimum_size.x = minf(root.size.x, PLAY_MAX))
+	# Mede pela área da página (o pai): a própria página não encolhe depois de crescer, e
+	# a janela diminuindo (1920 -> 1366) deixava a tela cortada.
+	play_root = root
+	play_inner = inner
+	get_viewport().size_changed.connect(func(): _fit_play_width.call_deferred())
+	root.resized.connect(_fit_play_width)
 
 	var header := Ui.hbox(16)
 	header.add_child(Ui.flat(Ui.button("< Voltar", func(): _show(Page.HOME))))
@@ -215,15 +237,19 @@ func _play_page() -> Control:
 	play_body = body
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	inner.add_child(body)
+	var left := Ui.vbox(PLAY_GAP)
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	play_left = left
+	body.add_child(left)
 	var holder := PanelContainer.new()
-	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	holder.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	play_holder = holder
 	var style := Ui.box(Ui.SURFACE.darkened(0.15), 14, Ui.LINE)
 	style.set_content_margin_all(0)
 	holder.add_theme_stylebox_override("panel", style)
-	body.add_child(holder)
-	var side := Ui.vbox(12)
+	left.add_child(holder)
+	left.add_child(Ui.grow())
+	var side := Ui.vbox(PLAY_GAP)
 	side.custom_minimum_size.x = PLAY_SIDE
 	body.add_child(side)
 	side.add_child(_side_panel())
@@ -249,12 +275,22 @@ func _play_page() -> Control:
 		scroll.add_child(margin)
 		play_tabs[title] = [tab, scroll, null]
 	body.resized.connect(_fit_play_panel)
-	# Treino: "Começar treino" no canto, na coluna. Online: cada ação fica junto da explicação
-	# dela no painel (2026-10-10: no canto, "Criar sala" passava despercebido).
+	# Botão principal de cada aba na linha de baixo, na mesma altura nas duas (2026-10-11,
+	# pedido do usuário): Treino no canto da coluna, junto do baralho; Online centralizado
+	# embaixo do painel da esquerda. Na aba Online a coluna guarda a vaga do botão, para o
+	# painel de Novidades não mudar de tamanho entre as abas.
+	for b in [start_solo, host_button]:
+		b.custom_minimum_size.y = PLAY_ACTION_H
+		b.add_theme_font_size_override("font_size", 18)
 	play_tabs["Treino"][2] = start_solo
-	start_solo.custom_minimum_size.y = 52
-	start_solo.add_theme_font_size_override("font_size", 18)
 	side.add_child(start_solo)
+	side_filler = Ui.gap(PLAY_ACTION_H)
+	side.add_child(side_filler)
+	var host_bar := CenterContainer.new()
+	host_button.custom_minimum_size.x = 360
+	host_bar.add_child(host_button)
+	play_tabs["Online"][2] = host_bar
+	left.add_child(host_bar)
 	_open_play_tab(_play_tab)
 	_show_side_page(_side_page)
 	return root
@@ -267,15 +303,33 @@ func _open_play_tab(title: String) -> void:
 		play_tabs[t][1].visible = t == title
 		if play_tabs[t][2]:
 			play_tabs[t][2].visible = t == title
+	side_filler.visible = not start_solo.visible
 	_fit_play_panel()
 
 
-## Painel da esquerda com a altura do conteúdo da aba (sem caixa meio vazia), até o fim da tela.
+func _play_area() -> Vector2:
+	var area: Control = play_root.get_parent() if play_root else null
+	return area.size if area else Vector2.ZERO
+
+
+func _fit_play_width() -> void:
+	var w := _play_area().x
+	if w > 0:
+		play_inner.custom_minimum_size.x = minf(w, PLAY_MAX)
+	_fit_play_panel()
+
+
+## Painel da esquerda com a altura do conteúdo da aba (sem caixa meio vazia), até o botão
+## de baixo (ou o fim da tela, sem botão).
 func _fit_play_panel() -> void:
 	if not play_tabs.has(_play_tab):
 		return
 	var content: Control = play_tabs[_play_tab][1].get_child(0)
-	var room := play_body.size.y if play_body.size.y > 0 else INF
+	var area := _play_area()
+	var room := area.y - play_body.position.y - PLAY_GAP if area.y > 0 else INF   # vão do espaçador
+	var bar: Control = play_tabs[_play_tab][2]
+	if bar and bar.get_parent() == play_left:
+		room -= PLAY_ACTION_H + PLAY_GAP
 	play_holder.custom_minimum_size.y = minf(content.get_combined_minimum_size().y + 2, room)
 
 
@@ -322,23 +376,15 @@ func _solo_page() -> Control:
 	return solo
 
 
-## Online: criar sala (botão grande junto da explicação) e entrar pelo IP.
+## Online: como criar sala (o botão fica embaixo do painel) e entrar pelo IP.
 func _online_page() -> Control:
 	var col := Ui.vbox(0)
 	Ui.section(col, "CRIAR SALA", null, 0)
 	col.add_child(Ui.gap(12))
-	var host_row := Ui.hbox(24)
-	col.add_child(host_row)
 	var about := Ui.label("Você é o anfitrião: escolhe o modo e os mapas e começa quando todos estiverem prontos. Seu IP aparece na sala para passar aos amigos. Até 4 jogadores.", 14, Ui.MUTED)
 	about.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	about.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	about.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	host_row.add_child(about)
-	host_button = Ui.accent(Ui.button("Criar sala", _host, 240))
-	host_button.custom_minimum_size.y = 52
-	host_button.add_theme_font_size_override("font_size", 18)
-	host_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	host_row.add_child(host_button)
+	col.add_child(about)
+	host_button = Ui.accent(Ui.button("Criar sala", _host))
 	Ui.section(col, "ENTRAR NUMA SALA")
 	var join := Ui.hbox(10)
 	ip_edit = LineEdit.new()
