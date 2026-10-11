@@ -26,6 +26,12 @@ func _ready() -> void:
 			block = int(arg.trim_prefix("--bloco="))
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
+	# Bloco 4 (2026-10-10): testar se as travadas vêm de entregar o quadro ao driver.
+	for arg in OS.get_cmdline_user_args():
+		if arg == "--vsync":
+			DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED)
+		if arg.begins_with("--fps="):
+			Engine.max_fps = int(arg.trim_prefix("--fps="))
 	_note("check-up bloco %d  ·  %s  ·  qualidade %d  ·  %s" % [block,
 		str(get_window().size), GameState.quality, RenderingServer.get_video_adapter_name()])
 	match block:
@@ -345,6 +351,9 @@ func _block_fight() -> void:
 	if "--sem-efeitos" in args:
 		Effects.disabled_kinds = ["burst", "explosion", "sparks", "number"]
 		off.append("efeitos")
+	if "--sem-explosoes" in args:
+		Effects.disabled_kinds.append("explosion")
+		off.append("clarão das explosões")
 	if "--sem-numeros" in args:
 		Effects.disabled_kinds.append("number")
 		off.append("números")
@@ -353,6 +362,7 @@ func _block_fight() -> void:
 		off.append("faíscas")
 	_note("desligado: %s" % (", ".join(off) if not off.is_empty() else "nada"))
 	GameState.test_cards = HEAVY
+	GameState.mode = "ffa"   # o modo salvo do treino podia ser Duelos (2 na arena, lutas curtas)
 	GameState.autotest = true
 	GameState.bot_count = 3
 	GameState.test_size = 0
@@ -397,6 +407,8 @@ func _block_fight() -> void:
 	for f in frames.slice(0, 8):
 		_note("  %.0f ms  ·  %d passos de física  ·  desenho cpu %.1f gpu %.1f ms  ·  %d balas  ·  efeitos %s" % [
 			f[0], f[3], f[4], f[5], f[1], str(f[2])])
+	for line in Prof.report():   # com "--cronometro"
+		_note(line)
 
 
 # ---------------------------------------------------------------- novidades da release

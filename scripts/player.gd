@@ -1449,6 +1449,15 @@ func _read_local_input() -> void:
 # ---------------------------------------------------------------- visual
 
 func _process(delta: float) -> void:
+	if Prof.enabled:
+		var t := Time.get_ticks_usec()
+		_frame_step(delta)
+		Prof.lap("jogador: quadro", t)
+	else:
+		_frame_step(delta)
+
+
+func _frame_step(delta: float) -> void:
 	if (beam_timer > 0.0 or ride_timer > 0.0) and is_human:
 		var turn := (BEAM_TURN if beam_timer > 0.0 else RIDE_TURN) * delta
 		look_yaw = rotate_toward(look_yaw, beam_aim.x, turn)
@@ -1833,13 +1842,24 @@ func _place_camera() -> void:
 # ---------------------------------------------------------------- simulação
 
 func _physics_process(delta: float) -> void:
+	if Prof.enabled:
+		var t := Time.get_ticks_usec()
+		_physics_step(delta)
+		Prof.lap("jogador: física", t)
+	else:
+		_physics_step(delta)
+
+
+func _physics_step(delta: float) -> void:
 	if not is_local:
 		_follow_network(delta)
 		if downed:
 			_update_down(delta)
 		return
 	if brain:
+		var t := Prof.now()
 		brain.think(delta)
+		Prof.lap("bot: pensar", t, true)
 	elif is_human:
 		_read_local_input()
 		rotation.y = look_yaw
@@ -4930,6 +4950,12 @@ func _net_die(killer: String, assists: Array) -> void:
 
 
 func _apply_death(killer := "", assists: Array = []) -> void:
+	var t := Prof.now()
+	_apply_death_now(killer, assists)
+	Prof.lap("morte do jogador", t, true)
+
+
+func _apply_death_now(killer: String, assists: Array) -> void:
 	if not alive and not downed:
 		return
 	downed = false

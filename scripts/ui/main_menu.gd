@@ -141,10 +141,14 @@ func _home_page() -> Control:
 	root.add_child(title)
 	root.add_child(Ui.label("Tiro com baralho de melhorias. Cada um por si.", 18, Ui.MUTED))
 	root.add_child(Ui.gap(48))
+	# Cartão do baralho ao lado dos botões, alinhado embaixo (2026-10-10: embaixo deles
+	# passava da tela com 720 de altura ou menos).
+	var row := Ui.hbox(24)
+	root.add_child(row)
 	var menu := Ui.vbox(10)
 	menu.custom_minimum_size.x = 320
 	menu.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	root.add_child(menu)
+	row.add_child(menu)
 	var play := Ui.accent(_menu_button("JOGAR", func(): _show(Page.PLAY)))
 	play.custom_minimum_size.y = 58
 	play.add_theme_font_size_override("font_size", 22)
@@ -154,10 +158,9 @@ func _home_page() -> Control:
 	menu.add_child(_menu_button("Personalizar", _open_custom))
 	menu.add_child(_menu_button("Configurações", func(): _show(Page.SETTINGS)))
 	menu.add_child(_menu_button("Sair", func(): get_tree().quit()))
-	var fill := Control.new()
-	fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(fill)
-	root.add_child(_deck_card())
+	var card := _deck_card()
+	card.size_flags_vertical = Control.SIZE_SHRINK_END
+	row.add_child(card)
 	return root
 
 
@@ -246,13 +249,12 @@ func _play_page() -> Control:
 		scroll.add_child(margin)
 		play_tabs[title] = [tab, scroll, null]
 	body.resized.connect(_fit_play_panel)
+	# Treino: "Começar treino" no canto, na coluna. Online: cada ação fica junto da explicação
+	# dela no painel (2026-10-10: no canto, "Criar sala" passava despercebido).
 	play_tabs["Treino"][2] = start_solo
-	play_tabs["Online"][2] = host_button
-	for title in PLAY_TABS:
-		var b: Button = play_tabs[title][2]
-		b.custom_minimum_size.y = 52
-		b.add_theme_font_size_override("font_size", 18)
-		side.add_child(b)
+	start_solo.custom_minimum_size.y = 52
+	start_solo.add_theme_font_size_override("font_size", 18)
+	side.add_child(start_solo)
 	_open_play_tab(_play_tab)
 	_show_side_page(_side_page)
 	return root
@@ -263,7 +265,8 @@ func _open_play_tab(title: String) -> void:
 	for t in play_tabs:
 		play_tabs[t][0].set_pressed_no_signal(t == title)
 		play_tabs[t][1].visible = t == title
-		play_tabs[t][2].visible = t == title
+		if play_tabs[t][2]:
+			play_tabs[t][2].visible = t == title
 	_fit_play_panel()
 
 
@@ -319,15 +322,23 @@ func _solo_page() -> Control:
 	return solo
 
 
-## Online: entrar pelo IP aqui; criar sala é o botão da coluna da direita.
+## Online: criar sala (botão grande junto da explicação) e entrar pelo IP.
 func _online_page() -> Control:
 	var col := Ui.vbox(0)
 	Ui.section(col, "CRIAR SALA", null, 0)
 	col.add_child(Ui.gap(12))
+	var host_row := Ui.hbox(24)
+	col.add_child(host_row)
 	var about := Ui.label("Você é o anfitrião: escolhe o modo e os mapas e começa quando todos estiverem prontos. Seu IP aparece na sala para passar aos amigos. Até 4 jogadores.", 14, Ui.MUTED)
 	about.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(about)
-	host_button = Ui.accent(Ui.button("Criar sala", _host))
+	about.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	about.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	host_row.add_child(about)
+	host_button = Ui.accent(Ui.button("Criar sala", _host, 240))
+	host_button.custom_minimum_size.y = 52
+	host_button.add_theme_font_size_override("font_size", 18)
+	host_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	host_row.add_child(host_button)
 	Ui.section(col, "ENTRAR NUMA SALA")
 	var join := Ui.hbox(10)
 	ip_edit = LineEdit.new()
@@ -517,7 +528,17 @@ func _lobby_page() -> Control:
 	var chat := ChatBox.new(false)
 	chat.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left.add_child(chat)
-	var right := Ui.panel(body)
+	# As opções rolam; a faixa do IP e o botão Começar/Pronto ficam sempre à vista embaixo
+	# (2026-10-10: num monitor de 1366 x 768 o botão Pronto ficava fora da tela).
+	var right_panel := Ui.panel(body)
+	var right_scroll := ScrollContainer.new()
+	right_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	Ui.thin_scrollbar(right_scroll)
+	right_panel.add_child(right_scroll)
+	var right := Ui.vbox(10)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_scroll.add_child(right)
 	Ui.section(right, "VOCÊ", null, 0)
 	var nick := _nick_edit()
 	nick.placeholder_text = "Como os outros vão te ver"
@@ -566,21 +587,20 @@ func _lobby_page() -> Control:
 	maps_button.custom_minimum_size.y = 38
 	maps_hint = Ui.option_row(right, "Mapas", "", maps_button, 140, 8)
 	maps_hint.visible = true
-	right.add_child(Ui.grow())
 	# IP do anfitrião (ou a espera do convidado) numa faixa discreta acima do botão.
 	var info_box := PanelContainer.new()
 	var info_style := Ui.box(Ui.BG, 8, Ui.LINE)
 	info_style.set_content_margin_all(12)
 	info_box.add_theme_stylebox_override("panel", info_style)
-	right.add_child(info_box)
+	right_panel.add_child(info_box)
 	lobby_info = Ui.label("", 14, Ui.TEXT)
 	lobby_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info_box.add_child(lobby_info)
-	right.add_child(Ui.gap(4))
+	right_panel.add_child(Ui.gap(4))
 	start_button = Ui.accent(Ui.button("Começar", _on_start_pressed))
 	start_button.custom_minimum_size.y = 52
 	start_button.add_theme_font_size_override("font_size", 20)
-	right.add_child(start_button)
+	right_panel.add_child(start_button)
 	return root
 
 

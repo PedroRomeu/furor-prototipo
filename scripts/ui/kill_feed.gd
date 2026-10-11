@@ -19,6 +19,12 @@ func _ready() -> void:
 
 
 func add_kill(killer: Player, victim: Player, assist: Player = null) -> void:
+	var t := Prof.now()
+	_add_kill_now(killer, victim, assist)
+	Prof.lap("feed de abates", t, true)
+
+
+func _add_kill_now(killer: Player, victim: Player, assist: Player) -> void:
 	var line := PanelContainer.new()
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	line.size_flags_horizontal = Control.SIZE_SHRINK_END

@@ -640,6 +640,15 @@ func _arc_piece(pts: PackedVector2Array, cols: PackedColorArray, radius: float, 
 
 
 func _process(delta: float) -> void:
+	if Prof.enabled:
+		var t := Time.get_ticks_usec()
+		_frame_step(delta)
+		Prof.lap("HUD: quadro", t)
+	else:
+		_frame_step(delta)
+
+
+func _frame_step(delta: float) -> void:
 	if me == null or ended:
 		return
 	fps_label.visible = GameState.show_fps   # pode mudar no menu de pausa

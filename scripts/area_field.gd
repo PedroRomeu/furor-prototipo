@@ -223,6 +223,15 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if Prof.enabled:
+		var t := Time.get_ticks_usec()
+		_physics_step(delta)
+		Prof.lap("áreas: física", t)
+	else:
+		_physics_step(delta)
+
+
+func _physics_step(delta: float) -> void:
 	life -= delta
 	var follows := kind == Kind.SAW or kind == Kind.FLAMES
 	if not is_instance_valid(owner_player) or (follows and not owner_player.alive):

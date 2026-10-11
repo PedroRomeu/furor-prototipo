@@ -273,6 +273,12 @@ func to_data() -> Dictionary:
 
 ## Coloca a bala no mundo e, em rede, avisa a outra máquina.
 func _launch(parent: Node, pos: Vector3) -> void:
+	var t := Prof.now()
+	_launch_now(parent, pos)
+	Prof.lap("bala: nascer", t, true)
+
+
+func _launch_now(parent: Node, pos: Vector3) -> void:
 	_counter += 1
 	id = "%s_%d" % [shooter.name, _counter]
 	parent.add_child(self)
@@ -445,6 +451,15 @@ func _orient() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if Prof.enabled:
+		var t := Time.get_ticks_usec()
+		_physics_step(delta)
+		Prof.lap("bala: física", t)
+	else:
+		_physics_step(delta)
+
+
+func _physics_step(delta: float) -> void:
 	age += delta
 	if rocket and age > Player.ROCKET_FREE_TIME:
 		Player.rocket_blast(get_parent(), global_position, shooter)
@@ -726,6 +741,12 @@ func _bounce_roll() -> float:
 ## Fragmentação: estilhaços menores saem da parede em leque. Só a máquina de quem atirou
 ## cria os estilhaços (e os manda para as outras), senão cada máquina criaria os seus.
 func _shatter(point: Vector3, normal: Vector3) -> void:
+	var t := Prof.now()
+	_shatter_now(point, normal)
+	Prof.lap("bala: fragmentação", t, true)
+
+
+func _shatter_now(point: Vector3, normal: Vector3) -> void:
 	global_position = point + normal * 0.1
 	var out := velocity.normalized().bounce(normal)
 	for k in split:
@@ -835,6 +856,12 @@ func _impact_fields(point: Vector3, normal: Vector3) -> void:
 ## Dano em área. Só fere jogadores desta máquina; nunca o dono da bala; quem levou
 ## o tiro direto não leva de novo. Com Pulo-Foguete, a explosão lança o próprio dono.
 func _explode(point: Vector3, skip: Player) -> void:
+	var t := Prof.now()
+	_explode_now(point, skip)
+	Prof.lap("bala: explosão", t, true)
+
+
+func _explode_now(point: Vector3, skip: Player) -> void:
 	var r := blast_size()
 	var power := damage * EXPLOSION_DAMAGE * (1.0 + blast_damage) * blast_size_mult(r)
 	Effects.explosion(get_parent(), point, r, Color(1.0, 0.6, 0.2))
@@ -951,6 +978,11 @@ class TrailBatch extends MeshInstance3D:
 		global_transform = Transform3D.IDENTITY
 
 	func _process(_delta: float) -> void:
+		var t := Prof.now()
+		_draw_trails()
+		Prof.lap("rastros das balas", t)
+
+	func _draw_trails() -> void:
 		imesh.clear_surfaces()
 		var cam := get_viewport().get_camera_3d()
 		if cam == null:

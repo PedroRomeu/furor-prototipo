@@ -61,6 +61,7 @@ static func burst(parent: Node, pos: Vector3, radius: float, color: Color, time 
 	var kind := "explosion" if radius >= 1.5 else "burst"
 	if not _allowed(kind):
 		return
+	Prof.count("clarão " + kind)
 	var mi := MeshInstance3D.new()
 	# O material é de cada clarão porque a transparência anima; a malha é uma só.
 	var mat := StandardMaterial3D.new()
@@ -88,6 +89,7 @@ static func burst(parent: Node, pos: Vector3, radius: float, color: Color, time 
 static func explosion(parent: Node, pos: Vector3, radius: float, color: Color, time := 0.35) -> void:
 	if not _allowed("explosion"):
 		return
+	Prof.count("clarão de explosão")
 	var mi := MeshInstance3D.new()
 	var mat := StandardMaterial3D.new()
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA

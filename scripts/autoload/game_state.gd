@@ -141,6 +141,7 @@ func _ready() -> void:
 	Sfx.prewarm()
 	autotest = "--autotest" in OS.get_cmdline_user_args()
 	practice = "--sala-teste" in OS.get_cmdline_user_args()   # teste: abre a sala de teste direto
+	Prof.enabled = "--cronometro" in OS.get_cmdline_user_args()   # teste: cronômetro de travadas
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--mestra=") and CardDB.is_master(arg.trim_prefix("--mestra=")):
 			test_master = arg.trim_prefix("--mestra=")
@@ -343,14 +344,17 @@ func _apply_display() -> void:
 	win.content_scale_mode = Window.CONTENT_SCALE_MODE_DISABLED
 	if not win.size_changed.is_connected(_apply_ui_scale):
 		win.size_changed.connect(_apply_ui_scale)
-	var screen := DisplayServer.screen_get_size()
-	if screen.x >= UI_BASE.x and screen.y >= UI_BASE.y:
-		win.min_size = Vector2i(UI_BASE)
+	# Janela mínima 1280 x 720, mas nunca maior que a área livre do monitor (sem a barra de
+	# tarefas e a barra de título). 2026-10-10: num monitor de 1366 x 768 a mínima de 720 de
+	# altura não cabia; maximizada, a parte de baixo ficava atrás da barra de tarefas e o
+	# botão Pronto da sala sumia.
+	var room := _window_room()
+	win.min_size = Vector2i(mini(int(UI_BASE.x), room.x), mini(int(UI_BASE.y), room.y))
 	match window_mode:
 		0:
 			# Janela do tamanho da resolução, no centro. Maximizar depois é com o Windows.
 			win.mode = Window.MODE_WINDOWED
-			win.size = resolution
+			win.size = Vector2i(mini(resolution.x, room.x), mini(resolution.y, room.y))
 			win.move_to_center()
 		1:
 			win.mode = Window.MODE_FULLSCREEN
@@ -364,6 +368,18 @@ func _apply_display() -> void:
 		win.content_scale_size = fullscreen_res
 	_apply_vsync()
 	_apply_ui_scale()
+
+
+## Maior área de jogo que cabe no monitor numa janela: a área livre (sem a barra de tarefas)
+## menos as bordas e a barra de título. Antes de a janela aparecer o Windows ainda não diz o
+## tamanho das bordas: aí vale uma estimativa folgada.
+func _window_room() -> Vector2i:
+	var screen := DisplayServer.window_get_current_screen()
+	var usable := DisplayServer.screen_get_usable_rect(screen).size
+	var frame := DisplayServer.window_get_size_with_decorations() - DisplayServer.window_get_size()
+	if frame.y <= 0:
+		frame = Vector2i(16, 40)
+	return Vector2i(maxi(usable.x - frame.x, 800), maxi(usable.y - frame.y, 450))
 
 
 ## Interface no tamanho escolhido, mas sem deixar a área útil menor que 1280 x 720 (numa

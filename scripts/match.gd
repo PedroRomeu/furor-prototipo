@@ -69,7 +69,7 @@ var _board_took_mouse := false
 
 func _ready() -> void:
 	if GameState.autotest:
-		Engine.time_scale = 2.0
+		Engine.time_scale = 1.0 if "--tempo1" in OS.get_cmdline_user_args() else 2.0   # teste: "--tempo1" mede em tempo real
 	_apply_quality()
 	GameState.quality_changed.connect(_apply_quality)
 	if GameState.practice:
@@ -498,6 +498,12 @@ func _on_player_up(p: Player) -> void:
 ## A rodada acaba quando sobra no máximo um vivo (no 2x2, um time com alguém de pé).
 ## Quem morreu escolhe carta; no 2x2, os dois do time que perdeu.
 func _on_player_died(dead: Player) -> void:
+	var t := Prof.now()
+	_on_player_died_now(dead)
+	Prof.lap("partida: alguém morreu", t, true)
+
+
+func _on_player_died_now(dead: Player) -> void:
 	_count_death(dead)
 	var killer: Player = _player(dead.death_killer) if dead.death_killer != "" else null
 	var assist: Player = _player(dead.death_assists[0]) if not dead.death_assists.is_empty() else null
@@ -614,6 +620,8 @@ func _count_death(dead: Player) -> void:
 func _process(_delta: float) -> void:
 	if GameState.autotest:
 		_sample_perf()
+	if Prof.enabled:
+		Prof.frame_end(get_tree().get_node_count_in_group("bullets"), phase == Phase.FIGHT)
 	var want := not GameState.autotest and phase != Phase.MATCH_OVER and not draft.visible and not GameState.menu_open 		and not GameState.chat_open and Input.is_action_pressed("scoreboard")
 	if want == _board_open:
 		return
@@ -801,7 +809,7 @@ func net_round_over(winner_name: String, winner_team: int, scores: Array) -> voi
 @rpc("authority", "call_local", "reliable")
 func net_ask_continue() -> void:
 	hud.show_center("")
-	var keep_going := round_num < AUTOTEST_ROUNDS
+	var keep_going := round_num < (5 if "--curto" in OS.get_cmdline_user_args() else AUTOTEST_ROUNDS)   # teste: "--curto" para na 5a
 	if not GameState.autotest:
 		var voters := players.filter(func(p): return p.brain == null)
 		keep_going = await draft.vote(round_num, GameState.ROUNDS_PER_BLOCK, hud.score_text(score),
@@ -834,6 +842,8 @@ func net_end_match() -> void:
 	_log("fim: %s %s depois de %d rodadas" % [text, str(_scores()), round_num])
 	if GameState.autotest:
 		_log(_perf_report())
+		for line in Prof.report():
+			_log(line)
 		await get_tree().create_timer(0.5).timeout
 		_autotest_finish()
 		return
@@ -865,6 +875,8 @@ func _end_duels() -> void:
 		", ".join(ranking.map(func(n): return _player(n).player_name)), round_num])
 	if GameState.autotest:
 		_log(_perf_report())
+		for line in Prof.report():
+			_log(line)
 		await get_tree().create_timer(0.5).timeout
 		_autotest_finish()
 		return
