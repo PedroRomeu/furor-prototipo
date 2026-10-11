@@ -23,7 +23,7 @@ signal chat_received(entry: Dictionary)   # todos: mensagem nova no chat (ver ch
 ## senão duas builds diferentes se aceitam. O convidado manda o seu ao conectar e o
 ## anfitrião recusa quem tiver outro (_check_build); builds sem a conferência nunca mandam
 ## e saem depois de BUILD_WAIT. Vai em bytes crus (send_bytes), não por @rpc: com builds
-## diferentes as funções @rpc podem não bater (2026-10-12, convidada invisível no 2x2 com
+## diferentes as funções @rpc podem não bater (2026-10-11, convidada invisível no 2x2 com
 ## zip provavelmente de outro dia).
 const BUILD := "0.7.0.1"
 const BUILD_TAG := "FUROR_BUILD:"

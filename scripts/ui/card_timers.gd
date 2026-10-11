@@ -1,6 +1,6 @@
 class_name CardTimers
 extends HBoxContainer
-## Esperas das cartas comuns acima dos selos de estado (2026-10-12, pedido do usuário): o
+## Esperas das cartas comuns acima dos selos de estado (2026-10-11, pedido do usuário): o
 ## ícone da carta escurece de cima para baixo pelo que falta e some quando acaba. Meteoro,
 ## Regeneração e Segunda Pele contam em você; Flash, Atordoante e Troca-Troca, a proteção que
 ## você ganhou depois de levar um (Player.blind_guard / silence_guard / swap_lock).

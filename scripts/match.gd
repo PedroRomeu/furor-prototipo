@@ -132,6 +132,7 @@ func _ready() -> void:
 		p.revived.connect(hud.toast.bind("Fênix: %s voltou!" % p.player_name if p != me else "Fênix: você voltou!"))
 	me.died.connect(_on_me_died)
 	me.void_bounced.connect(_on_me_void)
+	_missions_setup()
 	spectator = Spectator.new()
 	spectator.game = self
 	add_child(spectator)
@@ -587,6 +588,7 @@ func net_duel_over(fought: Array, winner_name: String, loser_name: String, p_liv
 	_clear_bullets()
 	var winner := _player(winner_name)
 	var loser := _player(loser_name)
+	_missions_round(String(me.name) in fought, winner == me)
 	if loser and lives[loser_name] <= 0 and not loser_name in out_order:
 		out_order.append(loser_name)
 	hud.set_duel(fought, lives, [])
@@ -602,7 +604,47 @@ func net_duel_over(fought: Array, winner_name: String, loser_name: String, p_liv
 		loser.player_name if loser else "-", str(lives.get(loser_name, "-"))])
 
 
+## Missões (2026-10-11): cada máquina conta só o próprio jogador; Missions.add ignora tudo
+## fora do online. Dano e reflexos chegam na máquina de quem os fez (credit_damage,
+## on_reflect); abates, rodadas e o fim são iguais em todas as máquinas.
+var _mission_damage := 0.0   # sobra fracionária do dano, para não perder os decimais
+
+
+func _missions_setup() -> void:
+	Missions.begin_match()
+	me.damage_dealt.connect(func(amount: float, _lethal: bool):
+		_mission_damage += amount
+		var whole := int(_mission_damage)
+		_mission_damage -= whole
+		Missions.add("damage", whole))
+	me.reflected.connect(Missions.add.bind("reflects", 1))
+	me.master_used.connect(Missions.add.bind("master_uses", 1))
+	if GameState.autotest:
+		Missions.completed.connect(func(text): _log("missão cumprida: " + text))
+
+
+## Fim de rodada para as missões: jogou (no Duelos, só quem estava no duelo) e venceu.
+func _missions_round(played: bool, won: bool) -> void:
+	if played:
+		Missions.add("rounds")
+	if won:
+		Missions.add("round_wins")
+
+
+func _missions_end(won: bool) -> void:
+	if won:
+		Missions.add("match_wins")
+	if GameState.autotest:
+		for m in Missions.summary():
+			_log("missão: %s %d -> %d/%d" % [m["text"], m["before"], m["progress"], m["target"]])
+
+
 func _count_death(dead: Player) -> void:
+	var my_name := String(me.name)
+	if dead.death_killer == my_name:
+		Missions.add("kills")
+	if my_name in dead.death_assists:
+		Missions.add("assists")
 	kda[String(dead.name)][2] += 1
 	if kda.has(dead.death_killer):
 		kda[dead.death_killer][0] += 1
@@ -787,6 +829,7 @@ func net_round_over(winner_name: String, winner_team: int, scores: Array) -> voi
 	_clear_bullets()
 	var winner := _player(winner_name) if winner_name != "" else null
 	hud.set_score(score, round_num, _block_end())
+	_missions_round(true, winner == me or (teams_on and winner_team >= 0 and winner_team == me.team))
 	if teams_on:
 		if winner_team < 0:
 			hud.show_center("Ninguém sobrou: rodada sem ponto")
@@ -839,6 +882,7 @@ func net_end_match() -> void:
 	var color := Ui.TEXT
 	if text != "EMPATE":
 		color = Ui.OK if text == "VITÓRIA" else Ui.DANGER
+	_missions_end(text == "VITÓRIA")
 	_log("fim: %s %s depois de %d rodadas" % [text, str(_scores()), round_num])
 	if GameState.autotest:
 		_log(_perf_report())
@@ -871,6 +915,7 @@ func _end_duels() -> void:
 	for i in ranking.size():
 		lines.append("%dº %s" % [i + 1, _player(ranking[i]).player_name])
 	var text := "VITÓRIA" if winner == me else "%s VENCEU" % winner.player_name.to_upper()
+	_missions_end(winner == me)
 	_log("fim: %s venceu os duelos; ordem %s depois de %d duelos" % [winner.player_name,
 		", ".join(ranking.map(func(n): return _player(n).player_name)), round_num])
 	if GameState.autotest:

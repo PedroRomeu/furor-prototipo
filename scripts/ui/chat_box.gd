@@ -60,7 +60,7 @@ func _ready() -> void:
 		modulate.a = 0.0
 	else:
 		input.placeholder_text = "Mensagem para a sala"
-		# Enter manda e o cursor fica no campo para a próxima (pedido do usuário, 2026-10-12).
+		# Enter manda e o cursor fica no campo para a próxima (pedido do usuário, 2026-10-11).
 		input.keep_editing_on_text_submit = true
 		var area := Ui.box(Ui.BG, 8)
 		area.set_content_margin_all(12)

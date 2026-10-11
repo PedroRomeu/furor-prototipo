@@ -17,7 +17,7 @@ const LIFETIME := 4.0
 ## céu e esperar quicar). Sem teto de tempo: o teto de quiques (LIMITS) já limita.
 const BOUNCE_LIFE := 2.0
 ## Desde 2026-10-10 (pedido do usuário: Escopeta + quiques enchia o mapa com balas de 28 s):
-## o bônus cai com as balas por tiro (a Rajada não conta desde 2026-10-12: gasta pente), BOUNCE_LIFE / raiz delas, no mínimo
+## o bônus cai com as balas por tiro (a Rajada não conta desde 2026-10-11: gasta pente), BOUNCE_LIFE / raiz delas, no mínimo
 ## BOUNCE_LIFE_MIN. Uma bala por clique (nuke) segue com 2 s; 5 (Escopeta) 0,9 s; 13, 0,55 s.
 const BOUNCE_LIFE_MIN := 0.5
 const REFLECTED_COLOR := Color(0.6, 1.0, 1.0)
@@ -66,7 +66,7 @@ const GROW_TIME := 5.0
 ## em 2026-10-07): nem toda bala procura alvo, e a que procura só curva quando um inimigo
 ## passa perto dela, mas aí curva forte, para dar para ver (e fica verde, SEEK_COLOR).
 ## As cópias (n) aumentam sobretudo a chance, com retorno decrescente e teto de 70%: nunca
-## é toda bala. Simulação de 2026-10-12 (quase-erros de 0,65-2 m num alvo parado, a 10-30 m;
+## é toda bala. Simulação de 2026-10-11 (quase-erros de 0,65-2 m num alvo parado, a 10-30 m;
 ## alvo correndo de lado a 9 m/s): viram acerto 23/44/49/55% parado e 0/15/16/37% correndo com
 ## n = 1/2/3/5; das balas verdes acertam 67/100/100/100% parado. Antes (curva 4 por segundo,
 ## raio +2,5): 10/20/29/46% e 0/0/0/7%, com só 30% das verdes acertando com 1 cópia.
@@ -75,12 +75,12 @@ const SEEK_CHANCE_MIN := 0.35
 const SEEK_CHANCE_GAIN := 0.35
 const SEEK_CHANCE_K := 2.0
 const SEEK_RADIUS_MIN := 3.5   # era 4 (e curva 4,5) até 2026-10-07: forte com 1 cópia
-const SEEK_RADIUS_GAIN := 4.0   # era 2,5 até 2026-10-12: 1 cópia igual, as seguintes vão mais longe
+const SEEK_RADIUS_GAIN := 4.0   # era 2,5 até 2026-10-11: 1 cópia igual, as seguintes vão mais longe
 const SEEK_RADIUS_K := 3.0
-const SEEK_TURN_MIN := 8.0    # era 4 (+2) até 2026-10-12: a bala verde errava demais (30% acertava
+const SEEK_TURN_MIN := 8.0    # era 4 (+2) até 2026-10-11: a bala verde errava demais (30% acertava
 const SEEK_TURN_GAIN := 4.0   # um alvo parado com 1 cópia); 2x escolhido pelo usuário
 const SEEK_TURN_K := 3.0
-## A curva vale por metro andado, não por segundo (2026-10-12): SEEK_TURN_* é a curva a
+## A curva vale por metro andado, não por segundo (2026-10-11): SEEK_TURN_* é a curva a
 ## SEEK_REF_SPEED; bala mais rápida vira mais por segundo e faz o mesmo caminho. Antes a
 ## bala rápida (Pólvora, Olho de Águia) passava pela zona de procura na metade do tempo e
 ## perdia metade do efeito.

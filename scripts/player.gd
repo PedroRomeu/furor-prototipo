@@ -16,6 +16,7 @@ signal fired       # um disparo da arma (o painel da sala de teste conta)
 signal damaged(amount: float, from: Player)
 signal damage_dealt(amount: float, lethal: bool)
 signal reflected
+signal master_used   # apertou Q e a mestra saiu (as missões contam)
 signal revived
 signal void_bounced(saved: bool)
 signal went_down    # caiu no 2x2 (pode ser revivido)
@@ -336,24 +337,24 @@ const SHOCKWAVE_RANGE := 8.0
 const BASH_RANGE := 2.2         # Pancada: alcance do escudo, do peito de um ao do outro
 const SHIELD_DOUBLE_GAP := 0.5  # Escudo Duplo: espera entre a primeira e a segunda vez
 ## Atordoante: escudo bloqueado SILENCE_TIME e depois SILENCE_GUARD s sem poder ser atordoado
-## de novo (2026-10-12; era 1,5 s renovando a cada acerto: com muitas balas, sem escudo direto).
+## de novo (2026-10-11; era 1,5 s renovando a cada acerto: com muitas balas, sem escudo direto).
 const SILENCE_TIME := 2.0
 const SILENCE_GUARD := 3.0
 ## Flash: depois de cegar, o mesmo alvo fica BLIND_GUARD s sem poder ser cegado de novo, de
-## quem for (2026-10-12; renovando a cada acerto, muitas balas deixavam a tela branca direto).
+## quem for (2026-10-11; renovando a cada acerto, muitas balas deixavam a tela branca direto).
 const BLIND_GUARD := 2.0
 const SLOW_TIME := 1.5
 const POISON_TIME := 3.0
 const BLOODLUST_TIME := 3.0
 const RAGE_THRESHOLD := 0.35
 ## Regeneração: cura depois de REGEN_DELAY sem levar dano e sem atacar (tiro ou Espada).
-## Era 3 s só sem dano até 2026-10-12 (o usuário achou fácil demais, no começo sobretudo).
+## Era 3 s só sem dano até 2026-10-11 (o usuário achou fácil demais, no começo sobretudo).
 const REGEN_DELAY := 5.0
-## Radar: alcance através das paredes por cópia (2026-10-12; antes via o mapa inteiro com 1).
+## Radar: alcance através das paredes por cópia (2026-10-11; antes via o mapa inteiro com 1).
 const RADAR_RANGE := 30.0
 ## Pólvora Extra: coice para trás da mira a cada clique, só na horizontal (para cima viraria
 ## voo atirando no chão). RECOIL_BASE x cópias^RECOIL_EXP m/s, até RECOIL_MAX: pouco com uma,
-## incômodo com muitas (pedido do usuário, 2026-10-12; números meus).
+## incômodo com muitas (pedido do usuário, 2026-10-11; números meus).
 const RECOIL_BASE := 1.2
 const RECOIL_EXP := 1.5
 const RECOIL_MAX := 10.0
@@ -398,7 +399,7 @@ const AMBUSH_SPEED := 0.2
 ## CAMO_VIEW_ALPHA de transparência, chegando nela em 1 / CAMO_VIEW_FADE s.
 const CAMO_VIEW_ALPHA := 0.6
 const CAMO_VIEW_FADE := 6.0
-## Camuflagem que falha (2026-10-12, pedido do usuário: dava para ficar num canto e nunca ser
+## Camuflagem que falha (2026-10-11, pedido do usuário: dava para ficar num canto e nunca ser
 ## achado): depois de CAMO_TIRE s seguidos invisível, pisca visível para todos por
 ## CAMO_BLINK_TIME a cada CAMO_BLINK_EVERY, até aparecer (andar agachado não zera). Piscar não dá Emboscada.
 const CAMO_TIRE := 8.0
@@ -3050,6 +3051,7 @@ func _use_master() -> void:
 	if chaos:
 		master_cd = CHAOS_WAIT
 		chaos_used = true
+	master_used.emit()
 	reveal()
 	if stats["updraft"] > 0:
 		# Corrente: impulso reto para cima, também no ar (como o da Jett, de Valorant).
@@ -4664,7 +4666,7 @@ func _recoil() -> void:
 
 
 ## Clique: um tiro, ou a rajada inteira com a Rajada (os outros saem em _act a cada
-## BURST_GAP). Cada tiro da rajada gasta uma bala (2026-10-12; antes a rajada saía de uma
+## BURST_GAP). Cada tiro da rajada gasta uma bala (2026-10-11; antes a rajada saía de uma
 ## bala só e multiplicava com Cano Duplo e Escopeta).
 func _fire() -> void:
 	burst_left = stats["burst"] - 1

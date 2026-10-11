@@ -42,7 +42,7 @@ const LIMITS := {
 	"fire_interval": [0.08, 5.0],
 	"reload_time": [0.2, 10.0],
 	"bullet_speed": [9.0, 400.0],
-	# Tamanho vindo das cartas (2026-10-12): até 4x a base; o crescimento pelo dano (Bullet,
+	# Tamanho vindo das cartas (2026-10-11): até 4x a base; o crescimento pelo dano (Bullet,
 	# DAMAGE_SIZE_EXP) vem por cima, então a nuke de quique não muda.
 	"bullet_radius": [0.03, 0.6],
 	"shield_cooldown": [1.0, 20.0],
@@ -86,7 +86,7 @@ const LOWER_BETTER := ["fire_interval", "reload_time", "shield_cooldown", "dash_
 const PENALTY_FLOOR := 0.35
 const PENALTY_CEIL := 2.5
 const PENALTY_FLOOR_ABS := {"mag_size": 1}   # pente: as perdas param em 1 bala
-## Atributos com piso próprio (x a base). Velocidade da bala (2026-10-12, pedido do usuário:
+## Atributos com piso próprio (x a base). Velocidade da bala (2026-10-11, pedido do usuário:
 ## a bala "lenta" das cartas de tamanho quase não pesava, parava em 16,8 m/s): 9,6 m/s.
 const PENALTY_FLOOR_BY := {"bullet_speed": 0.2}
 ## Recarga do escudo (2026-10-07): os custos das cartas (+1 s, +0,5 s) somam até este teto,

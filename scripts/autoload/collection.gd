@@ -66,7 +66,7 @@ const TOKEN_RATES := {"comum": 5, "raro": 5, "epico": 4, "lendario": 3, "mitico"
 var coins := 0
 var copies := {}        # id -> cópias
 var tokens := {}        # raridade -> fichas
-var master_pack := false   # Pacote de Mestra inicial ainda fechado
+var master_packs := 0   # Pacotes de Mestra fechados: o inicial e os das missões semanais
 var offers: Array = []  # [{rarity, id, locked, bought}]
 var offer_window := -1
 
@@ -121,9 +121,9 @@ func seconds_to_rotation() -> int:
 func open_pack(pack_id: String) -> Array:
 	var pack: Dictionary = PACKS[pack_id]
 	if pack_id == "mestra":
-		if not master_pack:
+		if master_packs <= 0:
 			return []
-		master_pack = false
+		master_packs -= 1
 	elif coins < pack["price"]:
 		return []
 	else:
@@ -187,6 +187,23 @@ func refresh_offers() -> void:
 	_save()
 
 
+## Recompensas das missões (Missions.claim).
+func add_coins(n: int) -> void:
+	coins += n
+	_save()
+
+
+func add_tokens(by_rarity: Dictionary) -> void:
+	for r in by_rarity:
+		tokens[r] = tokens.get(r, 0) + int(by_rarity[r])
+	_save()
+
+
+func add_master_pack() -> void:
+	master_packs += 1
+	_save()
+
+
 # ---------------------------------------------------------------- teste
 
 func test_refill() -> void:
@@ -240,7 +257,7 @@ func _start() -> void:
 	for r in RARITY_ORDER:
 		tokens[r] = 0
 	coins = TEST_COINS if TEST_MODE else 0
-	master_pack = true
+	master_packs = 1
 	offers = []
 	offer_window = -1
 	refresh_offers()
@@ -265,7 +282,7 @@ func _load() -> void:
 	var t: Dictionary = data.get("fichas", {})
 	for r in RARITY_ORDER:
 		tokens[r] = int(t.get(r, 0))
-	master_pack = bool(data.get("pacote_mestra", false))
+	master_packs = int(data.get("pacote_mestra", 0))   # salvos antigos: true = 1
 	offer_window = int(data.get("janela_ofertas", -1))
 	offers = []
 	for o in data.get("ofertas", []):
@@ -280,5 +297,5 @@ func _save() -> void:
 	if f == null:
 		return
 	f.store_string(JSON.stringify({"moedas": coins, "copias": copies, "fichas": tokens,
-		"pacote_mestra": master_pack, "janela_ofertas": offer_window, "ofertas": offers}, "\t"))
+		"pacote_mestra": master_packs, "janela_ofertas": offer_window, "ofertas": offers}, "\t"))
 	changed.emit()

@@ -84,7 +84,7 @@ func _ready() -> void:
 	Collection.refresh_offers()
 	_update_header()
 	_fill()
-	if Collection.master_pack:
+	if Collection.master_packs > 0:
 		_open.call_deferred("mestra")
 
 
@@ -132,8 +132,9 @@ func _fill() -> void:
 
 func _packs_page() -> void:
 	body.add_child(Ui.label("O jeito principal de ganhar cartas. A última carta de cada pacote é a garantida; as mais raras aparecem por último.", 15, Ui.MUTED))
-	if Collection.master_pack:
-		var b := Ui.accent(Ui.button("Abrir o Pacote de Mestra inicial", _open.bind("mestra")))
+	if Collection.master_packs > 0:
+		var n := Collection.master_packs
+		var b := Ui.accent(Ui.button("Abrir o Pacote de Mestra" + (" (%d)" % n if n > 1 else ""), _open.bind("mestra")))
 		b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		body.add_child(b)
 	var row := Ui.hbox(20)
@@ -324,7 +325,7 @@ func _token_picker() -> void:
 func _reset() -> void:
 	Collection.test_reset()
 	_fill()
-	if Collection.master_pack:
+	if Collection.master_packs > 0:
 		_open("mestra")
 
 

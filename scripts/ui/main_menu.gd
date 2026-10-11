@@ -273,7 +273,7 @@ func _play_page() -> Control:
 		play_tabs[title] = [tab, scroll, null]
 	body.resized.connect(_fit_play_panel)
 	# Botão principal de cada aba no canto da coluna, embaixo do baralho, no mesmo lugar nas
-	# duas abas ("Começar treino" ou "Criar sala"; voltou para cá em 2026-10-12, pedido do
+	# duas abas ("Começar treino" ou "Criar sala"; voltou para cá em 2026-10-11, pedido do
 	# usuário), e o painel de Novidades fica do mesmo tamanho entre as abas.
 	for b in [start_solo, host_button]:
 		b.custom_minimum_size.y = PLAY_ACTION_H
