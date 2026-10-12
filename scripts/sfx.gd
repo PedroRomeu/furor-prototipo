@@ -19,12 +19,15 @@ const SOUNDS := {
 const TONES := {
 	"hitmarker": {"freqs": [2200.0, 4400.0], "gains": [1.0, 0.3], "length": 0.07, "decay": 55.0},
 	"kill": {"freqs": [1320.0, 1980.0, 2640.0], "gains": [1.0, 0.6, 0.25], "length": 0.4, "decay": 9.0},
+	# Arpéu Ventoso (2026-10-12): "fiu" subindo ao lançar e "plop" descendo ao grudar.
+	"grapple_fire": {"freqs": [520.0, 1040.0], "gains": [1.0, 0.3], "length": 0.16, "decay": 14.0, "sweep": 2.6},
+	"grapple_stick": {"freqs": [420.0, 210.0], "gains": [1.0, 0.5], "length": 0.13, "decay": 28.0, "sweep": 0.35},
 }
 ## Volume base de cada som, em dB. Baixado em 2026-10-05 (o usuário achava explosões e
 ## efeitos altos demais): explosão -4 -> -11, tiro -8 -> -12, os outros uns 4 dB.
 const VOLUME := {"shot": -12.0, "shield": -10.0, "reflect": -6.0, "hit": -8.0, "hurt": -6.0,
 	"explosion": -11.0, "death": -7.0, "pad": -12.0, "dash": -17.0, "pickup": -13.0,
-	"hitmarker": -7.0, "kill": -6.0}
+	"hitmarker": -7.0, "kill": -6.0, "grapple_fire": -14.0, "grapple_stick": -9.0}
 ## Canal de áudio: sons do mundo vão para Efeitos; os da tela (Sfx.ui) para Interface.
 const BUS_WORLD := "Efeitos"
 const BUS_UI := "Interface"
@@ -144,11 +147,19 @@ static func _tone(spec: Dictionary) -> AudioStreamWAV:
 	var n := int(spec["length"] * rate)
 	var data := PackedByteArray()
 	data.resize(n * 2)
+	# "sweep": a frequência vai de f a f x sweep ao longo do som (fase somada passo a passo,
+	# para a curva não estalar). Sem ele, tom fixo como antes.
+	var sweep: float = spec.get("sweep", 1.0)
+	var phases := []
+	phases.resize(spec["freqs"].size())
+	phases.fill(0.0)
 	for i in n:
 		var t := float(i) / rate
+		var bend := lerpf(1.0, sweep, t / spec["length"])
 		var v := 0.0
 		for k in spec["freqs"].size():
-			v += sin(TAU * spec["freqs"][k] * t) * spec["gains"][k]
+			phases[k] += TAU * spec["freqs"][k] * bend / rate
+			v += sin(phases[k]) * spec["gains"][k]
 		v *= exp(-t * spec["decay"]) * minf(1.0, t * 2000.0)   # ataque de 0,5 ms, sem estalo
 		data.encode_s16(i * 2, int(clampf(v * 0.4, -1.0, 1.0) * 32767.0))
 	var wav := AudioStreamWAV.new()

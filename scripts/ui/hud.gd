@@ -154,6 +154,8 @@ func setup(p_me: Player, all_players: Array, p_teams := false, p_mode := "ffa", 
 	me.damaged.connect(_on_me_damaged)
 	me.damage_dealt.connect(_on_damage_dealt)
 	me.chaos_drawn.connect(func(id): toast("Caos: " + CardDB.card_name(id)))
+	me.unstable_drawn.connect(func(ids): toast(", ".join(ids.map(CardDB.card_name))))
+	me.realm_changed.connect(_on_realm_changed)
 	vitals.me = me
 	scoreboard.setup(me, players)
 	kill_feed.me = me
@@ -728,6 +730,8 @@ func _update_status() -> void:
 	var items := []
 	if me.revives_left > 0:
 		items.append(["FÊNIX %d" % me.revives_left, Color(1.0, 0.6, 0.25)])
+	if me.spawn_protect > 0.0:
+		items.append(["PROTEGIDO %.1f  ·  atacar encerra" % me.spawn_protect, Player.PROTECT_COLOR])
 	if me.slow_timer > 0.0:
 		items.append(["LENTO", Color(0.55, 0.8, 1.0)])
 	if not me.poisons.is_empty():
@@ -750,6 +754,10 @@ func _update_status() -> void:
 		items.append(["PRESO NO GANCHO", Ui.DANGER])
 	if me.ride_timer > 0.0:
 		items.append(["FOGUETE %.1f  ·  [%s] saltar" % [me.ride_timer, GameState.key_text("master")], Player.ROCKET_COLOR])
+	if me.grapple_state == 2:
+		items.append(["PUXANDO  ·  [%s] solta com o embalo" % GameState.key_text("jump"), Player.GRAPPLE_COLOR])
+	elif me.grapple_state == 3:
+		items.append(["PENDURADO %.1f  ·  [%s] salta" % [me.grapple_timer, GameState.key_text("jump")], Player.GRAPPLE_COLOR])
 	if me.plat_chain > 0.0:
 		items.append(["PLATAFORMAS %d  ·  %.1f s" % [me.plat_left, me.plat_chain], SkyPlatform.READY_COLOR])
 	if me.daze_timer > 0.0:
@@ -787,6 +795,14 @@ func _update_status() -> void:
 		items.append(["SANGUE FRIO +%d%% DE DANO" % roundi(Player.STILL_DAMAGE * me.stats["still_aim"] * 100.0), CardDB.CATEGORY_COLORS["Arma"]])
 	if me.bullet_taken_mult() < 1.0:
 		items.append(["VULTO -%d%% DE DANO" % roundi((1.0 - me.bullet_taken_mult()) * 100.0), CardDB.CATEGORY_COLORS["Movimento"]])
+	if me.realm > 0:
+		var foe_name: String = me.realm_partner.player_name if is_instance_valid(me.realm_partner) else ""
+		if me.realm_king:
+			items.append(["DOMÍNIO DO REI +%d%% DE DANO  ·  %.1f" % [roundi(me.realm_bonus() * 100.0), me.realm_timer], KingRealm.MARK_COLOR])
+		else:
+			items.append(["NO DOMÍNIO DE %s  ·  %.1f" % [foe_name.to_upper(), me.realm_timer], Ui.DANGER])
+	elif me.realm_bonus_timer > 0.0:
+		items.append(["DOMÍNIO +%d%% DE DANO  %.1f" % [roundi(me.realm_bonus() * 100.0), me.realm_bonus_timer], KingRealm.MARK_COLOR])
 	if me.last_stand_timer > 0.0:
 		items.append(["ÚLTIMO SUSPIRO %.1f: ABATA ALGUÉM" % me.last_stand_timer, Ui.DANGER])
 	var key := str(items)
@@ -797,6 +813,17 @@ func _update_status() -> void:
 		c.queue_free()
 	for it in items:
 		status_row.add_child(_status_chip(it[0], it[1]))
+
+
+## Domínio do Rei: aviso ao entrar e ao vencer (o tempo e o bônus ficam no selo).
+func _on_realm_changed(entered: bool, won: bool) -> void:
+	if entered:
+		if me.realm_king:
+			toast("Domínio do Rei: só vocês dois por %d s" % int(Player.REALM_TIME))
+		elif is_instance_valid(me.realm_partner):
+			toast("%s te levou para o Domínio do Rei" % me.realm_partner.player_name)
+	elif won:
+		toast("Você venceu o Domínio" + (": +%d%% de dano por %d s" % [roundi(me.realm_bonus() * 100.0), int(Player.REALM_WIN_TIME)] if me.realm_king else ""))
 
 
 ## Selo de estado: texto em negrito na cor, fundo escuro e um traço da cor à esquerda.

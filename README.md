@@ -150,7 +150,15 @@ shows in a corner during the match.
   in its own slot; click it to choose another. The **equipped** deck is the one used in
   matches.
 - **Master card**: each deck has one, picked in its own slot in the editor, outside the
-  card count. You start every match with it. New in 0.5.0: **Caos** (Bullets: draws a
+  card count. You start every match with it. New in 0.8.0: **Cartas Instáveis** (Bullets, Q:
+  3 random common cards from your deck for 8 s, shown over your name), **Domínio do Rei**
+  (Body, Q on an enemy in your sights up to 15 m: both of you go to a closed room for 6 s;
+  you gain +6% damage per second there, up to +30%, and wear a crown that grows with it;
+  win and you keep the bonus 6 s more; when time runs out both return where they were, and
+  everyone on the map sees a purple marker with the countdown there) and **Arpéu Ventoso**
+  (Movement, a plunger on a rope: Q sticks it to any surface up to 30 m and pulls you there;
+  hang up to 3 s, Space mid-pull to fling yourself with the momentum, Space while hanging to
+  wall jump, Q again for the next plunger; 2 charges of 8 s). New in 0.5.0: **Caos** (Bullets: draws a
   random master; an active one is used once and 8 s after its effect ends another comes, a
   passive one lasts 15 s), **Prisão de Gelo** (Shield, Q: an ice shard that traps the target
   in a sliding ice block for 3 s; they take no damage, but shots, explosions and bodies push
@@ -158,7 +166,7 @@ shows in a corner during the match.
   more and dazes), **Canhão Arcano** (Weapon, Q: charge 1 s, then a 2.5 s beam through walls
   that you aim slowly; each touch deals 22 and throws the target out of the beam),
   **Plataformas Suspensas** (Movement, passive: out of air jumps, jumping makes a platform
-  under your feet, up to 3 in a row with 2 s to use each next one, then a 6 s cooldown; each one launches whoever steps on it
+  under your feet, up to 3 in a row with 2 s to use each next one, then an 8 s cooldown; each one launches whoever steps on it
   once, green while it can still launch you and purple after; 5 s each), **Chuva de Meteoros** (Bullets, Q: the next
   3 shots mark the ground; 1.5 s later a meteor falls on each mark), **Foguete** (Weapon, Q:
   ride a slow, hard-to-steer rocket that explodes on impact; Q again to jump off and send it
@@ -174,7 +182,7 @@ shows in a corner during the match.
   with half), **Camuflagem** (Body: stand still 0.6 s to vanish, crouch-walk while hidden;
   showing up after 1 s hidden gives Ambush, 3 s of +40% shot damage and +20% speed),
   **Corrente** (Movement, Q: an 8 m upward boost, also in the air; holds 2 charges that come
-  back one at a time, 8 s each), **Bota Foguete**
+  back one at a time, 9 s each), **Bota Foguete**
   (Movement: +10% shot damage per second in the air, up to +40%; with no air jumps left,
   hold jump for a short rocket burst, refilled on landing) and **Formiga** (Movement, Q:
   6 s at 40% size and +60% speed; Q again to grow back early; growing back knocks away
@@ -194,6 +202,8 @@ shows in a corner during the match.
 - Your character gets a bit bigger with more max health and smaller with less, and the
   camera height follows.
 - At the start, everyone sees 3 different cards from their own deck and keeps 1.
+- When a round's countdown ends, everyone is protected from damage for 3 s (golden
+  outline); attacking (shooting, the master card or a sword strike) ends your own protection.
 - Round: last one standing wins. Only **the losers** pick another card (1 of 3); with more
   than 2 players, everyone who died.
 - **2x2** (online with 4, or in Treino with 3 bots: you and an allied bot): the team with
@@ -286,8 +296,17 @@ crafted from the master card picker).
 
 This version is a **test**: you start with 999,999 coins (the shop's **⋯** menu refills coins
 and tokens or starts the collection over), and the collection does not lock anything yet: every deck still
-has every card. How coins are earned (online play, daily and weekly missions) comes later, and
-all prices and odds may change.
+has every card. All prices and odds may change.
+
+## Missions
+
+The **Missões** page on the Jogar screen (right column) has 3 daily missions (play rounds,
+win rounds, kills, damage, reflections, assists, using your master card; 50 to 75 coins,
+one reroll per day, new ones at local midnight) and 3 weekly ones with fixed rewards: a
+**Master Pack**, a bundle of tokens (3 common, 3 rare, 2 epic, 1 legendary) and 800 coins
+(new ones on Monday). Rewards are claimed by hand and lost if not claimed before the reset.
+Missions only count in **online** matches; finishing one shows a notice, and the final
+scoreboard lists what moved.
 
 ## Where things are
 
@@ -342,9 +361,8 @@ practice room directly.
 
 ## Next steps
 
-1. Find the frame spikes in heavy fights (one suspect at a time) and the rest of the round-start
-   hitch (building the arena).
-2. Earning coins: online play, a future single-player mode, daily and weekly missions (a Master
-   Pack as a weekly reward). Then the collection starts locking cards.
+1. The rest of the round-start hitch (building the arena).
+2. More ways to earn coins (online play, a future single-player mode). Then the collection
+   starts locking cards.
 3. Card balancing and new cards.
 4. Footstep, landing and slide sounds.

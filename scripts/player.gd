@@ -144,6 +144,9 @@ const BASE_STATS := {
 	"ground_slam": 0,
 	# Cartas mestras (CardDB.MASTERS)
 	"chaos": 0,     # Caos: sorteia outra mestra (_chaos_draw)
+	"unstable": 0,  # Cartas Instáveis: cartas comuns por alguns segundos (_unstable_draw)
+	"realm": 0,     # Domínio do Rei: x1 numa sala à parte (_realm_*, KingRealm)
+	"grapple": 0,   # Arpéu Ventoso: ventosa que puxa até o cenário (_grapple_*)
 	"ice": 0,       # Prisão de Gelo
 	"slap": 0,      # Mega Tapa
 	"beam": 0,      # Canhão Arcano
@@ -552,7 +555,7 @@ const HIT_FLASH_TIME := 0.14   # o modelo atingido pisca em branco por este temp
 const ASSIST_TIME := 10.0   # placar: dano nos últimos 10 s antes da morte conta assistência
 const REMOTE_METHODS := ["receive_shockwave", "credit_damage", "bullet_refund", "teleport_to", "swap_to", "receive_stomp",
 	"receive_slash", "ice_shove", "receive_slap", "receive_beam", "receive_hook", "hook_blocked",
-	"hook_throw", "hook_release", "receive_bowl", "receive_slam"]
+	"hook_throw", "hook_release", "receive_bowl", "receive_slam", "receive_realm", "realm_blocked"]
 ## Gancho (mestra). Quem lança move a ponta (HOOK_SPEED, até HOOK_RANGE) e acha o alvo; a
 ## máquina do alvo decide (escudo bloqueia), puxa o próprio corpo (HOOK_PULL) até a frente
 ## de quem segura e fica lá por HOOK_HOLD. Arremesso a HOOK_THROW: parede dá HOOK_IMPACT e
@@ -723,6 +726,60 @@ var chaos := false        # tem a mestra Caos
 var chaos_used := false   # a ativa sorteada já foi usada (esperando a próxima)
 var chaos_timer := 0.0    # passiva sorteada: quanto falta para trocar
 var _chaos_last := ""     # último sorteio recebido pela rede (ver reset_for_round)
+# Cartas Instáveis (mestra): cartas comuns que valem por UNSTABLE_TIME, por cima de `cards`.
+const UNSTABLE_COUNT := 3
+const UNSTABLE_TIME := 8.0
+const UNSTABLE_EXCLUDED := ["fenix"]   # renascer por 8 s não faz sentido
+var unstable_cards: Array = []
+var unstable_timer := 0.0
+var unstable_icons: Array = []   # Sprite3D em cima do nome, criados no 1o uso
+signal unstable_drawn(ids: Array)   # registro do autoteste e aviso da HUD
+# Domínio do Rei (mestra): Q leva quem está na mira para uma sala à parte (KingRealm, uma
+# por lado) por REALM_TIME. `realm` = vaga + 1 dos dois lá dentro (0 = no mapa); só se
+# enxergam, miram e se acertam jogadores no mesmo lugar (enemies). A volta é para onde
+# cada um estava (realm_return), marcado no mapa (KingRealm.Marker).
+const REALM_RANGE := 15.0
+const REALM_AIM := 1.5        # distância máxima do alvo à linha da mira
+const REALM_TIME := 6.0
+const REALM_BLOCKED_CD := 8.0 # escudo bloqueou: recarga menor
+const REALM_BONUS_RATE := 0.06   # quem lançou: +6% de dano por segundo lá dentro...
+const REALM_BONUS_MAX := 0.3     # ...até +30% (aos 5 s)
+const REALM_WIN_TIME := 6.0      # venceu lá dentro: fica com o bônus por mais 6 s
+var realm := 0
+var realm_bonus_timer := 0.0     # depois de vencer: quanto falta do bônus guardado
+var realm_bonus_kept := 0.0
+var realm_timer := 0.0
+var realm_partner: Player
+var realm_king := false       # foi quem lançou
+var realm_return := Vector3.ZERO
+var realm_marker: Node3D
+var realm_crown: RealmCrown   # coroa de quem lançou (para os outros), criada no 1o uso
+# Arpéu Ventoso (mestra, 2 cargas): Q lança a ventosa (GRAPPLE_SPEED, até GRAPPLE_RANGE);
+# grudou no cenário, puxa a GRAPPLE_PULL até lá e, chegando, fica pendurado até
+# GRAPPLE_HANG. Pulo no puxão solta mantendo o embalo (+GRAPPLE_LIFT para cima); pendurado,
+# salta da parede (ideia do usuário: soltar no Espaço deixa o Q para a próxima ventosa, que
+# solta a anterior). Só a máquina dona simula; o estado vai para as outras desenharem a corda.
+const GRAPPLE_SPEED := 60.0
+const GRAPPLE_COLOR := Color(0.95, 0.35, 0.3)   # selo da HUD, o vermelho da ventosa
+const GRAPPLE_RANGE := 30.0
+const GRAPPLE_PULL := 22.0
+const GRAPPLE_STEER := 1.5     # m/s de lado com as teclas durante o puxão (~2 m em 30 m)
+const GRAPPLE_ARRIVE := 1.5    # a esta distância do ponto (do peito), chegou
+const GRAPPLE_HANG := 3.0
+const GRAPPLE_LIFT := 3.0
+const GRAPPLE_REFUND := 1.0    # errou: a carga volta neste tempo
+var grapple_state := 0         # 0 nada, 1 ventosa voando, 2 puxando, 3 pendurado
+var grapple_tip := Vector3.ZERO      # onde está a ventosa (voando ou grudada)
+var grapple_dir := Vector3.ZERO
+var grapple_dist := 0.0
+var grapple_normal := Vector3.ZERO   # da superfície onde grudou
+var grapple_timer := 0.0       # puxando: tempo máximo (preso numa quina); pendurado: quanto falta
+var grapple_refund := 0.0
+var grapple_fx: Node3D         # desentupidor e corda (_grapple_visual), criados no 1o uso
+var grapple_plunger: Node3D
+var grapple_cord: MeshInstance3D
+signal grappled(state: int)    # registro do autoteste
+signal realm_changed(entered: bool, won: bool)   # registro do autoteste e HUD
 var bazooka_timer := 0.0
 var rockets_left := 0
 var shrink_timer := 0.0    # Formiga: pequeno por mais quanto tempo
@@ -915,6 +972,16 @@ var bleed_total := 1.0
 var revive_progress := 0.0
 var downs := 0                # quedas nesta rodada
 var protect_timer := 0.0
+# Proteção do começo da rodada (2026-10-12, pedido do usuário: quem matava com um tiro
+# abria a rodada matando alguém sempre). SPAWN_PROTECT s sem levar dano desde o fim da
+# contagem; atacar (tiro, mestra, espada) encerra a própria proteção. Em todas as máquinas
+# para o contorno; o dano é decidido na dona. Rede: bit 256 do estado.
+const SPAWN_PROTECT := 3.0
+const PROTECT_COLOR := Color(1.0, 0.9, 0.55)
+var spawn_protect := 0.0
+var protect_mat: ShaderMaterial
+var _protect_shown := false
+var _net_protected := false
 var down_credit: Array = ["", []]   # abate e assistências de quando caiu (vale se o prazo acabar)
 var down_marker: Node3D
 var swap_timer := 0.0     # Troca-Troca: falta quanto para a troca (na máquina de quem levou o tiro)
@@ -1308,6 +1375,12 @@ func reset_for_round(spawn: Transform3D) -> void:
 	# todas as máquinas: death_killer vem do _net_die.
 	revenge_target = death_killer if not alive else ""
 	skin_stacks = 0
+	unstable_cards.clear()
+	unstable_timer = 0.0
+	_update_unstable_icons()
+	_realm_clear()
+	_grapple_clear()
+	grapple_refund = 0.0
 	stats = CardDB.compute_stats(BASE_STATS, cards)
 	var masters := cards.filter(CardDB.is_master)
 	master_id = masters[0] if not masters.is_empty() else ""
@@ -1562,6 +1635,14 @@ func _frame_step(delta: float) -> void:
 	_update_boot_fx()
 	if daze_fx > 0.0 or daze_stars:
 		_update_daze_fx(delta)
+	if realm_crown or realm_bonus_timer > 0.0 or (realm > 0 and realm_king):
+		_update_crown()
+	if grapple_state > 0 or (grapple_fx and grapple_fx.visible):
+		_update_grapple_fx(delta)
+	var guard_on := spawn_protect > 0.0 and alive and not is_human
+	if guard_on != _protect_shown:
+		_protect_shown = guard_on
+		_restore_overlay()
 	if not is_human:
 		# Aliado: nome e vida sempre à vista, através das paredes, na cor do time.
 		var ally := viewer != null and viewer.is_ally(self)
@@ -1912,8 +1993,28 @@ func _restore_overlay() -> void:
 	if ally_arrow:
 		ally_arrow.visible = ally_on
 	var mat: Material = ambush_mat if ambush_timer > 0.0 else (ally_mat if ally_on else null)
+	if spawn_protect > 0.0 and alive:
+		mat = _protect_material()
 	for m in body_meshes:
 		m.material_overlay = mat
+
+
+## Começo da rodada (a partida chama em todas as máquinas quando a contagem acaba).
+func start_spawn_protect() -> void:
+	spawn_protect = SPAWN_PROTECT
+	_net_protected = false
+
+
+## Contorno dourado de quem está protegido (o mesmo do aliado, sem atravessar paredes).
+func _protect_material() -> ShaderMaterial:
+	if protect_mat == null:
+		if _ambush_shader == null:
+			_ambush_shader = Shader.new()
+			_ambush_shader.code = ALLY_RIM_SHADER.replace("depth_test_disabled, ", "")
+		protect_mat = ShaderMaterial.new()
+		protect_mat.shader = _ambush_shader
+		protect_mat.set_shader_parameter("rim_color", Color(PROTECT_COLOR, 0.9))
+	return protect_mat
 
 
 ## Câmera: abaixa ao agachar, afunda ao pousar, inclina de leve no deslize, abre o FOV
@@ -1975,6 +2076,21 @@ func _update_daze_fx(delta: float) -> void:
 		daze_stars.tick(delta, daze_fx, size, height * size)
 
 
+## Domínio do Rei: coroa na cabeça de quem lançou enquanto tem o bônus; as pontas crescem
+## com ele (RealmCrown). Criada no 1o uso.
+func _update_crown() -> void:
+	var show := alive and not is_human and ((realm > 0 and realm_king) or realm_bonus_timer > 0.0)
+	if show and realm_crown == null:
+		realm_crown = RealmCrown.new()
+		add_child(realm_crown)
+	if realm_crown == null:
+		return
+	realm_crown.visible = show
+	if show:
+		var size: float = stats["body_scale"]
+		realm_crown.tick(realm_bonus() / REALM_BONUS_MAX, size, height * size)
+
+
 ## Põe a câmera na posição interpolada do corpo, com a mira atual do mouse.
 func _place_camera() -> void:
 	if ice_timer > 0.0 and is_human:
@@ -2005,6 +2121,16 @@ func _physics_process(delta: float) -> void:
 
 
 func _physics_step(delta: float) -> void:
+	if unstable_timer > 0.0:
+		# Cartas Instáveis: cada máquina conta o tempo desde que recebeu o sorteio e desfaz
+		# sozinha (também nos jogadores das outras máquinas).
+		unstable_timer -= delta
+		if unstable_timer <= 0.0:
+			_unstable_set([])
+	if realm > 0:
+		_realm_tick(delta)
+	realm_bonus_timer = maxf(0.0, realm_bonus_timer - delta)   # em todas: a coroa aparece para os outros
+	spawn_protect = maxf(0.0, spawn_protect - delta)
 	if not is_local:
 		_follow_network(delta)
 		if downed:
@@ -2053,6 +2179,10 @@ func _physics_step(delta: float) -> void:
 		return
 	if hook_state == 1:
 		_hook_fly(delta)
+	if grapple_state > 0:
+		_grapple_check()
+	if grapple_state == 1:
+		_grapple_fly(delta)
 	if beam_charge > 0.0 or beam_timer > 0.0:
 		_beam_step(delta)
 		if beam_timer > 0.0:
@@ -2061,7 +2191,8 @@ func _physics_step(delta: float) -> void:
 		in_jump = false
 		in_dash = false
 	_update_crouch()
-	_move(delta)
+	if grapple_state < 2 or not _grapple_move(delta):
+		_move(delta)
 	_act(delta)
 	var fall_speed := velocity.y
 	var before_h := Vector3(velocity.x, 0.0, velocity.z)
@@ -2089,6 +2220,10 @@ func _tick(delta: float) -> void:
 	dash_cd = maxf(0.0, dash_cd - delta)
 	master_cd = maxf(0.0, master_cd - delta)
 	master_gap = maxf(0.0, master_gap - delta)
+	if grapple_refund > 0.0:
+		grapple_refund -= delta
+		if grapple_refund <= 0.0:
+			_master_refund()
 	var max_charges := master_max_charges()
 	if master_charges < max_charges and master_cd <= 0.0 and max_charges > 1:
 		master_charges += 1
@@ -2900,7 +3035,8 @@ func _send_state() -> void:
 		return
 	var flags := (1 if is_on_floor() else 0) | (2 if crouching else 0) | (4 if sliding else 0) \
 		| (8 if boosting else 0) | (16 if daze_timer > 0.0 else 0) \
-		| (32 if blind_guard > 0.0 else 0) | (64 if silence_guard > 0.0 else 0) | (128 if swap_lock > 0.0 else 0)
+		| (32 if blind_guard > 0.0 else 0) | (64 if silence_guard > 0.0 else 0) | (128 if swap_lock > 0.0 else 0) \
+		| (256 if spawn_protect > 0.0 else 0)
 	_net_state.rpc(net_round, global_position, velocity, rotation.y, head.rotation.x, flags, shield_timer, health, armor)
 
 
@@ -2921,6 +3057,13 @@ func _net_state(round_id: int, pos: Vector3, vel: Vector3, yaw: float, pitch: fl
 	net_on_floor = (flags & 1) != 0
 	boosting = (flags & 8) != 0
 	net_guards = (flags >> 5) & 7
+	# Proteção do começo: só desliga depois de ver o bit ligado (pacotes da contagem, de
+	# antes de a dona começar a luta, chegam sem ele).
+	if (flags & 256) != 0:
+		_net_protected = true
+	elif _net_protected:
+		_net_protected = false
+		spawn_protect = 0.0
 	var dazed := (flags & 16) != 0
 	if dazed and not _net_dazed:
 		daze_fx = DAZE_FX_TIME
@@ -2967,6 +3110,8 @@ func receive_shockwave(from_pos: Vector3, dmg: float, from_name: String, power :
 
 ## Troca-Troca (e Teleporte): vai direto para o ponto, sem interpolar o caminho.
 func teleport_to(pos: Vector3) -> void:
+	if grapple_state > 0:
+		_grapple_clear()   # a ventosa ficou lá atrás: puxaria de volta pelo mapa
 	global_position = pos
 	net_pos = pos
 	reset_physics_interpolation()
@@ -3114,10 +3259,439 @@ func _chaos_tick(delta: float) -> void:
 		return
 	if bazooka_timer > 0.0 or sniper_timer > 0.0 or sword_timer > 0.0 or shrink_timer > 0.0 or pierce_left > 0 \
 			or beam_timer > 0.0 or beam_charge > 0.0 or meteor_left > 0 or ride_timer > 0.0 \
-			or hook_state > 0 or slap_windup > 0.0:
+			or hook_state > 0 or slap_windup > 0.0 or unstable_timer > 0.0:
 		master_cd = CHAOS_WAIT
 	elif master_cd <= 0.0:
 		_chaos_draw()
+
+
+# ---------------------------------------------------------------- Cartas Instáveis
+
+## Sorteia UNSTABLE_COUNT cartas do baralho (cópias pesam, como na escolha; repetidas podem
+## sair) respeitando o limite por partida, com as cartas que você já tem. Baralho vazio
+## (bot sem baralho ainda) ou sem nenhuma carta possível: sorteia entre todas as comuns.
+## Só na máquina dona; as outras recebem pelo _net_unstable.
+func _unstable_draw() -> void:
+	var ids := []
+	for i in UNSTABLE_COUNT:
+		var owned: Array = cards + ids
+		var ok := func(id): return not UNSTABLE_EXCLUDED.has(id) and CardDB.can_take(id, owned)
+		var pool := deck.filter(ok)
+		if pool.is_empty():
+			pool = CardDB.all_ids().filter(ok)
+		if pool.is_empty():
+			break
+		ids.append(pool.pick_random())
+	_unstable_set(ids)
+	unstable_drawn.emit(ids)
+	if Net.online and is_inside_tree():
+		_net_unstable.rpc(ids)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_unstable(ids: Array) -> void:
+	for id in ids:
+		if not CardDB.CARDS.has(id) or CardDB.is_master(id):
+			return
+	_unstable_set(ids)
+	unstable_drawn.emit(ids)
+
+
+## Liga (ou, com [], desliga) as cartas temporárias e recalcula os atributos no meio da
+## rodada. A vida acompanha a vida máxima em porcentagem (não cura nem mata ao acabar); o
+## pente perde as balas que não cabem; o que a partida mexeu nos atributos (mestra do Caos,
+## Formiga) é refeito por cima.
+func _unstable_set(ids: Array) -> void:
+	unstable_cards = ids.duplicate()
+	unstable_timer = UNSTABLE_TIME if not ids.is_empty() else 0.0
+	var old_max: float = stats["max_health"]
+	stats = CardDB.compute_stats(BASE_STATS, cards + unstable_cards)
+	if chaos and master_id != "":
+		_chaos_set(master_id)
+	if has_meta("shrunk") and get_meta("shrunk"):
+		stats["body_scale"] = float(stats["body_scale"]) * SHRINK_SCALE
+	if alive and old_max > 0.0:
+		health = minf(health * float(stats["max_health"]) / old_max, stats["max_health"])
+	ammo = mini(ammo, int(stats["mag_size"]))
+	air_dashes_left = mini(air_dashes_left, int(stats["air_dashes"]))
+	_apply_body_scale()
+	_update_unstable_icons()
+
+
+## Em cima do nome (para os outros): os ícones das cartas temporárias, apagados. Um
+## Sprite3D por vaga, criado no 1o uso; só troca a textura e liga/desliga.
+func _update_unstable_icons() -> void:
+	if unstable_cards.is_empty() and unstable_icons.is_empty():
+		return
+	while unstable_icons.size() < unstable_cards.size():
+		var s := Sprite3D.new()
+		s.pixel_size = 0.0028
+		s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		s.modulate = Color(0.85, 0.75, 1.0, 0.75)
+		s.no_depth_test = true
+		s.shaded = false
+		tag.add_child(s)
+		unstable_icons.append(s)
+	var n := unstable_cards.size()
+	for i in unstable_icons.size():
+		var s: Sprite3D = unstable_icons[i]
+		s.visible = i < n
+		if i < n:
+			s.texture = CardDB.icon(unstable_cards[i])
+			s.position = Vector3((i - (n - 1) * 0.5) * 0.55, 0.95, 0)
+
+
+# ---------------------------------------------------------------- Arpéu Ventoso
+
+func _grapple_fire() -> void:
+	if grapple_state > 0:
+		_grapple_release()   # a próxima ventosa solta a anterior: segue com o embalo até grudar
+	grapple_state = 1
+	grapple_dir = -head.global_transform.basis.z
+	grapple_tip = head.global_position
+	grapple_dist = 0.0
+	reveal()
+	Sfx.at(self, "grapple_fire", chest())
+	grappled.emit(1)
+	_grapple_send(1, grapple_tip, grapple_dir)
+
+
+## A ventosa voa (máquina dona): o 1o pedaço de cenário na linha é onde gruda; jogadores e
+## plataformas suspensas não contam (só a camada 1). Passou do alcance: errou.
+func _grapple_fly(delta: float) -> void:
+	var step := GRAPPLE_SPEED * delta
+	var to := grapple_tip + grapple_dir * step
+	var ray := PhysicsRayQueryParameters3D.create(grapple_tip, to, 1, [get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(ray)
+	if not hit.is_empty():
+		grapple_tip = hit["position"]
+		grapple_normal = hit["normal"]
+		grapple_state = 2
+		grapple_timer = chest().distance_to(grapple_tip) / GRAPPLE_PULL + 0.6
+		sliding = false
+		dash_timer = 0.0
+		Sfx.at(get_parent(), "grapple_stick", grapple_tip)
+		grappled.emit(2)
+		_grapple_send(2, grapple_tip, grapple_normal)
+		return
+	grapple_tip = to
+	grapple_dist += step
+	if grapple_dist >= GRAPPLE_RANGE:
+		_grapple_clear()
+		grapple_refund = GRAPPLE_REFUND
+		grappled.emit(0)
+
+
+## Errou: devolve a carga gasta (com o Caos, que tem uma só, não devolve).
+func _master_refund() -> void:
+	if chaos:
+		return
+	var max_charges := master_max_charges()
+	if max_charges > 1:
+		master_charges = mini(master_charges + 1, max_charges)
+		if master_charges >= max_charges:
+			master_cd = 0.0
+	else:
+		master_cd = 0.0
+
+
+## Cortes: morrer, congelar, ser fisgado, levar tapa, montar.
+func _grapple_check() -> void:
+	if not alive or ice_timer > 0.0 or hooked_by or slap_lock or ride_timer > 0.0:
+		_grapple_clear()
+
+
+## Puxando ou pendurado: põe a velocidade no lugar do movimento normal. Devolve false
+## quando soltou neste passo (o movimento normal segue, ex.: o dash que cortou).
+func _grapple_move(delta: float) -> bool:
+	if in_dash and dash_cd <= 0.0:
+		_grapple_clear()   # dash corta e emenda: _move faz o dash com o embalo do puxão
+		return false
+	if grapple_state == 2 and in_jump:
+		_grapple_release()   # pulo no puxão: o estilingue (pendurado, o pulo salta da parede)
+		jump_buffer = 0.0
+		return true
+	if grapple_state == 2:
+		var to := grapple_tip - chest()
+		var d := to.length()
+		grapple_timer -= delta
+		if d > GRAPPLE_ARRIVE and grapple_timer > 0.0:
+			var dir := to / d
+			var steer := _wish_dir()
+			steer -= dir * steer.dot(dir)
+			velocity = dir * GRAPPLE_PULL + steer.limit_length(1.0) * GRAPPLE_STEER
+			sliding = false
+			return true
+		# Chegou (ou parou numa quina): no topo de algo, pisa; na parede ou no teto, pendura.
+		if grapple_normal.y > 0.7:
+			velocity = Vector3.UP * 2.0
+			_grapple_clear()
+			return true
+		grapple_state = 3
+		grapple_timer = GRAPPLE_HANG
+		grappled.emit(3)
+	# Pendurado: parado e sem gravidade; pular salta da parede.
+	if in_jump:
+		var n := Vector3(grapple_normal.x, 0.0, grapple_normal.z)
+		velocity = Vector3.ZERO
+		if grapple_normal.y > -0.7:
+			velocity = n.normalized() * WALL_JUMP_PUSH + Vector3.UP * float(stats["jump_velocity"])
+			jump_rising = true
+		_grapple_clear()
+		jump_buffer = 0.0
+		return true
+	grapple_timer -= delta
+	if grapple_timer <= 0.0:
+		_grapple_clear()
+		return false
+	velocity = Vector3.ZERO
+	return true
+
+
+## Soltar (pulo no puxão, ou a próxima ventosa): no puxão sai voando com o embalo
+## (+GRAPPLE_LIFT); pendurado, só cai; com a
+## ventosa ainda voando, ela some (a carga já foi).
+func _grapple_release() -> void:
+	if grapple_state == 2:
+		velocity += Vector3.UP * GRAPPLE_LIFT
+	elif grapple_state == 3:
+		velocity = Vector3.ZERO
+	_grapple_clear()
+	grappled.emit(0)
+
+
+func _grapple_clear() -> void:
+	if grapple_state > 0 and is_local:
+		_grapple_send(0, grapple_tip, Vector3.ZERO)
+	grapple_state = 0
+	grapple_timer = 0.0
+
+
+## Rede: as outras máquinas só desenham (lançou, grudou, soltou); quem simula é a dona.
+func _grapple_send(state: int, tip: Vector3, vec: Vector3) -> void:
+	if Net.online and is_inside_tree():
+		_net_grapple.rpc(state, tip, vec)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_grapple(state: int, tip: Vector3, vec: Vector3) -> void:
+	grapple_state = state
+	grapple_tip = tip
+	if state == 1:
+		grapple_dir = vec
+		Sfx.at(self, "grapple_fire", chest())
+	elif state == 2:
+		grapple_normal = vec
+		Sfx.at(get_parent(), "grapple_stick", tip)
+		grappled.emit(2)
+
+
+## Desentupidor (ventosa vermelha de borracha e cabo de madeira) e a corda até a mão.
+## Montados no 1o uso, só deste jogador; escondidos sem ventosa no ar.
+func _grapple_visual() -> void:
+	grapple_fx = Node3D.new()
+	grapple_fx.top_level = true
+	add_child(grapple_fx)
+	var rubber := StandardMaterial3D.new()
+	rubber.albedo_color = Color(0.75, 0.1, 0.08)
+	rubber.roughness = 0.5
+	var wood := StandardMaterial3D.new()
+	wood.albedo_color = Color(0.55, 0.36, 0.18)
+	wood.roughness = 0.8
+	var rope := StandardMaterial3D.new()
+	rope.albedo_color = Color(0.2, 0.17, 0.14)
+	rope.roughness = 0.9
+	# Local: -Z é a frente (a boca da ventosa); o cabo sai para +Z, na direção de quem lançou.
+	var cup := CylinderMesh.new()
+	cup.top_radius = 0.05
+	cup.bottom_radius = 0.13
+	cup.height = 0.11
+	cup.radial_segments = 12
+	cup.material = rubber
+	var stick := CylinderMesh.new()
+	stick.top_radius = 0.022
+	stick.bottom_radius = 0.022
+	stick.height = 0.45
+	stick.radial_segments = 6
+	stick.material = wood
+	grapple_plunger = Node3D.new()
+	grapple_fx.add_child(grapple_plunger)
+	for part in [[cup, 0.055], [stick, 0.11 + 0.225]]:
+		var mi := MeshInstance3D.new()
+		mi.mesh = part[0]
+		mi.rotation.x = PI / 2.0   # o eixo do cilindro (Y) vira +Z: a base larga fica na frente (-Z)
+		mi.position.z = part[1]
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		grapple_plunger.add_child(mi)
+	var cord := CylinderMesh.new()
+	cord.top_radius = 0.018
+	cord.bottom_radius = 0.018
+	cord.height = 1.0
+	cord.radial_segments = 5
+	cord.rings = 1
+	cord.material = rope
+	grapple_cord = MeshInstance3D.new()
+	grapple_cord.mesh = cord
+	grapple_cord.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	grapple_fx.add_child(grapple_cord)
+
+
+func _update_grapple_fx(delta: float) -> void:
+	if grapple_fx == null:
+		_grapple_visual()
+	grapple_fx.visible = grapple_state > 0 and alive
+	if not grapple_fx.visible:
+		return
+	if grapple_state == 1 and not is_local:
+		grapple_tip += grapple_dir * GRAPPLE_SPEED * delta   # nas outras máquinas ela voa sozinha
+	var fwd := grapple_dir if grapple_state == 1 else -grapple_normal
+	if fwd.length() < 0.01:
+		fwd = Vector3.FORWARD
+	var up := Vector3.UP if absf(fwd.normalized().y) < 0.99 else Vector3.RIGHT
+	grapple_plunger.global_transform = Transform3D(Basis.looking_at(fwd, up), grapple_tip)
+	var end := grapple_tip - fwd.normalized() * 0.56   # ponta do cabo
+	var start := chest()
+	if is_human:
+		start = camera.global_position + Vector3.DOWN * 0.4 + camera.global_transform.basis.x * 0.25
+	var axis := end - start
+	var length := axis.length()
+	grapple_cord.visible = length > 0.05
+	if not grapple_cord.visible:
+		return
+	axis /= length
+	var x := axis.cross(Vector3.UP if absf(axis.y) < 0.99 else Vector3.RIGHT).normalized()
+	var z := x.cross(axis).normalized()
+	grapple_cord.global_transform = Transform3D(Basis(x, axis * length, z), (start + end) / 2.0)
+
+
+# ---------------------------------------------------------------- Domínio do Rei
+
+## O inimigo que o Q pega: vivo, no mesmo lugar, a até REALM_RANGE, à frente, a até
+## REALM_AIM da linha da mira e à vista; o mais perto da linha. Congelado, fisgado ou já
+## num Domínio não vale.
+func _realm_find() -> Player:
+	if realm > 0 or not head:
+		return null
+	var eye := head.global_position
+	var aim := -head.global_transform.basis.z
+	var best: Player = null
+	var best_off := REALM_AIM
+	for e in enemies():
+		if e.realm > 0 or e.ice_timer > 0.0 or e.hooked_by:
+			continue
+		var to: Vector3 = e.chest() - eye
+		var along := to.dot(aim)
+		if along <= 0.0 or along > REALM_RANGE:
+			continue
+		var off := (to - aim * along).length()
+		if off > best_off:
+			continue
+		var ray := PhysicsRayQueryParameters3D.create(eye, e.chest(), 1, [get_rid(), e.get_rid()])
+		if not get_world_3d().direct_space_state.intersect_ray(ray).is_empty():
+			continue
+		best = e
+		best_off = off
+	return best
+
+
+## Na máquina do alvo: escudo levantado (ou não dá mais) bloqueia; senão todos entram.
+func receive_realm(from_name: String) -> void:
+	var king := get_parent().get_node_or_null(from_name) as Player
+	if king == null:
+		return
+	if not alive or is_shielding() or ice_timer > 0.0 or hooked_by or realm > 0 or king.realm > 0 or not king.alive:
+		reflect_flash = 1.0
+		Sfx.at(self, "reflect", chest())
+		king.remote_call("realm_blocked", [])
+		return
+	if Net.online and is_inside_tree():
+		_net_realm.rpc(from_name)
+	else:
+		_net_realm(from_name)
+
+
+func realm_blocked() -> void:
+	master_cd = minf(master_cd, REALM_BLOCKED_CD)
+
+
+## Em todas as máquinas, no nó do alvo: os dois entram na sala de quem lançou (vaga =
+## lado dele). Cada máquina move só os próprios jogadores; a volta é para onde cada um
+## estava aqui (a dona de cada corpo decide a posição real).
+@rpc("any_peer", "call_local", "reliable")
+func _net_realm(from_name: String) -> void:
+	var king := get_parent().get_node_or_null(from_name) as Player
+	if king == null:
+		return
+	var room := KingRealm.room_for(get_parent(), king.side)
+	for p: Player in [king, self]:
+		p._realm_enter(room, king.side + 1, self if p == king else king, p == king)
+
+
+func _realm_enter(room: KingRealm, slot: int, partner: Player, king: bool) -> void:
+	realm = slot
+	realm_timer = REALM_TIME
+	realm_partner = partner
+	realm_king = king
+	realm_return = global_position
+	if realm_marker:
+		realm_marker.queue_free()
+	realm_marker = KingRealm.Marker.new(REALM_TIME)
+	realm_marker.position = global_position
+	get_parent().add_child(realm_marker)
+	if is_local:
+		var to := room.spawn_for(king)
+		sliding = false
+		dash_timer = 0.0
+		slap_flight = 0.0
+		slap_lock = false
+		if slap_windup > 0.0:
+			_cancel_slap(false)
+		swap_partner = null
+		swap_timer = 0.0
+		velocity = Vector3.ZERO
+		rotation.y = to.basis.get_euler().y
+		look_yaw = rotation.y
+		teleport_to(to.origin)
+	realm_changed.emit(true, false)
+
+
+## Todas as máquinas, todo passo: o tempo acaba ou um dos dois morreu (quem sobrou venceu)
+## -> sai. Quem sai vivo volta para onde estava; quem morreu fica onde está.
+func _realm_tick(delta: float) -> void:
+	realm_timer -= delta
+	var partner_out := not is_instance_valid(realm_partner) or not realm_partner.alive \
+			or realm_partner.realm != realm
+	if realm_timer <= 0.0 or partner_out or not alive:
+		var won := alive and is_instance_valid(realm_partner) and not realm_partner.alive
+		_realm_leave(won)
+
+
+func _realm_leave(won: bool) -> void:
+	if won and realm_king:
+		realm_bonus_kept = realm_bonus()
+		realm_bonus_timer = REALM_WIN_TIME
+	realm = 0
+	realm_timer = 0.0
+	realm_partner = null
+	if realm_marker:
+		realm_marker.queue_free()
+		realm_marker = null
+	if is_local and alive:
+		velocity = Vector3.ZERO
+		teleport_to(realm_return)
+	realm_changed.emit(false, won)
+
+
+## Começo de rodada: ninguém continua lá dentro (o nascimento já põe cada um no lugar).
+func _realm_clear() -> void:
+	realm_bonus_timer = 0.0
+	realm_bonus_kept = 0.0
+	realm = 0
+	realm_timer = 0.0
+	realm_partner = null
+	if realm_marker:
+		realm_marker.queue_free()
+		realm_marker = null
 
 
 ## Cargas da mestra (1 nas que não têm "charges"; o Caos usa uma vez e sorteia).
@@ -3145,6 +3719,11 @@ func master_cd_total() -> float:
 
 ## Habilidade da carta mestra (tecla Q).
 func _use_master() -> void:
+	var realm_target: Player = null
+	if stats["realm"] > 0:
+		realm_target = _realm_find()
+		if realm_target == null:
+			return   # Domínio do Rei sem ninguém na mira: não gasta
 	if master_max_charges() > 1:
 		if master_charges >= master_max_charges():
 			master_cd = CardDB.CARDS[master_id]["cooldown"]   # a recarga começa com a 1a gasta
@@ -3157,6 +3736,7 @@ func _use_master() -> void:
 		chaos_used = true
 	master_used.emit()
 	reveal()
+	spawn_protect = 0.0   # usar a mestra também encerra a proteção do começo da rodada
 	if stats["updraft"] > 0:
 		# Corrente: impulso reto para cima, também no ar (como o da Jett, de Valorant).
 		velocity.y = maxf(velocity.y, UPDRAFT_SPEED)
@@ -3204,6 +3784,12 @@ func _use_master() -> void:
 		_start_ride()
 	if stats["hook"] > 0:
 		_hook_fire()
+	if stats["unstable"] > 0:
+		_unstable_draw()
+	if realm_target:
+		realm_target.remote_call("receive_realm", [String(name)])
+	if stats["grapple"] > 0:
+		_grapple_fire()
 	if stats["meteor"] > 0:
 		meteor_left = METEOR_SHOTS
 		meteor_window = METEOR_WINDOW
@@ -3407,6 +3993,7 @@ func _rest_sword() -> void:
 ## Um golpe do combo: decide os acertos (máquina dona), anima e avisa as outras máquinas.
 func _swing() -> void:
 	since_attack = 0.0
+	spawn_protect = 0.0   # atacar encerra a proteção do começo da rodada
 	var step := combo_step
 	combo_step = (step + 1) % 3
 	combo_idle = COMBO_RESET
@@ -3514,6 +4101,7 @@ func _show_swing(step: int) -> void:
 ## raio só procura jogadores) e sai do cano nessa direção.
 func _fire_sniper() -> void:
 	since_attack = 0.0
+	spawn_protect = 0.0   # atacar encerra a proteção do começo da rodada
 	sniper_shots -= 1
 	fire_timer = 0.5   # a arma fica na mão um instante depois do tiro
 	var origin := head.global_position
@@ -4699,6 +5287,7 @@ func _update_beam_fx(_delta: float) -> void:
 ## Bazuca: foguete reto, lento, com o dobro do dano e explosão grande.
 func _fire_rocket() -> void:
 	since_attack = 0.0
+	spawn_protect = 0.0   # atacar encerra a proteção do começo da rodada
 	rockets_left -= 1
 	fire_timer = BAZOOKA_INTERVAL
 	var origin := head.global_position
@@ -4785,6 +5374,7 @@ func _fire() -> void:
 func _shoot() -> void:
 	_recoil()
 	since_attack = 0.0
+	spawn_protect = 0.0   # atacar encerra a proteção do começo da rodada
 	ammo -= 1
 	fired.emit()
 	pierce_shot = pierce_left > 0
@@ -4853,7 +5443,15 @@ func shot_damage() -> float:
 	dmg *= 1.0 + speed_bonus()
 	if is_still_aiming():
 		dmg *= 1.0 + STILL_DAMAGE * stats["still_aim"]
+	dmg *= 1.0 + realm_bonus()
 	return dmg
+
+
+## Domínio do Rei: o bônus de dano de quem lançou, lá dentro ou guardado depois de vencer.
+func realm_bonus() -> float:
+	if realm > 0 and realm_king:
+		return minf(REALM_BONUS_MAX, REALM_BONUS_RATE * (REALM_TIME - realm_timer))
+	return realm_bonus_kept if realm_bonus_timer > 0.0 else 0.0
 
 
 ## Sangue Frio valendo agora: parado ou agachado (sem deslizar), no chão.
@@ -4984,6 +5582,11 @@ func _teleport_forward() -> void:
 		d -= TELEPORT_STEP
 	var arena = get_parent().get("arena")
 	var limit: float = arena.half - RADIUS - 0.2 if arena else INF
+	var center := Vector3.ZERO
+	if realm > 0:
+		# No Domínio do Rei, o muro de fora é o da sala.
+		center = KingRealm.center_of(realm - 1)
+		limit = KingRealm.HALF - RADIUS - 0.2
 	var room := PhysicsShapeQueryParameters3D.new()
 	room.shape = capsule
 	room.collision_mask = 1
@@ -4991,7 +5594,7 @@ func _teleport_forward() -> void:
 	for dist in tries:
 		var dest: Vector3 = global_position + aim * dist
 		dest.y = maxf(dest.y, 0.05)   # olhando para baixo, para no chão
-		if absf(dest.x) > limit or absf(dest.z) > limit:
+		if absf(dest.x - center.x) > limit or absf(dest.z - center.z) > limit:
 			continue   # não sai pelo muro de fora
 		room.transform = Transform3D(Basis(), dest + Vector3.UP * (height / 2.0 + 0.05))
 		if not get_world_3d().direct_space_state.intersect_shape(room, 1).is_empty():
@@ -5018,8 +5621,8 @@ func begin_swap(shooter: Player) -> void:
 func _finish_swap() -> void:
 	var other := swap_partner
 	swap_partner = null
-	if not alive or not is_instance_valid(other) or not other.alive:
-		return
+	if not alive or not is_instance_valid(other) or not other.alive or other.realm != realm:
+		return   # um dos dois foi para o Domínio do Rei no meio da espera
 	var here := global_position
 	var there := other.global_position
 	Effects.burst(get_parent(), chest(), 1.4, SwapLink.COLOR, 0.25)
@@ -5059,7 +5662,7 @@ func _net_swap_mark(other_name: String) -> void:
 
 ## Os adversários vivos: todos os outros no cada um por si, o outro time no 2x2.
 func enemies() -> Array:
-	return get_tree().get_nodes_in_group("players").filter(func(p): return p.alive and is_enemy(p))
+	return get_tree().get_nodes_in_group("players").filter(func(p): return p.alive and is_enemy(p) and p.realm == realm)
 
 
 func is_enemy(other: Player) -> bool:
@@ -5163,7 +5766,7 @@ func take_area_damage(amount: float, from: Player, tick := false) -> void:
 ## ignore_armor: o Perfurante bate direto na vida. tick: dano contínuo (queimadura, nuvem,
 ## serra, alto demais; o veneno vem com flash falso), que o Couro Grosso não conta.
 func take_damage(amount: float, from: Player, flash := true, ignore_armor := false, tick := false) -> void:
-	if not alive or amount <= 0.0 or protect_timer > 0.0 or ice_timer > 0.0:
+	if not alive or amount <= 0.0 or protect_timer > 0.0 or spawn_protect > 0.0 or ice_timer > 0.0:
 		return
 	if stats["thick_skin"] > 0 and flash and not tick:
 		# Couro Grosso: este golpe perde o que acumulou (mínimo 1) e soma 1 para o próximo.
@@ -5293,8 +5896,8 @@ func _apply_death_now(killer: String, assists: Array) -> void:
 # ---------------------------------------------------------------- caído (2x2)
 
 func _can_go_down() -> bool:
-	if not downs_enabled or team < 0 or frozen:
-		return false
+	if not downs_enabled or team < 0 or frozen or realm > 0:
+		return false   # no Domínio do Rei o golpe fatal mata: vencer é o objetivo da sala
 	return get_tree().get_nodes_in_group("players").any(func(p): return is_ally(p) and p.alive)
 
 

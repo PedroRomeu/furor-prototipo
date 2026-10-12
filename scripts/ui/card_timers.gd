@@ -27,6 +27,8 @@ void fragment() {
 ## [id da carta, função (Player) -> [falta, total]]; a ordem é a da fileira.
 var _entries := []
 var _icons := {}
+var _unstable: Array = []         # vagas das Cartas Instáveis
+var _unstable_shown: Array = []   # ids mostrados nelas agora
 static var _material: ShaderMaterial
 
 
@@ -56,9 +58,31 @@ func _ready() -> void:
 		icon.visible = false
 		add_child(icon)
 		_icons[e[0]] = icon
+	# Cartas Instáveis: vagas fixas no começo da fileira; a textura troca a cada sorteio.
+	for i in Player.UNSTABLE_COUNT:
+		var icon := TextureRect.new()
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.custom_minimum_size = Vector2(SIZE, SIZE)
+		icon.material = _material
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.visible = false
+		add_child(icon)
+		move_child(icon, i)
+		_unstable.append(icon)
 
 
 func update_from(p: Player) -> void:
+	if _unstable_shown != p.unstable_cards:
+		_unstable_shown = p.unstable_cards.duplicate()
+		for i in _unstable.size():
+			var icon: TextureRect = _unstable[i]
+			icon.visible = i < _unstable_shown.size()
+			if icon.visible:
+				icon.texture = CardDB.icon(_unstable_shown[i])
+	if not _unstable_shown.is_empty():
+		var left := clampf(p.unstable_timer / Player.UNSTABLE_TIME, 0.0, 1.0)
+		for i in _unstable_shown.size():
+			_unstable[i].self_modulate = Color(left, 1, 1, 1)
 	for e in _entries:
 		var icon: TextureRect = _icons[e[0]]
 		var t: Array = e[1].call(p)

@@ -233,7 +233,8 @@ func _physics_process(_delta: float) -> void:
 		var moving := i == dummies.size() - 1
 		# Arremessado pelo Gancho sem levar dano: o voo não pode ser cortado pela volta à
 		# marca, então conta também o tempo quieto no chão.
-		var busy: bool = d.hooked_by != null or d.slap_flight > 0.0 or d.ice_timer > 0.0 or not d.is_on_floor()
+		var busy: bool = d.hooked_by != null or d.slap_flight > 0.0 or d.ice_timer > 0.0 or not d.is_on_floor() \
+				or d.realm > 0   # no Domínio do Rei: volta sozinho no fim
 		_dummy_calm[d] = 0.0 if busy else _dummy_calm.get(d, 0.0) + _delta
 		if d.since_damage >= DUMMY_HEAL_TIME and _dummy_calm[d] >= DUMMY_HEAL_TIME:
 			if d.health < d.stats["max_health"]:
@@ -389,6 +390,11 @@ func _spawn_player(peer: int, side: int, pname: String, team := -1) -> Player:
 	p.meteor_marked.connect(func(): _log("%s marcou um meteoro" % p.player_name))
 	p.slammed.connect(func(h, dmg): _log("%s caiu de Meteoro de %.1f m (%.0f de dano)" % [p.player_name, h, dmg]))
 	p.platform_made.connect(func(): _log("%s fez uma plataforma" % p.player_name))
+	p.grappled.connect(func(s): if s >= 2: _log(("%s grudou a ventosa" if s == 2 else "%s ficou pendurado na ventosa") % p.player_name))
+	p.realm_changed.connect(func(entered, won): _log("%s %s" % [p.player_name, ("entrou no Domínio do Rei (%s)" % ("rei" if p.realm_king else "alvo")) if entered \
+			else ("saiu do Domínio vencendo (bônus %.0f%%)" % (p.realm_bonus() * 100.0) if won else ("saiu do Domínio" + ("" if p.alive else " morto")))]))
+	p.unstable_drawn.connect(func(ids): _log("%s tirou cartas instáveis: %s (vida %.0f/%.0f, dano %.1f)" \
+			% [p.player_name, ", ".join(ids.map(CardDB.card_name)), p.health, p.stats["max_health"], p.stats["damage"]]))
 	p.perfect_reloaded.connect(func(ok): _log("%s %s a recarga perfeita" % [p.player_name, "acertou" if ok else "errou"]))
 	p.beamed.connect(func(): _log("%s levou o raio" % p.player_name))
 	p.slapped.connect(func(splat): _log("%s %s" % [p.player_name, "bateu na parede" if splat else "levou um tapa"]))
@@ -809,6 +815,7 @@ func net_start_round(number: int, map_index: int, seed_value: int, duel: Diction
 	for p in players:
 		if p.alive:
 			p.frozen = false
+			p.start_spawn_protect()
 
 
 ## Cair no vazio: a primeira vez na partida explica o escudo; depois só avisa o quique perfeito.

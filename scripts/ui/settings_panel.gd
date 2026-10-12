@@ -261,7 +261,7 @@ func _credits_page() -> Control:
 	var col := _page("Créditos")
 	_section(col, "RECURSOS")
 	var text := Ui.label("Modelos e sons de Kenney (kenney.nl), CC0.\n\nÍcones das cartas de game-icons.net, "
-		+ "por Lorc, Delapouite, Caro Asercion, Felbrigg, HeavenlyDog, John Colburn, Sbed e Skoll (CC BY 3.0).", 15, Ui.TEXT)
+		+ "por Lorc, Delapouite, Caro Asercion, Faithtoken, Felbrigg, HeavenlyDog, John Colburn, Lucas, Sbed e Skoll (CC BY 3.0).", 15, Ui.TEXT)
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(Ui.gap(14))
 	col.add_child(text)

@@ -335,6 +335,13 @@ func _holo_material(kind: String) -> StandardMaterial3D:
 static func _holo_texture() -> ImageTexture:
 	if _holo_tex:
 		return _holo_tex
+	_holo_tex = make_holo_texture()
+	return _holo_tex
+
+
+## A mesma grade sem guardar (a sala do Domínio do Rei guarda a dela, para não ficar presa
+## numa variável estática ao fechar o jogo).
+static func make_holo_texture() -> ImageTexture:
 	var n := 128
 	var px := n / 2
 	var img := Image.create_empty(n, n, false, Image.FORMAT_RGB8)
@@ -347,5 +354,4 @@ static func _holo_texture() -> ImageTexture:
 				v = 1.0
 			img.set_pixel(x, y, Color(v, v, v))
 	img.generate_mipmaps()
-	_holo_tex = ImageTexture.create_from_image(img)
-	return _holo_tex
+	return ImageTexture.create_from_image(img)

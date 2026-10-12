@@ -187,15 +187,14 @@ const PLAY_GAP := 12        # espaço entre os blocos de cada coluna
 const PLAY_ACTION_H := 52.0 # altura do botão principal da aba
 const SIDE_PAGES := ["Novidades", "Missões", "Baralho"]
 ## Atualizar a cada versão (texto curto, o que o jogador nota).
-const NEWS_TITLE := "Versão 0.7"
+const NEWS_TITLE := "Versão 0.8"
 const NEWS := [
-	"Sala de teste: teste o baralho contra bonecos e atiradores (no editor de baralhos).",
-	"Loja e pacotes de cartas, ainda em modo de teste.",
-	"Cartas com moldura e ícone novo do jogo.",
-	"Sala online com botão Pronto.",
-	"Corrente com 2 cargas.",
-	"Meteoro e Pulo-Foguete refeitos.",
-	"Quem fica acima do teto das balas perde vida.",
+	"Missões diárias e semanais (contam online): moedas, fichas e Pacote de Mestra.",
+	"3 mestras novas: Cartas Instáveis, Domínio do Rei e Arpéu Ventoso.",
+	"14 cartas comuns novas (120 no total).",
+	"3 s de proteção no começo de cada rodada (atacar encerra a sua).",
+	"Loja numa página só e criação de cartas com fichas no editor (Criar).",
+	"Balanceamento grande: Rajada, Teleguiada, Flash, Regeneração, Pólvora e mais.",
 ]
 static var _play_tab := "Treino"   # lembra a última aba enquanto o jogo roda
 static var _side_page := 0         # e a última página da coluna da direita

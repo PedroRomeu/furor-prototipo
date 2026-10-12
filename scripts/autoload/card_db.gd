@@ -144,6 +144,12 @@ const MASTERS := {
 	"gancho": {"name": "Gancho", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 16.0,
 		"desc": "Q: lança um gancho (até 20 m) que puxa o inimigo até a sua frente e o segura por até 3 s: você anda a 70% e não atira; ele não age. Ele serve de escudo humano (no 2x2, o time dele também o acerta). Clique ou Q arremessa na mira: bater numa parede dá 22; bater em outro inimigo dá 22 nos dois e deixa os dois tontos. Levar 30 de dano segurando solta. Escudo levantado bloqueia o gancho. Recarga de 16 s (6 s se errar).",
 		"mods": [{"stat": "hook", "add": 1}]},
+	# Domínio do Rei (2026-10-11, ideia e nome do usuário, inspirada na ultimate do
+	# Mordekaiser; números meus, aprovados; começar só com o bônus e voltar para onde saíram
+	# foram escolhas dele). Lógica em Player._realm_*, sala em KingRealm.
+	"dominio_do_rei": {"name": "Domínio do Rei", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 30.0,
+		"desc": "Q com um inimigo na mira (até 15 m): leva vocês dois para uma sala fechada por 6 s, onde ninguém mais entra. Lá dentro você ganha +6% de dano por segundo, até +30%. Quem vencer volta na hora; se você vencer, fica com o bônus por mais 6 s. No fim do tempo, os dois voltam para onde estavam, e quem ficou no mapa vê onde e quando vocês reaparecem. Escudo levantado bloqueia (recarga de 8 s). Sem alvo na mira, não gasta. Recarga de 30 s.",
+		"mods": [{"stat": "realm", "add": 1}]},
 	"ultimo_suspiro": {"name": "Último Suspiro", "cat": "Corpo", "rarity": "mitico", "master": true,
 		"desc": "Uma vez por rodada, o golpe fatal te deixa com 1 de vida e sem morrer por 3 s. Abata alguém nesse tempo e volte com metade da vida.",
 		"mods": [{"stat": "last_stand", "add": 1}]},
@@ -175,6 +181,19 @@ const MASTERS := {
 	"caos": {"name": "Caos", "cat": "Balas", "rarity": "mitico", "master": true,
 		"desc": "Você recebe uma mestra sorteada. Ativa: use uma vez; 8 s depois do efeito acabar, vem outra. Passiva: dura 15 s e troca. Nunca repete a anterior; cada rodada começa com um sorteio novo.",
 		"mods": [{"stat": "chaos", "add": 1}]},
+	# Cartas Instáveis (2026-10-11, ideia e nome do usuário; números meus, aprovados para
+	# começar fracos; cartas do baralho e grupo Balas, junto do Caos, escolhas dele).
+	# Lógica em Player._unstable_*.
+	"cartas_instaveis": {"name": "Cartas Instáveis", "cat": "Balas", "rarity": "mitico", "master": true, "cooldown": 22.0,
+		"desc": "Q: ganha 3 cartas comuns sorteadas do seu baralho por 8 s (respeitando o limite por partida; a Fênix não sai). A vida acompanha a vida máxima em porcentagem. As cartas aparecem em cima do seu nome para os outros. Recarga de 22 s.",
+		"mods": [{"stat": "unstable", "add": 1}]},
+	# Arpéu Ventoso (2026-10-12, ideia do usuário: os ganchos de Shingeki no Kyojin com cara
+	# de desentupidor; nome dele; números meus, aprovados: 22 m/s, 8 s por carga, atirar a
+	# qualquer momento). Lógica em Player._grapple_*.
+	"arpeu_ventoso": {"name": "Arpéu Ventoso", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 8.0,
+		"charges": 2,
+		"desc": "Q: lança uma ventosa (até 30 m) que gruda no cenário e te puxa até lá a 22 m/s; chegando, você fica pendurado até 3 s. Pular no meio do puxão solta e você sai voando com o embalo; pular pendurado salta da parede. Q com outra carga lança a próxima ventosa (a anterior solta). Dash corta o puxão. Dá para atirar o tempo todo. Errou, a carga volta em 1 s. Guarda 2 usos: cada um volta em 8 s, um de cada vez.",
+		"mods": [{"stat": "grapple", "add": 1}]},
 	"corrente": {"name": "Corrente", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 9.0,
 		"charges": 2,
 		"desc": "Q: impulso reto para cima, de uns 8 m. Funciona também no ar. Guarda 2 usos: cada um volta em 9 s, um de cada vez.",

@@ -87,7 +87,7 @@ func think(delta: float) -> void:
 	elif sees:
 		aim_seen += delta
 	master_ready = master_ready + delta if p.master_ready() else 0.0
-	var hurt := _downed_ally()
+	var hurt := _downed_ally() if p.realm == 0 else null   # no Domínio do Rei não dá para ir até ele
 	if hurt and (not sees or p.global_position.distance_to(foe.global_position) > REVIVE_SAFE):
 		# Parceiro caído e nenhum inimigo perto: vai até ele e fica ali (atirando, se vir alguém).
 		var go := Vector3.ZERO
@@ -177,10 +177,20 @@ func _master(foe: Player, sees: bool) -> void:
 		if p.master_cd < 15.0:
 			p.in_master = true
 		return
+	if p.grapple_state == 2 and p.global_position.distance_to(foe.global_position) < NEAR:
+		p.in_jump = true   # Arpéu Ventoso: chegou perto do alvo no puxão, solta com o embalo
+		return
 	if p.ride_timer > 0.0:
 		# Foguete: salta perto do alvo (o foguete solto segue até ele).
 		if p.global_position.distance_to(foe.global_position) < 9.0 and p.ride_age > 0.3:
 			p.in_master = true
+		return
+	if p.stats["grapple"] > 0 and p.grapple_state == 0 and p.master_ready() \
+			and master_ready >= float(cfg["master_wait"]) \
+			and p.global_position.distance_to(foe.global_position) > 20.0 and _grapple_line():
+		# Arpéu Ventoso: longe do alvo, encurta a distância (olhando para ele ou para onde
+		# anda; só com cenário na mira, senão a ventosa erraria).
+		p.in_master = true
 		return
 	if not sees or not p.master_ready() or p.global_position.distance_to(foe.global_position) > FAR \
 			or master_ready < float(cfg["master_wait"]):
@@ -204,6 +214,10 @@ func _master(foe: Player, sees: bool) -> void:
 		p.in_master = true   # Gancho: alvo à vista ao alcance
 	elif p.stats["rocket_ride"] > 0 and p.global_position.distance_to(foe.global_position) > 12.0:
 		p.in_master = true   # Foguete: monta e vai na direção do alvo
+	elif p.stats["realm"] > 0 and p.global_position.distance_to(foe.global_position) < Player.REALM_RANGE:
+		p.in_master = true   # Domínio do Rei: só sai com o alvo na mira (senão não gasta)
+	elif p.stats["unstable"] > 0:
+		p.in_master = true   # Cartas Instáveis: com o alvo à vista a menos de FAR
 	elif p.stats["meteor"] > 0 and p.meteor_left == 0 and p.global_position.distance_to(foe.global_position) > 6.0:
 		p.in_master = true   # Chuva de Meteoros: os próximos tiros marcam
 	elif p.stats["slap"] > 0 and p.global_position.distance_to(foe.global_position) < Player.SLAP_RANGE + 0.5:
@@ -215,12 +229,20 @@ func _master(foe: Player, sees: bool) -> void:
 		p.in_master = true   # Formiga: para fugir com pouca vida ou, de vez em quando, para chegar perto
 
 
+## Arpéu Ventoso: a mira acerta cenário dentro do alcance (senão a ventosa erraria).
+func _grapple_line() -> bool:
+	var eye := player.head.global_position
+	var aim := -player.head.global_transform.basis.z
+	var ray := PhysicsRayQueryParameters3D.create(eye, eye + aim * Player.GRAPPLE_RANGE, 1, [player.get_rid()])
+	return not player.get_world_3d().direct_space_state.intersect_ray(ray).is_empty()
+
+
 ## Devolve a direção de movimento no mundo e já preenche in_move, pulo e deslize.
 ## Alvo: o inimigo visível mais perto; se nenhum está à vista, o mais perto de todos.
 ## Troca de alvo no máximo a cada TARGET_TIME para não ficar indeciso.
 func _pick_target() -> Player:
 	var p := player
-	if target and target.alive and target_timer > 0.0:
+	if target and target.alive and target.realm == p.realm and target_timer > 0.0:
 		target_timer -= get_physics_process_delta_time()
 		return target
 	target_timer = TARGET_TIME
@@ -284,6 +306,11 @@ func _movement(delta: float, foe: Player, sees: bool) -> Vector3:
 
 func _follow_path(delta: float, target: Vector3) -> Vector3:
 	var p := player
+	if p.realm > 0:
+		# Domínio do Rei: a sala não tem malha de navegação; vai reto.
+		var flat := target - p.global_position
+		flat.y = 0.0
+		return flat.normalized()
 	repath_timer -= delta
 	if repath_timer <= 0.0:
 		repath_timer = REPATH_TIME
