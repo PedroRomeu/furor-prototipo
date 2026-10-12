@@ -25,7 +25,7 @@ signal chat_received(entry: Dictionary)   # todos: mensagem nova no chat (ver ch
 ## e saem depois de BUILD_WAIT. Vai em bytes crus (send_bytes), não por @rpc: com builds
 ## diferentes as funções @rpc podem não bater (2026-10-11, convidada invisível no 2x2 com
 ## zip provavelmente de outro dia).
-const BUILD := "0.8.0.1"
+const BUILD := "0.8.0.2"
 const BUILD_TAG := "FUROR_BUILD:"
 const BUILD_WRONG := "FUROR_WRONG:"
 const BUILD_WAIT := 5.0
