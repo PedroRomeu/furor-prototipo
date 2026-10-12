@@ -190,7 +190,8 @@ const SIDE_PAGES := ["Novidades", "Missões", "Baralho"]
 const NEWS_TITLE := "Versão 0.8"
 const NEWS := [
 	"Missões diárias e semanais (contam online): moedas, fichas e Pacote de Mestra.",
-	"3 mestras novas: Cartas Instáveis, Domínio do Rei e Arpéu Ventoso.",
+	"4 mestras novas: Cartas Instáveis, Domínio do Rei, Arpéu Ventoso e Mecha.",
+	"Prorrogação: depois de 8 min de rodada chegam cartas extras; aos 10 min a arena fecha.",
 	"14 cartas comuns novas (120 no total).",
 	"3 s de proteção no começo de cada rodada (atacar encerra a sua).",
 	"Loja numa página só e criação de cartas com fichas no editor (Criar).",

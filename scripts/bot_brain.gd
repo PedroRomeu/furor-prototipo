@@ -181,6 +181,10 @@ func _master(foe: Player, sees: bool) -> void:
 	if p.grapple_state == 2 and p.global_position.distance_to(foe.global_position) < NEAR:
 		p.in_jump = true   # Arpéu Ventoso: chegou perto do alvo no puxão, solta com o embalo
 		return
+	if p.mech_state > 0:
+		# Mecha: míssil sempre que pronto com o alvo à vista (a explosão sai sozinha no fim).
+		p.in_shield = p.mech_state == 2 and sees and p.mech_missile_cd <= 0.0
+		return
 	if p.ride_timer > 0.0:
 		# Foguete: salta perto do alvo (o foguete solto segue até ele).
 		if p.global_position.distance_to(foe.global_position) < 9.0 and p.ride_age > 0.3:
@@ -225,6 +229,9 @@ func _master(foe: Player, sees: bool) -> void:
 		p.in_master = true   # Mega Tapa: tira quem chegou perto
 	elif p.stats["sword"] > 0 and p.global_position.distance_to(foe.global_position) < NEAR:
 		p.in_master = true
+	elif p.stats["mech"] > 0 and p.global_position.distance_to(foe.global_position) < 25.0 \
+			and (p.health < p.stats["max_health"] * 0.7 or randf() < 0.01):
+		p.in_master = true   # Mecha: com o alvo à vista, machucado ou de vez em quando
 	elif p.stats["shrink"] > 0 and p.shrink_timer <= 0.0 \
 			and (p.health < p.stats["max_health"] * 0.4 or randf() < 0.01):
 		p.in_master = true   # Formiga: para fugir com pouca vida ou, de vez em quando, para chegar perto

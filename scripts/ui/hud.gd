@@ -761,6 +761,10 @@ func _update_status() -> void:
 		items.append(["PRESO NO GANCHO", Ui.DANGER])
 	if me.ride_timer > 0.0:
 		items.append(["FOGUETE %.1f  ·  [%s] saltar" % [me.ride_timer, GameState.key_text("master")], Player.ROCKET_COLOR])
+	if me.mech_state == 1:
+		items.append(["MONTANDO O MECHA %.1f" % me.mech_timer, Player.MECH_COLOR.lightened(0.25)])
+	elif me.mech_state == 2:
+		items.append(["MECHA %.1f  ·  [%s] sair e explodir" % [me.mech_timer, GameState.key_text("master")], Player.MECH_COLOR.lightened(0.25)])
 	if me.grapple_state == 2:
 		items.append(["PUXANDO  ·  [%s] solta com o embalo" % GameState.key_text("jump"), Player.GRAPPLE_COLOR])
 	elif me.grapple_state == 3:

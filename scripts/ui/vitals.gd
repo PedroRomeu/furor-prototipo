@@ -110,6 +110,9 @@ func _draw_health() -> void:
 		var armor_text := "+%d colete" % ceili(me.armor)
 		_text(_bold, Vector2(after, 34), armor_text, 14, ARMOR_COLOR)
 		after += _width(_bold, armor_text, 14) + 14
+	if me.mech_state == 2:
+		var mech_text := "+%d blindagem" % ceili(me.mech_armor)
+		_text(_bold, Vector2(after, 34), mech_text, 14, Player.MECH_COLOR.lightened(0.25))
 
 	# Barra: fundo, rastro do dano, vida e marcas a cada 25.
 	var bar := Rect2(x, 44, BAR_W, BAR_H)
@@ -131,6 +134,12 @@ func _draw_health() -> void:
 		var ar := Rect2(x, bar.end.y + 4, BAR_W * clampf(me.armor / Player.ARMOR_MAX, 0, 1), 4)
 		_rect(ar.grow(1), SHADOW)
 		_rect(ar, ARMOR_COLOR)
+	# Mecha: barra da blindagem acima da vida, na escala da blindagem cheia.
+	if me.mech_state == 2 and me.mech_armor_max > 0.0:
+		var full := Rect2(x, bar.position.y - 9, BAR_W, 5)
+		_rect(full.grow(1), SHADOW)
+		_rect(full, Color(1, 1, 1, 0.1))
+		_rect(Rect2(full.position, Vector2(BAR_W * clampf(me.mech_armor / me.mech_armor_max, 0, 1), 5)), Player.MECH_COLOR.lightened(0.2))
 
 
 # ---------------------------------------------------------------- carta mestra
@@ -206,6 +215,9 @@ func _draw_master_top() -> void:
 # ---------------------------------------------------------------- escudo e dash
 
 func _draw_shield() -> void:
+	if me.mech_state > 0:
+		_draw_missile()
+		return
 	var total: float = me.stats["shield_duration"] + me.stats["shield_cooldown"]
 	var silenced: bool = me.silence_timer > 0.0
 	var active: bool = me.is_shielding()
@@ -221,6 +233,21 @@ func _draw_shield() -> void:
 	if me.shield_extra > 0 and not active:
 		_text(_bold, Vector2(ICON_X + 13, ICON_Y - 12), "x%d" % (me.shield_extra + 1), 12, Color.WHITE)
 	_key(Vector2(ICON_X, ICON_Y + 26), GameState.key_text("shield"), charge >= 1.0 and not silenced)
+
+
+## Mecha: no lugar do escudo, o míssil (mesma forma, na cor do míssil, "míssil" em cima);
+## montando, apagado.
+func _draw_missile() -> void:
+	var charge := 0.0
+	if me.mech_state == 2:
+		charge = 1.0 if me.mech_missile_cd <= 0.0 else clampf(1.0 - me.mech_missile_cd / Player.MISSILE_CD, 0.0, 1.0)
+	var rect := Rect2(Vector2(ICON_X, ICON_Y) - SHIELD_SIZE / 2.0, SHIELD_SIZE)
+	_icon(R_SHIELD, R_SHIELD_LINE, rect, charge, Player.MISSILE_COLOR)
+	if me.mech_state == 2 and charge < 1.0:
+		var secs := "%.1f" % me.mech_missile_cd
+		_text(_bold, Vector2(ICON_X - _width(_bold, secs, 12) / 2.0, ICON_Y + 5), secs, 12, Color.WHITE)
+	_text(_bold, Vector2(ICON_X - _width(_bold, "míssil", 11) / 2.0, ICON_Y - 16), "míssil", 11, Player.MISSILE_COLOR)
+	_key(Vector2(ICON_X, ICON_Y + 26), GameState.key_text("shield"), charge >= 1.0)
 
 
 func _draw_dash() -> void:

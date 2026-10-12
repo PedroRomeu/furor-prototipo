@@ -108,7 +108,7 @@ const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", 
 	"slow", "push", "shield_break", "target_bounce", "execute", "reflected", "gravity",
 	"boomerang", "returning", "bounce_damage", "sticky", "split", "grow", "swap", "blind",
 	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls",
-	"toxic", "hole", "laser", "ice", "meteor", "rocket", "blast_radius", "blast_damage", "life", "drill",
+	"toxic", "hole", "laser", "ice", "meteor", "rocket", "missile", "blast_radius", "blast_damage", "life", "drill",
 	"bounce_life", "click"]
 ## Bala Fantasma: só paredes contam (superfície quase em pé); no chão e no topo das peças a
 ## bala para ou quica como as outras.
@@ -169,6 +169,7 @@ var laser := false   # tiro da Sniper: deixa um feixe reto ao nascer (em todas a
 var ice := false     # caco da Prisão de Gelo: congela em vez de ferir; some a ICE_RANGE
 var meteor := false  # Chuva de Meteoros: onde bater marca o chão (uma vez só)
 var rocket := false  # Foguete solto: explode (Player.rocket_blast) no contato ou no tempo
+var missile := false # míssil do Mecha: explode (Player.mech_blast) no contato ou no tempo, curva atrás de quem passa perto
 var toxic := 0   # Nuvem Tóxica: cópias (AreaField)
 var hole := 0    # Buraco Negro: cópias (AreaField)
 var lazy_top := 0.0
@@ -328,7 +329,7 @@ static func _make_room(who: Player) -> bool:
 			key = k
 	for list in [_owned.get(key, []), _owned.get(who.get_instance_id(), [])]:
 		for b in list:
-			if is_instance_valid(b) and b.is_in_group("bullets") and not (b.rocket or b.ice or b.laser):
+			if is_instance_valid(b) and b.is_in_group("bullets") and not (b.rocket or b.missile or b.ice or b.laser):
 				b._drop()
 				return true
 	return false
@@ -385,8 +386,10 @@ func _ready() -> void:
 		c = Player.ICE_COLOR
 	if meteor:
 		c = MeteorStrike.COLOR
-	if rocket:
+	if rocket or missile:
 		c = Player.ROCKET_COLOR
+	if missile:
+		c = Player.MISSILE_COLOR
 	_set_color(c)
 	if sound:
 		Sfx.at(get_parent(), "shot", global_position)
@@ -470,8 +473,8 @@ func _physics_process(delta: float) -> void:
 
 func _physics_step(delta: float) -> void:
 	age += delta
-	if rocket and age > Player.ROCKET_FREE_TIME:
-		Player.rocket_blast(get_parent(), global_position, shooter)
+	if (rocket or missile) and age > Player.ROCKET_FREE_TIME:
+		_boom(global_position)
 		queue_free()
 		return
 	if age > life or (ice and age * velocity.length() > Player.ICE_RANGE):
@@ -500,7 +503,7 @@ func _physics_step(delta: float) -> void:
 			_passed.append(world_hit["rid"])
 			Effects.burst(get_parent(), world_hit["position"], maxf(0.35, radius * 2.5), Color(0.75, 0.6, 1.0), 0.15)
 			world_hit = _world_ray(from, to)
-		if not ice and not rocket:
+		if not ice and not rocket and not missile:
 			var ceiling := _ceiling_hit(from, to)
 			if not ceiling.is_empty() and (world_hit.is_empty()
 					or from.distance_to(world_hit["position"]) > from.distance_to(ceiling["position"])):
@@ -542,6 +545,8 @@ func _remember_point(p: Vector3) -> void:
 
 ## Muda a velocidade em voo: gravidade, aceleração, crescimento, bumerangue, teleguiada.
 func _update_flight(delta: float) -> void:
+	if missile:
+		_missile_seek(delta)
 	if lazy_top > 0.0:
 		var speed := velocity.length()
 		if speed < lazy_top and speed > 0.01:
@@ -671,6 +676,34 @@ func _enemy() -> Player:
 	return best
 
 
+## Foguete solto ou míssil do Mecha: explode aqui (em cada máquina, nos jogadores dela).
+func _boom(point: Vector3) -> void:
+	if missile:
+		Player.mech_blast(get_parent(), point, shooter, Player.MISSILE_RADIUS, damage, true)
+	else:
+		Player.rocket_blast(get_parent(), point, shooter)
+
+
+## Míssil do Mecha: o inimigo mais perto da linha à frente (até MISSILE_SEEK) puxa a curva.
+func _missile_seek(delta: float) -> void:
+	var dir := velocity.normalized()
+	var best: Player = null
+	var best_off := Player.MISSILE_SEEK
+	for p: Player in _players:
+		if not p.alive or not is_instance_valid(shooter) or not shooter.is_enemy(p):
+			continue
+		var to := p.chest() - global_position
+		var ahead := to.dot(dir)
+		if ahead <= 0.0:
+			continue
+		var off := (to - dir * ahead).length()
+		if off < best_off:
+			best_off = off
+			best = p
+	if best:
+		_steer_to(best.chest(), Player.MISSILE_TURN, delta)
+
+
 func _steer_to(point: Vector3, rate: float, delta: float) -> void:
 	var dir := velocity.normalized()
 	var want := (point - global_position).normalized()
@@ -683,8 +716,8 @@ func _steer_to(point: Vector3, rate: float, delta: float) -> void:
 func _hit_world(hit: Dictionary) -> void:
 	var point: Vector3 = hit["position"]
 	var normal: Vector3 = hit["normal"]
-	if rocket:
-		Player.rocket_blast(get_parent(), point + normal * 0.3, shooter)
+	if rocket or missile:
+		_boom(point + normal * 0.3)
 		queue_free()
 		return
 	if hit.get("ceiling", false):
@@ -778,8 +811,8 @@ func _hit_player(target: Player, point: Vector3) -> void:
 		visible = false
 		global_position = point
 		return
-	if rocket:
-		Player.rocket_blast(get_parent(), point, shooter)
+	if rocket or missile:
+		_boom(point)
 		if Net.online:
 			get_parent().net_bullet_hit.rpc(id, point, -1.0)
 		queue_free()
@@ -962,8 +995,8 @@ func remote_reflect(point: Vector3, dir: Vector3, owner_name: String, new_damage
 
 ## Resposta da outra máquina: o alvo levou esta bala.
 func remote_hit(point: Vector3, dmg: float) -> void:
-	if rocket:
-		Player.rocket_blast(get_parent(), point, shooter)
+	if rocket or missile:
+		_boom(point)
 		queue_free()
 		return
 	if dmg <= 0.0:

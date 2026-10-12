@@ -155,10 +155,15 @@ shows in a corner during the match.
   (Body, Q on an enemy in your sights up to 15 m: both of you go to a closed room for 6 s;
   you gain +6% damage per second there, up to +30%, and wear a crown that grows with it;
   win and you keep the bonus 6 s more; when time runs out both return where they were, and
-  everyone on the map sees a purple marker with the countdown there) and **Arpéu Ventoso**
+  everyone on the map sees a purple marker with the countdown there), **Arpéu Ventoso**
   (Movement, a plunger on a rope: Q sticks it to any surface up to 30 m and pulls you there;
   hang up to 3 s, Space mid-pull to fling yourself with the momentum, Space while hanging to
-  wall jump, Q again for the next plunger; 2 charges of 8 s). New in 0.5.0: **Caos** (Bullets: draws a
+  wall jump, Q again for the next plunger; 2 charges of 8 s) and **Mecha** (Body: Q builds a
+  mech around you piece by piece in 1.2 s, slow and unable to shoot meanwhile; inside for 8 s
+  you keep your gun, get armor of 60 + 60% of max health that takes damage first, ignore
+  pushes and pulls, and E fires a missile instead of the shield; bigger, 25% slower, no dash
+  or extra jumps; Q again leaves early; on leaving it explodes for 20 to 50 damage, more the
+  less armor is left; Perfurante ignores the armor; 24 s cooldown after you leave). New in 0.5.0: **Caos** (Bullets: draws a
   random master; an active one is used once and 8 s after its effect ends another comes, a
   passive one lasts 15 s), **Prisão de Gelo** (Shield, Q: an ice shard that traps the target
   in a sliding ice block for 3 s; they take no damage, but shots, explosions and bodies push
@@ -204,6 +209,11 @@ shows in a corner during the match.
 - At the start, everyone sees 3 different cards from their own deck and keeps 1.
 - When a round's countdown ends, everyone is protected from damage for 3 s (golden
   outline); attacking (shooting, the master card or a sword strike) ends your own protection.
+- **Overtime**: after 8 min of fighting in a round, every living player gets one extra common
+  card from their own deck every 10 s (up to 20, this round only); at 10 min a glass wall
+  starts closing in on the center of the map, reaching 8 m at 12 min, and standing outside
+  it costs 8% of max health per second. A big countdown at the top of the screen warns 30 s
+  before each phase.
 - Round: last one standing wins. Only **the losers** pick another card (1 of 3); with more
   than 2 players, everyone who died.
 - **Times** (teams, 2v2; online with 4, or in Treino with 3 bots: you and an allied bot): the team with

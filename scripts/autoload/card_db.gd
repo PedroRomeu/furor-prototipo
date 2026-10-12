@@ -150,6 +150,13 @@ const MASTERS := {
 	"dominio_do_rei": {"name": "Domínio do Rei", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 30.0,
 		"desc": "Q com um inimigo na mira (até 15 m): leva vocês dois para uma sala fechada por 6 s, onde ninguém mais entra. Lá dentro você ganha +6% de dano por segundo, até +30%. Quem vencer volta na hora; se você vencer, fica com o bônus por mais 6 s. No fim do tempo, os dois voltam para onde estavam, e quem ficou no mapa vê onde e quando vocês reaparecem. Escudo levantado bloqueia (recarga de 8 s). Sem alvo na mira, não gasta. Recarga de 30 s.",
 		"mods": [{"stat": "realm", "add": 1}]},
+	# Mecha (2026-10-12, ideia do usuário: construir e entrar, seguir atirando com defesa;
+	# construção peça por peça, míssil no E, explosão na saída que cresce com a blindagem
+	# perdida e a Perfurante ignorando a blindagem foram dele; números meus, aprovados).
+	# Lógica em Player._mech_*.
+	"mecha": {"name": "Mecha", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 24.0,
+		"desc": "Q: monta um mecha em volta de você, peça por peça, em 1,2 s (nesse tempo você anda devagar e não atira). Dentro, por 8 s: blindagem de 60 + 60% da vida máxima que leva o dano antes de tudo, imune a empurrões e puxões, segue atirando com a sua arma, e E lança um míssil (1 a cada 2,5 s; 20 + 40% do dano da bala, até 45, em 3,5 m) no lugar do escudo. Maior, 25% mais lento, sem dash nem pulos extras. Q de novo sai antes. Ao sair, ele explode (5 m): 20 de dano com a blindagem cheia, até 50 com ela zerada. A Perfurante ignora a blindagem. Recarga de 24 s, contada depois de sair.",
+		"mods": [{"stat": "mech", "add": 1}]},
 	"ultimo_suspiro": {"name": "Último Suspiro", "cat": "Corpo", "rarity": "mitico", "master": true,
 		"desc": "Uma vez por rodada, o golpe fatal te deixa com 1 de vida e sem morrer por 3 s. Abata alguém nesse tempo e volte com metade da vida.",
 		"mods": [{"stat": "last_stand", "add": 1}]},

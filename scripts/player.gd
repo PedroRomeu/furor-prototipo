@@ -153,6 +153,7 @@ const BASE_STATS := {
 	"platforms": 0, # Plataformas Suspensas
 	"meteor": 0,    # Chuva de Meteoros
 	"rocket_ride": 0,   # Foguete
+	"mech": 0,      # Mecha
 	"hook": 0,      # Gancho
 	"updraft": 0,
 	"bazooka": 0,
@@ -667,6 +668,44 @@ const RIDE_LIFT := 0.6         # sobe ao montar, para o foguete caber embaixo
 var ride_timer := 0.0
 var ride_age := 0.0
 var ride_fx: Node3D
+## Mecha (mestra): Q monta por MECH_BUILD (anda a MECH_BUILD_SPEED, sem atirar), depois
+## MECH_TIME dentro: blindagem (MECH_ARMOR_BASE + MECH_ARMOR_PART da vida máxima) que leva o
+## dano antes de tudo, imune a empurrões e puxões, corpo MECH_SCALE, MECH_SPEED, sem dash nem
+## pulos extras, e o E lança mísseis (bala `missile`) no lugar do escudo. Q de novo, o tempo
+## acabar ou a blindagem zerar: sai e explode (MECH_BLAST_*, maior com menos blindagem).
+const MECH_BUILD := 1.2
+const MECH_TIME := 8.0
+const MECH_BUILD_SPEED := 0.4
+const MECH_SPEED := 0.75
+const MECH_SCALE := 1.4
+const MECH_JUMP := 0.894        # raiz de 0,8: pulo com 80% da altura
+const MECH_ARMOR_BASE := 60.0
+const MECH_ARMOR_PART := 0.6
+const MECH_EXIT_LOCK := 0.25    # o Q que montou não pode já sair
+const MECH_BLAST_RADIUS := 5.0
+const MECH_BLAST_MIN := 20.0    # blindagem cheia
+const MECH_BLAST_MAX := 50.0    # blindagem zerada
+const MISSILE_SPEED := 30.0
+const MISSILE_CD := 2.5
+const MISSILE_RADIUS := 3.5
+const MISSILE_BASE := 20.0
+const MISSILE_SCALE := 0.4      # do dano da bala
+const MISSILE_MAX := 45.0
+const MISSILE_SEEK := 5.0       # inimigo a até isto da linha do míssil puxa a curva
+const MISSILE_TURN := deg_to_rad(60.0)
+const MECH_PILOT := 0.8         # tamanho do personagem dentro (o mecha é que cresce)
+const MECH_SEAT := 0.95         # altura do assento (o piloto aparece da cintura para cima)
+const MECH_COLOR := Color(0.62, 0.68, 0.76)   # aço (barra da blindagem)
+const MISSILE_COLOR := Color(1.0, 0.4, 0.2)
+var mech_state := 0             # 0 nada, 1 montando, 2 dentro
+var mech_timer := 0.0           # tempo que falta da montagem ou de dentro (todas as máquinas)
+var mech_armor := 0.0
+var mech_armor_max := 0.0
+var mech_missile_cd := 0.0
+var mech_fx: Node3D             # o modelo (os outros) ou a cabine na tela (quem joga)
+var _mech_parts: Array = []
+signal mech_changed(state: int)     # registro do autoteste
+signal mech_exploded(damage: float)
 ## Mega Tapa (mestra): Q ergue a mão por SLAP_WINDUP (aviso para o inimigo; anda normal,
 ## sem atirar) e então o tapa sai no leque curto à frente; arremessa (SLAP_PUSH para o lado, SLAP_LIFT
 ## para cima, sem controle no ar até pousar: slap_lock). Por SLAP_FLIGHT segundos, bater numa parede ainda rápido (SPLAT_MIN_SPEED)
@@ -1394,6 +1433,7 @@ func reset_for_round(spawn: Transform3D) -> void:
 	unstable_cards.clear()
 	unstable_timer = 0.0
 	overtime_cards.clear()
+	_mech_clear()
 	_update_unstable_icons()
 	_realm_clear()
 	_grapple_clear()
@@ -1546,10 +1586,19 @@ func _apply_body_scale() -> void:
 	tag.position.y = height * body_scale + 0.5
 	shield_mesh.scale = Vector3.ONE * maxf(body_scale, 1.0) * float(stats["shield_size"])
 	if model:
-		model.scale = Vector3.ONE * MODEL_SCALE * body_scale
+		model.scale = Vector3.ONE * _model_size()
+		model.position.y = MECH_SEAT * body_scale / MECH_SCALE if mech_state > 0 else 0.0
 	if ring:
 		# O disco do chão acompanha só quando encolhe (Formiga, Nanico); maior, fica igual.
 		ring.scale = Vector3.ONE * minf(body_scale, 1.0)
+	_mech_update_fx()
+
+
+## Tamanho do modelo: o do corpo; no Mecha, o piloto fica menor (MECH_PILOT) e sentado no
+## alto da cabine (MECH_SEAT), e o mecha em volta ocupa o tamanho do corpo.
+func _model_size() -> float:
+	var s := MODEL_SCALE * float(stats["body_scale"])
+	return s * MECH_PILOT / MECH_SCALE if mech_state > 0 else s
 
 
 func _input(event: InputEvent) -> void:
@@ -1673,7 +1722,9 @@ func _frame_step(delta: float) -> void:
 		if tag.visible and downed:
 			tag.text = "%s\nCAÍDO" % player_name
 		elif tag.visible:
-			tag.text = "%s\n%d" % [player_name, ceili(health)] + (" +%d" % ceili(armor) if armor > 0.0 else "")
+			# Mecha: a blindagem entre colchetes.
+			tag.text = "%s\n%d" % [player_name, ceili(health)] + (" +%d" % ceili(armor) if armor > 0.0 else "") \
+				+ ("  [%d]" % ceili(mech_armor) if mech_state == 2 else "")
 		_update_guard_icons()
 		if ally_arrow:
 			# Parceiro caído: a seta pisca para chamar atenção.
@@ -1789,7 +1840,7 @@ func _update_hit_flash(delta: float) -> void:
 	hit_flash = maxf(0.0, hit_flash - delta / HIT_FLASH_TIME)
 	flash_mat.albedo_color.a = hit_flash * 0.85
 	var squash := Vector3(1.0 + 0.05 * hit_flash, 1.0 - 0.07 * hit_flash, 1.0 + 0.05 * hit_flash)
-	model.scale = squash * MODEL_SCALE * float(stats["body_scale"])
+	model.scale = squash * _model_size()
 	if hit_flash <= 0.0:
 		_restore_overlay()
 
@@ -2149,6 +2200,7 @@ func _physics_step(delta: float) -> void:
 			_unstable_set([])
 	if realm > 0:
 		_realm_tick(delta)
+	_mech_step(delta)
 	realm_bonus_timer = maxf(0.0, realm_bonus_timer - delta)   # em todas: a coroa aparece para os outros
 	spawn_protect = maxf(0.0, spawn_protect - delta)
 	if not is_local:
@@ -2242,6 +2294,7 @@ func _tick(delta: float) -> void:
 	dash_cd = maxf(0.0, dash_cd - delta)
 	master_cd = maxf(0.0, master_cd - delta)
 	master_gap = maxf(0.0, master_gap - delta)
+	_mech_tick(delta)
 	if grapple_refund > 0.0:
 		grapple_refund -= delta
 		if grapple_refund <= 0.0:
@@ -2400,6 +2453,8 @@ func _target_speed() -> float:
 		speed *= SCOPE_SPEED
 	if shrink_timer > 0.0:
 		speed *= 1.0 + SHRINK_SPEED
+	if mech_state > 0:
+		speed *= MECH_BUILD_SPEED if mech_state == 1 else MECH_SPEED
 	if stats["chase"] > 0.0 and _toward_enemy():
 		speed *= 1.0 + stats["chase"]
 	if is_surviving():
@@ -2592,7 +2647,7 @@ func _move(delta: float) -> void:
 			var cd := dash_cd
 			_start_dash(wish if wish != Vector3.ZERO else dash_dir, h, target, not on_floor)
 			dash_cd = cd
-	elif in_dash and not slamming and not slam_pressed and dash_cd <= 0.0 and dash_timer <= 0.0:
+	elif in_dash and not slamming and not slam_pressed and dash_cd <= 0.0 and dash_timer <= 0.0 and mech_state == 0:
 		if on_floor and wish != Vector3.ZERO:
 			_start_dash(wish, h, target, false)
 			dash_echo_left = stats["dash_echo"]
@@ -3066,6 +3121,8 @@ func knockback(v: Vector3) -> void:
 
 ## Peso Pesado: quanto dos empurrões chega (explosões, ondas, tapa, raio, buraco negro).
 func push_mult() -> float:
+	if mech_state == 2:
+		return 0.0   # Mecha: imune a empurrões e puxões
 	return 1.0 - float(stats["heavy"])
 
 
@@ -3192,6 +3249,14 @@ func credit_damage(amount: float, lethal := false) -> void:
 func _act(delta: float) -> void:
 	if ride_timer > 0.0:
 		return   # montado: o Q (saltar) é tratado em _ride_step
+	if mech_state > 0:
+		# Mecha: Q de novo sai (e explode); o E vira o míssil, sem escudo.
+		if in_master and mech_state == 2 and mech_timer < MECH_TIME - MECH_EXIT_LOCK:
+			_mech_end()
+		elif in_shield and mech_state == 2 and mech_missile_cd <= 0.0 and daze_timer <= 0.0:
+			_fire_missile()
+		in_master = false
+		in_shield = false
 	if in_master and shrink_timer > 0.0:
 		_end_shrink(true)   # Formiga: Q de novo volta ao tamanho antes do tempo
 	elif in_master and master_ready() and hook_state == 0:
@@ -3202,7 +3267,7 @@ func _act(delta: float) -> void:
 	shot_queued = maxf(0.0, shot_queued - delta)
 	if hook_state == 3 and (in_click or (in_shoot and not shoot_was) or in_master):
 		_hook_throw_now()
-	if daze_timer > 0.0 or beam_charge > 0.0 or beam_timer > 0.0 or hook_state >= 1 or slap_windup > 0.0:
+	if daze_timer > 0.0 or beam_charge > 0.0 or beam_timer > 0.0 or hook_state >= 1 or slap_windup > 0.0 or mech_state == 1:
 		shot_queued = 0.0
 		shoot_was = in_shoot
 		return
@@ -3301,7 +3366,7 @@ func _chaos_tick(delta: float) -> void:
 		return
 	if bazooka_timer > 0.0 or sniper_timer > 0.0 or sword_timer > 0.0 or shrink_timer > 0.0 or pierce_left > 0 \
 			or beam_timer > 0.0 or beam_charge > 0.0 or meteor_left > 0 or ride_timer > 0.0 \
-			or hook_state > 0 or slap_windup > 0.0 or unstable_timer > 0.0:
+			or hook_state > 0 or slap_windup > 0.0 or unstable_timer > 0.0 or mech_state > 0:
 		master_cd = CHAOS_WAIT
 	elif master_cd <= 0.0:
 		_chaos_draw()
@@ -3388,6 +3453,8 @@ func _recompute_stats() -> void:
 		_chaos_set(master_id)
 	if has_meta("shrunk") and get_meta("shrunk"):
 		stats["body_scale"] = float(stats["body_scale"]) * SHRINK_SCALE
+	if mech_state > 0:
+		_mech_mods()
 	if alive and old_max > 0.0:
 		health = minf(health * float(stats["max_health"]) / old_max, stats["max_health"])
 	ammo = mini(ammo, int(stats["mag_size"]))
@@ -3417,6 +3484,266 @@ func _update_unstable_icons() -> void:
 		if i < n:
 			s.texture = CardDB.icon(unstable_cards[i])
 			s.position = Vector3((i - (n - 1) * 0.5) * 0.55, 0.95, 0)
+
+
+# ---------------------------------------------------------------- Mecha
+
+## Q: começa a montar. Só a máquina dona decide; as outras recebem _net_mech.
+func _start_mech() -> void:
+	_mech_set(1)
+	_mech_send()
+
+
+## Máquina dona, a cada passo: a recarga só anda depois de sair; montou, entra; acabou o
+## tempo, sai explodindo.
+func _mech_tick(delta: float) -> void:
+	if mech_state == 0:
+		return
+	if not chaos:
+		master_cd = CardDB.CARDS["mecha"]["cooldown"]
+	mech_missile_cd = maxf(0.0, mech_missile_cd - delta)
+	if mech_timer > 0.0 or frozen:
+		return   # parado entre rodadas: não sai nem explode (o reinício da rodada desmonta)
+	if mech_state == 1:
+		mech_armor_max = MECH_ARMOR_BASE + MECH_ARMOR_PART * float(stats["max_health"])
+		mech_armor = mech_armor_max
+		mech_missile_cd = 0.0
+		_mech_set(2)
+		_mech_send()
+	else:
+		_mech_end()
+
+
+## Sai do mecha (tempo, Q de novo ou blindagem zerada) e ele explode: quanto menos
+## blindagem sobrou, maior o dano.
+func _mech_end() -> void:
+	if mech_state != 2:
+		return
+	var lost := 1.0 - clampf(mech_armor / maxf(mech_armor_max, 1.0), 0.0, 1.0)
+	var dmg := lerpf(MECH_BLAST_MIN, MECH_BLAST_MAX, lost)
+	var pos := chest()
+	_mech_set(0)
+	_mech_send()
+	if Net.online and is_inside_tree():
+		_net_mech_blast.rpc(pos, dmg)
+	else:
+		_net_mech_blast(pos, dmg)
+
+
+## Morte, fim de rodada, banco: some sem explodir.
+func _mech_clear() -> void:
+	if mech_state != 0:
+		_mech_set(0)
+
+
+func _mech_send() -> void:
+	if Net.online and is_local and is_inside_tree():
+		_net_mech.rpc(mech_state, mech_armor_max)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_mech(state: int, armor_max: float) -> void:
+	mech_armor_max = armor_max
+	mech_armor = armor_max if state == 2 else 0.0
+	_mech_set(state)
+
+
+## Blindagem para os outros (barra em cima do nome); só quando muda.
+@rpc("authority", "call_remote", "unreliable_ordered")
+func _net_mech_armor(value: float) -> void:
+	mech_armor = value
+
+
+@rpc("authority", "call_local", "reliable")
+func _net_mech_blast(pos: Vector3, dmg: float) -> void:
+	mech_blast(get_parent(), pos, self, MECH_BLAST_RADIUS, dmg, false)
+	mech_exploded.emit(dmg)
+
+
+func _mech_set(state: int) -> void:
+	mech_state = state
+	mech_timer = MECH_BUILD if state == 1 else (MECH_TIME if state == 2 else 0.0)
+	if state == 0:
+		mech_armor = 0.0
+	_mech_visual()
+	_recompute_stats()   # depois do visual: _apply_body_scale põe o piloto e o mecha no tamanho
+	mech_changed.emit(state)
+	if state == 1:
+		Sfx.at(self, "pickup", chest())
+	elif state == 2:
+		Effects.burst(get_parent(), chest(), 1.6, MECH_COLOR, 0.2)
+		Sfx.at(self, "shield", chest())
+
+
+## Os custos de dentro (e da montagem) por cima das cartas: corpo maior, pulo menor, sem
+## pulos extras, de parede nem dash no ar (o dash no chão é cortado em _move).
+func _mech_mods() -> void:
+	stats["body_scale"] = float(stats["body_scale"]) * MECH_SCALE
+	stats["jump_velocity"] = float(stats["jump_velocity"]) * MECH_JUMP
+	stats["extra_jumps"] = 0
+	stats["wall_jumps"] = 0
+	stats["air_dashes"] = 0
+
+
+## Blindagem leva o dano antes de tudo; devolve o que passou. Zerou: sai explodindo (só a
+## máquina dona chama; quem chama decide o resto do dano).
+func _mech_absorb(amount: float) -> float:
+	var soak := minf(mech_armor, amount)
+	mech_armor -= soak
+	if Net.online and is_inside_tree():
+		_net_mech_armor.rpc(mech_armor)
+	return amount - soak
+
+
+## E dentro do mecha: míssil na mira (20 + 40% do dano da bala, até 45).
+func _fire_missile() -> void:
+	mech_missile_cd = MISSILE_CD
+	since_attack = 0.0
+	spawn_protect = 0.0
+	reveal()
+	var origin := head.global_position
+	var aim := -head.global_transform.basis.z
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + aim * 300.0, 1 | 2, [get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	var target: Vector3 = hit["position"] if not hit.is_empty() else origin + aim * 300.0
+	var side := global_transform.basis.x * 0.9 * float(stats["body_scale"]) / MECH_SCALE
+	var start := chest() + Vector3.UP * 0.5 + side
+	var dmg := minf(MISSILE_MAX, MISSILE_BASE + MISSILE_SCALE * shot_damage())
+	Bullet.fire(self, start, (target - start).normalized(), 0.0, false,
+		{"speed": MISSILE_SPEED, "missile": true, "damage": dmg, "radius": 0.28, "gravity": 0.0, "bounces": 0,
+		"ghost_walls": 0, "explosion": 0.0, "poison": 0.0, "slow": 0.0, "push": 0.0, "shield_break": false,
+		"execute": 0.0, "split": 0, "sticky": false, "boomerang": false, "guided": false, "seek": 0.0,
+		"homing": 0.0, "target_bounce": 0.0, "lazy_top": 0.0, "grow": 0.0, "swap": false, "blind": 0.0,
+		"toxic": 0, "hole": 0, "bounce_damage": 0.0})
+	Sfx.at(self, "grapple_fire", start)
+
+
+## Explosão do Mecha (saída) e do míssil, em cada máquina só nos jogadores dela; nunca no
+## dono nem no aliado. Míssil: escudo de pé bloqueia o dano (não devolve).
+static func mech_blast(parent: Node, pos: Vector3, owner_p: Player, radius: float, dmg: float, missile: bool) -> void:
+	var color := MISSILE_COLOR if missile else MECH_COLOR.lightened(0.3)
+	Effects.explosion(parent, pos, radius, color)
+	Effects.sparks(parent, pos, color, 10 if missile else 16, 8.0)
+	Sfx.at(parent, "explosion", pos)
+	for node in parent.get_tree().get_nodes_in_group("players"):
+		var p := node as Player
+		if p == null or not p.is_local or not p.alive or p == owner_p:
+			continue
+		if is_instance_valid(owner_p) and owner_p.is_ally(p):
+			continue
+		var d := p.chest().distance_to(pos)
+		if d > radius + p.hit_radius():
+			continue
+		if missile and p.is_shielding():
+			p.reflect_flash = 1.0
+			continue
+		var away := p.chest() - pos
+		away.y = 0.0
+		p.knockback(away.normalized() * 7.0 + Vector3.UP * 4.0)
+		p.take_area_damage(dmg * (1.0 - 0.5 * clampf(d / radius, 0.0, 1.0)), owner_p if is_instance_valid(owner_p) else null)
+
+
+## Modelo montado em código, peças em comum entre todos (malha e material uma vez só).
+## Para os outros: pernas, pés, quadril, costas e laterais abertas na frente (o personagem
+## aparece na cabine), ombros com os lançadores. Na própria tela: a moldura da cabine nos
+## cantos. As peças aparecem uma a uma na montagem (_mech_update_fx).
+static var _mech_meshes: Array = []
+
+func _mech_visual() -> void:
+	if mech_state == 0:
+		if mech_fx:
+			mech_fx.queue_free()
+			mech_fx = null
+			_mech_parts.clear()
+		return
+	if mech_fx:
+		return
+	if _mech_meshes.is_empty():
+		var steel := StandardMaterial3D.new()
+		steel.albedo_color = Color(0.55, 0.6, 0.66)
+		steel.metallic = 0.4
+		steel.roughness = 0.5
+		var dark := StandardMaterial3D.new()
+		dark.albedo_color = Color(0.18, 0.2, 0.23)
+		var hot := StandardMaterial3D.new()
+		hot.albedo_color = MISSILE_COLOR
+		hot.emission_enabled = true
+		hot.emission = MISSILE_COLOR * 0.4
+		var box := func(size: Vector3, mat: Material) -> BoxMesh:
+			var m := BoxMesh.new()
+			m.size = size
+			m.material = mat
+			return m
+		# [malha, posição] em metros, para o corpo de tamanho 1 (o nó escala com o corpo).
+		# Em volta de um corpo de 2,5 m (1,4x): o piloto (MECH_PILOT) senta a MECH_SEAT e
+		# aparece da cintura para cima pela frente aberta da cabine.
+		var third := [
+			[box.call(Vector3(0.55, 0.2, 0.8), dark), Vector3(-0.42, 0.1, -0.05)],     # pés
+			[box.call(Vector3(0.55, 0.2, 0.8), dark), Vector3(0.42, 0.1, -0.05)],
+			[box.call(Vector3(0.42, 0.75, 0.5), steel), Vector3(-0.42, 0.55, 0.0)],    # pernas
+			[box.call(Vector3(0.42, 0.75, 0.5), steel), Vector3(0.42, 0.55, 0.0)],
+			[box.call(Vector3(1.3, 0.3, 0.85), dark), Vector3(0.0, 1.0, 0.0)],         # quadril
+			[box.call(Vector3(1.2, 0.45, 0.12), steel), Vector3(0.0, 1.35, -0.42)],    # painel da frente (cobre as pernas do piloto)
+			[box.call(Vector3(1.3, 1.25, 0.14), steel), Vector3(0.0, 1.75, 0.45)],     # costas
+			[box.call(Vector3(0.14, 1.0, 0.85), steel), Vector3(-0.68, 1.65, 0.0)],    # laterais
+			[box.call(Vector3(0.14, 1.0, 0.85), steel), Vector3(0.68, 1.65, 0.0)],
+			[box.call(Vector3(0.45, 0.4, 0.8), dark), Vector3(-0.95, 2.25, 0.05)],     # ombros com os lançadores
+			[box.call(Vector3(0.45, 0.4, 0.8), dark), Vector3(0.95, 2.25, 0.05)],
+			[box.call(Vector3(0.32, 0.26, 0.08), hot), Vector3(-0.95, 2.25, -0.37)],   # bocas dos mísseis
+			[box.call(Vector3(0.32, 0.26, 0.08), hot), Vector3(0.95, 2.25, -0.37)],
+		]
+		# Na tela (a 0,5 m da câmera a tela vai de ~±0,67 de lado e ±0,38 de altura): hastes
+		# finas inclinadas nos cantos de baixo e uma faixa fina no pé da tela, com luzes.
+		var first := [
+			[box.call(Vector3(0.022, 0.3, 0.022), steel), Vector3(-0.6, -0.3, -0.5), Vector3(0, 0, -0.55)],
+			[box.call(Vector3(0.022, 0.3, 0.022), steel), Vector3(0.6, -0.3, -0.5), Vector3(0, 0, 0.55)],
+			[box.call(Vector3(1.5, 0.03, 0.04), dark), Vector3(0.0, -0.37, -0.5), Vector3.ZERO],
+			[box.call(Vector3(0.06, 0.012, 0.01), hot), Vector3(-0.3, -0.353, -0.48), Vector3.ZERO],
+			[box.call(Vector3(0.06, 0.012, 0.01), hot), Vector3(0.3, -0.353, -0.48), Vector3.ZERO],
+		]
+		_mech_meshes = [third, first]
+	mech_fx = Node3D.new()
+	var parts: Array = _mech_meshes[1 if is_human else 0]
+	if is_human:
+		camera.add_child(mech_fx)
+	else:
+		add_child(mech_fx)
+	for part in parts:
+		var mi := MeshInstance3D.new()
+		mi.mesh = part[0]
+		mi.position = part[1]
+		if part.size() > 2:
+			mi.rotation = part[2]
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.visible = false
+		mech_fx.add_child(mi)
+		_mech_parts.append(mi)
+	_mech_update_fx()
+
+
+## Todas as máquinas, a cada passo: o tempo e as peças aparecendo na montagem.
+func _mech_step(delta: float) -> void:
+	if mech_state == 0:
+		return
+	mech_timer = maxf(0.0, mech_timer - delta)
+	_mech_update_fx()
+
+
+func _mech_update_fx() -> void:
+	if mech_fx == null:
+		return
+	if not is_human:
+		# O corpo do jogador já cresceu com o mecha (body_scale): o modelo acompanha.
+		mech_fx.scale = Vector3.ONE * float(stats["body_scale"]) / MECH_SCALE
+	var shown := _mech_parts.size()
+	if mech_state == 1:
+		shown = ceili((1.0 - mech_timer / MECH_BUILD) * _mech_parts.size())
+	for i in _mech_parts.size():
+		var mi: MeshInstance3D = _mech_parts[i]
+		if mi.visible != (i < shown):
+			mi.visible = i < shown
+			if mi.visible and mech_state == 1:
+				Effects.burst(get_parent(), mi.global_position, 0.4, MECH_COLOR, 0.1)
 
 
 # ---------------------------------------------------------------- Arpéu Ventoso
@@ -3864,6 +4191,8 @@ func _use_master() -> void:
 		_hook_fire()
 	if stats["unstable"] > 0:
 		_unstable_draw()
+	if stats["mech"] > 0:
+		_start_mech()
 	if realm_target:
 		realm_target.remote_call("receive_realm", [String(name)])
 	if stats["grapple"] > 0:
@@ -4472,6 +4801,9 @@ func receive_slap(from_name: String, dir: Vector3) -> void:
 		Sfx.at(self, "reflect", chest())
 		Effects.burst(get_parent(), chest(), 1.2, Color(0.5, 0.9, 1.0), 0.15)
 		return
+	if mech_state == 2:
+		take_damage(SLAP_DAMAGE, get_parent().get_node_or_null(from_name) as Player)   # Mecha: não voa
+		return
 	_end_beam(true)
 	_ride_crash()
 	_hook_let_go()
@@ -4719,7 +5051,7 @@ func receive_hook(from_name: String) -> void:
 	var grabber := get_parent().get_node_or_null(from_name) as Player
 	if grabber == null:
 		return
-	if not alive or is_shielding() or ice_timer > 0.0 or hooked_by:
+	if not alive or is_shielding() or ice_timer > 0.0 or hooked_by or mech_state == 2:
 		reflect_flash = 1.0
 		Sfx.at(self, "reflect", chest())
 		grabber.remote_call("hook_blocked", [])
@@ -5866,6 +6198,12 @@ func take_damage(amount: float, from: Player, flash := true, ignore_armor := fal
 		hook_taken += amount
 		if hook_taken >= HOOK_ESCAPE:
 			_hook_let_go()
+	var hit_total := amount
+	var mech_broke := false
+	if mech_state == 2 and not ignore_armor and is_local:
+		# Mecha: a blindagem leva antes de tudo (a Perfurante, que ignora o colete, passa direto).
+		amount = _mech_absorb(amount)
+		mech_broke = mech_armor <= 0.0
 	var absorbed := 0.0 if ignore_armor else minf(armor, amount)
 	armor -= absorbed
 	health -= amount - absorbed
@@ -5884,11 +6222,13 @@ func take_damage(amount: float, from: Player, flash := true, ignore_armor := fal
 	if flash:
 		shake = maxf(shake, clampf(amount / 40.0, 0.15, 0.6))
 		flash_hit()
-		damaged.emit(amount, from)
+		damaged.emit(hit_total, from)
 		if is_human:
 			Sfx.ui(self, "hurt")
 		if from and from != self:
-			from.remote_call("credit_damage", [amount, health <= 0.0 and revives_left == 0])
+			from.remote_call("credit_damage", [hit_total, health <= 0.0 and revives_left == 0])
+	if mech_broke:
+		_mech_end()   # blindagem zerada: sai e explode com o máximo
 	if health <= 0.0:
 		_lethal()
 
@@ -5968,6 +6308,7 @@ func _apply_death_now(killer: String, assists: Array) -> void:
 		anim.speed_scale = 1.0
 		anim.play("die")
 	Sfx.at(self, "death", chest())
+	_mech_clear()
 	died.emit(self)
 
 
@@ -5998,6 +6339,7 @@ func _apply_down(bleed: float) -> void:
 	if not alive:
 		return
 	alive = false
+	_mech_clear()
 	downed = true
 	downs += 1
 	bleed_timer = bleed

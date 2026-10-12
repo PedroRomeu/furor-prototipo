@@ -449,6 +449,8 @@ func _spawn_player(peer: int, side: int, pname: String, team := -1) -> Player:
 			else ("saiu do Domínio vencendo (bônus %.0f%%)" % (p.realm_bonus() * 100.0) if won else ("saiu do Domínio" + ("" if p.alive else " morto")))]))
 	p.unstable_drawn.connect(func(ids): _log("%s tirou cartas instáveis: %s (vida %.0f/%.0f, dano %.1f)" \
 			% [p.player_name, ", ".join(ids.map(CardDB.card_name)), p.health, p.stats["max_health"], p.stats["damage"]]))
+	p.mech_changed.connect(func(s): _log("%s %s" % [p.player_name, ["saiu do mecha", "montou o mecha", "entrou no mecha"][s]]))
+	p.mech_exploded.connect(func(d): _log("mecha de %s explodiu (%.0f no centro)" % [p.player_name, d]))
 	p.overtime_card.connect(func(id): _log("%s ganhou %s na prorrogação (vida %.0f/%.0f)" % [p.player_name,
 			CardDB.card_name(id), p.health, p.stats["max_health"]]))
 	p.perfect_reloaded.connect(func(ok): _log("%s %s a recarga perfeita" % [p.player_name, "acertou" if ok else "errou"]))
