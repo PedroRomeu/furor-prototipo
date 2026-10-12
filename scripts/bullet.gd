@@ -85,6 +85,10 @@ const SEEK_TURN_K := 3.0
 ## bala rápida (Pólvora, Olho de Águia) passava pela zona de procura na metade do tempo e
 ## perdia metade do efeito.
 const SEEK_REF_SPEED := 48.0
+## Perto do alvo, a curva aperta até isto x a normal; e desiste se passar dele. Simulado
+## (alvo correndo a 9 m/s, quase-erros de 0,65-2 m a 10-30 m): verdes que acertam 42/67/85%
+## -> 48/77/94% com 1/3/5 cópias; antes 57/32/14% delas orbitavam, agora erram retas.
+const SEEK_TIGHTEN_MAX := 1.15
 const SEEK_COLOR := Color(0.1, 1.0, 0.25)   # saturado: o brilho (x2,2) deixa cor clara branca
 ## Quique Certeiro (refeito em 2026-10-04 e de novo em 2026-10-07). Junta com a Teleguiada:
 ## n = 1 (a carta) + cópias de Teleguiada. Cada quique sorteia com a chance da Teleguiada de
@@ -595,8 +599,19 @@ func _update_flight(delta: float) -> void:
 				seek_locked = true   # travou: fica verde (rastro junto) para o efeito ser visto
 				if not crit and not reflected:
 					_set_color(SEEK_COLOR)
-			var turn := _seek_term(seek, SEEK_TURN_MIN, SEEK_TURN_GAIN, SEEK_TURN_K) * velocity.length() / SEEK_REF_SPEED
-			_steer_to(enemy.chest(), turn, delta)
+			# Anti-órbita (2026-10-12, o usuário viu verdes girando em volta do alvo: o raio da
+			# curva, ~6 m com 1 cópia, era maior que a distância da trava). Passou do alvo (ele
+			# ficou para trás): desiste e segue reta. Perto dele, a curva aperta o que precisaria
+			# para fechar a volta, até SEEK_TIGHTEN_MAX x a normal (leve, pedido dele).
+			var to := enemy.chest() - global_position
+			var dir := velocity.normalized()
+			if dir.dot(to) < 0.0:
+				seek = 0.0
+				return
+			var per_m := _seek_term(seek, SEEK_TURN_MIN, SEEK_TURN_GAIN, SEEK_TURN_K) / SEEK_REF_SPEED
+			var need := 2.0 * sin(dir.angle_to(to)) / maxf(to.length(), 0.1) * 1.1
+			per_m = clampf(need, per_m, per_m * SEEK_TIGHTEN_MAX)
+			_steer_to(enemy.chest(), per_m * velocity.length(), delta)
 
 
 ## Termo da Teleguiada com n cópias: MIN com 1 cópia, tendendo a MIN + GAIN.
