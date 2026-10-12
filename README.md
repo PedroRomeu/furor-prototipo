@@ -158,12 +158,16 @@ shows in a corner during the match.
   everyone on the map sees a purple marker with the countdown there), **Arpéu Ventoso**
   (Movement, a plunger on a rope: Q sticks it to any surface up to 30 m and pulls you there;
   hang up to 3 s, Space mid-pull to fling yourself with the momentum, Space while hanging to
-  wall jump, Q again for the next plunger; 2 charges of 8 s) and **Mecha** (Body: Q builds a
+  wall jump, Q again for the next plunger; 2 charges of 8 s), **Mecha** (Body: Q builds a
   mech around you piece by piece in 1.2 s, slow and unable to shoot meanwhile; inside for 8 s
   you keep your gun, get armor of 60 + 60% of max health that takes damage first, ignore
   pushes and pulls, and E fires a missile instead of the shield; bigger, 25% slower, no dash
   or extra jumps; Q again leaves early; on leaving it explodes for 20 to 50 damage, more the
-  less armor is left; Perfurante ignores the armor; 24 s cooldown after you leave). New in 0.5.0: **Caos** (Bullets: draws a
+  less armor is left; Perfurante ignores the armor; 24 s cooldown after you leave) and **Clone**
+  (Bullets: Q leaves a clone that walks slowly where you were looking for 8 s and looks like
+  you to others, name and health included; every shot of yours also fires from it toward
+  your crosshair at half damage; Q again swaps places with it; enemy bullets destroy it with
+  40 damage; 18 s cooldown). New in 0.5.0: **Caos** (Bullets: draws a
   random master; an active one is used once and 8 s after its effect ends another comes, a
   passive one lasts 15 s), **Prisão de Gelo** (Shield, Q: an ice shard that traps the target
   in a sliding ice block for 3 s; they take no damage, but shots, explosions and bodies push

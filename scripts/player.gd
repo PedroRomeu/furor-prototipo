@@ -154,6 +154,7 @@ const BASE_STATS := {
 	"meteor": 0,    # Chuva de Meteoros
 	"rocket_ride": 0,   # Foguete
 	"mech": 0,      # Mecha
+	"clone": 0,     # Clone
 	"hook": 0,      # Gancho
 	"updraft": 0,
 	"bazooka": 0,
@@ -704,6 +705,12 @@ var mech_armor_max := 0.0
 var mech_missile_cd := 0.0
 var mech_fx: Node3D             # o modelo (os outros) ou a cabine na tela (quem joga)
 var _mech_parts: Array = []
+## Clone (mestra, ShadowClone): o clone vivo, o eco dos tiros (CLONE_ECHO do dano) e a troca.
+const CLONE_ECHO := 0.5
+const CLONE_SWAP_LOCK := 0.25   # o Q que criou não pode já trocar
+const CLONE_COLOR := Color(0.55, 0.45, 0.95)
+var clone: ShadowClone
+signal clone_changed(event: String)   # registro do autoteste
 signal mech_changed(state: int)     # registro do autoteste
 signal mech_exploded(damage: float)
 ## Mega Tapa (mestra): Q ergue a mão por SLAP_WINDUP (aviso para o inimigo; anda normal,
@@ -1434,6 +1441,7 @@ func reset_for_round(spawn: Transform3D) -> void:
 	unstable_timer = 0.0
 	overtime_cards.clear()
 	_mech_clear()
+	_clone_clear()
 	_update_unstable_icons()
 	_realm_clear()
 	_grapple_clear()
@@ -3257,6 +3265,11 @@ func _act(delta: float) -> void:
 			_fire_missile()
 		in_master = false
 		in_shield = false
+	if in_master and is_instance_valid(clone):
+		# Clone: Q de novo troca de lugar com ele.
+		if clone.life < ShadowClone.LIFE - CLONE_SWAP_LOCK and realm == 0:   # do Domínio do Rei não sai
+			_clone_swap()
+		in_master = false
 	if in_master and shrink_timer > 0.0:
 		_end_shrink(true)   # Formiga: Q de novo volta ao tamanho antes do tempo
 	elif in_master and master_ready() and hook_state == 0:
@@ -3366,7 +3379,7 @@ func _chaos_tick(delta: float) -> void:
 		return
 	if bazooka_timer > 0.0 or sniper_timer > 0.0 or sword_timer > 0.0 or shrink_timer > 0.0 or pierce_left > 0 \
 			or beam_timer > 0.0 or beam_charge > 0.0 or meteor_left > 0 or ride_timer > 0.0 \
-			or hook_state > 0 or slap_windup > 0.0 or unstable_timer > 0.0 or mech_state > 0:
+			or hook_state > 0 or slap_windup > 0.0 or unstable_timer > 0.0 or mech_state > 0 or is_instance_valid(clone):
 		master_cd = CHAOS_WAIT
 	elif master_cd <= 0.0:
 		_chaos_draw()
@@ -3484,6 +3497,70 @@ func _update_unstable_icons() -> void:
 		if i < n:
 			s.texture = CardDB.icon(unstable_cards[i])
 			s.position = Vector3((i - (n - 1) * 0.5) * 0.55, 0.95, 0)
+
+
+# ---------------------------------------------------------------- Clone
+
+## Q: o clone nasce onde você está e anda para onde você olha. Só a máquina dona decide;
+## as outras recebem o mesmo ponto e direção pelo _net_clone.
+func _start_clone() -> void:
+	var look := -head.global_transform.basis.z
+	_make_clone(global_position, look)
+	if Net.online and is_inside_tree():
+		_net_clone.rpc(global_position, look)
+
+
+func _make_clone(pos: Vector3, look: Vector3) -> void:
+	if is_instance_valid(clone):
+		clone.vanish()
+	clone = ShadowClone.spawn(self, pos, look)
+	Sfx.at(self, "shield", pos + Vector3.UP)
+	clone_changed.emit("criou")
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_clone(pos: Vector3, look: Vector3) -> void:
+	_make_clone(pos, look)
+
+
+## Q de novo: você vai para onde o clone está (na sua máquina) e ele some.
+func _clone_swap() -> void:
+	var to := clone.global_position
+	Effects.burst(get_parent(), chest(), 1.2, CLONE_COLOR, 0.2)
+	teleport_to(to)
+	velocity = Vector3(0.0, minf(velocity.y, 0.0), 0.0)
+	sliding = false
+	dash_timer = 0.0
+	clone_changed.emit("trocou")
+	_clone_end()
+
+
+## Destruído pelas balas (máquina do dono).
+func clone_destroyed() -> void:
+	clone_changed.emit("destruído")
+	_clone_end()
+
+
+func _clone_end() -> void:
+	if is_instance_valid(clone):
+		clone.vanish()
+	clone = null
+	if Net.online and is_local and is_inside_tree():
+		_net_clone_end.rpc()
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_clone_end() -> void:
+	if is_instance_valid(clone):
+		clone.vanish()
+	clone = null
+
+
+## Morte e fim de rodada: some sem avisar ninguém (todas as máquinas fazem o mesmo).
+func _clone_clear() -> void:
+	if is_instance_valid(clone):
+		clone.vanish()
+	clone = null
 
 
 # ---------------------------------------------------------------- Mecha
@@ -4193,6 +4270,8 @@ func _use_master() -> void:
 		_unstable_draw()
 	if stats["mech"] > 0:
 		_start_mech()
+	if stats["clone"] > 0:
+		_start_clone()
 	if realm_target:
 		realm_target.remote_call("receive_realm", [String(name)])
 	if stats["grapple"] > 0:
@@ -5831,9 +5910,19 @@ func _volley() -> void:
 			extra.merge({"speed": float(stats["bullet_speed"]) * PIERCE_SPEED, "gravity": 0.0,
 				"ghost": true, "pierce": true, "drill": true})
 			mult *= PIERCE_DAMAGE
+		var echo := extra.duplicate()
 		if meteor_shot and k == 0:
 			extra["meteor"] = true   # só a primeira bala do disparo marca (escopeta)
 		Bullet.fire(self, muzzle.global_position, dir, mult, k == 0, extra)
+		if is_instance_valid(clone) and realm == 0:
+			# Clone: o mesmo tiro sai dele, na direção do ponto mirado, com metade do dano
+			# (sem marcar meteoro nem devolver bala da Reciclagem).
+			var from := clone.muzzle()
+			var echo_dir := (target - from).normalized()
+			if count > 1:
+				echo_dir = echo_dir.rotated(Vector3.UP, spread * (k - (count - 1) / 2.0))
+			echo["click"] = 0
+			Bullet.fire(self, from, echo_dir, mult * CLONE_ECHO, false, echo)
 	recoil = 1.0
 	muzzle_light.light_energy = 3.0
 	muzzle_light.visible = true
@@ -6309,6 +6398,7 @@ func _apply_death_now(killer: String, assists: Array) -> void:
 		anim.play("die")
 	Sfx.at(self, "death", chest())
 	_mech_clear()
+	_clone_clear()
 	died.emit(self)
 
 
@@ -6340,6 +6430,7 @@ func _apply_down(bleed: float) -> void:
 		return
 	alive = false
 	_mech_clear()
+	_clone_clear()
 	downed = true
 	downs += 1
 	bleed_timer = bleed

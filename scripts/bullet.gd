@@ -513,6 +513,12 @@ func _physics_step(delta: float) -> void:
 		_remember_point(from)
 		return
 	var target := _player_on_segment(from, end)
+	var clone_hit := _clone_on_segment(from, end)
+	if not clone_hit.is_empty() and (target.is_empty()
+			or from.distance_to(clone_hit["point"]) < from.distance_to(target["point"])):
+		_hit_clone(clone_hit["clone"], clone_hit["point"])
+		_remember_point(from)
+		return
 	if not target.is_empty():
 		_hit_player(target["player"], target["point"])
 	elif not world_hit.is_empty():
@@ -674,6 +680,36 @@ func _enemy() -> Player:
 			best_dist = d
 			best = node
 	return best
+
+
+## Clone (mestra) inimigo no caminho: o mais perto do começo do trecho. Sem clones no mapa,
+## é só uma lista vazia.
+func _clone_on_segment(from: Vector3, to: Vector3) -> Dictionary:
+	var best := {}
+	var best_d := INF
+	for node in get_tree().get_nodes_in_group("shadow_clones"):
+		var c := node as ShadowClone
+		if c == null or not is_instance_valid(c.owner_p) or c.owner_p == shooter:
+			continue
+		if is_instance_valid(shooter) and shooter.is_ally(c.owner_p):
+			continue
+		var ax: Array = c.axis()
+		var pts := Geometry3D.get_closest_points_between_segments(from, to, ax[0], ax[1])
+		if pts[0].distance_to(pts[1]) <= c.hit_radius() + radius:
+			var d := from.distance_to(pts[0])
+			if d < best_d:
+				best_d = d
+				best = {"clone": c, "point": pts[0]}
+	return best
+
+
+## Bateu no clone: a bala para em todas as máquinas; o dano conta na do dono do clone.
+func _hit_clone(c: ShadowClone, point: Vector3) -> void:
+	if rocket or missile:
+		_boom(point)
+	elif not ice:
+		c.take_bullet(damage, point)
+	queue_free()
 
 
 ## Foguete solto ou míssil do Mecha: explode aqui (em cada máquina, nos jogadores dela).

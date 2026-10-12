@@ -761,6 +761,8 @@ func _update_status() -> void:
 		items.append(["PRESO NO GANCHO", Ui.DANGER])
 	if me.ride_timer > 0.0:
 		items.append(["FOGUETE %.1f  ·  [%s] saltar" % [me.ride_timer, GameState.key_text("master")], Player.ROCKET_COLOR])
+	if is_instance_valid(me.clone):
+		items.append(["CLONE %.1f  ·  [%s] trocar de lugar" % [me.clone.life, GameState.key_text("master")], Player.CLONE_COLOR.lightened(0.3)])
 	if me.mech_state == 1:
 		items.append(["MONTANDO O MECHA %.1f" % me.mech_timer, Player.MECH_COLOR.lightened(0.25)])
 	elif me.mech_state == 2:

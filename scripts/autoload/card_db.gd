@@ -191,6 +191,12 @@ const MASTERS := {
 	# Cartas Instáveis (2026-10-11, ideia e nome do usuário; números meus, aprovados para
 	# começar fracos; cartas do baralho e grupo Balas, junto do Caos, escolhas dele).
 	# Lógica em Player._unstable_*.
+	# Clone (2026-10-12, a 2a das prometidas nas notas da v0.8.0; caminho "Clone Sombra" entre
+	# 3 propostas minhas, com 8 s e o clone andando devagar, pedidos do usuário; grupo Balas,
+	# escolha minha: o efeito é o tiro em dobro). Lógica em ShadowClone e Player._clone_*.
+	"clone": {"name": "Clone", "cat": "Balas", "rarity": "mitico", "master": true, "cooldown": 18.0,
+		"desc": "Q: deixa um clone seu que anda devagar para onde você olhava, por 8 s. Para os outros ele é igual a você (nome e vida). Cada tiro seu também sai dele, na direção da sua mira, com metade do dano: fogo cruzado. Q de novo: você troca de lugar com ele, e ele some. Balas inimigas o destroem com 40 de dano. Recarga de 18 s.",
+		"mods": [{"stat": "clone", "add": 1}]},
 	"cartas_instaveis": {"name": "Cartas Instáveis", "cat": "Balas", "rarity": "mitico", "master": true, "cooldown": 22.0,
 		"desc": "Q: ganha 3 cartas comuns sorteadas do seu baralho por 8 s (respeitando o limite por partida; a Fênix não sai). A vida acompanha a vida máxima em porcentagem. As cartas aparecem em cima do seu nome para os outros. Recarga de 22 s.",
 		"mods": [{"stat": "unstable", "add": 1}]},

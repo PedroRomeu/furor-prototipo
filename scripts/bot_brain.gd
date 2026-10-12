@@ -185,6 +185,11 @@ func _master(foe: Player, sees: bool) -> void:
 		# Mecha: míssil sempre que pronto com o alvo à vista (a explosão sai sozinha no fim).
 		p.in_shield = p.mech_state == 2 and sees and p.mech_missile_cd <= 0.0
 		return
+	if is_instance_valid(p.clone):
+		# Clone: troca de lugar com pouca vida ou de vez em quando (o eco sai sozinho).
+		if p.clone.life < ShadowClone.LIFE - 1.0 and (p.health < p.stats["max_health"] * 0.35 or randf() < 0.004):
+			p.in_master = true
+		return
 	if p.ride_timer > 0.0:
 		# Foguete: salta perto do alvo (o foguete solto segue até ele).
 		if p.global_position.distance_to(foe.global_position) < 9.0 and p.ride_age > 0.3:
@@ -229,6 +234,8 @@ func _master(foe: Player, sees: bool) -> void:
 		p.in_master = true   # Mega Tapa: tira quem chegou perto
 	elif p.stats["sword"] > 0 and p.global_position.distance_to(foe.global_position) < NEAR:
 		p.in_master = true
+	elif p.stats["clone"] > 0 and randf() < 0.02:
+		p.in_master = true   # Clone: com o alvo à vista, logo no começo da luta
 	elif p.stats["mech"] > 0 and p.global_position.distance_to(foe.global_position) < 25.0 \
 			and (p.health < p.stats["max_health"] * 0.7 or randf() < 0.01):
 		p.in_master = true   # Mecha: com o alvo à vista, machucado ou de vez em quando
