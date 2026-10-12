@@ -13,7 +13,7 @@ extends RefCounted
 const MODES := [
 	{"id": "ffa", "name": "Cada um por si", "desc": "Último de pé vence a rodada. Quem morre escolhe carta.",
 		"players": "2 a 4 jogadores", "min": 2, "max": 4},
-	{"id": "teams", "name": "2x2", "desc": "Times de 2. Vence o time com alguém de pé; o time que perde escolhe carta.",
+	{"id": "teams", "name": "Times", "desc": "Dois times de 2 (2x2). Vence o time com alguém de pé; o time que perde escolhe carta.",
 		"players": "4 jogadores", "min": 4, "max": 4},
 	{"id": "duels", "name": "Duelos", "desc": "1x1 em rodízio. O vencedor fica, quem perde perde uma vida e ganha carta.",
 		"players": "2 a 4 jogadores", "min": 2, "max": 4},

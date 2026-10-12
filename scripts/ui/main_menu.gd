@@ -963,7 +963,7 @@ func _set_bots(n: int) -> void:
 func _refresh_solo() -> void:
 	var reason := GameModes.blocked_reason(GameState.mode, bot_count + 1)
 	if GameState.mode == "teams":
-		reason = "" if bot_count == 3 else "2x2 no treino é com 3 bots: você e um aliado contra dois."
+		reason = "" if bot_count == 3 else "Times no treino é com 3 bots: você e um aliado contra dois."
 		solo_modes.set_note("Você e um bot aliado contra dois bots." if reason == "" else reason, reason != "")
 	else:
 		solo_modes.set_note("")

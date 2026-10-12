@@ -1191,7 +1191,7 @@ func _open_pause() -> void:
 	if mode == "duels":
 		info = "Duelos  ·  duelo %d  ·  suas vidas: %d" % [round_num, lives.get(String(me.name), 0)]
 	elif teams_on:
-		info += "  ·  2x2, time %s" % GameState.TEAM_NAMES[me.team]
+		info += "  ·  Times, time %s" % GameState.TEAM_NAMES[me.team]
 		if not Net.online:
 			info += " (treino)"
 	elif Net.online:

@@ -96,7 +96,7 @@ editor: Project > Export > Windows Desktop > Export Project.
    lobby shows their IP and who has joined.
 2. The others open **Jogar > Online**, type that IP and click **Entrar** (Join).
 3. Each guest clicks **Pronto** (Ready). The host's **Começar** (Start) unlocks once every
-   guest is ready: the match is played with whoever is in the lobby (2 to 4 players, free-for-all). With 4, **2x2** can be picked under
+   guest is ready: the match is played with whoever is in the lobby (2 to 4 players, free-for-all). With 4, **Times** (teams, 2v2) can be picked under
    Formato: the lobby becomes Blue Team and Red Team, the host moves people between teams
    (or clicks **Sortear times** to shuffle) and it only starts with 2 on each side.
    In the lobby everyone can change their name and look (applied right away for everyone),
@@ -129,7 +129,7 @@ Picked on mode cards in Treino (practice) and, by the host, in the lobby. The cu
 shows in a corner during the match.
 
 - **Cada um por si** (free-for-all), 2 to 4 players: last one standing wins the round.
-- **2x2**, exactly 4 players (practice: you and an allied bot against two bots): the team
+- **Times** (teams, 2v2), exactly 4 players (practice: you and an allied bot against two bots): the team
   with someone standing wins.
 - **Duelos** (duels), 2 to 4 players: 1v1 in rotation with lives (3, 5 or 7). The first two
   in the queue fight; the winner stays and the loser loses a life and goes to the back of the
@@ -206,7 +206,7 @@ shows in a corner during the match.
   outline); attacking (shooting, the master card or a sword strike) ends your own protection.
 - Round: last one standing wins. Only **the losers** pick another card (1 of 3); with more
   than 2 players, everyone who died.
-- **2x2** (online with 4, or in Treino with 3 bots: you and an allied bot): the team with
+- **Times** (teams, 2v2; online with 4, or in Treino with 3 bots: you and an allied bot): the team with
   someone standing wins, and both losers pick a card. Bullets and explosions pass through
   your teammate, except when an enemy Gancho holds them: then they lose the outline and your
   shots hit them. Your teammate has a team-colored outline and an arrow over their name,
