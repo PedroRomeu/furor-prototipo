@@ -23,6 +23,9 @@ var model: Node3D
 var anim: AnimationPlayer
 var tag: Label3D
 var gun: Node3D
+var aim_arm: AimArm
+var aim_timer := 0.0   # depois de atirar fica virado para o alvo, com o braço erguido
+const AIM_HOLD := 0.8
 
 
 static func spawn(p: Player, pos: Vector3, look: Vector3) -> ShadowClone:
@@ -59,7 +62,8 @@ func _ready() -> void:
 		anim.speed_scale = 0.5   # passo lento, como o andar
 	var skeleton: Skeleton3D = model.find_children("*", "Skeleton3D", true, false)[0]
 	owner_p._rigidify(skeleton, Player.skin_model(id))
-	skeleton.add_child(AimArm.new())
+	aim_arm = AimArm.new()
+	skeleton.add_child(aim_arm)
 	var hand := BoneAttachment3D.new()
 	hand.bone_name = "arm-right"
 	skeleton.add_child(hand)
@@ -78,11 +82,23 @@ func _ready() -> void:
 	Effects.burst(get_parent(), global_position + Vector3.UP, 1.4, Player.CLONE_COLOR, 0.2)
 
 
-## Ponto de onde saem os tiros do eco (a arma na mão, ou o peito se ela sumiu).
-func muzzle() -> Vector3:
-	if is_instance_valid(gun):
-		return gun.global_position - global_transform.basis.z * 0.3
-	return chest()
+## Eco de um disparo: vira o corpo e o braço para o ponto mirado, clarão e som no cano, e
+## devolve de onde a bala sai (na altura da arma erguida, à frente e à direita do corpo).
+## A arma presa ao osso só se move no próximo quadro, então o ponto é calculado.
+func aim_at(target: Vector3) -> Vector3:
+	var s: float = owner_p.stats["body_scale"]
+	var flat := Vector3(target.x - global_position.x, 0.0, target.z - global_position.z)
+	if flat.length() > 0.05:
+		rotation.y = atan2(-flat.x, -flat.z)
+	var right := Basis(Vector3.UP, rotation.y).x
+	var shoulder := global_position + Vector3.UP * 1.3 * s + right * 0.25 * s
+	var aim := (target - shoulder).normalized()
+	aim_arm.pitch = asin(clampf(aim.y, -1.0, 1.0))
+	aim_timer = AIM_HOLD
+	var from := shoulder + aim * 0.75 * s
+	Effects.burst(get_parent(), from, 0.35, owner_p.color.lightened(0.5), 0.08)
+	Sfx.at(self, "shot", from)
+	return from
 
 
 func chest() -> Vector3:
@@ -107,6 +123,11 @@ func _physics_process(delta: float) -> void:
 	if life <= 0.0:
 		vanish()
 		return
+	if aim_timer > 0.0:
+		aim_timer -= delta
+		if aim_timer <= 0.0:
+			rotation.y = atan2(-dir.x, -dir.z)   # volta a olhar para onde anda
+			aim_arm.pitch = 0.0
 	velocity.x = dir.x * SPEED
 	velocity.z = dir.z * SPEED
 	velocity.y = 0.0 if is_on_floor() else velocity.y - GRAVITY * delta

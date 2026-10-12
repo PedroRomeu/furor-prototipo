@@ -3523,6 +3523,13 @@ func _net_clone(pos: Vector3, look: Vector3) -> void:
 	_make_clone(pos, look)
 
 
+## Nas outras máquinas, o clone vira e dispara junto (as balas chegam pela rede).
+@rpc("authority", "call_remote", "unreliable_ordered")
+func _net_clone_aim(target: Vector3) -> void:
+	if is_instance_valid(clone):
+		clone.aim_at(target)
+
+
 ## Q de novo: você vai para onde o clone está (na sua máquina) e ele some.
 func _clone_swap() -> void:
 	var to := clone.global_position
@@ -5895,6 +5902,12 @@ func _volley() -> void:
 		# quem está atrás dele. Convergindo mais longe, a fila inteira fica na linha.
 		target = origin + aim * maxf(origin.distance_to(target), PIERCE_CONVERGE)
 	var count: int = stats["bullet_count"]
+	var echo_on := is_instance_valid(clone) and realm == 0
+	var echo_from := Vector3.ZERO
+	if echo_on:
+		echo_from = clone.aim_at(target)   # o clone vira, ergue a arma e dispara junto
+		if Net.online and is_inside_tree():
+			_net_clone_aim.rpc(target)
 	var spread := deg_to_rad(stats["spread"])
 	for k in count:
 		var dir := (target - muzzle.global_position).normalized()
@@ -5914,15 +5927,14 @@ func _volley() -> void:
 		if meteor_shot and k == 0:
 			extra["meteor"] = true   # só a primeira bala do disparo marca (escopeta)
 		Bullet.fire(self, muzzle.global_position, dir, mult, k == 0, extra)
-		if is_instance_valid(clone) and realm == 0:
+		if echo_on:
 			# Clone: o mesmo tiro sai dele, na direção do ponto mirado, com metade do dano
 			# (sem marcar meteoro nem devolver bala da Reciclagem).
-			var from := clone.muzzle()
-			var echo_dir := (target - from).normalized()
+			var echo_dir := (target - echo_from).normalized()
 			if count > 1:
 				echo_dir = echo_dir.rotated(Vector3.UP, spread * (k - (count - 1) / 2.0))
 			echo["click"] = 0
-			Bullet.fire(self, from, echo_dir, mult * CLONE_ECHO, false, echo)
+			Bullet.fire(self, echo_from, echo_dir, mult * CLONE_ECHO, false, echo)
 	recoil = 1.0
 	muzzle_light.light_energy = 3.0
 	muzzle_light.visible = true
