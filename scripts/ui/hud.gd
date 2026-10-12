@@ -66,6 +66,8 @@ var toast_label: Label
 var score_label: Label     # placar no topo (cada um por si), dentro de score_box
 var score_round: Label     # "RODADA 3 DE 5" acima do placar
 var score_box: Control
+var timer_label: Label     # relógio da rodada no topo (o do layout do modo)
+var timer_shown := -1
 var toast_box: Control     # aviso rápido ("Fulano escolheu: ...") numa pílula no topo
 var overtime: OvertimeBanner   # Prorrogação: contagem e estado, embaixo do aviso rápido
 var vitals: Vitals         # canto inferior esquerdo: mestra, vida, escudo e dash
@@ -219,7 +221,9 @@ func _build_duel_bar() -> void:
 		if side == 0:
 			row.add_child(name_label)
 			row.add_child(hearts)
-			row.add_child(_ui_label("x", 20, Color(1, 1, 1, 0.6), true))
+			timer_label = _timer_label(20)
+			timer_label.custom_minimum_size.x = 64
+			row.add_child(timer_label)
 		else:
 			row.add_child(hearts)
 			row.add_child(name_label)
@@ -299,12 +303,11 @@ func _build_team_bar() -> void:
 	mid.custom_minimum_size.x = 84
 	mid.alignment = BoxContainer.ALIGNMENT_CENTER
 	mid.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var top := _ui_label("RODADA", 11, Color(1, 1, 1, 0.6), true)
-	top.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	mid.add_child(top)
-	team_round = _ui_label("", 18, Color.WHITE, true)
+	team_round = _ui_label("", 11, Color(1, 1, 1, 0.6), true)
 	team_round.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	mid.add_child(team_round)
+	timer_label = _timer_label(18)
+	mid.add_child(timer_label)
 	row.add_child(mid)
 	row.add_child(_score_box(theirs))
 	for p in _team_players(theirs):
@@ -695,6 +698,7 @@ func _frame_step(delta: float) -> void:
 	_update_downed()
 	if team_bar:
 		_update_team_bar()
+	_update_timer()
 	if fps_label.visible:
 		fps_label.text = "%d FPS" % Engine.get_frames_per_second()
 
@@ -908,7 +912,7 @@ func set_score(p_score: Dictionary, round_num: int, block_end: int) -> void:
 	if team_bar:
 		for t in 2:
 			team_scores[t].text = str(_team_score(t))
-		team_round.text = "%d / %d" % [round_num, block_end]
+		team_round.text = "RODADA %d / %d" % [round_num, block_end]
 	_sync_scoreboard()
 
 
@@ -968,6 +972,31 @@ func toast(text: String) -> void:
 	toast_time = 3.0
 
 
+## Relógio da rodada (2026-10-12, pedido do usuário, como no Furor): o tempo de luta da
+## partida (o mesmo da prorrogação: parado na contagem e na pausa contra bots). Laranja a
+## partir das cartas extras, vermelho quando a arena fecha. O texto só muda a cada segundo.
+func _timer_label(size: int) -> Label:
+	var l := _ui_label("0:00", size, Color.WHITE, true)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.size_flags_vertical = Control.SIZE_FILL
+	return l
+
+
+func _update_timer() -> void:
+	var sec := int(overtime.time)
+	if timer_label == null or sec == timer_shown:
+		return
+	timer_shown = sec
+	timer_label.text = "%d:%02d" % [sec / 60, sec % 60]
+	var color := Color.WHITE
+	if sec >= int(Overtime.ZONE_AT):
+		color = Ui.DANGER
+	elif sec >= int(Overtime.CARDS_AT):
+		color = Ui.WARN
+	timer_label.add_theme_color_override("font_color", color)
+
+
 ## Placar do topo (cada um por si): pílula com a rodada pequena em cima e o placar.
 func _build_score_box() -> void:
 	var holder := CenterContainer.new()
@@ -984,9 +1013,19 @@ func _build_score_box() -> void:
 	pill.add_theme_stylebox_override("panel", style)
 	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(pill)
+	var row := Ui.hbox(14)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.add_child(row)
+	timer_label = _timer_label(22)
+	row.add_child(timer_label)
+	var bar := ColorRect.new()
+	bar.color = Color(1, 1, 1, 0.18)
+	bar.custom_minimum_size = Vector2(1, 0)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(bar)
 	var col := Ui.vbox(0)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pill.add_child(col)
+	row.add_child(col)
 	score_round = _ui_label("", 11, Color(1, 1, 1, 0.55), true)
 	score_round.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(score_round)
