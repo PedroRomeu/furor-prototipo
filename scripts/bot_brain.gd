@@ -224,8 +224,8 @@ func _master(foe: Player, sees: bool) -> void:
 		p.in_master = true   # Gancho: alvo à vista ao alcance
 	elif p.stats["rocket_ride"] > 0 and p.global_position.distance_to(foe.global_position) > 12.0:
 		p.in_master = true   # Foguete: monta e vai na direção do alvo
-	elif p.stats["realm"] > 0 and p.global_position.distance_to(foe.global_position) < Player.REALM_RANGE:
-		p.in_master = true   # Domínio do Rei: só sai com o alvo na mira (senão não gasta)
+	elif p.stats["realm"] > 0 and p.global_position.distance_to(foe.global_position) < Player.RCHAIN_RANGE * 0.8:
+		p.in_master = true   # Domínio do Rei: lança a corrente com o alvo à vista e ao alcance
 	elif p.stats["unstable"] > 0:
 		p.in_master = true   # Cartas Instáveis: com o alvo à vista a menos de FAR
 	elif p.stats["meteor"] > 0 and p.meteor_left == 0 and p.global_position.distance_to(foe.global_position) > 6.0:

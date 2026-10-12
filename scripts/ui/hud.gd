@@ -29,6 +29,17 @@ var downed_view := false
 var scope: ColorRect      # luneta da Sniper: tela escura com um círculo e a cruz fina
 ## Luneta num shader só (um retângulo na tela toda): fora do círculo, preto; dentro, a
 ## cruz fina com um vão no meio e uma borda escura. Uma chamada de desenho, como a mira.
+## Domínio do Rei: bordas roxas fechando como um túnel (veil) e o preto da travessia (black).
+const REALM_VEIL_SHADER := """
+shader_type canvas_item;
+uniform float veil = 0.0;
+uniform float black = 0.0;
+void fragment() {
+	vec2 d = (UV - 0.5) * vec2(1.6, 1.0);
+	float edge = smoothstep(0.85 - veil * 0.6, 0.95, length(d)) * veil;
+	COLOR = vec4(mix(vec3(0.22, 0.05, 0.38), vec3(0.0), black), max(edge * 0.95, black));
+}
+"""
 const SCOPE_SHADER := """
 shader_type canvas_item;
 uniform vec2 screen = vec2(1280.0, 720.0);
@@ -48,6 +59,7 @@ var down_label: Label
 var shield_tint: ColorRect
 var damage_fx: DamageFeedback
 var blind_tint: ColorRect
+var realm_veil: ColorRect   # Domínio do Rei: tela fechando em roxo no puxão e o preto da travessia
 var crosshair: Control
 var center_label: Label
 var toast_label: Label
@@ -89,6 +101,15 @@ func _ready() -> void:
 	damage_fx = DamageFeedback.new()
 	add_child(damage_fx)
 	blind_tint = _rect(Color(1, 1, 1, 0))
+	realm_veil = ColorRect.new()
+	realm_veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	realm_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var veil_mat := ShaderMaterial.new()
+	veil_mat.shader = Shader.new()
+	veil_mat.shader.code = REALM_VEIL_SHADER
+	realm_veil.material = veil_mat
+	realm_veil.visible = false
+	add_child(realm_veil)
 	scope = ColorRect.new()
 	scope.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scope.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -681,6 +702,7 @@ func _frame_step(delta: float) -> void:
 	card_timers.update_from(me)
 	blind_tint.color.a = clampf(me.blind_timer / 0.3, 0.0, 1.0) * 0.97
 	blind_tint.visible = blind_tint.color.a > 0.0   # camada de tela cheia: só quando cega
+	_update_realm_veil()
 	hit_time = maxf(0.0, hit_time - delta)
 	kill_time = maxf(0.0, kill_time - delta)
 	crosshair.queue_redraw()
@@ -728,6 +750,24 @@ func _update_ammo() -> void:
 	var empty: bool = me.ammo <= 1 and me.reload_timer <= 0.0 and me.bazooka_timer <= 0.0 \
 		and me.sniper_timer <= 0.0 and me.sword_timer <= 0.0
 	ammo_label.add_theme_color_override("font_color", Ui.ACCENT if empty else Color.WHITE)
+
+
+## Tela cheia só quando há puxão ou chegada. Puxão: as bordas fecham e, nos últimos 0,15 s,
+## escurece tudo; chegada: clareia em REALM_FADE_IN.
+func _update_realm_veil() -> void:
+	var veil := 0.0
+	var black := 0.0
+	if me.realm_pull > 0.0:
+		veil = 1.0 - me.realm_pull / Player.REALM_PULL
+		black = clampf((0.15 - me.realm_pull) / 0.15, 0.0, 1.0)
+	elif me.realm_fade > 0.0:
+		black = me.realm_fade / Player.REALM_FADE_IN
+		veil = black * 0.6
+	realm_veil.visible = veil > 0.0 or black > 0.0
+	if realm_veil.visible:
+		var mat := realm_veil.material as ShaderMaterial
+		mat.set_shader_parameter("veil", veil)
+		mat.set_shader_parameter("black", black)
 
 
 ## Estados do jogador em selos acima da vida; só refaz quando a lista muda.
@@ -813,7 +853,7 @@ func _update_status() -> void:
 		if me.realm_king:
 			items.append(["DOMÍNIO DO REI +%d%% DE DANO  ·  %.1f" % [roundi(me.realm_bonus() * 100.0), me.realm_timer], KingRealm.MARK_COLOR])
 		else:
-			items.append(["NO DOMÍNIO DE %s  ·  %.1f" % [foe_name.to_upper(), me.realm_timer], Ui.DANGER])
+			items.append(["NO DOMÍNIO DE %s -%d%% DE DANO  ·  %.1f" % [foe_name.to_upper(), roundi(me.realm_weaken() * 100.0), me.realm_timer], Ui.DANGER])
 	elif me.realm_bonus_timer > 0.0:
 		items.append(["DOMÍNIO +%d%% DE DANO  %.1f" % [roundi(me.realm_bonus() * 100.0), me.realm_bonus_timer], KingRealm.MARK_COLOR])
 	if me.last_stand_timer > 0.0:

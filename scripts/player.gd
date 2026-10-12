@@ -793,17 +793,40 @@ signal overtime_card(id: String)   # aviso da HUD e registro do autoteste
 var unstable_timer := 0.0
 var unstable_icons: Array = []   # Sprite3D em cima do nome, criados no 1o uso
 signal unstable_drawn(ids: Array)   # registro do autoteste e aviso da HUD
-# Domínio do Rei (mestra): Q leva quem está na mira para uma sala à parte (KingRealm, uma
-# por lado) por REALM_TIME. `realm` = vaga + 1 dos dois lá dentro (0 = no mapa); só se
-# enxergam, miram e se acertam jogadores no mesmo lugar (enemies). A volta é para onde
-# cada um estava (realm_return), marcado no mapa (KingRealm.Marker).
-const REALM_RANGE := 15.0
-const REALM_AIM := 1.5        # distância máxima do alvo à linha da mira
-const REALM_TIME := 6.0
-const REALM_BLOCKED_CD := 8.0 # escudo bloqueou: recarga menor
-const REALM_BONUS_RATE := 0.06   # quem lançou: +6% de dano por segundo lá dentro...
-const REALM_BONUS_MAX := 0.3     # ...até +30% (aos 5 s)
+# Domínio do Rei (mestra): Q lança a corrente sombria (projétil, RCHAIN_*); pegou, os dois
+# são puxados por REALM_PULL (sobem REALM_LIFT, a tela escurece) e vão para uma sala à parte
+# (KingRealm, uma por lado) por REALM_TIME. `realm` = vaga + 1 dos dois lá dentro (0 = no
+# mapa); só se enxergam, miram e se acertam jogadores no mesmo lugar (enemies). A volta é
+# para onde cada um estava (realm_return), marcado no mapa (KingRealm.Marker).
+# Refeita em 2026-10-12 (o usuário: tempo curto demais, faltava "ser levado" e algo que
+# enfraqueça o alvo, como no Mordekaiser; números meus, aprovados): era mirar e ir, 6 s,
+# +6%/s e recarga de 30 s.
+const RCHAIN_SPEED := 30.0
+const RCHAIN_RANGE := 18.0
+const RCHAIN_MAGNET_RANGE := 3.0   # ímã mais fraco que o do Gancho (4 m, 4 rad/s)
+const RCHAIN_MAGNET_TURN := 3.0
+const RCHAIN_COLOR := Color(0.6, 0.25, 0.95)
+const REALM_PULL := 0.8
+const REALM_LIFT := 1.5
+const REALM_FADE_IN := 0.3
+const REALM_TIME := 10.0
+const REALM_BLOCKED_CD := 8.0 # errou ou o escudo bloqueou: recarga menor
+const REALM_BONUS_RATE := 0.04   # quem lançou: +4% de dano por segundo lá dentro...
+const REALM_BONUS_MAX := 0.3     # ...até +30% (aos 7,5 s)
+const REALM_WEAKEN_RATE := 0.04  # o alvo: -4% de dano por segundo...
+const REALM_WEAKEN_MAX := 0.3    # ...até -30%
 const REALM_WIN_TIME := 6.0      # venceu lá dentro: fica com o bônus por mais 6 s
+var rchain_state := 0         # corrente sombria: 0 nada, 1 voando, 2 esperando o alvo, 3 puxando
+var rchain_tip := Vector3.ZERO
+var rchain_dir := Vector3.FORWARD
+var rchain_dist := 0.0
+var rchain_fx: MeshInstance3D
+signal rchain_event(hit: bool)   # registro do autoteste: lançou e pegou ou errou
+var realm_pull := 0.0         # sendo puxado para o Domínio (os dois), quanto falta
+var realm_pull_partner: Player
+var realm_pull_king := false
+var realm_pull_from := Vector3.ZERO   # onde estava ao ser puxado (a volta é para cá, não para o alto)
+var realm_fade := 0.0         # acabou de chegar: a tela clareia (HUD)
 var realm := 0
 var realm_bonus_timer := 0.0     # depois de vencer: quanto falta do bônus guardado
 var realm_bonus_kept := 0.0
@@ -1695,6 +1718,8 @@ func _frame_step(delta: float) -> void:
 		_update_ride_fx()
 	if hook_fx:
 		_update_hook_fx(delta)
+	if rchain_fx:
+		_update_rchain_fx(delta)
 	if beam_fx:
 		_update_beam_fx(delta)
 	var shielding := alive and is_shielding()
@@ -2209,6 +2234,7 @@ func _physics_step(delta: float) -> void:
 	if realm > 0:
 		_realm_tick(delta)
 	_mech_step(delta)
+	_realm_pull_step(delta)
 	realm_bonus_timer = maxf(0.0, realm_bonus_timer - delta)   # em todas: a coroa aparece para os outros
 	spawn_protect = maxf(0.0, spawn_protect - delta)
 	if not is_local:
@@ -2247,6 +2273,12 @@ func _physics_step(delta: float) -> void:
 		move_and_slide()
 		_send_state()
 		return
+	if realm_pull > 0.0:
+		# Domínio do Rei: sendo puxado, sobe devagar sem agir.
+		velocity = Vector3.UP * (REALM_LIFT / REALM_PULL)
+		move_and_slide()
+		_send_state()
+		return
 	if ice_timer > 0.0:
 		_ice_move(delta)
 		_send_state()
@@ -2261,6 +2293,8 @@ func _physics_step(delta: float) -> void:
 		return
 	if hook_state == 1:
 		_hook_fly(delta)
+	if rchain_state == 1:
+		_rchain_fly(delta)
 	if grapple_state > 0:
 		_grapple_check()
 	if grapple_state == 1:
@@ -3257,6 +3291,8 @@ func credit_damage(amount: float, lethal := false) -> void:
 func _act(delta: float) -> void:
 	if ride_timer > 0.0:
 		return   # montado: o Q (saltar) é tratado em _ride_step
+	if realm_pull > 0.0:
+		return   # sendo puxado para o Domínio do Rei
 	if mech_state > 0:
 		# Mecha: Q de novo sai (e explode); o E vira o míssil, sem escudo.
 		if in_master and mech_state == 2 and mech_timer < MECH_TIME - MECH_EXIT_LOCK:
@@ -4055,32 +4091,130 @@ func _update_grapple_fx(delta: float) -> void:
 
 # ---------------------------------------------------------------- Domínio do Rei
 
-## O inimigo que o Q pega: vivo, no mesmo lugar, a até REALM_RANGE, à frente, a até
-## REALM_AIM da linha da mira e à vista; o mais perto da linha. Congelado, fisgado ou já
-## num Domínio não vale.
-func _realm_find() -> Player:
-	if realm > 0 or not head:
-		return null
-	var eye := head.global_position
-	var aim := -head.global_transform.basis.z
+## Q: lança a corrente sombria. Quem lança move a ponta e acha o alvo (como o Gancho); as
+## outras máquinas desenham a ponta voando reta.
+func _rchain_fire() -> void:
+	rchain_state = 1
+	rchain_dir = -head.global_transform.basis.z
+	rchain_tip = chest()
+	rchain_dist = 0.0
+	reveal()
+	Sfx.at(self, "grapple_fire", chest())
+	_rchain_visual(true)
+	if Net.online and is_inside_tree():
+		_net_rchain.rpc(1, rchain_dir)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_rchain(state: int, dir: Vector3) -> void:
+	if state == 1:
+		rchain_state = 1
+		rchain_dir = dir
+		rchain_tip = chest()
+		rchain_dist = 0.0
+		_rchain_visual(true)
+	else:
+		_rchain_clear()
+
+
+## A ponta voa (máquina de quem lança): parede ou fim do alcance = errou; um inimigo perto
+## da linha = a máquina dele decide (receive_realm).
+func _rchain_fly(delta: float) -> void:
+	_rchain_magnet(delta)
+	var step := RCHAIN_SPEED * delta
+	var from := rchain_tip
+	var to := rchain_tip + rchain_dir * step
+	var wall := get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(from, to, 1))
+	for enemy: Player in enemies():
+		if enemy.ice_timer > 0.0 or enemy.hooked_by or enemy.realm_pull > 0.0:
+			continue
+		var c := enemy.chest()
+		var t := clampf((c - from).dot(rchain_dir), 0.0, step)
+		if (from + rchain_dir * t).distance_to(c) < 0.4 + enemy.hit_radius():
+			rchain_state = 2   # esperando a resposta da máquina do alvo
+			rchain_event.emit(true)
+			rchain_tip = c
+			enemy.remote_call("receive_realm", [String(name)])
+			return
+	rchain_tip = to
+	rchain_dist += step
+	if not wall.is_empty() or rchain_dist >= RCHAIN_RANGE:
+		rchain_event.emit(false)
+		realm_blocked()
+
+
+## Ímã leve: inimigo a menos de RCHAIN_MAGNET_RANGE da ponta, à frente dela e à vista.
+func _rchain_magnet(delta: float) -> void:
 	var best: Player = null
-	var best_off := REALM_AIM
-	for e in enemies():
-		if e.realm > 0 or e.ice_timer > 0.0 or e.hooked_by:
-			continue
-		var to: Vector3 = e.chest() - eye
-		var along := to.dot(aim)
-		if along <= 0.0 or along > REALM_RANGE:
-			continue
-		var off := (to - aim * along).length()
-		if off > best_off:
-			continue
-		var ray := PhysicsRayQueryParameters3D.create(eye, e.chest(), 1, [get_rid(), e.get_rid()])
-		if not get_world_3d().direct_space_state.intersect_ray(ray).is_empty():
-			continue
-		best = e
-		best_off = off
-	return best
+	var best_dist := RCHAIN_MAGNET_RANGE
+	for enemy: Player in enemies():
+		var to := enemy.chest() - rchain_tip
+		var d := to.length()
+		if d < best_dist and d > 0.01 and rchain_dir.dot(to / d) > HOOK_MAGNET_CONE:
+			best = enemy
+			best_dist = d
+	if best == null:
+		return
+	if not get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(rchain_tip, best.chest(), 1)).is_empty():
+		return
+	var want := (best.chest() - rchain_tip).normalized()
+	var angle := rchain_dir.angle_to(want)
+	if angle > 0.001:
+		rchain_dir = rchain_dir.slerp(want, minf(1.0, RCHAIN_MAGNET_TURN * delta / angle)).normalized()
+
+
+func _rchain_clear() -> void:
+	rchain_state = 0
+	_rchain_visual(false)
+
+
+## A corrente: um cilindro fino roxo da mão de quem lança até a ponta (ou até o alvo, no puxão).
+static var _rchain_mesh: CylinderMesh
+
+func _rchain_visual(on: bool) -> void:
+	if not on:
+		if rchain_fx:
+			rchain_fx.queue_free()
+			rchain_fx = null
+		return
+	if rchain_fx:
+		return
+	if _rchain_mesh == null:
+		_rchain_mesh = CylinderMesh.new()
+		_rchain_mesh.top_radius = 0.06
+		_rchain_mesh.bottom_radius = 0.06
+		_rchain_mesh.height = 1.0
+		_rchain_mesh.radial_segments = 6
+		_rchain_mesh.rings = 1
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color = RCHAIN_COLOR
+		_rchain_mesh.material = mat
+	rchain_fx = MeshInstance3D.new()
+	rchain_fx.mesh = _rchain_mesh
+	rchain_fx.top_level = true
+	rchain_fx.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(rchain_fx)
+
+
+func _update_rchain_fx(delta: float) -> void:
+	if rchain_state == 1 and not is_local:
+		rchain_tip += rchain_dir * RCHAIN_SPEED * delta   # nas outras máquinas a ponta voa sozinha
+	var start := chest()
+	if is_human:
+		start = camera.global_position + Vector3.DOWN * 0.4 + camera.global_transform.basis.x * 0.25
+	var end := rchain_tip
+	if rchain_state == 3 and is_instance_valid(realm_pull_partner):
+		end = realm_pull_partner.chest()
+	var axis := end - start
+	var length := axis.length()
+	rchain_fx.visible = length > 0.05
+	if not rchain_fx.visible:
+		return
+	axis /= length
+	var x := axis.cross(Vector3.UP if absf(axis.y) < 0.99 else Vector3.RIGHT).normalized()
+	var z := x.cross(axis).normalized()
+	rchain_fx.global_transform = Transform3D(Basis(x, axis * length, z), (start + end) / 2.0)
 
 
 ## Na máquina do alvo: escudo levantado (ou não dá mais) bloqueia; senão todos entram.
@@ -4099,21 +4233,74 @@ func receive_realm(from_name: String) -> void:
 		_net_realm(from_name)
 
 
+## Errou (parede ou alcance) ou o escudo bloqueou: a corrente some e a recarga cai.
 func realm_blocked() -> void:
 	master_cd = minf(master_cd, REALM_BLOCKED_CD)
+	_rchain_clear()
+	if Net.online and is_local and is_inside_tree():
+		_net_rchain.rpc(0, Vector3.ZERO)
 
 
-## Em todas as máquinas, no nó do alvo: os dois entram na sala de quem lançou (vaga =
-## lado dele). Cada máquina move só os próprios jogadores; a volta é para onde cada um
-## estava aqui (a dona de cada corpo decide a posição real).
+## Em todas as máquinas, no nó do alvo: começa o puxão dos dois (REALM_PULL); no fim dele,
+## entram na sala de quem lançou (_realm_pull_step).
 @rpc("any_peer", "call_local", "reliable")
 func _net_realm(from_name: String) -> void:
 	var king := get_parent().get_node_or_null(from_name) as Player
 	if king == null:
 		return
-	var room := KingRealm.room_for(get_parent(), king.side)
+	king.rchain_state = 3   # a corrente fica esticada até o alvo durante o puxão
+	if king.rchain_fx == null:
+		king._rchain_visual(true)
 	for p: Player in [king, self]:
-		p._realm_enter(room, king.side + 1, self if p == king else king, p == king)
+		p._realm_pull_start(self if p == king else king, p == king)
+
+
+func _realm_pull_start(partner: Player, king: bool) -> void:
+	realm_pull = REALM_PULL
+	realm_pull_partner = partner
+	realm_pull_king = king
+	realm_pull_from = global_position
+	Sfx.at(self, "realm_pull", chest())
+	if is_local:
+		sliding = false
+		dash_timer = 0.0
+		velocity = Vector3.ZERO
+		if grapple_state > 0:
+			_grapple_clear()
+		_hook_let_go()
+
+
+## Todas as máquinas, todo passo: o puxão anda (redemoinho no chão) e, no fim, os dois
+## entram. Um dos dois morreu ou sumiu no meio: cancela sem entrar.
+func _realm_pull_step(delta: float) -> void:
+	realm_fade = maxf(0.0, realm_fade - delta)
+	if realm_pull <= 0.0:
+		return
+	var partner := realm_pull_partner
+	if not is_instance_valid(partner) or not partner.alive or not alive:
+		realm_pull = 0.0
+		if realm_king or realm_pull_king:
+			_rchain_clear()
+		return
+	var before := realm_pull
+	realm_pull -= delta
+	if int(before / 0.2) != int(maxf(realm_pull, 0.0) / 0.2):
+		Effects.burst(get_parent(), global_position + Vector3.UP * 0.1, 1.2, RCHAIN_COLOR, 0.2)
+	if realm_pull > 0.0:
+		return
+	if not realm_pull_king:
+		realm_pull = 0.001   # o alvo espera: quem lançou leva os dois no mesmo passo
+		return
+	_rchain_clear()
+	var room := KingRealm.room_for(get_parent(), side)
+	for p: Player in [self, partner]:
+		p.realm_pull = 0.0
+		Effects.burst(get_parent(), p.chest(), 2.2, RCHAIN_COLOR, 0.25)
+		p._realm_enter(room, side + 1, partner if p == self else self, p == self)
+		p.realm_return = p.realm_pull_from
+		p.realm_fade = REALM_FADE_IN
+		if p.realm_marker:
+			p.realm_marker.position = p.realm_pull_from
 
 
 func _realm_enter(room: KingRealm, slot: int, partner: Player, king: bool) -> void:
@@ -4173,6 +4360,9 @@ func _realm_leave(won: bool) -> void:
 
 ## Começo de rodada: ninguém continua lá dentro (o nascimento já põe cada um no lugar).
 func _realm_clear() -> void:
+	_rchain_clear()
+	realm_pull = 0.0
+	realm_fade = 0.0
 	realm_bonus_timer = 0.0
 	realm_bonus_kept = 0.0
 	realm = 0
@@ -4208,11 +4398,6 @@ func master_cd_total() -> float:
 
 ## Habilidade da carta mestra (tecla Q).
 func _use_master() -> void:
-	var realm_target: Player = null
-	if stats["realm"] > 0:
-		realm_target = _realm_find()
-		if realm_target == null:
-			return   # Domínio do Rei sem ninguém na mira: não gasta
 	if master_max_charges() > 1:
 		if master_charges >= master_max_charges():
 			master_cd = CardDB.CARDS[master_id]["cooldown"]   # a recarga começa com a 1a gasta
@@ -4279,8 +4464,8 @@ func _use_master() -> void:
 		_start_mech()
 	if stats["clone"] > 0:
 		_start_clone()
-	if realm_target:
-		realm_target.remote_call("receive_realm", [String(name)])
+	if stats["realm"] > 0:
+		_rchain_fire()
 	if stats["grapple"] > 0:
 		_grapple_fire()
 	if stats["meteor"] > 0:
@@ -5955,7 +6140,15 @@ func shot_damage() -> float:
 	if is_still_aiming():
 		dmg *= 1.0 + STILL_DAMAGE * stats["still_aim"]
 	dmg *= 1.0 + realm_bonus()
+	dmg *= 1.0 - realm_weaken()
 	return dmg
+
+
+## Domínio do Rei: o alvo perde REALM_WEAKEN_RATE do dano por segundo lá dentro (até o MAX).
+func realm_weaken() -> float:
+	if realm > 0 and not realm_king:
+		return minf(REALM_WEAKEN_MAX, REALM_WEAKEN_RATE * (REALM_TIME - realm_timer))
+	return 0.0
 
 
 ## Domínio do Rei: o bônus de dano de quem lançou, lá dentro ou guardado depois de vencer.

@@ -147,8 +147,8 @@ const MASTERS := {
 	# Domínio do Rei (2026-10-11, ideia e nome do usuário, inspirada na ultimate do
 	# Mordekaiser; números meus, aprovados; começar só com o bônus e voltar para onde saíram
 	# foram escolhas dele). Lógica em Player._realm_*, sala em KingRealm.
-	"dominio_do_rei": {"name": "Domínio do Rei", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 30.0,
-		"desc": "Q com um inimigo na mira (até 15 m): leva vocês dois para uma sala fechada por 6 s, onde ninguém mais entra. Lá dentro você ganha +6% de dano por segundo, até +30%. Quem vencer volta na hora; se você vencer, fica com o bônus por mais 6 s. No fim do tempo, os dois voltam para onde estavam, e quem ficou no mapa vê onde e quando vocês reaparecem. Escudo levantado bloqueia (recarga de 8 s). Sem alvo na mira, não gasta. Recarga de 30 s.",
+	"dominio_do_rei": {"name": "Domínio do Rei", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 35.0,
+		"desc": "Q: lança uma corrente sombria (até 18 m, com uma leve curva para quem passa perto). Pegou: vocês dois são puxados por 0,8 s e levados para uma sala fechada por 10 s, onde ninguém mais entra. Lá dentro, a cada segundo você ganha +4% de dano e ele perde 4%, até +30% e -30%. Quem vencer volta na hora; se você vencer, fica com o bônus por mais 6 s. No fim do tempo, os dois voltam para onde estavam, e quem ficou no mapa vê onde e quando vocês reaparecem. Errou ou o escudo bloqueou: recarga de 8 s. Recarga de 35 s.",
 		"mods": [{"stat": "realm", "add": 1}]},
 	# Mecha (2026-10-12, ideia do usuário: construir e entrar, seguir atirando com defesa;
 	# construção peça por peça, míssil no E, explosão na saída que cresce com a blindagem
