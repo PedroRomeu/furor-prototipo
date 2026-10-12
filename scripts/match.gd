@@ -444,7 +444,7 @@ func _spawn_player(peer: int, side: int, pname: String, team := -1) -> Player:
 	p.meteor_marked.connect(func(): _log("%s marcou um meteoro" % p.player_name))
 	p.slammed.connect(func(h, dmg): _log("%s caiu de Meteoro de %.1f m (%.0f de dano)" % [p.player_name, h, dmg]))
 	p.platform_made.connect(func(): _log("%s fez uma plataforma" % p.player_name))
-	p.grappled.connect(func(s): if s >= 2: _log(("%s grudou a ventosa" if s == 2 else "%s ficou pendurado na ventosa") % p.player_name))
+	p.grappled.connect(func(s): if s >= 2: _log("%s %s" % [p.player_name, {2: "grudou a ventosa", 3: "ficou pendurado na ventosa", 4: "grudou a ventosa num inimigo", 5: "deu o chute de ventosa"}[s]]))
 	p.realm_changed.connect(func(entered, won): _log("%s %s" % [p.player_name, ("entrou no Domínio do Rei (%s)" % ("rei" if p.realm_king else "alvo")) if entered \
 			else ("saiu do Domínio vencendo (bônus %.0f%%)" % (p.realm_bonus() * 100.0) if won else ("saiu do Domínio" + ("" if p.alive else " morto")))]))
 	p.unstable_drawn.connect(func(ids): _log("%s tirou cartas instáveis: %s (vida %.0f/%.0f, dano %.1f)" \

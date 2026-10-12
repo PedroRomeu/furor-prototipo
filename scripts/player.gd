@@ -564,7 +564,7 @@ const RECOIL_KICK := 0.03
 const HIT_FLASH_TIME := 0.14   # o modelo atingido pisca em branco por este tempo
 ## Métodos que a outra máquina pode chamar neste jogador (ver remote_call).
 const ASSIST_TIME := 10.0   # placar: dano nos últimos 10 s antes da morte conta assistência
-const REMOTE_METHODS := ["receive_shockwave", "credit_damage", "bullet_refund", "teleport_to", "swap_to", "receive_stomp",
+const REMOTE_METHODS := ["receive_grapple_kick", "receive_shockwave", "credit_damage", "bullet_refund", "teleport_to", "swap_to", "receive_stomp",
 	"receive_slash", "ice_shove", "receive_slap", "receive_beam", "receive_hook", "hook_blocked",
 	"hook_throw", "hook_release", "receive_bowl", "receive_slam", "receive_realm", "realm_blocked"]
 ## Gancho (mestra). Quem lança move a ponta (HOOK_SPEED, até HOOK_RANGE) e acha o alvo; a
@@ -836,21 +836,40 @@ var realm_king := false       # foi quem lançou
 var realm_return := Vector3.ZERO
 var realm_marker: Node3D
 var realm_crown: RealmCrown   # coroa de quem lançou (para os outros), criada no 1o uso
-# Arpéu Ventoso (mestra, 2 cargas): Q lança a ventosa (GRAPPLE_SPEED, até GRAPPLE_RANGE);
-# grudou no cenário, puxa a GRAPPLE_PULL até lá e, chegando, fica pendurado até
-# GRAPPLE_HANG. Pulo no puxão solta mantendo o embalo (+GRAPPLE_LIFT para cima); pendurado,
-# salta da parede (ideia do usuário: soltar no Espaço deixa o Q para a próxima ventosa, que
-# solta a anterior). Só a máquina dona simula; o estado vai para as outras desenharem a corda.
-const GRAPPLE_SPEED := 60.0
+# Arpéu Ventoso (mestra, 3 cargas). Refeito em 2026-10-12 (o usuário: travado, abaixo das
+# outras de movimento; referências: Homem-Aranha, Shingeki no Kyojin, Titanfall 2; números
+# meus, aprovados). SEGURAR Q lança e prende; SOLTAR Q solta com o embalo (x
+# GRAPPLE_RELEASE_BOOST e um pulo no ar). Preso, é um balanço: a corda puxa a GRAPPLE_ACCEL
+# na direção do ponto sem apagar o embalo, não deixa se afastar e encurta a GRAPPLE_REEL;
+# gravidade pela metade; WASD guia (GRAPPLE_AIR_STEER). Chegando segurando: pendura até
+# GRAPPLE_HANG (pular salta da parede). Espaço preso solta com +GRAPPLE_LIFT para cima.
+# Ventosa num inimigo: chute (GRAPPLE_KICK_*), puxado até ele. Era: puxão reto a 22 m/s sem
+# gravidade, pendurado 3 s, Q prende e Espaço solta, 2 cargas de 8 s. O "segurar Q" é teste
+# (o usuário prefere apertar; memória furor-arpeu-segurar-q).
+# Só a máquina dona simula; o estado vai para as outras desenharem a corda.
+const GRAPPLE_SPEED := 80.0
 const GRAPPLE_COLOR := Color(0.95, 0.35, 0.3)   # selo da HUD, o vermelho da ventosa
-const GRAPPLE_RANGE := 30.0
-const GRAPPLE_PULL := 22.0
-const GRAPPLE_STEER := 1.5     # m/s de lado com as teclas durante o puxão (~2 m em 30 m)
+const GRAPPLE_RANGE := 35.0
+const GRAPPLE_ACCEL := 35.0
+const GRAPPLE_REEL := 6.0
+const GRAPPLE_GRAVITY := 0.5
+const GRAPPLE_AIR_STEER := 14.0   # m/s² com as teclas (o dobro do controle no ar comum, ~7)
+const GRAPPLE_MAX_SPEED := 28.0
+const GRAPPLE_RELEASE_BOOST := 1.15
+const GRAPPLE_MAX_TIME := 4.0     # preso balançando no máximo isso
+const GRAPPLE_MIN_HOLD := 0.2     # soltar o Q antes disso não solta (um toque ainda dá um puxão curto)
 const GRAPPLE_ARRIVE := 1.5    # a esta distância do ponto (do peito), chegou
-const GRAPPLE_HANG := 3.0
+const GRAPPLE_HANG := 2.0
 const GRAPPLE_LIFT := 3.0
 const GRAPPLE_REFUND := 1.0    # errou: a carga volta neste tempo
-var grapple_state := 0         # 0 nada, 1 ventosa voando, 2 puxando, 3 pendurado
+const GRAPPLE_KICK_SPEED := 30.0
+const GRAPPLE_KICK_DAMAGE := 20.0
+const GRAPPLE_KICK_REACH := 1.6
+var grapple_state := 0         # 0 nada, 1 ventosa voando, 2 balançando, 3 pendurado, 4 indo chutar
+var grapple_len := 0.0         # comprimento da corda (encurta a GRAPPLE_REEL)
+var grapple_target: Player     # chute: o inimigo onde a ventosa grudou
+var grapple_age := 0.0         # tempo preso (balanço ou chute)
+var in_master_held := false
 var grapple_tip := Vector3.ZERO      # onde está a ventosa (voando ou grudada)
 var grapple_dir := Vector3.ZERO
 var grapple_dist := 0.0
@@ -1678,6 +1697,7 @@ func _read_local_input() -> void:
 		in_dash = false
 		in_reload = false
 		in_master = false
+		in_master_held = false
 		return
 	var captured := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 	in_move = Input.get_vector("move_left", "move_right", "move_back", "move_forward")
@@ -1695,6 +1715,7 @@ func _read_local_input() -> void:
 	in_dash = Input.is_action_just_pressed("dash")
 	in_reload = Input.is_action_just_pressed("reload")
 	in_master = Input.is_action_just_pressed("master")
+	in_master_held = Input.is_action_pressed("master")
 
 
 # ---------------------------------------------------------------- visual
@@ -3886,13 +3907,31 @@ func _grapple_fire() -> void:
 func _grapple_fly(delta: float) -> void:
 	var step := GRAPPLE_SPEED * delta
 	var to := grapple_tip + grapple_dir * step
+	# Inimigo na linha (antes do cenário): chute de ventosa.
+	for enemy: Player in enemies():
+		if enemy.ice_timer > 0.0 or enemy.hooked_by or enemy.realm_pull > 0.0:
+			continue
+		var c := enemy.chest()
+		var t := clampf((c - grapple_tip).dot(grapple_dir), 0.0, step)
+		if (grapple_tip + grapple_dir * t).distance_to(c) < 0.3 + enemy.hit_radius():
+			grapple_state = 4
+			grapple_target = enemy
+			grapple_tip = c
+			grapple_age = 0.0
+			sliding = false
+			dash_timer = 0.0
+			Sfx.at(get_parent(), "grapple_stick", c)
+			grappled.emit(4)
+			_grapple_send(4, c, Vector3.ZERO)
+			return
 	var ray := PhysicsRayQueryParameters3D.create(grapple_tip, to, 1, [get_rid()])
 	var hit := get_world_3d().direct_space_state.intersect_ray(ray)
 	if not hit.is_empty():
 		grapple_tip = hit["position"]
 		grapple_normal = hit["normal"]
 		grapple_state = 2
-		grapple_timer = chest().distance_to(grapple_tip) / GRAPPLE_PULL + 0.6
+		grapple_len = chest().distance_to(grapple_tip)
+		grapple_age = 0.0
 		sliding = false
 		dash_timer = 0.0
 		Sfx.at(get_parent(), "grapple_stick", grapple_tip)
@@ -3932,22 +3971,41 @@ func _grapple_move(delta: float) -> bool:
 	if in_dash and dash_cd <= 0.0:
 		_grapple_clear()   # dash corta e emenda: _move faz o dash com o embalo do puxão
 		return false
+	if grapple_state == 4:
+		return _grapple_kick_step(delta)
 	if grapple_state == 2 and in_jump:
-		_grapple_release()   # pulo no puxão: o estilingue (pendurado, o pulo salta da parede)
+		_grapple_release()   # pulo no balanço: solta com impulso para cima (pendurado, salta da parede)
 		jump_buffer = 0.0
+		return true
+	grapple_age += delta
+	if grapple_state == 2 and not in_master_held and grapple_age >= GRAPPLE_MIN_HOLD:
+		_grapple_release(true)   # soltou o Q: sai com o embalo
 		return true
 	if grapple_state == 2:
 		var to := grapple_tip - chest()
 		var d := to.length()
-		grapple_timer -= delta
-		if d > GRAPPLE_ARRIVE and grapple_timer > 0.0:
+		if d > GRAPPLE_ARRIVE and grapple_age < GRAPPLE_MAX_TIME:
 			var dir := to / d
+			# Balanço: puxa para o ponto sem apagar o embalo, gravidade pela metade, teclas guiam.
+			velocity.y -= GRAVITY_FALL * GRAPPLE_GRAVITY * delta
+			velocity += dir * GRAPPLE_ACCEL * delta
 			var steer := _wish_dir()
 			steer -= dir * steer.dot(dir)
-			velocity = dir * GRAPPLE_PULL + steer.limit_length(1.0) * GRAPPLE_STEER
+			velocity += steer.limit_length(1.0) * GRAPPLE_AIR_STEER * delta
+			# A corda não estica: corta o que afasta do ponto e puxa de volta o que passou.
+			grapple_len = maxf(GRAPPLE_ARRIVE, minf(grapple_len, d) - GRAPPLE_REEL * delta)
+			var away := velocity.dot(dir)
+			if d > grapple_len and away < 0.0:
+				velocity -= dir * away
+			if d > grapple_len:
+				velocity += dir * minf(d - grapple_len, 1.0) * 8.0
+			velocity = velocity.limit_length(GRAPPLE_MAX_SPEED)
 			sliding = false
 			return true
-		# Chegou (ou parou numa quina): no topo de algo, pisa; na parede ou no teto, pendura.
+		# Chegou (ou o tempo acabou) segurando: no topo de algo, pisa; na parede ou no teto, pendura.
+		if grapple_age >= GRAPPLE_MAX_TIME:
+			_grapple_release(true)
+			return true
 		if grapple_normal.y > 0.7:
 			velocity = Vector3.UP * 2.0
 			_grapple_clear()
@@ -3966,23 +4024,66 @@ func _grapple_move(delta: float) -> bool:
 		jump_buffer = 0.0
 		return true
 	grapple_timer -= delta
-	if grapple_timer <= 0.0:
-		_grapple_clear()
+	if grapple_timer <= 0.0 or not in_master_held:
+		_grapple_clear()   # o tempo acabou ou soltou o Q: cai
 		return false
 	velocity = Vector3.ZERO
 	return true
 
 
-## Soltar (pulo no puxão, ou a próxima ventosa): no puxão sai voando com o embalo
-## (+GRAPPLE_LIFT); pendurado, só cai; com a
-## ventosa ainda voando, ela some (a carga já foi).
-func _grapple_release() -> void:
+## Soltar: soltando o Q (boost), no balanço sai com o embalo x GRAPPLE_RELEASE_BOOST e
+## ganha um pulo no ar; pulo no balanço, ou a próxima ventosa, solta com +GRAPPLE_LIFT para
+## cima; pendurado, só cai; com a ventosa ainda voando, ela some (a carga já foi).
+func _grapple_release(boost := false) -> void:
 	if grapple_state == 2:
-		velocity += Vector3.UP * GRAPPLE_LIFT
+		if boost:
+			velocity = (velocity * GRAPPLE_RELEASE_BOOST).limit_length(GRAPPLE_MAX_SPEED * GRAPPLE_RELEASE_BOOST)
+			jumps_left = maxi(jumps_left, 1)
+		else:
+			velocity += Vector3.UP * GRAPPLE_LIFT
+		jump_rising = false
 	elif grapple_state == 3:
 		velocity = Vector3.ZERO
 	_grapple_clear()
 	grappled.emit(0)
+
+
+## Chute de ventosa: puxado até o inimigo; chegando, a máquina dele decide (escudo bloqueia)
+## e você quica para trás. Ele saiu de alcance, morreu ou passou do tempo: solta.
+func _grapple_kick_step(delta: float) -> bool:
+	grapple_age += delta
+	var foe := grapple_target
+	if not is_instance_valid(foe) or not foe.alive or foe.realm != realm or grapple_age > 1.5:
+		_grapple_clear()
+		return false
+	grapple_tip = foe.chest()
+	var to := grapple_tip - chest()
+	var d := to.length()
+	var dir := to / maxf(d, 0.01)
+	if d > GRAPPLE_KICK_REACH:
+		velocity = dir * GRAPPLE_KICK_SPEED
+		sliding = false
+		return true
+	foe.remote_call("receive_grapple_kick", [String(name), dir])
+	velocity = -Vector3(dir.x, 0.0, dir.z).normalized() * 6.0 + Vector3.UP * 7.0
+	jump_rising = false
+	jumps_left = maxi(jumps_left, 1)
+	Effects.burst(get_parent(), foe.chest(), 1.2, GRAPPLE_COLOR, 0.15)
+	grappled.emit(5)
+	_grapple_clear()
+	return true
+
+
+## Na máquina de quem leva o chute: escudo de pé bloqueia (só o reflexo); senão dano e empurrão.
+func receive_grapple_kick(from_name: String, dir: Vector3) -> void:
+	if not alive:
+		return
+	if is_shielding():
+		reflect_flash = 1.0
+		Sfx.at(self, "reflect", chest())
+		return
+	knockback(Vector3(dir.x, 0.0, dir.z).normalized() * 12.0 + Vector3.UP * 5.0)
+	take_damage(GRAPPLE_KICK_DAMAGE, get_parent().get_node_or_null(from_name) as Player)
 
 
 func _grapple_clear() -> void:

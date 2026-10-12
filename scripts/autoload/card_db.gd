@@ -203,9 +203,9 @@ const MASTERS := {
 	# Arpéu Ventoso (2026-10-12, ideia do usuário: os ganchos de Shingeki no Kyojin com cara
 	# de desentupidor; nome dele; números meus, aprovados: 22 m/s, 8 s por carga, atirar a
 	# qualquer momento). Lógica em Player._grapple_*.
-	"arpeu_ventoso": {"name": "Arpéu Ventoso", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 8.0,
-		"charges": 2,
-		"desc": "Q: lança uma ventosa (até 30 m) que gruda no cenário e te puxa até lá a 22 m/s; chegando, você fica pendurado até 3 s. Pular no meio do puxão solta e você sai voando com o embalo; pular pendurado salta da parede. Q com outra carga lança a próxima ventosa (a anterior solta). Dash corta o puxão. Dá para atirar o tempo todo. Errou, a carga volta em 1 s. Guarda 2 usos: cada um volta em 8 s, um de cada vez.",
+	"arpeu_ventoso": {"name": "Arpéu Ventoso", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 6.0,
+		"charges": 3,
+		"desc": "Segure Q: lança uma ventosa (até 35 m). Grudou no cenário: você balança preso a ela, com a gravidade pela metade, sem perder o embalo, e as teclas guiam o balanço; a corda vai encurtando. Solte Q para sair voando com o embalo (+15% e um pulo no ar); Espaço também solta, com um impulso para cima. Chegando à parede ainda segurando, fica pendurado até 2 s (pular salta dela). Grudou num inimigo: você é puxado até ele e dá um chute de 20 de dano que o empurra (escudo levantado bloqueia). Dash corta. Errou, a carga volta em 1 s. Guarda 3 usos: cada um volta em 6 s, um de cada vez.",
 		"mods": [{"stat": "grapple", "add": 1}]},
 	"corrente": {"name": "Corrente", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 9.0,
 		"charges": 2,

@@ -808,9 +808,11 @@ func _update_status() -> void:
 	elif me.mech_state == 2:
 		items.append(["MECHA %.1f  ·  [%s] sair e explodir" % [me.mech_timer, GameState.key_text("master")], Player.MECH_COLOR.lightened(0.25)])
 	if me.grapple_state == 2:
-		items.append(["PUXANDO  ·  [%s] solta com o embalo" % GameState.key_text("jump"), Player.GRAPPLE_COLOR])
+		items.append(["BALANÇANDO  ·  solte [%s] para sair voando" % GameState.key_text("master"), Player.GRAPPLE_COLOR])
 	elif me.grapple_state == 3:
 		items.append(["PENDURADO %.1f  ·  [%s] salta" % [me.grapple_timer, GameState.key_text("jump")], Player.GRAPPLE_COLOR])
+	elif me.grapple_state == 4:
+		items.append(["CHUTE DE VENTOSA", Player.GRAPPLE_COLOR])
 	if me.plat_chain > 0.0:
 		items.append(["PLATAFORMAS %d  ·  %.1f s" % [me.plat_left, me.plat_chain], SkyPlatform.READY_COLOR])
 	if me.daze_timer > 0.0:

@@ -69,6 +69,7 @@ func think(delta: float) -> void:
 	p.in_dash = false
 	p.in_reload = false
 	p.in_master = false
+	p.in_master_held = false
 	var plat_save: bool = p.stats["platforms"] > 0 and p.plat_left > 0 and p.plat_cd <= 0.0 and not p.is_on_floor() \
 			and p.global_position.y < Arena.VOID_Y + 1.5 and p.velocity.y < 0.0
 	if plat_save:
@@ -178,8 +179,9 @@ func _master(foe: Player, sees: bool) -> void:
 		if p.master_cd < 15.0:
 			p.in_master = true
 		return
-	if p.grapple_state == 2 and p.global_position.distance_to(foe.global_position) < NEAR:
-		p.in_jump = true   # Arpéu Ventoso: chegou perto do alvo no puxão, solta com o embalo
+	if p.grapple_state > 0:
+		# Arpéu Ventoso: segura o Q até chegar perto do alvo (aí solta com o embalo); no chute, segura.
+		p.in_master_held = p.grapple_state == 4 or p.global_position.distance_to(foe.global_position) > NEAR
 		return
 	if p.mech_state > 0:
 		# Mecha: míssil sempre que pronto com o alvo à vista (a explosão sai sozinha no fim).
@@ -201,6 +203,12 @@ func _master(foe: Player, sees: bool) -> void:
 		# Arpéu Ventoso: longe do alvo, encurta a distância (olhando para ele ou para onde
 		# anda; só com cenário na mira, senão a ventosa erraria).
 		p.in_master = true
+		p.in_master_held = true
+		return
+	if p.stats["grapple"] > 0 and sees and p.grapple_state == 0 and p.master_ready() and randf() < 0.01 \
+			and p.global_position.distance_to(foe.global_position) < Player.GRAPPLE_RANGE * 0.7:
+		p.in_master = true   # Arpéu Ventoso: de vez em quando, a ventosa no alvo (chute)
+		p.in_master_held = true
 		return
 	if not sees or not p.master_ready() or p.global_position.distance_to(foe.global_position) > FAR \
 			or master_ready < float(cfg["master_wait"]):
