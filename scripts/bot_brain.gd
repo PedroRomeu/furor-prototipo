@@ -25,6 +25,7 @@ const NEAR := 8.0
 const FAR := 22.0
 const REPATH_TIME := 0.5
 const TARGET_TIME := 1.0
+const ZONE_MARGIN := 4.0     # Prorrogação: perto assim da borda do círculo já volta para o centro
 const REVIVE_SAFE := 12.0    # 2x2: vai reviver o parceiro se o inimigo visível está mais longe que isto
 
 var player: Player
@@ -262,7 +263,11 @@ func _movement(delta: float, foe: Player, sees: bool) -> Vector3:
 	var p := player
 	var dist := p.global_position.distance_to(foe.global_position)
 	var wish := Vector3.ZERO
-	if sees and dist < FAR:
+	# Prorrogação: fora do círculo, ou a menos de ZONE_MARGIN da borda, corre para o centro.
+	var flat_dist := Vector2(p.global_position.x, p.global_position.z).length()
+	if p.realm == 0 and flat_dist > Player.zone_radius - ZONE_MARGIN:
+		wish = _follow_path(delta, Vector3(0.0, p.global_position.y, 0.0))
+	elif sees and dist < FAR:
 		strafe_timer -= delta
 		if strafe_timer <= 0.0:
 			strafe_timer = randf_range(0.4, 1.4)

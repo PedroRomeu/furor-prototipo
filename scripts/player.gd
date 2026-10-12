@@ -346,6 +346,15 @@ const SKY_FIRST := 0.10
 const SKY_STEP := 0.03
 const SKY_RESET := 2.0
 const SKY_COLOR := Color(1.0, 0.35, 0.3)
+# Prorrogação (2026-10-12, rodada longa demais; tempos em match.OVERTIME_*): fora do círculo
+# que fecha (centro na origem, raio zone_radius, posto pela partida), depois de ZONE_GRACE leva
+# ZONE_PART da vida máxima a cada ZONE_TICK. Voltar para dentro recarrega a tolerância no
+# mesmo ritmo (entrar e sair não zera). Escudo e Blindado não reduzem; o colete absorve.
+const ZONE_GRACE := 1.0
+const ZONE_TICK := 1.0
+const ZONE_PART := 0.08
+const ZONE_COLOR := Color(0.45, 0.8, 1.0)
+static var zone_radius := INF   # INF = sem círculo
 const ARMOR_MAX := 50.0      # colete (item do mapa): absorve dano antes da vida
 # Combate
 const SHOCKWAVE_RANGE := 8.0
@@ -731,6 +740,10 @@ const UNSTABLE_COUNT := 3
 const UNSTABLE_TIME := 8.0
 const UNSTABLE_EXCLUDED := ["fenix"]   # renascer por 8 s não faz sentido
 var unstable_cards: Array = []
+## Prorrogação: cartas comuns do baralho ganhas na rodada longa (match._overtime_step), até o
+## fim da rodada, por cima de `cards`.
+var overtime_cards: Array = []
+signal overtime_card(id: String)   # aviso da HUD e registro do autoteste
 var unstable_timer := 0.0
 var unstable_icons: Array = []   # Sprite3D em cima do nome, criados no 1o uso
 signal unstable_drawn(ids: Array)   # registro do autoteste e aviso da HUD
@@ -880,6 +893,9 @@ var sky_timer := 0.0            # tempo até o próximo dano lá em cima
 var sky_ticks := 0              # danos já levados nesta subida
 var sky_low := 0.0              # tempo abaixo do teto desde que desceu
 var sky_credit: Player          # quem acertou antes de subir (leva o abate)
+var zone_timer := ZONE_GRACE    # Prorrogação: tempo até o próximo dano fora do círculo
+var zone_out := false           # fora do círculo agora (para a HUD)
+var zone_credit: Player         # quem acertou antes de sair (leva o abate)
 ## Placar (Tab): quem causou dano e quando (Time.get_ticks_msec), só na máquina dona. Na
 ## morte, o último que causou dano leva o abate e os outros dos últimos ASSIST_TIME s, a
 ## assistência. Vai junto com o aviso de morte, então todas as máquinas contam igual.
@@ -1377,6 +1393,7 @@ func reset_for_round(spawn: Transform3D) -> void:
 	skin_stacks = 0
 	unstable_cards.clear()
 	unstable_timer = 0.0
+	overtime_cards.clear()
 	_update_unstable_icons()
 	_realm_clear()
 	_grapple_clear()
@@ -1469,6 +1486,9 @@ func reset_for_round(spawn: Transform3D) -> void:
 	last_attacker = null
 	sky_active = false
 	sky_credit = null
+	zone_timer = ZONE_GRACE
+	zone_out = false
+	zone_credit = null
 	revives_left = stats["revives"]
 	blind_timer = 0.0
 	blind_guard = 0.0
@@ -2153,6 +2173,8 @@ func _physics_step(delta: float) -> void:
 		return
 	if is_local:
 		_sky_check(delta)
+		if not frozen:
+			_zone_check(delta)
 		if not alive:
 			return
 	if frozen:
@@ -2830,6 +2852,26 @@ func _sky_check(delta: float) -> void:
 			sky_active = false
 
 
+## Prorrogação: fora do círculo leva dano (ver ZONE_*). A máquina dona decide. Na sala do
+## Domínio do Rei (longe do mapa) não conta.
+func _zone_check(delta: float) -> void:
+	zone_out = realm == 0 and is_outside_zone()
+	if not zone_out:
+		zone_timer = minf(ZONE_GRACE, zone_timer + delta)
+		zone_credit = null
+		return
+	if zone_credit == null and since_damage < ASSIST_TIME and is_instance_valid(last_attacker):
+		zone_credit = last_attacker
+	zone_timer -= delta
+	if zone_timer <= 0.0:
+		zone_timer += ZONE_TICK
+		take_damage(stats["max_health"] * ZONE_PART, zone_credit if is_instance_valid(zone_credit) else null, true, false, true)
+
+
+func is_outside_zone() -> bool:
+	return zone_radius < INF and Vector2(global_position.x, global_position.z).length() > zone_radius
+
+
 ## Lá em cima agora (para a HUD).
 func is_too_high() -> bool:
 	return sky_active and sky_low == 0.0
@@ -3265,6 +3307,37 @@ func _chaos_tick(delta: float) -> void:
 		_chaos_draw()
 
 
+# ---------------------------------------------------------------- Prorrogação
+
+## Uma carta comum do baralho até o fim da rodada, sorteada como nas Cartas Instáveis (cópias
+## pesam, limite por partida respeitado, sem Fênix). Só na máquina dona; as outras recebem
+## pelo _net_overtime, com a rodada, para não somar uma carta atrasada na rodada seguinte.
+func overtime_draw() -> void:
+	var owned: Array = cards + overtime_cards + unstable_cards
+	var ok := func(id): return not UNSTABLE_EXCLUDED.has(id) and CardDB.can_take(id, owned)
+	var pool := deck.filter(ok)
+	if pool.is_empty():
+		pool = CardDB.all_ids().filter(ok)
+	if pool.is_empty():
+		return
+	var id: String = pool.pick_random()
+	_overtime_add(id)
+	if Net.online and is_inside_tree():
+		_net_overtime.rpc(id, net_round)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_overtime(id: String, round_id: int) -> void:
+	if round_id == net_round and CardDB.CARDS.has(id) and not CardDB.is_master(id):
+		_overtime_add(id)
+
+
+func _overtime_add(id: String) -> void:
+	overtime_cards.append(id)
+	_recompute_stats()
+	overtime_card.emit(id)
+
+
 # ---------------------------------------------------------------- Cartas Instáveis
 
 ## Sorteia UNSTABLE_COUNT cartas do baralho (cópias pesam, como na escolha; repetidas podem
@@ -3274,7 +3347,7 @@ func _chaos_tick(delta: float) -> void:
 func _unstable_draw() -> void:
 	var ids := []
 	for i in UNSTABLE_COUNT:
-		var owned: Array = cards + ids
+		var owned: Array = cards + overtime_cards + ids
 		var ok := func(id): return not UNSTABLE_EXCLUDED.has(id) and CardDB.can_take(id, owned)
 		var pool := deck.filter(ok)
 		if pool.is_empty():
@@ -3304,8 +3377,13 @@ func _net_unstable(ids: Array) -> void:
 func _unstable_set(ids: Array) -> void:
 	unstable_cards = ids.duplicate()
 	unstable_timer = UNSTABLE_TIME if not ids.is_empty() else 0.0
+	_recompute_stats()
+
+
+## Atributos no meio da rodada com as cartas da partida, da prorrogação e as instáveis.
+func _recompute_stats() -> void:
 	var old_max: float = stats["max_health"]
-	stats = CardDB.compute_stats(BASE_STATS, cards + unstable_cards)
+	stats = CardDB.compute_stats(BASE_STATS, cards + overtime_cards + unstable_cards)
 	if chaos and master_id != "":
 		_chaos_set(master_id)
 	if has_meta("shrunk") and get_meta("shrunk"):

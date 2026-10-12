@@ -22,12 +22,16 @@ const TONES := {
 	# Arpéu Ventoso (2026-10-12): "fiu" subindo ao lançar e "plop" descendo ao grudar.
 	"grapple_fire": {"freqs": [520.0, 1040.0], "gains": [1.0, 0.3], "length": 0.16, "decay": 14.0, "sweep": 2.6},
 	"grapple_stick": {"freqs": [420.0, 210.0], "gains": [1.0, 0.5], "length": 0.13, "decay": 28.0, "sweep": 0.35},
+	# Prorrogação (2026-10-12): bipe seco da contagem e um baque grave descendo no zero.
+	"count": {"freqs": [988.0, 1976.0], "gains": [1.0, 0.25], "length": 0.12, "decay": 22.0},
+	"count_go": {"freqs": [330.0, 495.0, 165.0], "gains": [1.0, 0.6, 0.8], "length": 0.8, "decay": 4.5, "sweep": 0.6},
 }
 ## Volume base de cada som, em dB. Baixado em 2026-10-05 (o usuário achava explosões e
 ## efeitos altos demais): explosão -4 -> -11, tiro -8 -> -12, os outros uns 4 dB.
 const VOLUME := {"shot": -12.0, "shield": -10.0, "reflect": -6.0, "hit": -8.0, "hurt": -6.0,
 	"explosion": -11.0, "death": -7.0, "pad": -12.0, "dash": -17.0, "pickup": -13.0,
-	"hitmarker": -7.0, "kill": -6.0, "grapple_fire": -14.0, "grapple_stick": -9.0}
+	"hitmarker": -7.0, "kill": -6.0, "grapple_fire": -14.0, "grapple_stick": -9.0,
+	"count": -9.0, "count_go": -4.0}
 ## Canal de áudio: sons do mundo vão para Efeitos; os da tela (Sfx.ui) para Interface.
 const BUS_WORLD := "Efeitos"
 const BUS_UI := "Interface"

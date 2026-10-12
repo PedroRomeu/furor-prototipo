@@ -65,6 +65,19 @@ var practice_panel: PracticePanel
 var practice_cards: PracticeCards
 var _board_open := false
 var _board_took_mouse := false
+## Prorrogação (Overtime): tempo de luta da rodada, cartas já dadas e a parede de vidro.
+## Teste: "--prorrogacao=N" começa cada rodada com N s de luta contados.
+var fight_time := 0.0
+var overtime_given := 0
+var zone: ArenaZone
+var _fight_start := _test_fight_start()
+
+
+static func _test_fight_start() -> float:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--prorrogacao="):
+			return a.get_slice("=", 1).to_float()
+	return 0.0
 
 
 func _ready() -> void:
@@ -215,7 +228,11 @@ func _ready_practice() -> void:
 ## do lugar (tapa, gancho, explosão), volta para a marca. O alvo móvel anda de um lado
 ## para o outro do trilho a DUMMY_SPEED.
 func _physics_process(_delta: float) -> void:
-	if not GameState.practice or arena == null:
+	if not GameState.practice:
+		if phase == Phase.FIGHT:
+			_overtime_step(_delta)
+		return
+	if arena == null:
 		return
 	if practice_cards.no_cooldown:
 		me.master_cd = 0.0
@@ -254,6 +271,43 @@ func _physics_process(_delta: float) -> void:
 				dummy_dir = -1.0
 			var right := d.global_transform.basis.x
 			d.in_move = Vector2(signf(right.x) * dummy_dir * DUMMY_SPEED / float(d.stats["move_speed"]), 0.0)
+
+
+## Prorrogação (Overtime): cada máquina conta o próprio tempo de luta e dá as cartas aos
+## seus jogadores (o Player avisa os outros); o círculo sai da mesma conta em todas.
+func _overtime_step(delta: float) -> void:
+	fight_time += delta
+	var due := Overtime.cards_due(fight_time)
+	while overtime_given < due:
+		overtime_given += 1
+		for p in players:
+			if p.is_local and p.alive:
+				p.overtime_draw()
+	var r := Overtime.zone_radius(fight_time, arena.half)
+	Player.zone_radius = r
+	if zone == null:
+		zone = ArenaZone.new()
+		add_child(zone)
+	zone.set_radius(r)
+	hud.overtime.time = fight_time
+	hud.overtime.half = arena.half
+
+
+## Autoteste: quanto durou a luta e o que a prorrogação deu.
+func _overtime_log() -> void:
+	var line := "luta da rodada %d: %d:%02d" % [round_num, int(fight_time) / 60, int(fight_time) % 60]
+	if overtime_given > 0:
+		line += ", prorrogação com %d cartas%s" % [overtime_given,
+			", círculo com %.1f m" % Player.zone_radius if Player.zone_radius < INF else ""]
+	_log(line)
+
+
+## Fim da luta (rodada acabou ou partida nova): sem círculo e sem aviso.
+func _overtime_stop() -> void:
+	Player.zone_radius = INF
+	if zone:
+		zone.set_radius(INF)
+	hud.overtime.running = false
 
 
 ## Um atirador: mira em você (erro e antecipação do bot Médio) e clica no ritmo escolhido,
@@ -395,6 +449,8 @@ func _spawn_player(peer: int, side: int, pname: String, team := -1) -> Player:
 			else ("saiu do Domínio vencendo (bônus %.0f%%)" % (p.realm_bonus() * 100.0) if won else ("saiu do Domínio" + ("" if p.alive else " morto")))]))
 	p.unstable_drawn.connect(func(ids): _log("%s tirou cartas instáveis: %s (vida %.0f/%.0f, dano %.1f)" \
 			% [p.player_name, ", ".join(ids.map(CardDB.card_name)), p.health, p.stats["max_health"], p.stats["damage"]]))
+	p.overtime_card.connect(func(id): _log("%s ganhou %s na prorrogação (vida %.0f/%.0f)" % [p.player_name,
+			CardDB.card_name(id), p.health, p.stats["max_health"]]))
 	p.perfect_reloaded.connect(func(ok): _log("%s %s a recarga perfeita" % [p.player_name, "acertou" if ok else "errou"]))
 	p.beamed.connect(func(): _log("%s levou o raio" % p.player_name))
 	p.slapped.connect(func(splat): _log("%s %s" % [p.player_name, "bateu na parede" if splat else "levou um tapa"]))
@@ -586,6 +642,8 @@ func _duel_over(winner: Player) -> void:
 @rpc("authority", "call_local", "reliable")
 func net_duel_over(fought: Array, winner_name: String, loser_name: String, p_lives: Dictionary, scores: Array) -> void:
 	phase = Phase.ROUND_OVER
+	_overtime_log()
+	_overtime_stop()
 	lives = p_lives
 	for i in players.size():
 		score[String(players[i].name)] = scores[i]
@@ -788,6 +846,11 @@ func net_card_picked(node_name: String, card: String) -> void:
 func net_start_round(number: int, map_index: int, seed_value: int, duel: Dictionary) -> void:
 	round_num = number
 	_clear_bullets()
+	_overtime_stop()
+	fight_time = _fight_start
+	overtime_given = 0
+	hud.overtime.reset()
+	hud.overtime.time = fight_time
 	if not duel.is_empty():
 		duel_pair = duel["pair"]
 		lives = duel["lives"]
@@ -812,6 +875,7 @@ func net_start_round(number: int, map_index: int, seed_value: int, duel: Diction
 			return
 	hud.show_center("")
 	phase = Phase.FIGHT
+	hud.overtime.running = true
 	for p in players:
 		if p.alive:
 			p.frozen = false
@@ -842,6 +906,8 @@ func _on_me_died(_p: Player) -> void:
 @rpc("authority", "call_local", "reliable")
 func net_round_over(winner_name: String, winner_team: int, scores: Array) -> void:
 	phase = Phase.ROUND_OVER
+	_overtime_log()
+	_overtime_stop()
 	for i in players.size():
 		score[String(players[i].name)] = scores[i]
 	for p in players:
@@ -1142,6 +1208,7 @@ func _on_resumed() -> void:
 
 ## Saindo da partida por qualquer caminho, o jogo não pode ficar parado.
 func _exit_tree() -> void:
+	Player.zone_radius = INF
 	GameState.menu_open = false
 	GameState.chat_open = false
 	get_tree().paused = false

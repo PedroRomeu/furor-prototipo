@@ -55,6 +55,7 @@ var score_label: Label     # placar no topo (cada um por si), dentro de score_bo
 var score_round: Label     # "RODADA 3 DE 5" acima do placar
 var score_box: Control
 var toast_box: Control     # aviso rápido ("Fulano escolheu: ...") numa pílula no topo
+var overtime: OvertimeBanner   # Prorrogação: contagem e estado, embaixo do aviso rápido
 var vitals: Vitals         # canto inferior esquerdo: mestra, vida, escudo e dash
 var ammo_box: Control      # canto inferior direito: munição e a arma especial
 var ammo_label: Label
@@ -102,6 +103,8 @@ func _ready() -> void:
 	crosshair.draw.connect(_draw_crosshair)
 	add_child(crosshair)
 	_build_score_box()
+	overtime = OvertimeBanner.new()
+	add_child(overtime)
 	_build_toast()
 	center_label = _label("", 46, Rect2(0, 0.15, 1, 0.3))
 	center_label.add_theme_font_override("font", Ui.bold())
@@ -155,6 +158,8 @@ func setup(p_me: Player, all_players: Array, p_teams := false, p_mode := "ffa", 
 	me.damage_dealt.connect(_on_damage_dealt)
 	me.chaos_drawn.connect(func(id): toast("Caos: " + CardDB.card_name(id)))
 	me.unstable_drawn.connect(func(ids): toast(", ".join(ids.map(CardDB.card_name))))
+	me.overtime_card.connect(overtime.on_card)
+	overtime.me = me
 	me.realm_changed.connect(_on_realm_changed)
 	vitals.me = me
 	scoreboard.setup(me, players)
@@ -740,6 +745,8 @@ func _update_status() -> void:
 		items.append(["ESCUDO BLOQUEADO", Ui.DANGER])
 	if me.is_too_high():
 		items.append(["ALTO DEMAIS  ·  desça  ·  dano em %.1f" % me.sky_timer, Player.SKY_COLOR])
+	if me.zone_out:
+		items.append(["FORA DA ARENA  ·  dano em %.1f" % me.zone_timer, Ui.DANGER])
 	if me.is_hidden():
 		items.append(["VISÍVEL" if me.camo_blink() else ("INVISÍVEL  ·  falhando" if me.is_camo_tired() else "INVISÍVEL"), Color(0.75, 0.6, 1.0)])
 	if me.ambush_timer > 0.0:
@@ -870,7 +877,7 @@ func _sync_scoreboard() -> void:
 
 
 func show_scoreboard(on: bool) -> void:
-	for l in [center_label, toast_box, score_box, spectate_label]:
+	for l in [center_label, toast_box, score_box, spectate_label, overtime]:
 		l.self_modulate.a = 0.0 if on else 1.0   # o placar já mostra isso; texto solto atrapalha
 	if team_bar:
 		team_bar.visible = not on
@@ -962,6 +969,8 @@ func _build_toast() -> void:
 func _place_toast(top: float) -> void:
 	_place(toast_box, Rect2(0, 0, 1, 0))
 	toast_box.offset_top = top
+	_place(overtime, Rect2(0, 0, 1, 0))
+	overtime.offset_top = top + 40
 
 
 ## Munição no canto inferior direito: o número grande, o pente ao lado e uma linha embaixo.

@@ -334,6 +334,15 @@ func _card_flow(p: Player) -> Control:
 			ids.append(id)
 	for id in ids:
 		flow.add_child(CardIcon.make(id, ICON_SIZE, p.cards.count(id)))
+	# Prorrogação: as cartas extras desta rodada depois, apagadas (somem no fim da rodada).
+	var extra: Array = []
+	for id in p.overtime_cards:
+		if not id in extra:
+			extra.append(id)
+	for id in extra:
+		var icon := CardIcon.make(id, ICON_SIZE, p.overtime_cards.count(id))
+		icon.modulate.a = 0.5
+		flow.add_child(icon)
 	if ids.is_empty():
 		flow.add_child(Ui.label("Nenhuma carta ainda", 14, Ui.MUTED))
 	return flow
