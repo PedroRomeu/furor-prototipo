@@ -5977,7 +5977,7 @@ func bullet_refund(click: int) -> void:
 	if stats["recycle"] <= 0 or click == recycle_click or not alive:
 		return
 	recycle_click = click
-	ammo = mini(ammo + 1, stats["mag_size"])
+	ammo = mini(ammo + int(stats["recycle"]), stats["mag_size"])   # 1 bala por cópia (até 3, 2026-10-12)
 
 
 ## Velocidade Letal: bônus de dano pela velocidade de lado agora (0 sem a carta).

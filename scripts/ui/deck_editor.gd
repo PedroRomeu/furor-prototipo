@@ -46,6 +46,8 @@ var cat_buttons := {}
 var category := FILTER_ALL
 var filter_button: Button
 var filter_popup: PopupPanel
+var glossary_popup: PopupPanel   # termos das cartas (CardDB.GLOSSARY), no botão "?"
+var glossary_button: Button
 var arch_buttons := {}
 var rarity_buttons := {}
 var only_deck: CheckButton
@@ -138,6 +140,12 @@ func _build_collection() -> Control:
 	craft_button.tooltip_text = "Criar cartas com as fichas (cópias a mais viram fichas da raridade)"
 	craft_button.toggled.connect(_set_craft)
 	bar.add_child(craft_button)
+	var help := Ui.button("?", _open_glossary)
+	help.custom_minimum_size = Vector2(40, 40)
+	help.add_theme_font_size_override("font_size", 16)
+	help.tooltip_text = "Glossário: o que cada termo das cartas quer dizer"
+	bar.add_child(help)
+	glossary_button = help
 	token_bar = Ui.hbox(14)
 	token_bar.visible = false
 	col.add_child(token_bar)
@@ -241,6 +249,39 @@ func _open_filters() -> void:
 	var content := filter_popup.get_child(0) as Control
 	var height := int(content.get_combined_minimum_size().y) + 36   # + margens do painel
 	filter_popup.popup(Rect2i(Vector2i(int(r.end.x - 456), int(r.end.y + 6)), Vector2i(456, height)))
+
+
+## Glossário: cada termo em negrito e a explicação embaixo, numa janela abaixo do "?".
+func _open_glossary() -> void:
+	if glossary_popup == null:
+		glossary_popup = PopupPanel.new()
+		var style := Ui.box(Ui.SURFACE_HI, 10, Ui.LINE)
+		style.set_content_margin_all(18)
+		glossary_popup.add_theme_stylebox_override("panel", style)
+		add_child(glossary_popup)
+		var scroll := ScrollContainer.new()
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		glossary_popup.add_child(scroll)
+		var col := Ui.vbox(8)
+		col.custom_minimum_size.x = 440
+		scroll.add_child(col)
+		col.add_child(_section_title("GLOSSÁRIO DAS CARTAS"))
+		for entry in CardDB.GLOSSARY:
+			var row := Ui.vbox(1)
+			row.add_child(Ui.label(entry[0], 14, Ui.TEXT, true))
+			var text := Ui.label(entry[1], 13, Ui.MUTED)
+			text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			text.custom_minimum_size.x = 440
+			row.add_child(text)
+			col.add_child(row)
+	var r := glossary_button.get_global_rect()
+	# Tela baixa (1366 x 689): a lista rola em vez de passar da tela.
+	var scroll := glossary_popup.get_child(0) as ScrollContainer
+	var inner := int(scroll.get_child(0).get_combined_minimum_size().y)
+	var room := int(get_viewport_rect().size.y - r.end.y - 16 - 36)
+	scroll.custom_minimum_size = Vector2(452, mini(inner, room))
+	var height := mini(inner, room) + 36
+	glossary_popup.popup(Rect2i(Vector2i(int(r.end.x - 476), int(r.end.y + 6)), Vector2i(476, height)))
 
 
 func _clear_filters() -> void:
