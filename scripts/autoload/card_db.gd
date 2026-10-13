@@ -369,7 +369,7 @@ var CARDS := {
 	# Munição (2026-10-11, pedido do usuário depois da Rajada gastar pente; números meus,
 	# aprovados). Reciclagem: Player.bullet_refund (a bala leva o número do clique).
 	"reciclagem": {"name": "Reciclagem", "cat": "Arma", "rarity": "raro", "max": 3,
-		"desc": "Cada clique que acerta um inimigo devolve 1 bala ao pente por cópia: 1, 2 ou 3 (a rajada inteira conta como um clique).",
+		"desc": "Cada bala que acerta um inimigo devolve 1 bala ao pente por cópia: 1, 2 ou 3.",
 		"mods": [{"stat": "recycle", "add": 1}]},
 	"cinto_municao": {"name": "Cinto de Munição", "cat": "Arma", "rarity": "comum",
 		"desc": "Pente +50%. Recarregar +0,4 s.",

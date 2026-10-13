@@ -124,7 +124,7 @@ const BASE_STATS := {
 	"blur": 0,            # Vulto: cópias (menos dano de balas acima de BLUR_SPEED)
 	"air_reload": 0.0,    # Recarga no Embalo: recarga mais rápida no ar ou deslizando
 	"dash_seek": 0,       # Bote: o dash curva até o inimigo
-	"recycle": 0,         # Reciclagem: bala que acerta devolve 1 ao pente (1 por clique)
+	"recycle": 0,         # Reciclagem: cada bala que acerta devolve 1 ao pente por cópia
 	"still_aim": 0,       # Sangue Frio: cópias (bônus parado ou agachado no chão)
 	"thick_skin": 0,      # Couro Grosso: cópias (redução que acumula por golpe levado)
 	"kill_heal": 0.0,     # Banquete: cura por abate
@@ -972,8 +972,7 @@ var dodge_timer := 0.0
 var dash_hits: Array = []    # inimigos já atropelados neste dash
 var dash_seek_target: Player = null   # Bote: alvo deste dash
 var dash_seek_left := 0.0             # Bote: quanto o dash ainda pode curvar (rad)
-var click_id := 0       # número do clique (a rajada inteira é um); vai na bala (Reciclagem)
-var recycle_click := -1 # Reciclagem: último clique que já devolveu bala
+var click_id := 0       # número do clique; vai na bala (Reciclagem: 0 = não devolve)
 var skin_stacks := 0          # Couro Grosso: redução atual por golpe
 var skin_stack_timer := 0.0   # Couro Grosso: tempo desde o último golpe levado
 var revenge_target := ""      # Vingança: nome do nó de quem te matou na rodada anterior
@@ -6400,12 +6399,12 @@ func is_still_aiming() -> bool:
 	return crouching or Vector2(velocity.x, velocity.z).length() < STILL_MAX_SPEED
 
 
-## Reciclagem: uma bala deste clique acertou alguém (chamado pela máquina do alvo).
-func bullet_refund(click: int) -> void:
-	if stats["recycle"] <= 0 or click == recycle_click or not alive:
+## Reciclagem: uma bala acertou alguém (chamado pela máquina do alvo). Cada bala que
+## acerta devolve 1 por cópia (2026-10-13, pedido do usuário; antes era 1 vez por clique).
+func bullet_refund(_click: int) -> void:
+	if stats["recycle"] <= 0 or not alive:
 		return
-	recycle_click = click
-	ammo = mini(ammo + int(stats["recycle"]), stats["mag_size"])   # 1 bala por cópia (até 3, 2026-10-12)
+	ammo = mini(ammo + int(stats["recycle"]), stats["mag_size"])
 
 
 ## Velocidade Letal: bônus de dano pela velocidade de lado agora (0 sem a carta).
