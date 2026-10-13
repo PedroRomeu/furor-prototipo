@@ -6,6 +6,8 @@ const HIT_SHOW := 0.22    # marcador de acerto (X branco)
 const KILL_SHOW := 0.6    # marcador de abate (X vermelho, maior)
 const AMMO_RADIUS := 26.0       # arco do pente, à direita da mira (px)
 const AMMO_SPAN := 80.0         # graus que o arco ocupa
+const FREE_FLASH := 0.3   # Cartucheira: piscada dourada das balas que saíram de graça
+const FREE_COLOR := Color(1.0, 0.86, 0.35, 1.0)
 const AMMO_SEGMENTS_MAX := 24   # acima disso vira barra contínua
 const RELOAD_RING := 11.0       # anel da recarga no lugar da mira (px)
 const RELOAD_RING_PERFECT := 18.0   # com a Recarga Perfeita: maior, para dar para mirar a faixa
@@ -651,6 +653,9 @@ func _draw_ammo_arc() -> void:
 		return
 	var gap := deg_to_rad(clampf(40.0 / count, 2.5, 9.0))
 	var seg := (span - gap * (count - 1)) / count
+	# Cartucheira: as balas que saíram de graça no último tiro (as de cima das que sobram)
+	# acendem em dourado e voltam ao branco em FREE_FLASH segundos.
+	var free_k := 1.0 - (Time.get_ticks_msec() - me.free_ammo_flash) / (FREE_FLASH * 1000.0)
 	for i in count:
 		# i = 0 é o de cima: some primeiro. Quem sobra fica embaixo.
 		var a := top + i * (seg + gap)
@@ -662,6 +667,9 @@ func _draw_ammo_arc() -> void:
 				c = Color(Bullet.PIERCE_COLOR, 0.95)
 			elif me.meteor_left > 0 and i - (count - left) < me.meteor_left and me.bazooka_timer <= 0.0:
 				c = Color(MeteorStrike.COLOR, 0.95)
+			elif free_k > 0.0 and i - (count - left) < me.free_ammo_shown and me.bazooka_timer <= 0.0 \
+					and me.sniper_timer <= 0.0:
+				c = c.lerp(FREE_COLOR, free_k)
 		for k in 3:
 			_arc_piece(pts, cols, AMMO_RADIUS, a + seg * k / 3.0, a + seg * (k + 1) / 3.0, c)
 	crosshair.draw_multiline(pts, shadow, 5.0, true)
@@ -707,6 +715,8 @@ func _frame_step(delta: float) -> void:
 	blind_tint.color.a = clampf(me.blind_timer / 0.3, 0.0, 1.0) * 0.97
 	blind_tint.visible = blind_tint.color.a > 0.0   # camada de tela cheia: só quando cega
 	_update_realm_veil()
+	var chain := me.realm_threat()
+	damage_fx.threat = chain.rchain_tip if chain else Vector3.INF
 	hit_time = maxf(0.0, hit_time - delta)
 	kill_time = maxf(0.0, kill_time - delta)
 	crosshair.queue_redraw()
@@ -854,6 +864,8 @@ func _update_status() -> void:
 		items.append(["SANGUE FRIO +%d%% DE DANO" % roundi(Player.STILL_DAMAGE * me.stats["still_aim"] * 100.0), CardDB.CATEGORY_COLORS["Arma"]])
 	if me.bullet_taken_mult() < 1.0:
 		items.append(["VULTO -%d%% DE DANO" % roundi((1.0 - me.bullet_taken_mult()) * 100.0), CardDB.CATEGORY_COLORS["Movimento"]])
+	if me.realm_threat():
+		items.append(["CORRENTE SOMBRIA  ·  [%s] bloqueia" % GameState.key_text("shield"), KingRealm.MARK_COLOR])
 	if me.realm > 0:
 		var foe_name: String = me.realm_partner.player_name if is_instance_valid(me.realm_partner) else ""
 		if me.realm_king:

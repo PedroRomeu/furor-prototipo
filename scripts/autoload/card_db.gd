@@ -148,7 +148,7 @@ const MASTERS := {
 	# Mordekaiser; números meus, aprovados; começar só com o bônus e voltar para onde saíram
 	# foram escolhas dele). Lógica em Player._realm_*, sala em KingRealm.
 	"dominio_do_rei": {"name": "Domínio do Rei", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 35.0,
-		"desc": "Q: lança uma corrente sombria (até 18 m, com uma leve curva para quem passa perto). Pegou: vocês dois são puxados por 0,8 s e levados para uma sala fechada por 10 s, onde ninguém mais entra. Lá dentro, a cada segundo você ganha +4% de dano e ele perde 4%, até +30% e -30%. Quem vencer volta na hora; se você vencer, fica com o bônus por mais 6 s. No fim do tempo, os dois voltam para onde estavam, e quem ficou no mapa vê onde e quando vocês reaparecem. Errou ou o escudo bloqueou: recarga de 8 s. Recarga de 35 s.",
+		"desc": "Inimigos ao alcance (até 30 m, à vista) ganham uma coroa com \"Q\" na sua tela; a do que está na sua mira fica acesa. Q nele: lança uma corrente sombria que o persegue (24 m/s). Ele só escapa levantando o escudo quando ela chega ou se escondendo atrás de uma parede: aí a recarga é de 12 s. Sem ninguém na mira, o Q não gasta. Pegou: vocês dois são puxados por 0,8 s e levados para uma sala fechada por 10 s, onde ninguém mais entra. Lá dentro, a cada segundo você ganha +4% de dano e ele perde 4%, até +30% e -30%. Quem vencer volta na hora; se você vencer, fica com o bônus por mais 6 s. No fim do tempo, os dois voltam para onde estavam, e quem ficou no mapa vê onde e quando vocês reaparecem. Recarga de 35 s.",
 		"mods": [{"stat": "realm", "add": 1}]},
 	# Mecha (2026-10-12, ideia do usuário: construir e entrar, seguir atirando com defesa;
 	# construção peça por peça, míssil no E, explosão na saída que cresce com a blindagem
@@ -255,7 +255,7 @@ const ARCHETYPES := {
 	"Chuva de balas": {"desc": "Muitas balas, pente grande, cadência alta e recarregar rápido.",
 		"cards": ["gatilho_leve", "pente_estendido", "maos_rapidas", "cano_duplo", "escopeta", "rajada",
 			"transbordar", "imprudente", "metralhadora", "saque_rapido", "recarga_tatica", "recarga_perfeita",
-			"reciclagem", "cinto_municao"]},
+			"reciclagem", "cinto_municao", "cartucheira"]},
 	"Atirador": {"desc": "Acertar de longe e por trás das paredes.",
 		"cards": ["polvora_extra", "olho_de_aguia", "fantasma", "teleguiada", "sortudo", "preguicosa", "radar",
 			"sangue_frio"]},
@@ -312,10 +312,13 @@ var CARDS := {
 	"cano_duplo": {"name": "Cano Duplo", "cat": "Arma", "rarity": "raro",
 		"desc": "+1 bala por tiro. Pente +1. Dano -30%.",
 		"mods": [{"stat": "bullet_count", "add": 1}, {"stat": "mag_size", "add": 1}, {"stat": "damage", "mul": 0.7}]},
+	# Escopeta refeita em 2026-10-13 (pedido do usuário, para a build de spam: cada bala do leque
+	# gasta pente, como a Rajada; 4 balas, pente +4, dano -40%; leque de 5 graus, porque com 4
+	# balas não há bala no meio e a 7 graus as duas do centro passavam dos lados a mais de 8 m).
 	"escopeta": {"name": "Escopeta", "cat": "Arma", "rarity": "raro", "max": 1,
-		"desc": "+4 balas por tiro, bem abertas. Pente +2. Dano -60%.",
-		"mods": [{"stat": "bullet_count", "add": 4}, {"stat": "spread", "add": 3.0},
-			{"stat": "mag_size", "add": 2}, {"stat": "damage", "mul": 0.4}]},
+		"desc": "+3 balas por tiro (4 no total), em leque, e cada bala gasta 1 do pente (com o pente quase vazio, saem só as que houver). Pente +4. Dano -40%.",
+		"mods": [{"stat": "bullet_count", "add": 3}, {"stat": "shot_ammo", "add": 3}, {"stat": "spread", "add": 1.0},
+			{"stat": "mag_size", "add": 4}, {"stat": "damage", "mul": 0.6}]},
 	"rajada": {"name": "Rajada", "cat": "Arma", "rarity": "raro", "max": 1,
 		"desc": "Cada clique dispara uma rajada de 3 tiros seguidos, cada um gastando 1 bala do pente. Dano -15%.",
 		"mods": [{"stat": "burst", "add": 2}, {"stat": "damage", "mul": 0.85}]},
@@ -371,6 +374,12 @@ var CARDS := {
 	"cinto_municao": {"name": "Cinto de Munição", "cat": "Arma", "rarity": "comum",
 		"desc": "Pente +50%. Recarregar +0,4 s.",
 		"mods": [{"stat": "mag_size", "mul": 1.5}, {"stat": "reload_time", "add": 0.4}]},
+	# Cartucheira (2026-10-13, ideia do usuário para a build de spam: chance de a bala não sair
+	# do pente; custo só na velocidade da bala, para pesar no sniper e quase nada de perto;
+	# 10% por cópia até 3, escolhas dele; Player._shoot sorteia por bala do pente).
+	"cartucheira": {"name": "Cartucheira", "cat": "Arma", "rarity": "comum", "max": 3,
+		"desc": "Cada bala tem 10% de chance de não sair do pente. Velocidade da bala -10%.",
+		"mods": [{"stat": "free_ammo", "add": 0.1}, {"stat": "bullet_speed", "mul": 0.9}]},
 	# Sangue Frio: o oposto da build de movimento (Player.still_aim).
 	"sangue_frio": {"name": "Sangue Frio", "cat": "Arma", "rarity": "raro", "max": 2,
 		"desc": "Parado ou agachado no chão: dano +25% e velocidade da bala +30%. Com 2 cópias, +50% e +60%.",
@@ -896,7 +905,8 @@ func compute_stats(base: Dictionary, card_ids: Array) -> Dictionary:
 		if stat == "damage":
 			# O piso do dano vale para o tiro inteiro (2026-10-07): com várias balas por
 			# tiro, cada uma pode ficar abaixo dele. Senão Escopetas somadas passavam de 4x.
-			floor_value /= maxf(1.0, stats["bullet_count"])   # a Rajada gasta pente: não divide
+			# Só as balas de graça dividem: as que gastam pente (Rajada, Escopeta) não.
+			floor_value /= maxf(1.0, stats["bullet_count"] - stats["shot_ammo"])
 		stats[stat] = maxf(stats[stat], floor_value)
 	for stat in LOWER_BETTER:
 		var ceil_value: float = SHIELD_COST_MAX if stat == "shield_cooldown" else base[stat] * PENALTY_CEIL

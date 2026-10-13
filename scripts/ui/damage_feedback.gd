@@ -31,6 +31,10 @@ var arcs: Array = []      # {"pos": Vector3, "from": Player, "time": float, "siz
 var pulse := 0.0          # vermelho nas bordas pelo último dano (cai sozinho)
 var vignette: ColorRect
 var _mat: ShaderMaterial
+## Corrente sombria do Domínio do Rei vindo em você: onde está a ponta (INF = nada). Arco
+## roxo pulsando do lado de onde ela vem, enquanto voa (a HUD põe a cada quadro).
+var threat := Vector3.INF
+var _threat_drawn := false
 
 
 func _ready() -> void:
@@ -89,6 +93,10 @@ func _process(delta: float) -> void:
 	if vignette.visible:
 		_mat.set_shader_parameter("intensity", intensity)
 		_mat.set_shader_parameter("aspect", size.x / maxf(1.0, size.y))
+	var threat_on := threat != Vector3.INF and me.alive
+	if threat_on or _threat_drawn:
+		_threat_drawn = threat_on
+		queue_redraw()
 	if arcs.is_empty():
 		return
 	for a in arcs:
@@ -100,12 +108,23 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	if arcs.is_empty() or me.camera == null:
+	if (arcs.is_empty() and not _threat_drawn) or me.camera == null:
 		return
 	var center := size / 2.0
 	var basis := me.camera.global_transform.basis
 	var forward := Vector3(-basis.z.x, 0.0, -basis.z.z).normalized()
 	var right := Vector3(basis.x.x, 0.0, basis.x.z).normalized()
+	if _threat_drawn:
+		var to := threat - me.global_position
+		to.y = 0.0
+		if to.length() > 0.3:
+			var ta := atan2(to.dot(right), to.dot(forward)) - PI / 2.0
+			var glow := 0.6 + 0.4 * absf(sin(Time.get_ticks_msec() * 0.012))
+			var span := ARC_SPAN * 1.3
+			draw_arc(center, ARC_RADIUS + 14.0, ta - span / 2.0, ta + span / 2.0, 24,
+				Color(0, 0, 0, 0.45 * glow), 10.0, true)
+			draw_arc(center, ARC_RADIUS + 14.0, ta - span / 2.0, ta + span / 2.0, 24,
+				Color(KingRealm.MARK_COLOR, glow), 6.0, true)
 	for a in arcs:
 		var dir: Vector3 = a["pos"] - me.global_position
 		dir.y = 0.0

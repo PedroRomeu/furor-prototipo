@@ -232,8 +232,8 @@ func _master(foe: Player, sees: bool) -> void:
 		p.in_master = true   # Gancho: alvo à vista ao alcance
 	elif p.stats["rocket_ride"] > 0 and p.global_position.distance_to(foe.global_position) > 12.0:
 		p.in_master = true   # Foguete: monta e vai na direção do alvo
-	elif p.stats["realm"] > 0 and p.global_position.distance_to(foe.global_position) < Player.RCHAIN_RANGE * 0.8:
-		p.in_master = true   # Domínio do Rei: lança a corrente com o alvo à vista e ao alcance
+	elif p.stats["realm"] > 0 and p._realm_find() != null:
+		p.in_master = true   # Domínio do Rei: alguém na mira e ao alcance (a corrente persegue)
 	elif p.stats["unstable"] > 0:
 		p.in_master = true   # Cartas Instáveis: com o alvo à vista a menos de FAR
 	elif p.stats["meteor"] > 0 and p.meteor_left == 0 and p.global_position.distance_to(foe.global_position) > 6.0:
@@ -417,6 +417,17 @@ func _defend() -> void:
 	elif void_save and p.velocity.y < 0.0 and p.global_position.y + p.velocity.y * 0.15 < Arena.VOID_Y:
 		p.in_shield = true
 	var center := player.chest()
+	# Corrente sombria do Domínio do Rei vindo nele: decide uma vez por corrente, com a mesma
+	# chance de defender uma bala, e levanta o escudo quando ela está para chegar.
+	var king := player.realm_threat()
+	if king:
+		var key := "rc%d:%d" % [king.get_instance_id(), king.rchain_serial]
+		var eta := king.rchain_tip.distance_to(center) / Player.RCHAIN_SPEED
+		if eta < float(player.stats["shield_duration"]) * 0.8:
+			if not judged.has(key):
+				judged[key] = randf() < float(cfg["shield"])
+			if judged[key]:
+				player.in_shield = true
 	for node in get_tree().get_nodes_in_group("bullets"):
 		var b := node as Bullet
 		if b.shooter == player or player.is_ally(b.shooter):

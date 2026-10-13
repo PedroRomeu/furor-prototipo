@@ -849,6 +849,7 @@ func net_card_picked(node_name: String, card: String) -> void:
 @rpc("authority", "call_local", "reliable")
 func net_start_round(number: int, map_index: int, seed_value: int, duel: Dictionary) -> void:
 	round_num = number
+	Overtime.set_round(number)
 	_clear_bullets()
 	_overtime_stop()
 	fight_time = _fight_start

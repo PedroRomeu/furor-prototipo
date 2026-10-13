@@ -57,6 +57,8 @@ const BASE_STATS := {
 	"bullet_speed": 48.0,
 	"bullet_gravity": 7.0,
 	"bullet_count": 1,
+	"free_ammo": 0.0,   # Cartucheira: chance de cada bala não sair do pente
+	"shot_ammo": 0,     # balas do pente a mais por tiro (Escopeta: cada bala do leque gasta 1)
 	"spread": 4.0,
 	"burst": 1,
 	"bullet_radius": 0.15,
@@ -801,16 +803,22 @@ signal unstable_drawn(ids: Array)   # registro do autoteste e aviso da HUD
 # Refeita em 2026-10-12 (o usuário: tempo curto demais, faltava "ser levado" e algo que
 # enfraqueça o alvo, como no Mordekaiser; números meus, aprovados): era mirar e ir, 6 s,
 # +6%/s e recarga de 30 s.
-const RCHAIN_SPEED := 30.0
-const RCHAIN_RANGE := 18.0
-const RCHAIN_MAGNET_RANGE := 3.0   # ímã mais fraco que o do Gancho (4 m, 4 rad/s)
-const RCHAIN_MAGNET_TURN := 3.0
+# Refeita de novo em 2026-10-13 (pedido do usuário, como os "olhar e usar" do Paladins):
+# Q com um inimigo na mira (até RCHAIN_RANGE, a até REALM_AIM_ANGLE do centro, à vista)
+# lança a corrente, que o persegue a RCHAIN_SPEED; ele só escapa com o escudo levantado
+# quando ela chega ou atrás de uma parede (ela não contorna). Sem alvo o Q não gasta. Em
+# cima dos inimigos ao alcance, na tela de quem tem a mestra pronta, uma coroa com "Q"
+# (_update_realm_mark), acesa no que o Q pegaria. Números meus, aprovados.
+const RCHAIN_SPEED := 24.0
+const RCHAIN_RANGE := 30.0
+const RCHAIN_LIFE := 2.0          # não chegou nesse tempo: some (conta como erro)
+const REALM_AIM_ANGLE := 0.105    # ~6 graus do centro da mira
 const RCHAIN_COLOR := Color(0.6, 0.25, 0.95)
 const REALM_PULL := 0.8
 const REALM_LIFT := 1.5
 const REALM_FADE_IN := 0.3
 const REALM_TIME := 10.0
-const REALM_BLOCKED_CD := 8.0 # errou ou o escudo bloqueou: recarga menor
+const REALM_BLOCKED_CD := 12.0    # escudo, parede ou tempo: recarga menor que a cheia (35 s)
 const REALM_BONUS_RATE := 0.04   # quem lançou: +4% de dano por segundo lá dentro...
 const REALM_BONUS_MAX := 0.3     # ...até +30% (aos 7,5 s)
 const REALM_WEAKEN_RATE := 0.04  # o alvo: -4% de dano por segundo...
@@ -819,8 +827,14 @@ const REALM_WIN_TIME := 6.0      # venceu lá dentro: fica com o bônus por mais
 var rchain_state := 0         # corrente sombria: 0 nada, 1 voando, 2 esperando o alvo, 3 puxando
 var rchain_tip := Vector3.ZERO
 var rchain_dir := Vector3.FORWARD
-var rchain_dist := 0.0
 var rchain_fx: MeshInstance3D
+var rchain_target: Player     # quem a corrente persegue (em todas as máquinas)
+var rchain_time := 0.0
+var rchain_serial := 0        # um número por lançamento (o bot julga o escudo uma vez por corrente)
+var rchain_incoming: Player   # no alvo: quem lançou a corrente nele (aviso da HUD, bots)
+var realm_in_range: Array = []   # jogador local com a mestra pronta: inimigos com a coroa
+var realm_aim: Player            # ...e o que o Q pegaria agora (coroa acesa)
+var realm_mark: Sprite3D         # no inimigo: a coroa em cima do nome, criada no 1o uso
 signal rchain_event(hit: bool)   # registro do autoteste: lançou e pegou ou errou
 var realm_pull := 0.0         # sendo puxado para o Domínio (os dois), quanto falta
 var realm_pull_partner: Player
@@ -1102,6 +1116,9 @@ var slam_cd := 0.0
 var rj_charges := RJ_CHARGES   # Pulo-Foguete: lançamentos que ainda valem até tocar o chão
 var slam_pressed := false # Meteoro: agachar apertado no ar neste passo (não vira dash)
 var shot_mult := 1.0      # dano extra do disparo atual (Última Bala)
+var shot_count := 1       # balas do disparo atual (Escopeta com o pente quase vazio: menos)
+var free_ammo_shown := 0    # Cartucheira: quantas balas do último tiro saíram de graça (HUD)
+var free_ammo_flash := -100000   # quando (ms), para a piscada no arco do pente
 
 var in_move := Vector2.ZERO
 var in_jump := false
@@ -1780,6 +1797,7 @@ func _frame_step(delta: float) -> void:
 			tag.text = "%s\n%d" % [player_name, ceili(health)] + (" +%d" % ceili(armor) if armor > 0.0 else "") \
 				+ ("  [%d]" % ceili(mech_armor) if mech_state == 2 else "")
 		_update_guard_icons()
+		_update_realm_mark()
 		if ally_arrow:
 			# Parceiro caído: a seta pisca para chamar atenção.
 			ally_arrow.modulate.a = (0.35 + 0.65 * absf(sin(Time.get_ticks_msec() * 0.008))) if downed else 1.0
@@ -1788,6 +1806,7 @@ func _frame_step(delta: float) -> void:
 		_update_hit_flash(delta)
 	if is_human:
 		_camera_feel(delta)
+		_realm_scan()
 
 
 func _update_animation() -> void:
@@ -4192,81 +4211,176 @@ func _update_grapple_fx(delta: float) -> void:
 
 # ---------------------------------------------------------------- Domínio do Rei
 
-## Q: lança a corrente sombria. Quem lança move a ponta e acha o alvo (como o Gancho); as
-## outras máquinas desenham a ponta voando reta.
-func _rchain_fire() -> void:
-	rchain_state = 1
-	rchain_dir = -head.global_transform.basis.z
-	rchain_tip = chest()
-	rchain_dist = 0.0
+## Q: lança a corrente sombria no alvo da mira (_realm_find, já conferido no _use_master).
+## A máquina de quem lança move a ponta e decide parede e tempo; as outras desenham a ponta
+## perseguindo o mesmo alvo.
+func _rchain_fire(target: Player) -> void:
+	_rchain_start(target)
 	reveal()
 	Sfx.at(self, "grapple_fire", chest())
-	_rchain_visual(true)
 	if Net.online and is_inside_tree():
-		_net_rchain.rpc(1, rchain_dir)
+		_net_rchain.rpc(1, String(target.name))
+
+
+func _rchain_start(target: Player) -> void:
+	rchain_state = 1
+	rchain_target = target
+	rchain_tip = chest()
+	rchain_dir = (target.chest() - rchain_tip).normalized()
+	rchain_time = 0.0
+	rchain_serial += 1
+	target.rchain_incoming = self
+	if target == viewer:
+		Sfx.ui(target, "count")   # aviso para o alvo: a corrente vem aí
+	_rchain_visual(true)
 
 
 @rpc("authority", "call_remote", "reliable")
-func _net_rchain(state: int, dir: Vector3) -> void:
-	if state == 1:
-		rchain_state = 1
-		rchain_dir = dir
-		rchain_tip = chest()
-		rchain_dist = 0.0
-		_rchain_visual(true)
+func _net_rchain(state: int, target_name: String) -> void:
+	var target := get_parent().get_node_or_null(target_name) as Player if target_name != "" else null
+	if state == 1 and target:
+		_rchain_start(target)
 	else:
 		_rchain_clear()
 
 
-## A ponta voa (máquina de quem lança): parede ou fim do alcance = errou; um inimigo perto
-## da linha = a máquina dele decide (receive_realm).
+## A corrente persegue o alvo (máquina de quem lança). Não contorna: parede no caminho, alvo
+## fora de alcance da regra (morto, congelado, fisgado, em outro Domínio) ou RCHAIN_LIFE sem
+## chegar = errou. Chegou: a máquina do alvo decide (receive_realm; o escudo bloqueia lá).
 func _rchain_fly(delta: float) -> void:
-	_rchain_magnet(delta)
-	var step := RCHAIN_SPEED * delta
-	var from := rchain_tip
-	var to := rchain_tip + rchain_dir * step
-	var wall := get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(from, to, 1))
-	for enemy: Player in enemies():
-		if enemy.ice_timer > 0.0 or enemy.hooked_by or enemy.realm_pull > 0.0:
-			continue
-		var c := enemy.chest()
-		var t := clampf((c - from).dot(rchain_dir), 0.0, step)
-		if (from + rchain_dir * t).distance_to(c) < 0.4 + enemy.hit_radius():
-			rchain_state = 2   # esperando a resposta da máquina do alvo
-			rchain_event.emit(true)
-			rchain_tip = c
-			enemy.remote_call("receive_realm", [String(name)])
-			return
-	rchain_tip = to
-	rchain_dist += step
-	if not wall.is_empty() or rchain_dist >= RCHAIN_RANGE:
+	rchain_time += delta
+	var t_ok := is_instance_valid(rchain_target) and rchain_target.alive and rchain_target.realm == realm \
+			and rchain_target.ice_timer <= 0.0 and not rchain_target.hooked_by and rchain_target.realm_pull <= 0.0
+	if not t_ok or rchain_time > RCHAIN_LIFE:
 		rchain_event.emit(false)
 		realm_blocked()
+		return
+	var c := rchain_target.chest()
+	var from := rchain_tip
+	rchain_dir = (c - from).normalized()
+	var step := RCHAIN_SPEED * delta
+	var reach := minf(step, from.distance_to(c))
+	var to := from + rchain_dir * reach
+	var wall := get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(from, to, 1))
+	if not wall.is_empty():
+		rchain_tip = wall["position"]
+		rchain_event.emit(false)
+		realm_blocked()
+		return
+	rchain_tip = to
+	if to.distance_to(c) < 0.4 + rchain_target.hit_radius():
+		rchain_state = 2   # esperando a resposta da máquina do alvo
+		rchain_event.emit(true)
+		rchain_tip = c
+		rchain_target.remote_call("receive_realm", [String(name)])
 
 
-## Ímã leve: inimigo a menos de RCHAIN_MAGNET_RANGE da ponta, à frente dela e à vista.
-func _rchain_magnet(delta: float) -> void:
-	var best: Player = null
-	var best_dist := RCHAIN_MAGNET_RANGE
-	for enemy: Player in enemies():
-		var to := enemy.chest() - rchain_tip
-		var d := to.length()
-		if d < best_dist and d > 0.01 and rchain_dir.dot(to / d) > HOOK_MAGNET_CONE:
-			best = enemy
-			best_dist = d
-	if best == null:
-		return
-	if not get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(rchain_tip, best.chest(), 1)).is_empty():
-		return
-	var want := (best.chest() - rchain_tip).normalized()
-	var angle := rchain_dir.angle_to(want)
-	if angle > 0.001:
-		rchain_dir = rchain_dir.slerp(want, minf(1.0, RCHAIN_MAGNET_TURN * delta / angle)).normalized()
+## No alvo: quem está com a corrente voando nele agora (null se ninguém).
+func realm_threat() -> Player:
+	if is_instance_valid(rchain_incoming) and rchain_incoming.rchain_state == 1 \
+			and rchain_incoming.rchain_target == self:
+		return rchain_incoming
+	return null
 
 
 func _rchain_clear() -> void:
 	rchain_state = 0
+	if is_instance_valid(rchain_target) and rchain_target.rchain_incoming == self:
+		rchain_target.rchain_incoming = null
 	_rchain_visual(false)
+
+
+## O inimigo que o Q pega: à vista, a até RCHAIN_RANGE e a até REALM_AIM_ANGLE do centro da
+## mira; o mais perto do centro. Preenche também realm_in_range (as coroas) quando pedido.
+func _realm_find(fill := false) -> Player:
+	if fill:
+		realm_in_range.clear()
+	if realm > 0 or not head or rchain_state != 0:
+		return null
+	var eye := head.global_position
+	var aim := -head.global_transform.basis.z
+	var best: Player = null
+	var best_angle := REALM_AIM_ANGLE
+	for e in enemies():
+		if e.realm_pull > 0.0 or e.ice_timer > 0.0 or e.hooked_by \
+				or (e.is_hidden() and not e.camo_blink()):
+			continue
+		var to: Vector3 = e.chest() - eye
+		if to.length() > RCHAIN_RANGE:
+			continue
+		var ray := PhysicsRayQueryParameters3D.create(eye, e.chest(), 1, [get_rid(), e.get_rid()])
+		if not get_world_3d().direct_space_state.intersect_ray(ray).is_empty():
+			continue
+		if fill:
+			realm_in_range.append(e)
+		var angle := aim.angle_to(to)
+		if angle <= best_angle:
+			best = e
+			best_angle = angle
+	return best
+
+
+## Jogador local com o Domínio do Rei pronto: quem ganha a coroa e qual fica acesa.
+func _realm_scan() -> void:
+	if stats["realm"] > 0 and alive and master_ready():
+		realm_aim = _realm_find(true)
+	elif not realm_in_range.is_empty() or realm_aim:
+		realm_in_range.clear()
+		realm_aim = null
+
+
+## No inimigo, na tela de quem tem o Domínio pronto: coroa com "Q" em cima do nome, apagada
+## se está ao alcance e acesa se é o alvo da vez. Um Sprite3D (uma chamada de desenho).
+func _update_realm_mark() -> void:
+	var on := viewer != null and viewer != self and tag.visible and viewer.realm_in_range.has(self)
+	if not on:
+		if realm_mark:
+			realm_mark.visible = false
+		return
+	if realm_mark == null:
+		realm_mark = Sprite3D.new()
+		realm_mark.texture = _realm_mark_texture()
+		realm_mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		realm_mark.no_depth_test = true
+		realm_mark.fixed_size = true   # mesmo tamanho na tela a 5 ou a 30 m
+		realm_mark.shaded = false
+		realm_mark.render_priority = 2
+		tag.add_child(realm_mark)
+	realm_mark.visible = true
+	var aimed: bool = viewer.realm_aim == self
+	realm_mark.pixel_size = 0.00052 if aimed else 0.00039   # ~48 e ~36 px a 1080p
+	realm_mark.modulate = Color(0.86, 0.68, 1.0, 1.0) if aimed else Color(0.78, 0.66, 0.95, 0.6)
+	# A base da coroa fica no topo do nome (offset de meia textura para cima, em pixels de tela
+	# com o fixed_size), para não cobrir o nome de longe; acima dos outros ícones, se houver.
+	realm_mark.offset = Vector2(0, 70)
+	var y := 0.32
+	for s in guard_icons.values():
+		if (s as Sprite3D).visible:
+			y = 0.75
+	if not unstable_cards.is_empty():
+		y = 1.2
+	realm_mark.position = Vector3(0, y, 0)
+
+
+static var _realm_tex: Texture2D
+
+## Coroa branca com contorno escuro e a tecla "Q" embaixo, desenhada uma vez de um SVG feito
+## aqui (a cor vem do modulate). O Q é desenhado como traço, sem fonte.
+static func _realm_mark_texture() -> Texture2D:
+	if _realm_tex:
+		return _realm_tex
+	var svg := """<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<path d="M22 62 L16 22 L42 42 L64 10 L86 42 L112 22 L106 62 Z" fill="#fff" stroke="#140a22" stroke-width="6" stroke-linejoin="round"/>
+<rect x="22" y="62" width="84" height="11" rx="3" fill="#fff" stroke="#140a22" stroke-width="5"/>
+<rect x="44" y="81" width="40" height="40" rx="8" fill="#140a22" fill-opacity="0.75" stroke="#fff" stroke-width="4"/>
+<circle cx="63" cy="100" r="10" fill="none" stroke="#fff" stroke-width="5"/>
+<path d="M68 105 L76 113" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+</svg>"""
+	var img := Image.new()
+	img.load_svg_from_string(svg, 1.0)
+	img.generate_mipmaps()
+	_realm_tex = ImageTexture.create_from_image(img)
+	return _realm_tex
 
 
 ## A corrente: um cilindro fino roxo da mão de quem lança até a ponta (ou até o alvo, no puxão).
@@ -4299,8 +4413,10 @@ func _rchain_visual(on: bool) -> void:
 
 
 func _update_rchain_fx(delta: float) -> void:
-	if rchain_state == 1 and not is_local:
-		rchain_tip += rchain_dir * RCHAIN_SPEED * delta   # nas outras máquinas a ponta voa sozinha
+	if rchain_state == 1 and not is_local and is_instance_valid(rchain_target):
+		# Nas outras máquinas a ponta persegue o mesmo alvo sozinha (quem decide é a de quem lança).
+		rchain_dir = (rchain_target.chest() - rchain_tip).normalized()
+		rchain_tip += rchain_dir * minf(RCHAIN_SPEED * delta, rchain_tip.distance_to(rchain_target.chest()))
 	var start := chest()
 	if is_human:
 		start = camera.global_position + Vector3.DOWN * 0.4 + camera.global_transform.basis.x * 0.25
@@ -4339,7 +4455,7 @@ func realm_blocked() -> void:
 	master_cd = minf(master_cd, REALM_BLOCKED_CD)
 	_rchain_clear()
 	if Net.online and is_local and is_inside_tree():
-		_net_rchain.rpc(0, Vector3.ZERO)
+		_net_rchain.rpc(0, "")
 
 
 ## Em todas as máquinas, no nó do alvo: começa o puxão dos dois (REALM_PULL); no fim dele,
@@ -4499,6 +4615,11 @@ func master_cd_total() -> float:
 
 ## Habilidade da carta mestra (tecla Q).
 func _use_master() -> void:
+	var realm_target: Player = null
+	if stats["realm"] > 0:
+		realm_target = _realm_find()
+		if realm_target == null:
+			return   # Domínio do Rei sem ninguém na mira: não gasta
 	if master_max_charges() > 1:
 		if master_charges >= master_max_charges():
 			master_cd = CardDB.CARDS[master_id]["cooldown"]   # a recarga começa com a 1a gasta
@@ -4566,7 +4687,7 @@ func _use_master() -> void:
 	if stats["clone"] > 0:
 		_start_clone()
 	if stats["realm"] > 0:
-		_rchain_fire()
+		_rchain_fire(realm_target)
 	if stats["grapple"] > 0:
 		_grapple_fire()
 	if stats["meteor"] > 0:
@@ -6157,7 +6278,20 @@ func _shoot() -> void:
 	_recoil()
 	since_attack = 0.0
 	spawn_protect = 0.0   # atacar encerra a proteção do começo da rodada
-	ammo -= 1
+	# Escopeta (2026-10-13): cada bala do leque gasta 1 do pente; sem o bastante, saem só as
+	# que houver (as balas de graça, como a do Cano Duplo, saem sempre).
+	var cost := mini(1 + int(stats["shot_ammo"]), ammo)
+	shot_count = int(stats["bullet_count"]) - (1 + int(stats["shot_ammo"]) - cost)
+	# Cartucheira: cada bala que sairia do pente sorteia se sai de graça (a HUD pisca o traço).
+	var paid := cost
+	if stats["free_ammo"] > 0.0:
+		for k in cost:
+			if randf() < float(stats["free_ammo"]):
+				paid -= 1
+		if paid < cost:
+			free_ammo_shown = cost - paid
+			free_ammo_flash = Time.get_ticks_msec()
+	ammo -= paid
 	fired.emit()
 	pierce_shot = pierce_left > 0
 	if pierce_shot:
@@ -6187,7 +6321,7 @@ func _volley() -> void:
 		# O cano fica abaixo da mira: convergindo no 1o jogador, a bala subiria por cima de
 		# quem está atrás dele. Convergindo mais longe, a fila inteira fica na linha.
 		target = origin + aim * maxf(origin.distance_to(target), PIERCE_CONVERGE)
-	var count: int = stats["bullet_count"]
+	var count := shot_count
 	var echo_on := is_instance_valid(clone) and realm == 0
 	var echo_from := Vector3.ZERO
 	if echo_on:

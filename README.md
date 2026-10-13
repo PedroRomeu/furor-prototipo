@@ -140,7 +140,7 @@ shows in a corner during the match.
 ## Match rules
 
 - Decks of 30 to 50 cards, up to 3 copies each. More copies = more chance of the card
-  showing up. With 120 cards there are always some left out.
+  showing up. With 121 cards there are always some left out.
 - **Baralhos** (decks) screen: create as many named decks as you want, starting from a
   template (Equilibrado, Atirador, Muralha, Acrobata, Caos, Aleatório or Vazio). The editor
   has the card collection on the left and your deck on the right. Click a card to add it,
@@ -152,9 +152,12 @@ shows in a corner during the match.
 - **Master card**: each deck has one, picked in its own slot in the editor, outside the
   card count. You start every match with it. New in 0.8.0: **Cartas Instáveis** (Bullets, Q:
   3 random common cards from your deck for 8 s, shown over your name), **Domínio do Rei**
-  (Body, Q on an enemy in your sights up to 15 m: both of you go to a closed room for 6 s;
-  you gain +6% damage per second there, up to +30%, and wear a crown that grows with it;
-  win and you keep the bonus 6 s more; when time runs out both return where they were, and
+  (Body; enemies in range wear a small crown with "Q" on your screen. Q on one in your
+  sights up to 30 m throws a homing shadow chain at 24 m/s; they escape only by blocking
+  with the shield as it arrives or by getting behind a wall (12 s cooldown then). Caught:
+  both of you are pulled into a closed room for 10 s, where you gain 4% damage per second
+  up to +30%, they lose the same, and you wear a crown that grows with it; win and you keep
+  the bonus 6 s more; when time runs out both return where they were, and
   everyone on the map sees a purple marker with the countdown there), **Arpéu Ventoso**
   (Movement, a plunger on a rope: Q sticks it to any surface up to 30 m and pulls you there;
   hang up to 3 s, Space mid-pull to fling yourself with the momentum, Space while hanging to
@@ -213,9 +216,10 @@ shows in a corner during the match.
 - At the start, everyone sees 3 different cards from their own deck and keeps 1.
 - When a round's countdown ends, everyone is protected from damage for 3 s (golden
   outline); attacking (shooting, the master card or a sword strike) ends your own protection.
-- **Overtime**: after 8 min of fighting in a round, every living player gets one extra common
-  card from their own deck every 10 s (up to 20, this round only); at 10 min a glass wall
-  starts closing in on the center of the map, reaching 8 m at 12 min, and standing outside
+- **Overtime**: extra cards start at 4 min of fighting in round 1, 5 min in round 2 and 6
+  min from round 3 on (it does not reset after "continue"): every living player gets one extra
+  common card from their own deck every 10 s (up to 20, this round only); 2 min later a glass
+  wall starts closing in on the center of the map, reaching 8 m 2 min after that, and standing outside
   it costs 8% of max health per second. A big countdown at the top of the screen warns 30 s
   before each phase.
 - Round: last one standing wins. Only **the losers** pick another card (1 of 3); with more

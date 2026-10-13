@@ -8,14 +8,27 @@ extends RefCounted
 ## contagem, para com a pausa contra bots); a diferença entre máquinas é a do atraso da rede.
 ## Na sala de teste não acontece.
 
-const CARDS_AT := 480.0     # 8:00
+## Tempos por rodada (2026-10-13, pedido do usuário: 8-10-12 era longo demais, e a prorrogação
+## importa mais nas primeiras rodadas, com poucas cartas): cartas / começa a fechar / fechada
+## em 4-6-8 min na rodada 1, 5-7-9 na 2 e 6-8-10 da 3 em diante (o "continuar" não reinicia;
+## nos Duelos a rodada é o número do duelo). set_round no começo de cada rodada, em todas as
+## máquinas (net_start_round).
+const ROUND_CARDS_AT := [240.0, 300.0, 360.0]   # rodada 1, 2, 3 em diante
 const CARD_EVERY := 10.0
 const MAX_CARDS := 20
-const ZONE_AT := 600.0      # 10:00
-const ZONE_TIME := 120.0    # fechado aos 12:00
+const ZONE_DELAY := 120.0   # do começo das cartas ao começo do fechamento
+const ZONE_TIME := 120.0    # tempo fechando
 const ZONE_MIN := 8.0
 const WARN := 30.0          # aviso antes das cartas e do fechamento
 const COUNTDOWN := 10       # últimos segundos em contagem grande, com bipe
+
+static var CARDS_AT := 360.0
+static var ZONE_AT := 480.0
+
+
+static func set_round(number: int) -> void:
+	CARDS_AT = ROUND_CARDS_AT[clampi(number - 1, 0, ROUND_CARDS_AT.size() - 1)]
+	ZONE_AT = CARDS_AT + ZONE_DELAY
 
 
 ## Cartas que já deviam ter saído com t segundos de luta.
