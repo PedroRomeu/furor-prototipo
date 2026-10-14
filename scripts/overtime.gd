@@ -10,10 +10,11 @@ extends RefCounted
 
 ## Tempos por rodada (2026-10-13, pedido do usuário: 8-10-12 era longo demais, e a prorrogação
 ## importa mais nas primeiras rodadas, com poucas cartas): cartas / começa a fechar / fechada
-## em 4-6-8 min na rodada 1, 5-7-9 na 2 e 6-8-10 da 3 em diante (o "continuar" não reinicia;
+## em 2-4-6 min na rodada 1, 3-5-7 na 2 e na 3 e 4-6-8 da 4 em diante (2026-10-14, pedido do
+## usuário depois de jogar; antes 4-6-8 / 5-7-9 / 6-8-10) (o "continuar" não reinicia;
 ## nos Duelos a rodada é o número do duelo). set_round no começo de cada rodada, em todas as
 ## máquinas (net_start_round).
-const ROUND_CARDS_AT := [240.0, 300.0, 360.0]   # rodada 1, 2, 3 em diante
+const ROUND_CARDS_AT := [120.0, 180.0, 180.0, 240.0]   # rodada 1, 2, 3, 4 em diante
 const CARD_EVERY := 10.0
 const MAX_CARDS := 20
 const ZONE_DELAY := 120.0   # do começo das cartas ao começo do fechamento

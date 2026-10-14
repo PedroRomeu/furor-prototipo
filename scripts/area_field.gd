@@ -50,7 +50,9 @@ const MINE_RADIUS := 4.0
 const MINE_RADIUS_STEP := 0.5
 const MINE_DAMAGE := 30.0
 const MINE_DAMAGE_STEP := 15.0
-# Nuvem Tóxica: por segundo, CLOUD_DPS x o dano da bala que a criou.
+# Nuvem Tóxica: a cada CLOUD_TICK, quem está dentro ganha um Veneno de CLOUD_DPS x CLOUD_TICK x o
+# dano da bala (o mesmo total de antes, 30% por segundo dentro, mas tirado depois em 3 s como
+# veneno; desde 2026-10-14, antes era dano de área direto, que o Blindado reduzia).
 const CLOUD_TIME := 3.0
 const CLOUD_TIME_STEP := 1.0
 const CLOUD_RADIUS := 2.5
@@ -267,7 +269,7 @@ func _physics_step(delta: float) -> void:
 				var key := "%s:%s" % [p.name, owner_player.name]
 				if _inside(p) and now - int(_cloud_hit.get(key, -100000)) >= CLOUD_TICK * 900.0:
 					_cloud_hit[key] = now
-					p.take_area_damage(power * CLOUD_TICK, owner_player, true)
+					p.apply_poison(power * CLOUD_TICK, owner_player)
 
 
 func _process(delta: float) -> void:

@@ -191,8 +191,9 @@ const NEWS_TITLE := "Versão 0.8"
 const NEWS := [
 	"Missões diárias e semanais (contam online): moedas, fichas e Pacote de Mestra.",
 	"5 mestras novas: Cartas Instáveis, Domínio do Rei, Arpéu Ventoso, Mecha e Clone.",
-	"Prorrogação: cartas extras aos 4, 5 e 6 min (rodadas 1, 2 e 3 em diante); 2 min depois a arena fecha.",
+	"Prorrogação: cartas extras aos 2, 3 e 4 min (rodada 1, rodadas 2 e 3, rodada 4 em diante); 2 min depois a arena fecha.",
 	"14 cartas comuns novas (120 no total).",
+	"Aflições: Veneno lento e longo, Queimadura rápida e curta (Bala Incendiária, Brasa), tela verde ou em chamas.",
 	"3 s de proteção no começo de cada rodada (atacar encerra a sua).",
 	"Loja numa página só e criação de cartas com fichas no editor (Criar).",
 	"Balanceamento grande: Rajada, Teleguiada, Flash, Regeneração, Pólvora e mais.",

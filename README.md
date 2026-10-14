@@ -140,7 +140,7 @@ shows in a corner during the match.
 ## Match rules
 
 - Decks of 30 to 50 cards, up to 3 copies each. More copies = more chance of the card
-  showing up. With 121 cards there are always some left out.
+  showing up. With 130 cards there are always some left out.
 - **Baralhos** (decks) screen: create as many named decks as you want, starting from a
   template (Equilibrado, Atirador, Muralha, Acrobata, Caos, Aleatório or Vazio). The editor
   has the card collection on the left and your deck on the right. Click a card to add it,
@@ -216,8 +216,8 @@ shows in a corner during the match.
 - At the start, everyone sees 3 different cards from their own deck and keeps 1.
 - When a round's countdown ends, everyone is protected from damage for 3 s (golden
   outline); attacking (shooting, the master card or a sword strike) ends your own protection.
-- **Overtime**: extra cards start at 4 min of fighting in round 1, 5 min in round 2 and 6
-  min from round 3 on (it does not reset after "continue"): every living player gets one extra
+- **Overtime**: extra cards start at 2 min of fighting in round 1, 3 min in rounds 2 and
+  3 and 4 min from round 4 on (it does not reset after "continue"): every living player gets one extra
   common card from their own deck every 10 s (up to 20, this round only); 2 min later a glass
   wall starts closing in on the center of the map, reaching 8 m 2 min after that, and standing outside
   it costs 8% of max health per second. A big countdown at the top of the screen warns 30 s
@@ -267,9 +267,14 @@ All numbers are provisional, to be tuned by playing.
 
 ## Cards
 
-120 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst...), **Balas**
+130 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst...), **Balas**
 (bullets: ricochet, homing, explosive, poison, freezing, a toxic cloud or a short black hole
-where the bullet lands...), **Escudo** (shield: what happens when raising it or reflecting;
+where the bullet lands; Veneno is slow and long (5 s, stacks), Queimadura fast and short
+(Bala Incendiária, Chamas, Brasa, Combustível; does not stack); the screen edges turn
+green when poisoned and catch fire when burning, stronger with more damage; and Marca,
+Persistência, Ácido, Corrosão, Contágio and Estouro (a shield card that bursts them all at
+once) build around these "aflições" (effects that last on the enemy); Sanguessuga glows
+green when it heals...), **Escudo** (shield: what happens when raising it or reflecting;
 Pancada, Escudo Duplo, Couraça and Fortaleza make a close-range shield build, and Serra,
 Chamas, Geada and Mina add a spinning saw, a ring of fire, a frost wave or a mine), **Corpo**
 (body: health, size, Fênix, Radar, Blindado against explosions, Peso Pesado against

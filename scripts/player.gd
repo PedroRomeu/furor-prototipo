@@ -72,12 +72,21 @@ const BASE_STATS := {
 	"blast_damage": 0.0,   # Pólvora (+0,3), Carga Concentrada (+0,6)
 	"blast_resist": 0.0,   # Blindado: fração a menos do dano de explosões e áreas
 	"poison": 0.0,
+	"burn": 0.0,           # Bala Incendiária: Queimadura por segundo, em fração do dano da bala
+	"ember": 0,            # Brasa: acertar quem queima com seu fogo esquenta a queimadura
+	"fuel": 0,             # Combustível: sua queimadura tira mais em quem tem outra aflição
 	"slow": 0.0,
 	"knockback": 0.0,
 	"shield_break": 0,
 	"target_bounce": 0,
 	"execute": 0.0,
 	"lifesteal": 0.0,
+	"mark": 0,            # Marca: acerto ou tick seu marca o alvo (MARK_*)
+	"dot_time": 0.0,      # Persistência: fração a mais na duração do seu veneno e da sua queimadura
+	"acid": 0,            # Ácido: alvo sob dano seu ao longo do tempo cura menos (ACID_*)
+	"dot_pierce": 0,      # Corrosão: seus ticks de aflição ignoram o colete
+	"contagion": 0,       # Contágio: seu veneno pula para inimigos perto (CONTAGION_*)
+	"shield_detonate": 0, # Estouro: o escudo estoura seu veneno e sua queimadura (DETONATE_*)
 	"boomerang": 0,
 	"bounce_damage": 0.0,
 	"sticky": 0,
@@ -372,7 +381,49 @@ const SILENCE_GUARD := 3.0
 ## quem for (2026-10-11; renovando a cada acerto, muitas balas deixavam a tela branca direto).
 const BLIND_GUARD := 2.0
 const SLOW_TIME := 1.5
-const POISON_TIME := 3.0
+## Veneno lento e longo, Queimadura rápida e curta (2026-10-14, pedido do usuário, como no The
+## Bazaar): o veneno passou de 3 para 5 s com o mesmo total; a Bala Incendiária queima 1 s.
+const POISON_TIME := 5.0
+const BURN_HIT_TIME := 1.0
+## Brasa e Combustível (2026-10-14, propostas minhas aprovadas pelo usuário para a build de
+## fogo; números para testar com os amigos).
+const BRASA_STEP := 0.25
+const BRASA_MAX := 1.0
+const FUEL_BONUS := 0.4
+## Veneno em pedaços de POISON_TICK s, somados por atacante (2026-10-14): antes tirava vida a
+## cada quadro sem dar crédito, e a Sanguessuga não curava com ele.
+const POISON_TICK := 0.5
+## Marca (2026-10-14, ideia do usuário, números aprovados): qualquer dano de quem tem a carta
+## marca o alvo por MARK_TIME s (contorno através das paredes, só na tela de quem marcou);
+## marcado, leva MARK_BONUS a mais do dano dele. Só marca de novo MARK_WAIT s depois da anterior.
+const MARK_TIME := 3.0
+const MARK_WAIT := 5.0
+const MARK_BONUS := 0.15
+const MARK_COLOR := Color(1.0, 0.3, 0.25)
+## Ácido: depois de um tick de quem tem a carta, a cura cai ACID_HEAL por ACID_WINDOW s
+## (renovado pelos ticks; o veneno e a queimadura dele valem pela duração inteira).
+const ACID_HEAL := 0.5
+const ACID_WINDOW := 1.0
+## Sanguessuga: brilho verde no modelo (e borda verde na tela, HUD) quando cura.
+const HEAL_GLOW_TIME := 0.45
+const HEAL_GLOW_COLOR := Color(0.3, 1.0, 0.4)
+## Contágio (2026-10-14, ideia minha aprovada pelo usuário; a volta para o próprio alvo no 1x1
+## é pedido dele): o veneno original de quem tem a carta pula para inimigos a até
+## CONTAGION_RANGE m com CONTAGION_SHARE da força; a cópia não pula; cada alvo pega no máximo
+## uma cópia a cada CONTAGION_GUARD s. Sem ninguém perto, a cópia volta para o envenenado.
+const CONTAGION_RANGE := 4.0
+const CONTAGION_SHARE := 0.5
+const CONTAGION_GUARD := 4.0
+const CONTAGION_COLOR := Color(0.45, 0.95, 0.3)
+## Estouro (2026-10-14, ideia do usuário, números meus; recarga do escudo +2 s pedida por
+## ele): levantar o escudo estoura o veneno e a queimadura de quem a tem nos inimigos a até
+## DETONATE_RANGE m: o que faltava sai de uma vez, x DETONATE_MULT (x DETONATE_BOTH com os
+## dois), até DETONATE_CAP por alvo, e esses efeitos acabam. Conta como golpe (não tick).
+const DETONATE_RANGE := 30.0
+const DETONATE_MULT := 1.5
+const DETONATE_BOTH := 2.0
+const DETONATE_CAP := 60.0
+const BURN_COLOR := Color(1.0, 0.5, 0.15)
 const BLOODLUST_TIME := 3.0
 const RAGE_THRESHOLD := 0.35
 ## Regeneração: cura depois de REGEN_DELAY sem levar dano e sem atacar (tiro ou Espada).
@@ -568,7 +619,8 @@ const HIT_FLASH_TIME := 0.14   # o modelo atingido pisca em branco por este temp
 const ASSIST_TIME := 10.0   # placar: dano nos últimos 10 s antes da morte conta assistência
 const REMOTE_METHODS := ["receive_grapple_kick", "receive_shockwave", "credit_damage", "bullet_refund", "teleport_to", "swap_to", "receive_stomp",
 	"receive_slash", "ice_shove", "receive_slap", "receive_beam", "receive_hook", "hook_blocked",
-	"hook_throw", "hook_release", "receive_bowl", "receive_slam", "receive_realm", "realm_blocked"]
+	"hook_throw", "hook_release", "receive_bowl", "receive_slam", "receive_realm", "realm_blocked",
+	"mark_seen", "receive_contagion", "receive_detonation"]
 ## Gancho (mestra). Quem lança move a ponta (HOOK_SPEED, até HOOK_RANGE) e acha o alvo; a
 ## máquina do alvo decide (escudo bloqueia), puxa o próprio corpo (HOOK_PULL) até a frente
 ## de quem segura e fica lá por HOOK_HOLD. Arremesso a HOOK_THROW: parede dá HOOK_IMPACT e
@@ -982,7 +1034,15 @@ var eye_dip := 0.0
 
 var slow_timer := 0.0
 var slow_amount := 0.0
-var poisons: Array = []   # [{dps, time, from}]
+var poisons: Array = []   # [{dps, time, from, acc, copy}] (copy: veio do Contágio, não pula)
+var contagion_guard := 0.0   # Contágio: enquanto > 0, não pega outra cópia
+var _contagion_sent := {}    # Contágio, na máquina do envenenado: nome -> pode mandar de novo (ms)
+var poison_tick := POISON_TICK
+var marks := {}    # Marca, na máquina do marcado: atacante -> [fim, pode marcar de novo] em ms
+var marked := {}   # Marca, na máquina de quem marcou: nome do alvo -> fim do contorno em ms
+var acid_timer := 0.0
+var heal_glow := 0.0   # Sanguessuga: 1 -> 0 em HEAL_GLOW_TIME (modelo e HUD)
+var _net_heal := false
 var silence_timer := 0.0
 var silence_guard := 0.0   # Atordoante: enquanto > 0, novo atordoamento não pega
 var bloodlust_timer := 0.0
@@ -1078,6 +1138,7 @@ var burn_timer := 0.0     # Chamas: queimando por mais quanto tempo
 var burn_dps := 0.0
 var burn_acc := 0.0
 var burn_from: Player = null
+var burn_heat := 0.0      # Brasa: +BRASA_STEP por acerto de quem pôs o fogo, até BRASA_MAX; zera no fim
 ## Caído (2x2). Enquanto caído, alive é falso: balas, áreas, bots e o fim da rodada já o
 ## tratam como fora. Só a máquina dona decide cair, levantar e morrer; as outras só contam
 ## o tempo para mostrar.
@@ -1185,6 +1246,9 @@ static var _arrow_tex: ImageTexture
 var ally_mat: ShaderMaterial
 var ally_arrow: Sprite3D
 var _ally_look := false
+var mark_mat: ShaderMaterial   # Marca: contorno através das paredes na tela de quem marcou
+var _mark_look := false
+var heal_mat: StandardMaterial3D   # Sanguessuga: camada verde enquanto heal_glow > 0
 
 
 func _ready() -> void:
@@ -1583,6 +1647,13 @@ func reset_for_round(spawn: Transform3D) -> void:
 	_set_height(STAND_HEIGHT)
 	slow_timer = 0.0
 	poisons.clear()
+	poison_tick = POISON_TICK
+	contagion_guard = 0.0
+	_contagion_sent.clear()
+	marks.clear()
+	marked.clear()
+	acid_timer = 0.0
+	heal_glow = 0.0
 	silence_timer = 0.0
 	silence_guard = 0.0
 	bloodlust_timer = 0.0
@@ -1618,6 +1689,7 @@ func reset_for_round(spawn: Transform3D) -> void:
 	burn_timer = 0.0
 	burn_acc = 0.0
 	burn_from = null
+	burn_heat = 0.0
 	glided = false
 	boot_fuel = BOOT_FUEL
 	boot_armed = false
@@ -1787,7 +1859,10 @@ func _frame_step(delta: float) -> void:
 		var ally := viewer != null and viewer.is_ally(self)
 		if ally != _ally_look:
 			_set_ally_look(ally)
-		tag.no_depth_test = ally or (viewer != null and viewer != self and viewer.stats["radar"] > 0 \
+		var mark_on := alive and viewer != null and viewer != self and viewer.is_marking(self)
+		if mark_on != _mark_look:
+			_set_mark_look(mark_on)
+		tag.no_depth_test = ally or mark_on or (viewer != null and viewer != self and viewer.stats["radar"] > 0 \
 				and global_position.distance_squared_to(viewer.global_position) <= pow(viewer.stats["radar"] * RADAR_RANGE, 2.0))
 		if tag.visible and downed:
 			tag.text = "%s\nCAÍDO" % player_name
@@ -1803,6 +1878,10 @@ func _frame_step(delta: float) -> void:
 	if model:
 		_update_animation()
 		_update_hit_flash(delta)
+		if heal_glow > 0.0:
+			_update_heal_glow(delta)
+	elif heal_glow > 0.0:
+		heal_glow = maxf(0.0, heal_glow - delta / HEAL_GLOW_TIME)   # sem modelo: só a HUD
 	if is_human:
 		_camera_feel(delta)
 		_realm_scan()
@@ -1870,6 +1949,43 @@ func _set_ally_look(on: bool) -> void:
 	if ally_arrow:
 		ally_arrow.visible = on
 	_restore_overlay()
+
+
+## Liga ou desliga o contorno da Marca (o do aliado, em vermelho, através das paredes).
+func _set_mark_look(on: bool) -> void:
+	_mark_look = on
+	if model == null:
+		return
+	if on and mark_mat == null:
+		if _rim_shader == null:
+			_rim_shader = Shader.new()
+			_rim_shader.code = ALLY_RIM_SHADER
+		mark_mat = ShaderMaterial.new()
+		mark_mat.shader = _rim_shader
+		mark_mat.set_shader_parameter("rim_color", Color(MARK_COLOR, 0.75))
+	_restore_overlay()
+
+
+## Sanguessuga curou: brilho verde no modelo (visto pelos outros) e borda verde na tela (HUD).
+func heal_flash() -> void:
+	var was := heal_glow > 0.0
+	heal_glow = 1.0
+	if model == null or was:
+		return
+	if heal_mat == null:
+		heal_mat = StandardMaterial3D.new()
+		heal_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		heal_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		heal_mat.albedo_color = Color(HEAL_GLOW_COLOR, 0.0)
+	_restore_overlay()
+
+
+func _update_heal_glow(delta: float) -> void:
+	heal_glow = maxf(0.0, heal_glow - delta / HEAL_GLOW_TIME)
+	if heal_mat:
+		heal_mat.albedo_color.a = heal_glow * 0.6
+	if heal_glow <= 0.0:
+		_restore_overlay()
 
 
 ## Seta para baixo, branca com borda escura (a cor vem do modulate), feita em código.
@@ -2136,6 +2252,10 @@ func _restore_overlay() -> void:
 	if ally_arrow:
 		ally_arrow.visible = ally_on
 	var mat: Material = ambush_mat if ambush_timer > 0.0 else (ally_mat if ally_on else null)
+	if _mark_look and mark_mat:
+		mat = mark_mat
+	if heal_glow > 0.0 and heal_mat:
+		mat = heal_mat
 	if spawn_protect > 0.0 and alive:
 		mat = _protect_material()
 	for m in body_meshes:
@@ -2460,6 +2580,8 @@ func _tick(delta: float) -> void:
 	bloodlust_timer = maxf(0.0, bloodlust_timer - delta)
 	blind_timer = maxf(0.0, blind_timer - delta)
 	blind_guard = maxf(0.0, blind_guard - delta)
+	acid_timer = maxf(0.0, acid_timer - delta)
+	contagion_guard = maxf(0.0, contagion_guard - delta)
 	since_damage += delta
 	since_attack += delta
 	parkour_timer = maxf(0.0, parkour_timer - delta)
@@ -2490,18 +2612,18 @@ func _tick(delta: float) -> void:
 			ammo = stats["mag_size"]
 	if not alive:
 		return
-	for p in poisons:
-		p["time"] -= delta
-		take_damage(p["dps"] * delta, p["from"], false)
-	poisons = poisons.filter(func(p): return p["time"] > 0.0)
+	if not poisons.is_empty():
+		_poison_step(delta)
 	if burn_timer > 0.0:
 		burn_timer -= delta
-		burn_acc += burn_dps * delta
+		burn_acc += burn_dps * (1.0 + burn_heat) * delta * _fuel_mult()
 		if burn_acc >= BURN_CHUNK or burn_timer <= 0.0:
 			var who := burn_from if is_instance_valid(burn_from) else null
 			var amount := burn_acc
 			burn_acc = 0.0
-			take_damage(amount, who, true, false, true)
+			if burn_timer <= 0.0:
+				burn_heat = 0.0
+			take_damage(amount, who, true, false, true, true)
 	if skin_stacks > 0:
 		skin_stack_timer += delta
 		if skin_stack_timer >= SKIN_STACK_RESET:
@@ -3216,7 +3338,7 @@ func _send_state() -> void:
 	var flags := (1 if is_on_floor() else 0) | (2 if crouching else 0) | (4 if sliding else 0) \
 		| (8 if boosting else 0) | (16 if daze_timer > 0.0 else 0) \
 		| (32 if blind_guard > 0.0 else 0) | (64 if silence_guard > 0.0 else 0) | (128 if swap_lock > 0.0 else 0) \
-		| (256 if spawn_protect > 0.0 else 0)
+		| (256 if spawn_protect > 0.0 else 0) | (512 if heal_glow > 0.0 else 0)
 	_net_state.rpc(net_round, global_position, velocity, rotation.y, head.rotation.x, flags, shield_timer, health, armor)
 
 
@@ -3244,6 +3366,10 @@ func _net_state(round_id: int, pos: Vector3, vel: Vector3, yaw: float, pitch: fl
 	elif _net_protected:
 		_net_protected = false
 		spawn_protect = 0.0
+	var healing := (flags & 512) != 0   # Sanguessuga curou na máquina dele
+	if healing and not _net_heal:
+		heal_flash()
+	_net_heal = healing
 	var dazed := (flags & 16) != 0
 	if dazed and not _net_dazed:
 		daze_fx = DAZE_FX_TIME
@@ -3300,14 +3426,18 @@ func teleport_to(pos: Vector3) -> void:
 
 
 ## Quem causou dano recebe o crédito: roubo de vida, Sede de Sangue e o som de acerto.
-func credit_damage(amount: float, lethal := false) -> void:
+## tick: dano contínuo (veneno, queimadura, nuvem, serra), que não recarrega o dash da Caçada.
+func credit_damage(amount: float, lethal := false, tick := false) -> void:
 	if not alive:
 		return
 	if stats["lifesteal"] > 0.0:
+		var before := health
 		heal(amount * stats["lifesteal"])
+		if health > before:
+			heal_flash()
 	if stats["bloodlust"] > 0.0:
 		bloodlust_timer = BLOODLUST_TIME
-	if stats["hit_dash"] > 0:
+	if stats["hit_dash"] > 0 and not tick:
 		dash_cd = 0.0
 		air_dashes_left = mini(air_dashes_left + 1, stats["air_dashes"])
 	if lethal and stats["kill_heal"] > 0.0:
@@ -3770,7 +3900,7 @@ func _fire_missile() -> void:
 	var dmg := minf(MISSILE_MAX, MISSILE_BASE + MISSILE_SCALE * shot_damage())
 	Bullet.fire(self, start, (target - start).normalized(), 0.0, false,
 		{"speed": MISSILE_SPEED, "missile": true, "damage": dmg, "radius": 0.28, "gravity": 0.0, "bounces": 0,
-		"ghost_walls": 0, "explosion": 0.0, "poison": 0.0, "slow": 0.0, "push": 0.0, "shield_break": false,
+		"ghost_walls": 0, "explosion": 0.0, "poison": 0.0, "burn": 0.0, "slow": 0.0, "push": 0.0, "shield_break": false,
 		"execute": 0.0, "split": 0, "sticky": false, "boomerang": false, "guided": false, "seek": 0.0,
 		"homing": 0.0, "target_bounce": 0.0, "lazy_top": 0.0, "grow": 0.0, "swap": false, "blind": 0.0,
 		"toxic": 0, "hole": 0, "bounce_damage": 0.0})
@@ -5031,7 +5161,7 @@ func _fire_ice() -> void:
 	shot_mult = 1.0
 	Bullet.fire(self, muzzle.global_position, (target - muzzle.global_position).normalized(), 0.0, true,
 		{"speed": ICE_SPEED, "ice": true, "radius": 0.22, "gravity": 0.0, "bounces": 0, "ghost_walls": 0,
-		"explosion": 0.0, "poison": 0.0, "slow": 0.0, "push": 0.0, "shield_break": false, "execute": 0.0,
+		"explosion": 0.0, "poison": 0.0, "burn": 0.0, "slow": 0.0, "push": 0.0, "shield_break": false, "execute": 0.0,
 		"split": 0, "sticky": false, "boomerang": false, "guided": false, "seek": 0.0, "homing": 0.0,
 		"target_bounce": 0.0, "lazy_top": 0.0, "grow": 0.0, "swap": false, "blind": 0.0, "toxic": 0,
 		"hole": 0, "bounce_damage": 0.0})
@@ -5821,7 +5951,7 @@ func _ride_jump() -> void:
 		_net_ride.rpc(false)
 	Bullet.fire(self, chest() + dir * 1.6, dir, 0.0, false,
 		{"speed": ROCKET_FREE_SPEED, "rocket": true, "radius": 0.35, "gravity": 0.0, "bounces": 0,
-		"ghost_walls": 0, "explosion": 0.0, "poison": 0.0, "slow": 0.0, "push": 0.0, "shield_break": false,
+		"ghost_walls": 0, "explosion": 0.0, "poison": 0.0, "burn": 0.0, "slow": 0.0, "push": 0.0, "shield_break": false,
 		"execute": 0.0, "split": 0, "sticky": false, "boomerang": false, "guided": false, "seek": 0.0,
 		"homing": 0.0, "target_bounce": 0.0, "lazy_top": 0.0, "grow": 0.0, "swap": false, "blind": 0.0,
 		"toxic": 0, "hole": 0, "bounce_damage": 0.0})
@@ -6466,6 +6596,10 @@ func _activate_shield() -> void:
 		for enemy in enemies():
 			if chest().distance_to(enemy.chest()) < SHOCKWAVE_RANGE:
 				enemy.remote_call("receive_shockwave", [global_position, 8.0 * stats["shield_shockwave"], String(name)])
+	if stats["shield_detonate"] > 0:
+		for enemy in enemies():
+			if chest().distance_to(enemy.chest()) < DETONATE_RANGE:
+				enemy.remote_call("receive_detonation", [String(name)])
 	var nova: int = stats["shield_nova"]
 	for k in nova:
 		var dir := _flat_forward().rotated(Vector3.UP, TAU * k / nova)
@@ -6650,6 +6784,8 @@ func hit_radius() -> float:
 ## Metabolismo aumenta toda cura que passa por aqui (itens, Restauração, Sanguessuga,
 ## Regeneração, Banquete).
 func heal(amount: float) -> void:
+	if acid_timer > 0.0:
+		amount *= 1.0 - ACID_HEAL   # Ácido de quem está te machucando
 	health = minf(stats["max_health"], health + amount * (1.0 + float(stats["heal_mult"])))
 
 
@@ -6664,17 +6800,194 @@ func apply_slow(amount: float, time := SLOW_TIME) -> void:
 	slow_timer = maxf(slow_timer, _control_time(time))
 
 
-## Chamas: queima por time segundos (renovado enquanto estiver no fogo).
-func apply_burn(dps: float, time: float, from: Player) -> void:
-	burn_dps = dps * (1.0 - float(stats["blast_resist"]))
+## Queimadura (Chamas, Bala Incendiária): não empilha; renova o tempo e vale a mais forte
+## (quem pôs a mais forte leva o crédito). Aflição: a Tenacidade encurta, o Blindado não
+## reduz; a Persistência de quem pôs alonga. hit: acerto de bala (Brasa esquenta).
+func apply_burn(dps: float, time: float, from: Player, hit := false) -> void:
+	if is_instance_valid(from):
+		time *= 1.0 + float(from.stats["dot_time"])
+	if burn_timer > 0.0 and from == burn_from:
+		# O mesmo dono: fica a mais forte das duas e a Brasa esquenta no acerto de bala.
+		burn_dps = maxf(burn_dps, dps)
+		if hit and from.stats["ember"] > 0:
+			burn_heat = minf(BRASA_MAX, burn_heat + BRASA_STEP)
+	elif burn_timer <= 0.0 or dps >= burn_dps * (1.0 + burn_heat):
+		burn_dps = dps
+		burn_from = from
+		burn_heat = 0.0
 	burn_timer = maxf(burn_timer, _control_time(time))
-	burn_from = from
+	if is_instance_valid(from) and from.stats["acid"] > 0:
+		acid_timer = maxf(acid_timer, burn_timer)
 
 
-## Veneno: o mesmo dano por segundo; com Tenacidade dura menos (e tira menos no total).
+## Combustível de quem pôs o fogo: a queimadura tira FUEL_BONUS a mais se você tem outra
+## aflição (veneno, lentidão, cegueira, escudo bloqueado, tontura).
+func _fuel_mult() -> float:
+	if not is_instance_valid(burn_from) or burn_from.stats["fuel"] <= 0:
+		return 1.0
+	if poisons.is_empty() and slow_timer <= 0.0 and blind_timer <= 0.0 and silence_timer <= 0.0 and daze_timer <= 0.0:
+		return 1.0
+	return 1.0 + FUEL_BONUS
+
+
+## Veneno: o mesmo dano por segundo; com Tenacidade dura menos (e tira menos no total), com
+## Persistência de quem atirou dura mais (e tira mais).
 func apply_poison(total: float, from: Player) -> void:
-	var time := _control_time(POISON_TIME)
-	poisons.append({"dps": total / POISON_TIME, "time": time, "from": from})
+	var valid := is_instance_valid(from)
+	var time := _control_time(POISON_TIME * (1.0 + (float(from.stats["dot_time"]) if valid else 0.0)))
+	poisons.append({"dps": total / POISON_TIME, "time": time, "from": from if valid else null, "acc": 0.0, "copy": false})
+	if valid and from.stats["acid"] > 0:
+		acid_timer = maxf(acid_timer, time)
+
+
+## Estouro de from_name (máquina dona deste jogador): o veneno e a queimadura dele aqui
+## saem de uma vez, multiplicados e com teto, e acabam.
+func receive_detonation(from_name: String) -> void:
+	var from := get_parent().get_node_or_null(from_name) as Player
+	if not alive or from == null:
+		return
+	var poison := 0.0
+	for p in poisons:
+		if p["from"] == from:
+			poison += p["acc"] + p["dps"] * maxf(0.0, p["time"])
+	var burn := 0.0
+	if burn_timer > 0.0 and burn_from == from:
+		burn = burn_acc + burn_dps * (1.0 + burn_heat) * burn_timer * _fuel_mult()
+		burn_timer = 0.0
+		burn_acc = 0.0
+		burn_from = null
+		burn_heat = 0.0
+	if poison + burn <= 0.0:
+		return
+	if poison > 0.0:
+		poisons = poisons.filter(func(p): return p["from"] != from)
+	var mult := DETONATE_BOTH if poison > 0.0 and burn > 0.0 else DETONATE_MULT
+	var kind := 3 if poison > 0.0 and burn > 0.0 else (1 if poison > 0.0 else 2)
+	_show_detonation(kind)
+	if Net.online:
+		_net_detonation.rpc(kind)
+	take_damage(minf(DETONATE_CAP, (poison + burn) * mult), from, true)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_detonation(kind: int) -> void:
+	_show_detonation(kind)
+
+
+## Estouro em cima de quem foi detonado: verde (veneno), laranja (queimadura) ou os dois.
+func _show_detonation(kind: int) -> void:
+	if kind & 1:
+		Effects.explosion(get_parent(), chest(), 1.6, CONTAGION_COLOR, 0.3)
+	if kind & 2:
+		Effects.explosion(get_parent(), chest(), 1.3 if kind == 3 else 1.6, BURN_COLOR, 0.3)
+
+
+## Contágio: cópia do veneno de from_name chegando de quem estava envenenado perto (máquina
+## dona). Não pega se já tem veneno dele ou se pegou uma cópia há menos de CONTAGION_GUARD s.
+func receive_contagion(dps: float, time: float, from_name: String) -> void:
+	var from := get_parent().get_node_or_null(from_name) as Player
+	if not alive or from == null or contagion_guard > 0.0:
+		return
+	for p in poisons:
+		if p["from"] == from:
+			return
+	_add_poison_copy(dps, _control_time(time), from)
+
+
+func _add_poison_copy(dps: float, time: float, from: Player) -> void:
+	contagion_guard = CONTAGION_GUARD
+	poisons.append({"dps": dps, "time": time, "from": from, "acc": 0.0, "copy": true})
+	if from.stats["acid"] > 0:
+		acid_timer = maxf(acid_timer, time)
+
+
+## Contágio, a cada pedaço de veneno (máquina dona do envenenado): o veneno original de quem
+## tem a carta manda uma cópia para os inimigos dele por perto; sem ninguém, volta para cá.
+func _contagion_step() -> void:
+	var now := Time.get_ticks_msec()
+	for p in poisons:
+		var from = p["from"]
+		if p["copy"] or p["time"] <= 0.0 or not is_instance_valid(from) or from.stats["contagion"] <= 0:
+			continue
+		var dps: float = p["dps"] * CONTAGION_SHARE
+		var near := false
+		for q: Player in get_tree().get_nodes_in_group("players"):
+			if q == self or q == from or not q.alive or q.is_ally(from) \
+					or q.global_position.distance_squared_to(global_position) > CONTAGION_RANGE * CONTAGION_RANGE:
+				continue
+			near = true
+			if now < int(_contagion_sent.get(q.name, 0)):
+				continue
+			_contagion_sent[q.name] = now + int(CONTAGION_GUARD * 1000.0)
+			q.remote_call("receive_contagion", [dps, p["time"], String(from.name)])
+			_contagion_fx(String(q.name))
+		if not near and contagion_guard <= 0.0:
+			_add_poison_copy(dps, p["time"], from)
+			_contagion_fx(String(name))
+
+
+## Fio verde de quem estava envenenado até quem pegou a cópia (ou um estouro, se voltou para
+## ele mesmo), em todas as máquinas.
+func _contagion_fx(target_name: String) -> void:
+	_show_contagion(target_name)
+	if Net.online:
+		_net_contagion.rpc(target_name)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_contagion(target_name: String) -> void:
+	_show_contagion(target_name)
+
+
+func _show_contagion(target_name: String) -> void:
+	var q := get_parent().get_node_or_null(target_name) as Player
+	if q == null or q == self:
+		Effects.burst(get_parent(), chest(), 0.9, CONTAGION_COLOR, 0.25)
+	else:
+		Effects.beam(get_parent(), chest(), q.chest(), CONTAGION_COLOR, 0.05, 0.35)
+
+
+## Junta o veneno de POISON_TICK em POISON_TICK s e tira de uma vez por atacante, como tick
+## (crédito, Sanguessuga e Marca; o instante que já acabou entrega o resto no próximo pedaço).
+func _poison_step(delta: float) -> void:
+	for p in poisons:
+		p["acc"] += p["dps"] * clampf(p["time"], 0.0, delta)
+		p["time"] -= delta
+	poison_tick -= delta
+	if poison_tick > 0.0:
+		return
+	poison_tick = POISON_TICK
+	_contagion_step()
+	var sums := {}
+	for p in poisons:
+		var who: Player = p["from"] if is_instance_valid(p["from"]) else null
+		sums[who] = float(sums.get(who, 0.0)) + p["acc"]
+		p["acc"] = 0.0
+	poisons = poisons.filter(func(p): return p["time"] > 0.0)
+	for who in sums:
+		take_damage(sums[who], who, true, false, true, true)
+
+
+## Marca: o dano de quem marcou leva MARK_BONUS a mais; qualquer dano dele marca de novo
+## depois de MARK_WAIT. Decide a máquina do marcado e avisa a de quem marcou (contorno).
+func _mark_hit(amount: float, from: Player) -> float:
+	var now := Time.get_ticks_msec()
+	var m: Array = marks.get(from, [0, 0])
+	if now < int(m[0]):
+		amount *= 1.0 + MARK_BONUS
+	if now >= int(m[1]):
+		marks[from] = [now + int(MARK_TIME * 1000.0), now + int(MARK_WAIT * 1000.0)]
+		from.remote_call("mark_seen", [String(name)])
+	return amount
+
+
+## Marca, na máquina de quem marcou: o contorno de target_name aparece por MARK_TIME s.
+func mark_seen(target_name: String) -> void:
+	marked[target_name] = Time.get_ticks_msec() + int(MARK_TIME * 1000.0)
+
+
+func is_marking(p: Player) -> bool:
+	return not marked.is_empty() and Time.get_ticks_msec() < int(marked.get(String(p.name), 0))
 
 
 ## Flash: a tela de quem levou o tiro fica branca (o bot erra mais a mira).
@@ -6701,11 +7014,20 @@ func take_area_damage(amount: float, from: Player, tick := false) -> void:
 
 
 ## Só é chamado na máquina dona deste jogador.
-## ignore_armor: o Perfurante bate direto na vida. tick: dano contínuo (queimadura, nuvem,
-## serra, alto demais; o veneno vem com flash falso), que o Couro Grosso não conta.
-func take_damage(amount: float, from: Player, flash := true, ignore_armor := false, tick := false) -> void:
+## ignore_armor: o Perfurante bate direto na vida. tick: dano contínuo (veneno, queimadura,
+## serra, alto demais), que o Couro Grosso não conta e a Caçada ignora. affliction: tick de
+## aflição (veneno, queimadura), o único que o Ácido e a Corrosão contam.
+func take_damage(amount: float, from: Player, flash := true, ignore_armor := false, tick := false, affliction := false) -> void:
 	if not alive or amount <= 0.0 or protect_timer > 0.0 or spawn_protect > 0.0 or ice_timer > 0.0:
 		return
+	if from and from != self and not is_ally(from):
+		if from.stats["mark"] > 0:
+			amount = _mark_hit(amount, from)
+		if affliction:
+			if from.stats["dot_pierce"] > 0:
+				ignore_armor = true   # Corrosão
+			if from.stats["acid"] > 0:
+				acid_timer = maxf(acid_timer, ACID_WINDOW)
 	if stats["thick_skin"] > 0 and flash and not tick:
 		# Couro Grosso: este golpe perde o que acumulou (mínimo 1) e soma 1 para o próximo.
 		if skin_stacks > 0:
@@ -6754,7 +7076,7 @@ func take_damage(amount: float, from: Player, flash := true, ignore_armor := fal
 		if is_human:
 			Sfx.ui(self, "hurt")
 		if from and from != self:
-			from.remote_call("credit_damage", [hit_total, health <= 0.0 and revives_left == 0])
+			from.remote_call("credit_damage", [hit_total, health <= 0.0 and revives_left == 0, tick])
 	if mech_broke:
 		_mech_end()   # blindagem zerada: sai e explode com o máximo
 	if health <= 0.0:

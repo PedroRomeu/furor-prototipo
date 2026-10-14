@@ -108,7 +108,7 @@ const DAMAGE_SIZE_EXP := 0.5
 const DAMAGE_SIZE_MIN := 0.7   # chumbo de escopeta não some de tão pequeno
 const GUIDED_TURN := 5.0       # Piloto: quanto a bala vira por segundo atrás da mira (rad/s)
 const GUIDED_LEAD := 4.0       # ...mirando este tanto à frente da bala, na linha da mira
-const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", "poison",
+const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", "poison", "burn",
 	"slow", "push", "shield_break", "target_bounce", "execute", "reflected", "gravity",
 	"boomerang", "returning", "bounce_damage", "sticky", "split", "grow", "swap", "blind",
 	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls",
@@ -152,6 +152,7 @@ var life := LIFETIME      # cresce bounce_life a cada quique
 var bounce_life := BOUNCE_LIFE
 var _owner_key := 0   # em que lista de _owned a bala está (o dono de quando nasceu)
 var poison := 0.0
+var burn := 0.0   # Bala Incendiária: Queimadura de burn x o dano por segundo, por Player.BURN_HIT_TIME
 var slow := 0.0
 var push := 0.0
 var shield_break := false
@@ -219,6 +220,7 @@ static func fire(from: Player, pos: Vector3, dir: Vector3, damage_mult := 1.0, w
 	b.blast_radius = s["blast_radius"]
 	b.blast_damage = s["blast_damage"]
 	b.poison = s["poison"]
+	b.burn = s["burn"]
 	b.slow = s["slow"]
 	b.push = s["knockback"]
 	b.shield_break = s["shield_break"] > 0
@@ -899,6 +901,8 @@ func _hit_player(target: Player, point: Vector3) -> void:
 		target.apply_slow(slow)
 	if poison > 0.0:
 		target.apply_poison(dmg * poison, shooter)
+	if burn > 0.0:
+		target.apply_burn(dmg * burn, Player.BURN_HIT_TIME, shooter, true)
 	if shield_break:
 		target.silence()
 	if blind > 0.0:
