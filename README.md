@@ -192,7 +192,8 @@ shows in a corner during the match.
   through walls, players, shields and Bastião, and ignore armor), **Bastião** (Shield, Q: a wall that returns bullets for 4 s), **Último Suspiro**
   (Body: a fatal hit leaves you at 1 health for 3 s; get a kill in that time and come back
   with half), **Camuflagem** (Body: stand still 0.6 s to vanish, crouch-walk while hidden;
-  showing up after 1 s hidden gives Ambush, 3 s of +40% shot damage and +20% speed),
+  showing up after 1 s hidden gives Ambush, 3 s of +40% shot damage and +20% speed, and its
+  first shot goes through walls; the shot that reveals you already counts),
   **Corrente** (Movement, Q: an 8 m upward boost, also in the air; holds 2 charges that come
   back one at a time, 9 s each), **Bota Foguete**
   (Movement: +10% shot damage per second in the air, up to +40%; with no air jumps left,

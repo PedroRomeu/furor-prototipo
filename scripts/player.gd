@@ -1195,6 +1195,7 @@ var swap_partner: Player = null
 var still_time := 0.0     # parado há quanto tempo (Camuflagem)
 var speed_orb_timer := 0.0   # orbe de Velocidade ligado por mais quanto tempo
 var ambush_timer := 0.0   # Emboscada ligada por mais quanto tempo (todas as máquinas, para o brilho)
+var ambush_shot := false  # Camuflagem: o primeiro disparo da Emboscada atravessa as paredes (máquina dona)
 var ambush_cd := 0.0      # falta quanto para poder ganhar outra Emboscada (só a máquina dona)
 var ambush_mat: ShaderMaterial
 var slamming := false     # despencando com o Meteoro
@@ -1731,6 +1732,7 @@ func reset_for_round(spawn: Transform3D) -> void:
 	still_time = 0.0
 	speed_orb_timer = 0.0
 	ambush_timer = 0.0
+	ambush_shot = false
 	ambush_cd = 0.0
 	_restore_overlay()
 	slamming = false
@@ -2069,6 +2071,7 @@ func _update_camo(delta: float) -> void:
 	if ambush_timer > 0.0:
 		ambush_timer -= delta
 		if ambush_timer <= 0.0:
+			ambush_shot = false   # não atirou nos 3 s: perde o tiro que atravessa
 			_restore_overlay()
 	if stats["camo"] <= 0 or not alive:
 		still_time = 0.0
@@ -2242,6 +2245,7 @@ func reveal() -> void:
 		if Net.online:
 			_net_ambush.rpc()
 		_start_ambush()
+		ambush_shot = true
 	still_time = 0.0
 
 
@@ -6489,8 +6493,13 @@ func _shoot() -> void:
 func _volley() -> void:
 	var origin := head.global_position
 	var aim := -head.global_transform.basis.z
+	# Revela antes das balas (2026-10-14, pedido do usuário): o tiro que tira você da
+	# Camuflagem já sai com a Emboscada (+40% e atravessando paredes).
+	reveal()
+	var ambush_pierce := ambush_shot
+	ambush_shot = false
 	# Bala que atravessa parede mira só nos jogadores: o ponto na parede a entortaria.
-	var mask := 2 if pierce_shot or stats["ghost"] > 0 else 1 | 2
+	var mask := 2 if pierce_shot or ambush_pierce or stats["ghost"] > 0 else 1 | 2
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + aim * 300.0, mask, [get_rid()])
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	var target: Vector3 = hit["position"] if not hit.is_empty() else origin + aim * 300.0
@@ -6519,6 +6528,9 @@ func _volley() -> void:
 			extra.merge({"speed": float(stats["bullet_speed"]) * PIERCE_SPEED, "gravity": 0.0,
 				"ghost": true, "pierce": true, "drill": true})
 			mult *= PIERCE_DAMAGE
+		elif ambush_pierce:
+			# Emboscada: só atravessa o cenário; velocidade e queda da bala normais.
+			extra.merge({"ghost": true, "ambush": true})
 		var echo := extra.duplicate()
 		if meteor_shot and k == 0:
 			extra["meteor"] = true   # só a primeira bala do disparo marca (escopeta)
@@ -6534,7 +6546,6 @@ func _volley() -> void:
 	recoil = 1.0
 	muzzle_light.light_energy = 3.0
 	muzzle_light.visible = true
-	reveal()
 
 
 ## Dano de um disparo. Soma única (2026-10-14, pedido do usuário: o dano escalava muito mais

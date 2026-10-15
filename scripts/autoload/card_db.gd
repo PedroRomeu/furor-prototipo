@@ -164,7 +164,7 @@ const MASTERS := {
 	# Camuflagem virou mestra em 2026-10-06 (pedido do usuário; números meus, aprovados):
 	# some mais rápido, anda agachada sem aparecer e, ao aparecer, ganha a Emboscada.
 	"camuflagem": {"name": "Camuflagem", "cat": "Corpo", "rarity": "mitico", "master": true,
-		"desc": "Parado por 0,6 s, você some. Invisível, dá para andar agachado sem aparecer; atirar, correr, pular, dash, escudo ou levar dano te revelam. Depois de 1 s invisível, aparecer dá Emboscada: 3 s com +40% de dano nos tiros e +20% de velocidade (no máximo a cada 6 s). Depois de 8 s seguidos invisível, a camuflagem falha: você pisca visível por 0,4 s a cada 2 s até aparecer.",
+		"desc": "Parado por 0,6 s, você some. Invisível, dá para andar agachado sem aparecer; atirar, correr, pular, dash, escudo ou levar dano te revelam. Depois de 1 s invisível, aparecer dá Emboscada: 3 s com +40% de dano nos tiros e +20% de velocidade (no máximo a cada 6 s), e o primeiro tiro atravessa paredes. O tiro que te revela já conta. Depois de 8 s seguidos invisível, a camuflagem falha: você pisca visível por 0,4 s a cada 2 s até aparecer.",
 		"mods": [{"stat": "camo", "add": 1}]},
 	# Bota Foguete (2026-10-06, desenho do usuário a partir da minha proposta; números meus):
 	# passiva. Bônus por estar no ar e um jato curto como a bota foguete do Terraria.

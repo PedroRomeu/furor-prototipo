@@ -41,6 +41,7 @@ func _ready() -> void:
 		4: await _block_fight()
 		5: await _block_new(_part())
 		7: await _block_camo()
+		8: await _block_afflictions()
 		_: _note("bloco desconhecido")
 	_save()
 	get_tree().quit()
@@ -506,3 +507,59 @@ func _block_new(part: int) -> void:
 		var f := FileAccess.open(path, FileAccess.WRITE)
 		f.store_string(saved)
 	_note("coleção do jogador devolvida")
+
+
+# ---------------------------------------------------------------- aflições e Eco
+
+## Bloco 8 (2026-10-14): o que entrou na build 0.8.0.8 e ficou sem check-up. Explosão da
+## Reação em Cadeia (uma esfera por aflição que terminou, 5 m) nos 3 bots, com uma cor e com
+## as 6; áreas do escudo repetidas pelo Eco (2 Ecos = 3 levantadas); vinheta de tela cheia
+## do Veneno e da Queimadura (build 0.8.0.7).
+func _block_afflictions() -> void:
+	await _start_match(0)
+	var me = game.me
+	var cam: Camera3D = me.camera
+	var fwd := -cam.global_transform.basis.z
+	fwd.y = 0.0
+	fwd = fwd.normalized()
+	var right := fwd.cross(Vector3.UP)
+	var ground: Vector3 = me.global_position
+	var bots: Array = game.players.filter(func(p): return p != me)
+	for i in bots.size():
+		bots[i].global_position = ground + fwd * 9.0 + right * (i - 1) * 4.0
+		bots[i].velocity = Vector3.ZERO
+	var base := await measure()
+	_note("%-34s %6.1f ms (pior %.1f)" % ["partida, mapa pequeno, 4", base.x, base.y])
+	await _scene_cost("Reação em Cadeia x3, 1 cor", func():
+		for b in bots:
+			b._show_chain(["poison"], 5.0))
+	await _scene_cost("Reação em Cadeia x3, 6 cores", func():
+		for b in bots:
+			b._show_chain(Player.CHAIN_COLORS.keys(), 5.0))
+	var at := func(i: int) -> Vector3:
+		return ground + fwd * 9.0 + right * (i - 1) * 4.0 + Vector3.UP * 0.2
+	var area := func(k: int, r: float, per_bot: int) -> void:
+		for i in bots.size():
+			for j in per_bot:
+				AreaField._spawn(bots[i], k, at.call(i) + right * j * 0.8, r, 10.0, 0.0)
+	await _scene_cost("Serra+Chamas+Mina x3, 1 levantada", func():
+		for k in [AreaField.Kind.SAW, AreaField.Kind.FLAMES, AreaField.Kind.MINE]:
+			area.call(k, 4.0, 1))
+	await _scene_cost("Serra+Chamas+Mina x3, Eco x2 (3)", func():
+		for k in [AreaField.Kind.SAW, AreaField.Kind.FLAMES, AreaField.Kind.MINE]:
+			area.call(k, 4.0, 3))
+	var fx: DamageFeedback = game.hud.damage_fx
+	await cost("vinheta Veneno + Queimadura", func(on):
+		if on:
+			me.poisons = [{"dps": 10.0, "time": 999.0, "from": null, "acc": 0.0, "copy": false}]
+			me.burn_timer = 999.0
+			me.burn_dps = 20.0
+			fx.poison_level = 0.6
+			fx.burn_level = 0.6
+		else:
+			me.poisons = []
+			me.burn_timer = 0.0
+			fx.poison_level = 0.0
+			fx.burn_level = 0.0
+		fx._process(0.0))
+	_note("chamadas de desenho no último: %d" % RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME))

@@ -113,7 +113,7 @@ const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", 
 	"boomerang", "returning", "bounce_damage", "sticky", "split", "grow", "swap", "blind",
 	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls",
 	"toxic", "hole", "laser", "ice", "meteor", "rocket", "missile", "blast_radius", "blast_damage", "life", "drill",
-	"bounce_life", "click", "bonus"]
+	"bounce_life", "click", "bonus", "ambush"]
 ## Bala Fantasma: só paredes contam (superfície quase em pé); no chão e no topo das peças a
 ## bala para ou quica como as outras.
 const GHOST_WALL_NORMAL_Y := 0.7
@@ -183,6 +183,7 @@ var crit := false
 var bounced := false   # já quicou numa parede: pode acertar quem atirou (como no Furor)
 var guided := false    # Piloto (mestra guardada): segue a mira de quem atirou
 var pierce := false    # Perfurante e Sniper: só muda a cor e o formato (o resto vem por ghost/gravity)
+var ambush := false    # tiro da Emboscada que atravessa paredes (Camuflagem): só a cor roxa (o resto vem por ghost)
 ## Perfurante (desde 2026-10-07): atravessa jogadores (cada um leva uma vez), o escudo (E) e
 ## a parede do Bastião sem ser devolvida, e o dano ignora o colete.
 var drill := false
@@ -389,6 +390,8 @@ func _ready() -> void:
 		c = PIERCE_COLOR
 	if crit:
 		c = CRIT_COLOR
+	if ambush:
+		c = Player.AMBUSH_COLOR
 	if reflected:
 		c = REFLECTED_COLOR
 	if ice:
