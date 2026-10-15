@@ -132,9 +132,11 @@ const MASTERS := {
 		"mods": [{"stat": "barrier", "add": 1}]},
 	# Prisão de Gelo (2026-10-06, desenho do usuário; números meus, ele pediu 3 s; o bloco
 	# quica no vazio e o dano do vazio vem quando o gelo derrete).
-	"prisao_gelo": {"name": "Prisão de Gelo", "cat": "Escudo", "rarity": "mitico", "master": true, "cooldown": 14.0,
-		"desc": "Q: dispara um caco de gelo (reto, até 40 m). Quem for atingido fica preso num bloco de gelo por 3 s: não age, mas também não leva dano. O bloco desliza: tiros, explosões e encontrões o empurram. No vazio ele quica, e o dano vem quando o gelo derrete. O escudo devolve o caco. Recarga de 14 s.",
-		"mods": [{"stat": "ice", "add": 1}]},
+	# Reforço de 2026-10-15 (pedido do usuário: difícil de acertar e retorno baixo): caco
+	# mais grosso que estilhaça no cenário, bloco que guarda dano, 1 camada por acerto, 12 s.
+	"prisao_gelo": {"name": "Prisão de Gelo", "cat": "Escudo", "rarity": "mitico", "master": true, "cooldown": 12.0,
+		"desc": "Seus acertos põem 1 camada de Congelamento. Q: dispara um caco de gelo (reto, até 40 m). Quem for atingido fica preso num bloco de gelo por 3 s: não age e não perde vida, mas o bloco guarda metade do dano que leva (até 50) e solta tudo no degelo, com a quebra do gelo (+20). O bloco desliza: tiros, explosões e encontrões o empurram. No vazio ele quica, e o dano vem quando o gelo derrete. Se o caco bater no cenário, estilhaça: 2 camadas em quem estiver a até 3 m. O escudo devolve o caco. Recarga de 12 s.",
+		"mods": [{"stat": "ice", "add": 1}, {"stat": "frost", "add": 1}]},
 	# Mega Tapa (2026-10-06, ideia do usuário: tirar quem joga de perto; números meus e o
 	# impacto na parede, escolhido por ele entre 3 extras).
 	"mega_tapa": {"name": "Mega Tapa", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 8.0,
@@ -228,9 +230,12 @@ const GLOSSARY := [
 	["Recarga", "A espera para usar de novo o escudo, o dash ou a carta mestra."],
 	["Velocidade de movimento", "Quão rápido você anda e corre."],
 	["Vida", "A vida máxima. O corpo cresce um pouco com ela."],
-	["Aflição", "Efeito que fica no inimigo por um tempo: Veneno, Queimadura, Lentidão, Cegueira, Tontura e Escudo bloqueado. A Tenacidade encurta todas; o Blindado não reduz nenhuma."],
+	["Aflição", "Efeito que fica no inimigo por um tempo: Veneno, Queimadura, Congelamento, Lentidão, Cegueira, Tontura e Escudo bloqueado. A Tenacidade encurta todas; o Blindado não reduz nenhuma."],
 	["Veneno", "Dano lento e longo: 5 s. Empilha: cada acerto soma um veneno novo."],
 	["Queimadura", "Dano rápido e curto: muito por segundo, por pouco tempo. Não empilha: um acerto novo renova o tempo e vale a mais forte."],
+	["Congelamento", "Camadas de gelo, até 5: cada uma deixa a cadência e o recarregar do alvo 6% mais lentos. Na 5ª ele congela por 0,5 s (não age, mas leva dano) e as camadas zeram; depois fica 3 s sem congelar de novo. 2 s sem camada nova, perde uma por segundo."],
+	["Quebrar o gelo", "O primeiro golpe em quem está congelado causa +20 e acaba com o gelo. Veneno e queimadura não quebram."],
+	["Efeito fixo por acerto", "Camada de gelo, aquecimento da Brasa e Pressão valem no máximo uma vez a cada 0,25 s de cada atirador em cada alvo: várias balas do mesmo tiro (escopeta) contam uma vez."],
 	["Lentidão", "O alvo anda mais devagar. Não empilha: vale a mais forte."],
 	["Como as cartas somam", "Melhorias do mesmo atributo somam (+20% e +20% = +40%). Pioras multiplicam e têm limite: em geral, nenhum atributo cai abaixo de 35% do normal."],
 ]
@@ -265,7 +270,7 @@ const ARCHETYPES := {
 		"cards": ["polvora_extra", "olho_de_aguia", "fantasma", "teleguiada", "sortudo", "preguicosa", "radar",
 			"sangue_frio"]},
 	"Controle": {"desc": "Atrapalhar o inimigo: lento, cego, envenenado, empurrado.",
-		"cards": ["veneno", "congelante", "flash", "atordoante", "propulsao", "troca_troca", "onda_de_choque",
+		"cards": ["veneno", "congelante", "bala_de_gelo", "flash", "atordoante", "propulsao", "troca_troca", "onda_de_choque",
 			"geada", "nuvem_toxica", "buraco_negro", "chamas"]},
 	# Aflições (2026-10-14, pedido do usuário: sub-builds separadas desde já). Veneno e
 	# Queimadura: cartas que aplicam ou melhoram só aquele efeito. Aflição: cartas que valem
@@ -273,7 +278,10 @@ const ARCHETYPES := {
 	"Veneno": {"desc": "Aplicar e espalhar Veneno, que empilha a cada acerto.",
 		"cards": ["veneno", "nuvem_toxica", "contagio"]},
 	"Queimadura": {"desc": "Aplicar Queimadura, que tira muito por segundo e não empilha.",
-		"cards": ["chamas", "incendiaria", "brasa", "combustivel", "combustao_lenta"]},
+		"cards": ["chamas", "incendiaria", "brasa", "combustivel", "combustao_lenta", "choque_termico"]},
+	# Congelamento (2026-10-15, ideia do usuário): camadas que congelam e o gelo que quebra.
+	"Congelamento": {"desc": "Pôr camadas de gelo até congelar e quebrar o gelo.",
+		"cards": ["bala_de_gelo", "hipotermia", "estilhaco", "choque_termico", "congelante", "geada"]},
 	"Aflição": {"desc": "Melhorar todo efeito que fica no inimigo: durar mais, marcar, estourar, impedir a cura.",
 		"cards": ["marca", "persistencia", "acido", "corrosao", "estouro", "reacao_em_cadeia"]},
 	"Espelho": {"desc": "Refletir as balas do inimigo com o escudo.",
@@ -285,7 +293,8 @@ const ARCHETYPES := {
 			"serra", "chamas", "geada", "mina", "passo_ligeiro", "escudo_de_papel"]},
 	"Corpo a corpo": {"desc": "Encostar no inimigo e bater.",
 		"cards": ["escopeta", "atropelar", "cacador", "sede_de_sangue", "meteoro", "troca_troca",
-			"pancada", "investida", "cacada", "serra", "pisao", "bote"]},
+			"pancada", "investida", "cacada", "serra", "pisao", "bote", "cano_serrado", "arrancada",
+			"pressao", "bumerangue"]},
 	"Tanque": {"desc": "Vida, cura e colete.",
 		"cards": ["vigor", "tanque", "defensor", "sanguessuga", "regeneracao", "fenix", "gigantao",
 			"fortaleza", "couraca", "restauracao", "eco", "blindado", "peso_pesado", "segunda_pele", "casca_dura",
@@ -329,6 +338,11 @@ var CARDS := {
 	# Escopeta refeita em 2026-10-13 (pedido do usuário, para a build de spam: cada bala do leque
 	# gasta pente, como a Rajada; 4 balas, pente +4, dano -40%; leque de 5 graus, porque com 4
 	# balas não há bala no meio e a 7 graus as duas do centro passavam dos lados a mais de 8 m).
+	# Cano Serrado (2026-10-15, build de escopeta pedida pelo usuário; números meus aprovados).
+	# Bullet.CLOSE_*: a distância vai de onde o tiro saiu até onde acertou.
+	"cano_serrado": {"name": "Cano Serrado", "cat": "Arma", "rarity": "epico", "max": 1,
+		"desc": "Suas balas causam +50% de dano a até 5 m; o bônus cai até zero aos 12 m, e a partir de 15 m o dano é -30%. Leque 50% mais aberto. Velocidade da bala -20%.",
+		"mods": [{"stat": "close_range", "add": 1}, {"stat": "spread", "mul": 1.5}, {"stat": "bullet_speed", "mul": 0.8}]},
 	"escopeta": {"name": "Escopeta", "cat": "Arma", "rarity": "raro", "max": 1,
 		"desc": "+3 balas por tiro (4 no total), em leque, e cada bala gasta 1 do pente (com o pente quase vazio, saem só as que houver). Pente +4. Dano -40%.",
 		"mods": [{"stat": "bullet_count", "add": 3}, {"stat": "shot_ammo", "add": 3}, {"stat": "spread", "add": 1.0},
@@ -430,16 +444,32 @@ var CARDS := {
 		"desc": "Cada acerto em quem já queima com seu fogo aumenta essa Queimadura em +25%, até o dobro. Volta ao normal quando a queimadura acaba. Recarregar +0,2 s.",
 		"mods": [{"stat": "ember", "add": 1}, {"stat": "reload_time", "add": 0.2}]},
 	"combustivel": {"name": "Combustível", "cat": "Balas", "rarity": "raro", "max": 1,
-		"desc": "Sua Queimadura tira 40% mais em quem também está com outra aflição: Veneno, Lentidão, Cegueira, Tontura ou Escudo bloqueado. Dano -5%.",
+		"desc": "Sua Queimadura tira 40% mais em quem também está com outra aflição: Veneno, Congelamento, Lentidão, Cegueira, Tontura ou Escudo bloqueado. Dano -5%.",
 		"mods": [{"stat": "fuel", "add": 1}, {"stat": "damage", "mul": 0.95}]},
 	# Combustão Lenta (2026-10-14, pedido do usuário: mais tempo de fogo sem desbalancear):
 	# Player.SLOW_BURN_*; teto de 4 s na Queimadura (BURN_MAX_TIME).
 	"combustao_lenta": {"name": "Combustão Lenta", "cat": "Balas", "rarity": "raro", "max": 2,
 		"desc": "Sua Queimadura dura +0,5 s, mas tira 10% menos por segundo. A Queimadura dura no máximo 4 s.",
 		"mods": [{"stat": "slow_burn", "add": 1}]},
-	"congelante": {"name": "Bala Gelada", "cat": "Balas", "rarity": "raro",
+	# Bala Letárgica: era "Bala Gelada" até 2026-10-15 (o nome confundia com o Congelamento;
+	# id mantido para os baralhos salvos).
+	"congelante": {"name": "Bala Letárgica", "cat": "Balas", "rarity": "raro",
 		"desc": "Acertar aplica Lentidão: o alvo anda 35% mais devagar por 1,5 s.",
 		"mods": [{"stat": "slow", "add": 0.35}]},
+	# Congelamento (2026-10-15, ideia do usuário; números meus aprovados; 1 camada por tiro e
+	# o Choque Térmico como congelar + queimar foram pedidos dele). Código: Player.FROST_* etc.
+	"bala_de_gelo": {"name": "Bala de Gelo", "cat": "Balas", "rarity": "raro", "max": 2,
+		"desc": "Acertar põe 1 camada de Congelamento (2 com 2 cópias). Dano -10%.",
+		"mods": [{"stat": "frost", "add": 1}, {"stat": "damage", "mul": 0.9}]},
+	"hipotermia": {"name": "Hipotermia", "cat": "Balas", "rarity": "raro", "max": 1,
+		"desc": "Acertar quem está com Lentidão põe +1 camada de Congelamento. Quem você congela fica congelado 0,8 s em vez de 0,5. Recarregar +0,2 s.",
+		"mods": [{"stat": "hypothermia", "add": 1}, {"stat": "reload_time", "add": 0.2}]},
+	"estilhaco": {"name": "Estilhaço", "cat": "Balas", "rarity": "raro", "max": 1,
+		"desc": "Quebrar o gelo de alguém acerta também os inimigos a até 4 m dele: metade do golpe e 2 camadas de Congelamento. Cadência -9%.",
+		"mods": [{"stat": "shatter", "add": 1}, {"stat": "fire_interval", "mul": 1.1}]},
+	"choque_termico": {"name": "Choque Térmico", "cat": "Balas", "rarity": "epico", "max": 1,
+		"desc": "Quando o gelo de quem você congelou acaba (quebrado ou derretido), ele leva +10 de dano e Queimadura de 10 por segundo por 1,5 s. Dano -5%.",
+		"mods": [{"stat": "thermal", "add": 1}, {"stat": "damage", "mul": 0.95}]},
 	"propulsao": {"name": "Propulsão", "cat": "Balas", "rarity": "comum",
 		"desc": "As balas empurram quem levar o tiro. Recarregar +0,25 s.",
 		"mods": [{"stat": "knockback", "add": 12.0}, {"stat": "reload_time", "add": 0.25}]},
@@ -609,12 +639,12 @@ var CARDS := {
 		"desc": "O escudo acende um círculo de fogo em volta de você por 3 s, que te acompanha: quem estiver dentro ganha Queimadura (9 por segundo), que continua 1 s depois de sair. Raio de 4 m, +1 m por cópia. Recarga do escudo +1 s.",
 		"mods": [{"stat": "shield_flames", "add": 1}, {"stat": "shield_cooldown", "add": 1.0}]},
 	"geada": {"name": "Geada", "cat": "Escudo", "rarity": "epico", "max": 3,
-		"desc": "O escudo solta uma onda de gelo de 5 m: 6 de dano e Lentidão de 45% por 2 s. Mais cópias: +1,5 m e +0,5 s. Recarga do escudo +1 s.",
+		"desc": "O escudo solta uma onda de gelo de 5 m: 6 de dano, Lentidão de 45% por 2 s e 2 camadas de Congelamento. Mais cópias: +1,5 m e +0,5 s. Recarga do escudo +1 s.",
 		"mods": [{"stat": "shield_frost", "add": 1}, {"stat": "shield_cooldown", "add": 1.0}]},
 	# Estouro (2026-10-14, ideia do usuário, números meus; recarga +2 s pedida por ele; o
 	# nome "Detonação" já era da bala que gruda).
 	"estouro": {"name": "Estouro", "cat": "Escudo", "rarity": "epico", "max": 1,
-		"desc": "Levantar o escudo estoura seu Veneno e sua Queimadura nos inimigos a até 30 m: eles tomam de uma vez o que faltava, x1,5 (x2 com os dois juntos), até 60 por alvo, e perdem esses efeitos. Recarga do escudo +2 s.",
+		"desc": "Levantar o escudo estoura seu Veneno e sua Queimadura nos inimigos a até 30 m: eles tomam de uma vez o que faltava, x1,5 (x2 com os dois juntos), e perdem esses efeitos. Suas camadas de Congelamento também estouram: 6 de dano cada. Até 60 por alvo. Recarga do escudo +2 s.",
 		"mods": [{"stat": "shield_detonate", "add": 1}, {"stat": "shield_cooldown", "add": 2.0}]},
 	"mina": {"name": "Mina", "cat": "Escudo", "rarity": "epico", "max": 3,
 		"desc": "O escudo larga uma bomba no chão que pisca e explode 1 s depois: 30 de dano (metade na borda), raio de 4 m. Mais cópias: +15 de dano e +0,5 m. Recarga do escudo +1 s.",
@@ -674,7 +704,7 @@ var CARDS := {
 		"desc": "Fazer um abate cura 30 de vida.",
 		"mods": [{"stat": "kill_heal", "add": 30.0}]},
 	"tenacidade": {"name": "Tenacidade", "cat": "Corpo", "rarity": "raro", "max": 2,
-		"desc": "Toda aflição dura 35% menos em você: lentidão, tontura, cegueira, veneno e queimadura (60% com 2 cópias).",
+		"desc": "Toda aflição dura 35% menos em você: lentidão, tontura, cegueira, veneno, queimadura e congelamento (60% com 2 cópias).",
 		"mods": [{"stat": "tenacity", "add": 0.35}]},
 	"metabolismo": {"name": "Metabolismo", "cat": "Corpo", "rarity": "comum",
 		"desc": "Toda cura que você recebe é 40% maior.",
@@ -768,6 +798,14 @@ var CARDS := {
 	"recarga_embalo": {"name": "Recarga no Embalo", "cat": "Movimento", "rarity": "comum",
 		"desc": "No ar ou deslizando, recarregar fica 40% mais rápido.",
 		"mods": [{"stat": "air_reload", "add": 0.4}]},
+	# Arrancada e Pressão (2026-10-15, build de escopeta; números meus aprovados). Player.STRIKE_*
+	# e PRESSURE_*.
+	"arrancada": {"name": "Arrancada", "cat": "Movimento", "rarity": "raro", "max": 1,
+		"desc": "Dar o dash na direção de um inimigo à vista (a até 20 m) faz o próximo tiro, em até 1 s, causar +30% de dano. Recarga do dash +0,5 s.",
+		"mods": [{"stat": "dash_strike", "add": 1}, {"stat": "dash_cooldown", "add": 0.5}]},
+	"pressao": {"name": "Pressão", "cat": "Movimento", "rarity": "raro", "max": 1,
+		"desc": "Acertar um inimigo a até 6 m dá +25% de velocidade de movimento por 1,5 s e adianta a recarga do dash em 1 s (o leque da escopeta conta uma vez). Vida -10%.",
+		"mods": [{"stat": "pressure", "add": 1}, {"stat": "max_health", "mul": 0.9}]},
 	"bote": {"name": "Bote", "cat": "Movimento", "rarity": "raro", "max": 1,
 		"desc": "Dar o dash quase na direção de um inimigo à vista (a até 10 m) faz o dash curvar sozinho até ele, até 35 graus.",
 		"mods": [{"stat": "dash_seek", "add": 1}]},

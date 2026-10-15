@@ -44,6 +44,7 @@ const FROST_DAMAGE := 6.0
 const FROST_SLOW := 0.45
 const FROST_TIME := 2.0
 const FROST_TIME_STEP := 0.5
+const FROST_LAYERS := 2   # camadas de Congelamento (2026-10-15)
 # Mina: pisca e explode; dano fixo (escolha do usuário), metade na borda.
 const MINE_FUSE := 1.0
 const MINE_RADIUS := 4.0
@@ -140,6 +141,7 @@ static func shield(owner: Player, mask: int, pos: Vector3) -> void:
 			if p.chest().distance_to(center) < r:
 				p.apply_slow(FROST_SLOW, FROST_TIME + FROST_TIME_STEP * (n - 1), owner)
 				p.take_area_damage(FROST_DAMAGE, owner)
+				p.add_frost(FROST_LAYERS, owner)   # depois do dano: a onda que congela não quebra o gelo
 
 
 ## Bala bateu (parede, chão ou alguém): Nuvem Tóxica e Buraco Negro, se ela os carrega.

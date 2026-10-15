@@ -113,7 +113,16 @@ const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", 
 	"boomerang", "returning", "bounce_damage", "sticky", "split", "grow", "swap", "blind",
 	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls",
 	"toxic", "hole", "laser", "ice", "meteor", "rocket", "missile", "blast_radius", "blast_damage", "life", "drill",
-	"bounce_life", "click", "bonus", "ambush"]
+	"bounce_life", "click", "bonus", "ambush", "close", "origin"]
+## Cano Serrado (2026-10-15, build de escopeta; números meus aprovados): pela distância de onde
+## o tiro saiu até onde acertou, soma até CLOSE_BONUS ao dano (soma única) até CLOSE_NEAR m,
+## caindo a zero em CLOSE_ZERO m; de CLOSE_ZERO a CLOSE_FAR o dano cai até CLOSE_FAR_MULT.
+## A bala do Bumerangue que volta e acerta perto de quem atirou ganha o bônus.
+const CLOSE_BONUS := 0.5
+const CLOSE_NEAR := 5.0
+const CLOSE_ZERO := 12.0
+const CLOSE_FAR := 15.0
+const CLOSE_FAR_MULT := 0.7
 ## Bala Fantasma: só paredes contam (superfície quase em pé); no chão e no topo das peças a
 ## bala para ou quica como as outras.
 const GHOST_WALL_NORMAL_Y := 0.7
@@ -188,6 +197,8 @@ var ambush := false    # tiro da Emboscada que atravessa paredes (Camuflagem): s
 ## a parede do Bastião sem ser devolvida, e o dano ignora o colete.
 var drill := false
 var click := 0      # Reciclagem: número do clique de quem atirou (0 = não devolve)
+var close := 0      # Cano Serrado (0 = sem a carta)
+var origin := Vector3.ZERO   # de onde o tiro saiu (Cano Serrado mede a distância daqui)
 var _drilled: Array = []
 var sound := false
 var age := 0.0
@@ -241,6 +252,8 @@ static func fire(from: Player, pos: Vector3, dir: Vector3, damage_mult := 1.0, w
 	b.toxic = s["toxic"]
 	b.hole = s["black_hole"]
 	b.guided = s["guided"] > 0
+	b.close = s["close_range"]
+	b.origin = pos
 	if b.guided:
 		b.gravity = 0.0
 	var speed := float(s["bullet_speed"])
@@ -780,6 +793,12 @@ func _hit_world(hit: Dictionary) -> void:
 		_boom(point + normal * 0.3)
 		queue_free()
 		return
+	if ice:
+		# Caco da Prisão de Gelo: estilhaça (cada máquina nos jogadores dela).
+		if is_instance_valid(shooter):
+			Player.ice_shard_burst(shooter, point + normal * 0.3)
+		queue_free()
+		return
 	if hit.get("ceiling", false):
 		if bounces <= 0:
 			queue_free()
@@ -878,8 +897,10 @@ func _hit_player(target: Player, point: Vector3) -> void:
 		queue_free()
 		return
 	if target.ice_timer > 0.0:
-		# Bloco de gelo: não leva dano nem efeito; o tiro só empurra.
+		# Bloco de gelo: não leva efeito; o tiro empurra e o bloco guarda parte do dano.
 		target.ice_push(velocity, damage if not ice else 20.0)
+		if not ice:
+			target.take_damage(damage, shooter)
 		if Net.online:
 			get_parent().net_bullet_hit.rpc(id, point, 0.0)
 		Effects.burst(get_parent(), point, 0.5, Player.ICE_COLOR, 0.12)
@@ -903,10 +924,22 @@ func _hit_player(target: Player, point: Vector3) -> void:
 		hit_bonus += execute
 	if is_instance_valid(shooter) and shooter.stats["revenge"] > 0.0 and String(target.name) == shooter.revenge_target:
 		hit_bonus += shooter.stats["revenge"]   # Vingança
+	var far_mult := 1.0
+	if close > 0:
+		# Cano Serrado: bônus de perto (soma) ou perda de longe (multiplica).
+		var d := origin.distance_to(point)
+		if d < CLOSE_ZERO:
+			hit_bonus += CLOSE_BONUS * clampf((CLOSE_ZERO - d) / (CLOSE_ZERO - CLOSE_NEAR), 0.0, 1.0)
+		else:
+			far_mult = lerpf(1.0, CLOSE_FAR_MULT, clampf((d - CLOSE_ZERO) / (CLOSE_FAR - CLOSE_ZERO), 0.0, 1.0))
 	if hit_bonus > 0.0:
 		var sum := bonus * grow_mult   # com o que a Bola de Neve já somou
 		dmg *= (sum + hit_bonus) / sum
+	dmg *= far_mult
 	dmg *= target.bullet_taken_mult()   # Vulto (o veneno também sai do dano reduzido)
+	# Efeitos de valor fixo (camada de gelo, Brasa): no máximo um a cada Player.FLAT_GAP s
+	# deste atirador neste alvo; o leque da escopeta conta uma vez.
+	var flat := target.flat_ready(shooter) if is_instance_valid(shooter) else false
 	if push > 0.0 and target != shooter:   # a própria bala quicada não empurra (virava elevador)
 		target.knockback(velocity.normalized() * push + Vector3.UP * 3.0)
 	if slow > 0.0:
@@ -914,7 +947,7 @@ func _hit_player(target: Player, point: Vector3) -> void:
 	if poison > 0.0:
 		target.apply_poison(dmg * poison, shooter)
 	if burn > 0.0:
-		target.apply_burn(dmg * burn, Player.BURN_HIT_TIME, shooter, true)
+		target.apply_burn(dmg * burn, Player.BURN_HIT_TIME, shooter, flat)
 	if shield_break:
 		target.silence(shooter)
 	if blind > 0.0:
@@ -922,6 +955,11 @@ func _hit_player(target: Player, point: Vector3) -> void:
 	if swap and is_instance_valid(shooter) and shooter.alive:
 		target.begin_swap(shooter)
 	target.take_damage(dmg, shooter, true, drill)
+	if flat:
+		target.frost_hit(shooter)   # depois do dano: o tiro que congela não quebra o gelo
+	if is_instance_valid(shooter) and shooter != target and shooter.stats["pressure"] > 0 \
+			and shooter.chest().distance_to(target.chest()) <= Player.PRESSURE_RANGE:
+		shooter.remote_call("pressure_hit")
 	if click > 0 and is_instance_valid(shooter) and shooter != target and shooter.stats["recycle"] > 0:
 		shooter.remote_call("bullet_refund", [click])
 	if Net.online:
@@ -1038,6 +1076,7 @@ func _apply_reflect(new_owner: Player, point: Vector3, dir: Vector3, new_damage:
 	homing = new_homing
 	reflected = true
 	click = 0   # o clique era de quem atirou, não de quem refletiu
+	close = 0
 	bounced = false
 	returning = false
 	gravity = 0.0

@@ -187,16 +187,16 @@ const PLAY_GAP := 12        # espaço entre os blocos de cada coluna
 const PLAY_ACTION_H := 52.0 # altura do botão principal da aba
 const SIDE_PAGES := ["Novidades", "Missões", "Baralho"]
 ## Atualizar a cada versão (texto curto, o que o jogador nota).
-const NEWS_TITLE := "Versão 0.8"
+const NEWS_TITLE := "Versão 0.9"
 const NEWS := [
-	"Missões diárias e semanais (contam online): moedas, fichas e Pacote de Mestra.",
-	"5 mestras novas: Cartas Instáveis, Domínio do Rei, Arpéu Ventoso, Mecha e Clone.",
-	"Prorrogação: cartas extras aos 2, 3 e 4 min (rodada 1, rodadas 2 e 3, rodada 4 em diante); 2 min depois a arena fecha.",
-	"14 cartas comuns novas (120 no total).",
-	"Aflições: Veneno lento e longo, Queimadura rápida e curta (Bala Incendiária, Brasa), tela verde ou em chamas.",
-	"3 s de proteção no começo de cada rodada (atacar encerra a sua).",
-	"Loja numa página só e criação de cartas com fichas no editor (Criar).",
-	"Balanceamento grande: Rajada, Teleguiada, Flash, Regeneração, Pólvora e mais.",
+	"Aflições: Veneno lento e longo, Queimadura rápida e curta, tela verde ou em chamas.",
+	"Congelamento: camadas de gelo até congelar o inimigo, e o próximo golpe quebra o gelo (Bala de Gelo, Estilhaço, Choque Térmico).",
+	"Prisão de Gelo mais forte: caco que estilhaça e bloco que guarda o dano.",
+	"Build de escopeta: Cano Serrado (forte de perto, fraco de longe), Arrancada e Pressão.",
+	"Dano em soma única: os bônus somam em vez de multiplicar.",
+	"Domínio do Rei, Arpéu Ventoso, Eco e Camuflagem refeitos.",
+	"Prorrogação mais cedo nas primeiras rodadas e relógio no topo da tela.",
+	"19 cartas comuns novas (139 no total).",
 ]
 static var _play_tab := "Treino"   # lembra a última aba enquanto o jogo roda
 static var _side_page := 0         # e a última página da coluna da direita

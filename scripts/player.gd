@@ -77,6 +77,10 @@ const BASE_STATS := {
 	"ember": 0,            # Brasa: acertar quem queima com seu fogo esquenta a queimadura
 	"fuel": 0,             # Combustível: sua queimadura tira mais em quem tem outra aflição
 	"slow": 0.0,
+	"frost": 0,            # Bala de Gelo (e Prisão de Gelo): camadas de Congelamento por acerto (FROST_*)
+	"hypothermia": 0,      # Hipotermia: +1 camada em quem está lento; congelado dura mais
+	"shatter": 0,          # Estilhaço: quebrar o gelo acerta quem está perto (SHATTER_*)
+	"thermal": 0,          # Choque Térmico: congelar dá dano e Queimadura (THERMAL_*)
 	"knockback": 0.0,
 	"shield_break": 0,
 	"target_bounce": 0,
@@ -136,6 +140,9 @@ const BASE_STATS := {
 	"blur": 0,            # Vulto: cópias (menos dano de balas acima de BLUR_SPEED)
 	"air_reload": 0.0,    # Recarga no Embalo: recarga mais rápida no ar ou deslizando
 	"dash_seek": 0,       # Bote: o dash curva até o inimigo
+	"close_range": 0,     # Cano Serrado: dano maior de perto, menor de longe (Bullet.CLOSE_*)
+	"dash_strike": 0,     # Arrancada: dash na direção de um inimigo fortalece o próximo tiro (STRIKE_*)
+	"pressure": 0,        # Pressão: acertar de perto dá velocidade e adianta o dash (PRESSURE_*)
 	"recycle": 0,         # Reciclagem: cada bala que acerta devolve 1 ao pente por cópia
 	"still_aim": 0,       # Sangue Frio: cópias (bônus parado ou agachado no chão)
 	"thick_skin": 0,      # Couro Grosso: cópias (redução que acumula por golpe levado)
@@ -446,7 +453,7 @@ const CHAIN_GUARD := 3.0
 ## Cor da explosão pela aflição que terminou (pedido do usuário).
 const CHAIN_COLORS := {"poison": CONTAGION_COLOR, "burn": Color(1.0, 0.28, 0.15),
 	"slow": Color(0.45, 0.7, 1.0), "blind": Color(1.0, 1.0, 0.85), "silence": Color(0.75, 0.5, 1.0),
-	"daze": Color(1.0, 0.85, 0.3)}
+	"daze": Color(1.0, 0.85, 0.3), "frost": Color(0.55, 0.85, 1.0)}
 const BLOODLUST_TIME := 3.0
 const RAGE_THRESHOLD := 0.35
 ## Regeneração: cura depois de REGEN_DELAY sem levar dano e sem atacar (tiro ou Espada).
@@ -643,7 +650,8 @@ const ASSIST_TIME := 10.0   # placar: dano nos últimos 10 s antes da morte cont
 const REMOTE_METHODS := ["receive_grapple_kick", "receive_shockwave", "credit_damage", "bullet_refund", "teleport_to", "swap_to", "receive_stomp",
 	"receive_slash", "ice_shove", "receive_slap", "receive_beam", "receive_hook", "hook_blocked",
 	"hook_throw", "hook_release", "receive_bowl", "receive_slam", "receive_realm", "realm_blocked",
-	"mark_seen", "receive_contagion", "receive_detonation", "receive_chain"]
+	"mark_seen", "receive_contagion", "receive_detonation", "receive_chain", "receive_shatter",
+	"pressure_hit"]
 ## Gancho (mestra). Quem lança move a ponta (HOOK_SPEED, até HOOK_RANGE) e acha o alvo; a
 ## máquina do alvo decide (escudo bloqueia), puxa o próprio corpo (HOOK_PULL) até a frente
 ## de quem segura e fica lá por HOOK_HOLD. Arremesso a HOOK_THROW: parede dá HOOK_IMPACT e
@@ -840,9 +848,61 @@ const ICE_FRICTION := 2.5
 const ICE_SHOVE_DASH := 1.5
 const ICE_COLOR := Color(0.7, 0.95, 1.0)
 const ICE_CAM_DISTANCE := 4.5
+## Reforço de 2026-10-15 (pedido do usuário: difícil de acertar e retorno baixo; números meus
+## aprovados): caco mais grosso (ICE_SHARD_RADIUS; era 0,22); no cenário estilhaça e põe
+## ICE_SHARD_LAYERS camadas de Congelamento a até ICE_SHARD_RANGE m; o bloco guarda ICE_STORE
+## do dano que leva de inimigos (até ICE_STORE_MAX) e solta tudo no degelo, com a quebra do
+## gelo (FROST_BREAK). A carta também dá 1 camada por acerto (stat frost) e recarga 12 s (era 14).
+const ICE_SHARD_RADIUS := 0.4
+const ICE_SHARD_RANGE := 3.0
+const ICE_SHARD_LAYERS := 2
+const ICE_STORE := 0.5
+const ICE_STORE_MAX := 50.0
 var ice_timer := 0.0      # congelado por mais quanto tempo (todas as máquinas, para o visual)
 var ice_debt := 0.0       # dano do vazio guardado até derreter (no máximo um)
+var ice_store := 0.0      # dano guardado no bloco (máquina dona)
+var ice_from: Player      # quem pôs dano no bloco por último (leva o crédito no degelo)
 var ice_block: Node3D
+## Congelamento (aflição, 2026-10-15; ideia do usuário, números meus aprovados): camadas de
+## gelo, até FROST_MAX. Cada uma deixa a cadência e o recarregar FROST_STEP mais lentos. Na
+## última o alvo congela por FROST_FREEZE s (não age, mas leva dano; FROST_FREEZE_HYPO com a
+## Hipotermia de quem congelou) e as camadas zeram. O primeiro golpe nele (não conta veneno,
+## queimadura e outros ticks) quebra o gelo: +FROST_BREAK de dano e acaba o congelado. Sem
+## camada nova por FROST_HOLD s, perde uma a cada FROST_DECAY s. Depois de congelar, fica
+## FROST_GUARD s sem congelar de novo (as camadas param em FROST_MAX - 1). Tenacidade encurta
+## o congelado e o tempo das camadas.
+const FROST_MAX := 5
+const FROST_STEP := 0.06
+const FROST_FREEZE := 0.5
+const FROST_FREEZE_HYPO := 0.8
+const FROST_BREAK := 20.0
+const FROST_HOLD := 2.0
+const FROST_DECAY := 1.0
+const FROST_GUARD := 3.0
+const FROST_COLOR := Color(0.55, 0.85, 1.0)
+## Estilhaço: quebrar o gelo acerta inimigos a até SHATTER_RANGE m com metade do golpe e
+## SHATTER_LAYERS camadas. É também quantas camadas a Reação em Cadeia repassa.
+const SHATTER_RANGE := 4.0
+const SHATTER_LAYERS := 2
+## Choque Térmico (ideia do usuário, números meus): até congelar não muda nada; quando o
+## congelado das camadas que você pôs acaba (quebrado ou pelo tempo), ele leva THERMAL_DAMAGE
+## a mais (somado à quebra, se quebrou) e Queimadura de THERMAL_DPS por THERMAL_TIME s
+## (Combustão Lenta e Persistência valem). Até 2026-10-15 valia no momento de congelar.
+const THERMAL_DAMAGE := 10.0
+const THERMAL_DPS := 10.0
+const THERMAL_TIME := 1.5
+## Estouro: dano por camada de quem estourou.
+const DETONATE_FROST := 6.0
+var frost_layers := 0       # camadas (máquina dona; nas outras, vem do estado em rede)
+var frost_timer := 0.0      # até perder uma camada
+var frost_freeze := 0.0     # congelado pelas camadas por mais quanto tempo (máquina dona)
+var frost_guard := 0.0
+var frost_from: Player      # quem pôs a última camada
+var thermal_from: Player    # Choque Térmico de quem congelou (vale quando o congelado acabar)
+var _frost_shown := false   # bloco do congelado à mostra (todas as máquinas)
+var frost_mark: Node3D      # no inimigo: gelo e "n/5" em cima do corpo, criado no 1o uso
+var _frost_mark_label: Label3D
+var _frost_mark_n := -1
 ## Carta mestra que este jogador tem (a primeira de cards; "" se nenhuma).
 var master_id := ""      # mestra da vez (com o Caos, a sorteada)
 var master_cd := 0.0
@@ -1118,6 +1178,28 @@ const AIR_RELOAD_MAX := 1.0
 const DASH_SEEK_RANGE := 10.0
 const DASH_SEEK_ANGLE := deg_to_rad(35.0)
 const DASH_SEEK_TURN := 8.0
+## Build de escopeta (2026-10-15, pedido do usuário: alto dano de perto, ruim de longe, com
+## movimento para chegar; cartas e números meus aprovados). Arrancada: dash com um inimigo à
+## vista a até STRIKE_RANGE m e até DASH_SEEK_ANGLE da direção do dash: o próximo tiro, em até
+## STRIKE_TIME s, soma STRIKE_DAMAGE ao dano (soma única). Pressão: acertar a até PRESSURE_RANGE
+## m dá PRESSURE_SPEED de velocidade por PRESSURE_TIME s e adianta a recarga do dash em
+## PRESSURE_DASH s, no máximo uma vez a cada FLAT_GAP s (o leque da escopeta conta uma vez).
+const STRIKE_RANGE := 20.0
+const STRIKE_TIME := 1.0
+const STRIKE_DAMAGE := 0.3
+const PRESSURE_RANGE := 6.0
+const PRESSURE_SPEED := 0.25
+const PRESSURE_TIME := 1.5
+const PRESSURE_DASH := 1.0
+## Efeitos de valor fixo por acerto (camada de gelo, Brasa, Hipotermia, Pressão) contam no
+## máximo uma vez a cada FLAT_GAP s de cada atirador em cada alvo (2026-10-15, pedido do
+## usuário: o baralho de spam não pode ser o principal das aflições; não proíbe, só
+## desacelera). Arma normal (0,3 s por tiro) não sente; o leque da escopeta conta uma vez.
+const FLAT_GAP := 0.25
+var strike_timer := 0.0     # Arrancada: o próximo tiro sai mais forte enquanto > 0
+var pressure_timer := 0.0   # Pressão: mais rápido enquanto > 0
+var _pressure_next := 0     # Pressão: ms em que pode valer de novo
+var _flat_next := {}        # FLAT_GAP: atirador -> ms em que o próximo efeito fixo vale (máquina do alvo)
 ## Sangue Frio: por cópia, +25% de dano e balas 30% mais rápidas parado (abaixo de 1 m/s) ou
 ## agachado sem deslizar, no chão.
 const STILL_DAMAGE := 0.25
@@ -1628,6 +1710,18 @@ func reset_for_round(spawn: Transform3D) -> void:
 	last_stand_used = false
 	ice_timer = 0.0
 	ice_debt = 0.0
+	ice_store = 0.0
+	ice_from = null
+	frost_layers = 0
+	frost_timer = 0.0
+	frost_freeze = 0.0
+	frost_guard = 0.0
+	frost_from = null
+	thermal_from = null
+	_frost_shown = false
+	strike_timer = 0.0
+	pressure_timer = 0.0
+	_flat_next.clear()
 	_ice_visual(false)
 	slap_flight = 0.0
 	slap_lock = false
@@ -1904,6 +1998,8 @@ func _frame_step(delta: float) -> void:
 				+ ("  [%d]" % ceili(mech_armor) if mech_state == 2 else "")
 		_update_guard_icons()
 		_update_realm_mark()
+		if frost_layers > 0 or frost_mark:
+			_update_frost_mark()
 		if ally_arrow:
 			# Parceiro caído: a seta pisca para chamar atenção.
 			ally_arrow.modulate.a = (0.35 + 0.65 * absf(sin(Time.get_ticks_msec() * 0.008))) if downed else 1.0
@@ -2472,6 +2568,10 @@ func _physics_step(delta: float) -> void:
 		move_and_slide()
 		_send_state()
 		return
+	if frost_freeze > 0.0 and ice_timer <= 0.0:
+		_frost_move(delta)
+		_send_state()
+		return
 	if ice_timer > 0.0:
 		_ice_move(delta)
 		_send_state()
@@ -2523,7 +2623,10 @@ func _physics_step(delta: float) -> void:
 
 
 func _tick(delta: float) -> void:
-	fire_timer = maxf(0.0, fire_timer - delta)
+	# Congelamento: cada camada deixa a cadência e o recarregar mais lentos.
+	var chill := 1.0 / (1.0 + FROST_STEP * frost_layers)
+	_frost_tick(delta)
+	fire_timer = maxf(0.0, fire_timer - delta * chill)
 	shield_timer = maxf(0.0, shield_timer - delta)
 	shield_cd = maxf(0.0, shield_cd - delta)
 	dash_cd = maxf(0.0, dash_cd - delta)
@@ -2547,7 +2650,8 @@ func _tick(delta: float) -> void:
 		if daze_timer <= 0.0:
 			_chain_end("daze", 0.0, aff_from.get("daze"))
 	if slap_windup > 0.0 and is_local:
-		if not alive or ice_timer > 0.0 or hooked_by or daze_timer > 0.0 or slap_lock or ride_timer > 0.0:
+		if not alive or ice_timer > 0.0 or frost_freeze > 0.0 or hooked_by or daze_timer > 0.0 or slap_lock \
+				or ride_timer > 0.0:
 			_cancel_slap()
 		else:
 			slap_windup -= delta
@@ -2632,6 +2736,8 @@ func _tick(delta: float) -> void:
 	since_damage += delta
 	since_attack += delta
 	parkour_timer = maxf(0.0, parkour_timer - delta)
+	strike_timer = maxf(0.0, strike_timer - delta)
+	pressure_timer = maxf(0.0, pressure_timer - delta)
 	tough_timer = maxf(0.0, tough_timer - delta)
 	if dash_echo_wait > 0.0 and (ice_timer > 0.0 or hooked_by or slap_flight > 0.0 or ride_timer > 0.0):
 		dash_echo_wait = 0.0   # preso, congelado ou arremessado: o dash extra se perde
@@ -2655,7 +2761,7 @@ func _tick(delta: float) -> void:
 		var rate := 1.0
 		if stats["air_reload"] > 0.0 and (not is_on_floor() or sliding):
 			rate += minf(AIR_RELOAD_MAX, stats["air_reload"])
-		reload_timer -= delta * rate
+		reload_timer -= delta * rate * chill
 		if reload_timer <= 0.0:
 			ammo = stats["mag_size"]
 	if not alive:
@@ -2699,6 +2805,8 @@ func _target_speed() -> float:
 		speed *= 1.0 + stats["shield_haste"]
 	if parkour_timer > 0.0:
 		speed *= 1.0 + PARKOUR_SPEED * float(stats["parkour"])
+	if pressure_timer > 0.0:
+		speed *= 1.0 + PRESSURE_SPEED
 	if beam_charge > 0.0:
 		speed *= BEAM_CHARGE_SPEED
 	if hook_state == 3:
@@ -3002,6 +3110,8 @@ func _start_dash(wish: Vector3, h: Vector3, target: float, air: bool) -> void:
 	dash_hits.clear()
 	dash_seek_target = _dash_seek_find() if stats["dash_seek"] > 0 else null
 	dash_seek_left = DASH_SEEK_ANGLE
+	if stats["dash_strike"] > 0 and _dash_seek_find(STRIKE_RANGE) != null:
+		strike_timer = STRIKE_TIME   # Arrancada
 	jump_rising = false
 	if stats["dash_dodge"] > 0:
 		dodge_timer = DODGE_TIME
@@ -3013,8 +3123,9 @@ func _start_dash(wish: Vector3, h: Vector3, target: float, air: bool) -> void:
 
 
 ## Fim do dash: sobra a velocidade de saída, e se o Ctrl ainda está seguro no chão, desliza.
-## Bote: o inimigo à vista mais perto da direção do dash, dentro do alcance e do ângulo.
-func _dash_seek_find() -> Player:
+## Bote: o inimigo à vista mais perto da direção do dash, dentro do alcance e do ângulo
+## (a Arrancada usa com o alcance dela).
+func _dash_seek_find(reach := DASH_SEEK_RANGE) -> Player:
 	var best: Player = null
 	var best_angle := DASH_SEEK_ANGLE
 	var space := get_world_3d().direct_space_state
@@ -3022,7 +3133,7 @@ func _dash_seek_find() -> Player:
 		var to := enemy.global_position - global_position
 		to.y = 0.0
 		var d := to.length()
-		if d < 0.5 or d > DASH_SEEK_RANGE:
+		if d < 0.5 or d > reach:
 			continue
 		var angle := dash_dir.angle_to(to / d)
 		if angle > best_angle:
@@ -3389,7 +3500,8 @@ func _send_state() -> void:
 	var flags := (1 if is_on_floor() else 0) | (2 if crouching else 0) | (4 if sliding else 0) \
 		| (8 if boosting else 0) | (16 if daze_timer > 0.0 else 0) \
 		| (32 if blind_guard > 0.0 else 0) | (64 if silence_guard > 0.0 else 0) | (128 if swap_lock > 0.0 else 0) \
-		| (256 if spawn_protect > 0.0 else 0) | (512 if heal_glow > 0.0 else 0)
+		| (256 if spawn_protect > 0.0 else 0) | (512 if heal_glow > 0.0 else 0) \
+		| (1024 if frost_freeze > 0.0 else 0) | (mini(frost_layers, 7) << 11)
 	_net_state.rpc(net_round, global_position, velocity, rotation.y, head.rotation.x, flags, shield_timer, health, armor)
 
 
@@ -3425,6 +3537,8 @@ func _net_state(round_id: int, pos: Vector3, vel: Vector3, yaw: float, pitch: fl
 	if dazed and not _net_dazed:
 		daze_fx = DAZE_FX_TIME
 	_net_dazed = dazed
+	frost_layers = (flags >> 11) & 7   # Congelamento: para o visual nas outras máquinas
+	_frost_visual_sync((flags & 1024) != 0 and alive)
 	sliding = (flags & 4) != 0
 	var crouch := (flags & 2) != 0
 	if crouch != crouching:
@@ -5211,7 +5325,7 @@ func _fire_ice() -> void:
 	var target: Vector3 = hit["position"] if not hit.is_empty() else origin + aim * ICE_RANGE
 	shot_bonus = 0.0
 	Bullet.fire(self, muzzle.global_position, (target - muzzle.global_position).normalized(), 0.0, true,
-		{"speed": ICE_SPEED, "ice": true, "radius": 0.22, "gravity": 0.0, "bounces": 0, "ghost_walls": 0,
+		{"speed": ICE_SPEED, "ice": true, "radius": ICE_SHARD_RADIUS, "gravity": 0.0, "bounces": 0, "ghost_walls": 0,
 		"explosion": 0.0, "poison": 0.0, "burn": 0.0, "slow": 0.0, "push": 0.0, "shield_break": false, "execute": 0.0,
 		"split": 0, "sticky": false, "boomerang": false, "guided": false, "seek": 0.0, "homing": 0.0,
 		"target_bounce": 0.0, "lazy_top": 0.0, "grow": 0.0, "swap": false, "blind": 0.0, "toxic": 0,
@@ -5226,18 +5340,28 @@ func freeze() -> void:
 	if not alive or downed or ice_timer > 0.0:
 		return
 	ice_timer = ICE_TIME
+	ice_store = 0.0
+	ice_from = null
+	frost_freeze = 0.0   # a Prisão manda: o congelado das camadas acaba (o bloco é o dela)
+	thermal_from = null
+	_frost_shown = false
+	_stop_actions()
+	froze.emit()
+	_ice_visual(true)
+	if Net.online and is_inside_tree():
+		_net_ice.rpc(true)
+
+
+## Congelado (Prisão de Gelo ou camadas): para tudo o que estava fazendo.
+func _stop_actions() -> void:
 	_end_beam(true)
 	_ride_crash()
 	_hook_let_go()
-	froze.emit()
 	shield_timer = 0.0
 	dash_timer = 0.0
 	sliding = false
 	slamming = false
 	scoping = false
-	_ice_visual(true)
-	if Net.online and is_inside_tree():
-		_net_ice.rpc(true)
 
 
 func _thaw() -> void:
@@ -5245,7 +5369,15 @@ func _thaw() -> void:
 	_ice_visual(false)
 	if Net.online and is_inside_tree():
 		_net_ice.rpc(false)
-	if ice_debt > 0.0:
+	if ice_store > 0.0:
+		# Degelo: o que o bloco guardou sai de uma vez, com a quebra do gelo.
+		var by := ice_from if is_instance_valid(ice_from) else null
+		var stored := ice_store
+		ice_store = 0.0
+		ice_from = null
+		_frost_fx(2)
+		take_damage(stored + FROST_BREAK, by)
+	if ice_debt > 0.0 and alive:
 		var who := last_attacker if since_damage < VOID_CREDIT and is_instance_valid(last_attacker) else null
 		var debt := ice_debt
 		ice_debt = 0.0
@@ -5258,6 +5390,245 @@ func _net_ice(on: bool) -> void:
 	_ice_visual(on)
 	if on:
 		froze.emit()
+
+
+## Bloco de gelo levou dano de inimigo (máquina dona): guarda uma parte para o degelo.
+func _ice_store(amount: float, from: Player) -> void:
+	if from == null or from == self or is_ally(from):
+		return
+	ice_store = minf(ICE_STORE_MAX, ice_store + amount * ICE_STORE)
+	ice_from = from
+
+
+## Caco da Prisão de Gelo bateu no cenário (cada máquina, nos jogadores dela): camadas em
+## quem está perto.
+static func ice_shard_burst(shooter: Player, point: Vector3) -> void:
+	Effects.burst(shooter.get_parent(), point, ICE_SHARD_RANGE, ICE_COLOR, 0.25)
+	Effects.sparks(shooter.get_parent(), point, ICE_COLOR, 10, 8.0)
+	for p: Player in shooter.enemies():
+		if p.is_local and p.chest().distance_to(point) < ICE_SHARD_RANGE:
+			p.add_frost(ICE_SHARD_LAYERS, shooter)
+
+
+# ---------------------------------------------------------------- Congelamento
+
+## Acerto de bala de from (máquina dona do alvo, depois do dano, para o tiro que congela não
+## quebrar o gelo na hora): as camadas das cartas dele.
+func frost_hit(from: Player) -> void:
+	if not is_instance_valid(from) or from == self or is_ally(from):
+		return
+	var n := int(from.stats["frost"])
+	if from.stats["hypothermia"] > 0 and slow_timer > 0.0:
+		n += 1   # Hipotermia
+	add_frost(n, from)
+
+
+## n camadas de from (máquina dona). Na última, congela.
+func add_frost(n: int, from: Player) -> void:
+	if not alive or downed or n <= 0 or ice_timer > 0.0 or frost_freeze > 0.0:
+		return
+	frost_from = from if is_instance_valid(from) else null
+	frost_timer = _control_time(FROST_HOLD)
+	frost_layers = mini(frost_layers + n, FROST_MAX if frost_guard <= 0.0 else FROST_MAX - 1)
+	if frost_layers >= FROST_MAX:
+		_frost_freeze(frost_from)
+
+
+func _frost_freeze(from: Player) -> void:
+	frost_layers = 0
+	var valid := is_instance_valid(from)
+	thermal_from = from if valid and from.stats["thermal"] > 0 else null
+	frost_freeze = _control_time(FROST_FREEZE_HYPO if valid and from.stats["hypothermia"] > 0 else FROST_FREEZE)
+	frost_guard = frost_freeze + FROST_GUARD
+	_stop_actions()
+	_frost_fx(1)
+
+
+## A cada passo (máquina dona): congelado, proteção e camadas que caem.
+func _frost_tick(delta: float) -> void:
+	frost_guard = maxf(0.0, frost_guard - delta)
+	if frost_freeze > 0.0:
+		frost_freeze = maxf(0.0, frost_freeze - delta)
+		if frost_freeze <= 0.0 and alive and not downed and is_instance_valid(thermal_from):
+			# Choque Térmico: derreteu sozinho.
+			var by := thermal_from
+			take_damage(_thermal_burn(), by)
+	if frost_layers > 0:
+		frost_timer -= delta
+		if frost_timer <= 0.0:
+			frost_layers -= 1
+			frost_timer = _control_time(FROST_DECAY)
+			if frost_layers == 0:
+				_chain_end("frost", float(SHATTER_LAYERS), frost_from)
+	_frost_visual_sync(frost_freeze > 0.0)
+
+
+## Congelado pelas camadas: para no lugar (sem deslizar como o bloco da Prisão), cai e quica.
+func _frost_move(delta: float) -> void:
+	const STOP := 40.0
+	velocity.y -= (GRAVITY_RISE if velocity.y > 0.0 else GRAVITY_FALL) * delta
+	var h := Vector2(velocity.x, velocity.z).move_toward(Vector2.ZERO, STOP * delta)
+	velocity.x = h.x
+	velocity.z = h.y
+	move_and_slide()
+	if global_position.y < Arena.VOID_Y and velocity.y <= 0.0:
+		_void_bounce()
+
+
+## Golpe em quem está congelado pelas camadas (dentro de take_damage): quebra o gelo.
+## Devolve o dano com a quebra.
+func _frost_break(amount: float, from: Player) -> float:
+	frost_freeze = 0.0
+	_frost_visual_sync(false)
+	_frost_fx(2)
+	amount += FROST_BREAK
+	if is_instance_valid(thermal_from):
+		amount += _thermal_burn()   # Choque Térmico: soma à quebra
+	if from.stats["shatter"] > 0:
+		# Estilhaço: metade do golpe e camadas em quem está perto.
+		for q: Player in get_tree().get_nodes_in_group("players"):
+			if q == self or q == from or not q.alive or q.is_ally(from) \
+					or q.global_position.distance_squared_to(global_position) > SHATTER_RANGE * SHATTER_RANGE:
+				continue
+			q.remote_call("receive_shatter", [String(from.name), amount * 0.5])
+			Effects.beam(get_parent(), chest(), q.chest(), FROST_COLOR, 0.05, 0.3)
+	return amount
+
+
+## FLAT_GAP (máquina do alvo): este acerto de from pode aplicar efeitos de valor fixo?
+func flat_ready(from: Player) -> bool:
+	if from == null:
+		return false
+	var now := Time.get_ticks_msec()
+	if now < int(_flat_next.get(from, 0)):
+		return false
+	_flat_next[from] = now + int(FLAT_GAP * 1000.0)
+	return true
+
+
+## Pressão: acertou de perto (máquina dona de quem atirou).
+func pressure_hit() -> void:
+	var now := Time.get_ticks_msec()
+	if stats["pressure"] <= 0 or now < _pressure_next:
+		return
+	_pressure_next = now + int(FLAT_GAP * 1000.0)
+	pressure_timer = PRESSURE_TIME
+	dash_cd = maxf(0.0, dash_cd - PRESSURE_DASH)
+
+
+## Choque Térmico no fim do congelado: põe a Queimadura de quem congelou e devolve o dano a mais.
+func _thermal_burn() -> float:
+	var by := thermal_from
+	thermal_from = null
+	apply_burn(THERMAL_DPS * by.burn_dps_mult(), THERMAL_TIME, by)
+	Effects.burst(get_parent(), chest(), 1.2, BURN_COLOR, 0.2)
+	return THERMAL_DAMAGE
+
+
+## Pegou o Estilhaço de from_name (máquina dona).
+func receive_shatter(from_name: String, dmg: float) -> void:
+	var from := get_parent().get_node_or_null(from_name) as Player
+	if not alive or from == null:
+		return
+	take_area_damage(dmg, from)
+	if alive:
+		add_frost(SHATTER_LAYERS, from)
+
+
+## Camadas no inimigo, para quem olha (2026-10-15, pedido do usuário: minimalista, em cima do
+## corpo e não acima da cabeça): floco de gelo e "n/5", tamanho fixo na tela, no peito,
+## desenhado por cima do próprio modelo (sem teste de profundidade; no 1o print o braço e a
+## arma cobriam). Para não entregar ninguém escondido, só aparece com linha de visão da câmera
+## ao peito (um raio a cada FROST_MARK_LOS s) ou quando o nome atravessa paredes (Marca,
+## Radar, aliado).
+const FROST_MARK_ICON := 0.00026    # ~24 px a 1080p (textura de 128)
+const FROST_MARK_TEXT := 0.0007     # ~16 px de altura (fonte 32)
+const FROST_MARK_LOS := 0.1
+var _frost_los_wait := 0.0
+var _frost_los := false
+
+func _update_frost_mark() -> void:
+	var on := frost_layers > 0 and alive and tag.visible and viewer != null and viewer != self \
+			and ice_timer <= 0.0 and not _frost_shown
+	if not on:
+		if frost_mark:
+			frost_mark.visible = false
+		return
+	if frost_mark == null:
+		frost_mark = Node3D.new()
+		var s := Sprite3D.new()
+		s.texture = load("res://assets/card_icons/marca_gelo.svg")
+		s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		s.fixed_size = true
+		s.pixel_size = FROST_MARK_ICON
+		s.offset = Vector2(-40, 0)   # pixels da textura: o floco à esquerda, o número à direita
+		s.shaded = false
+		s.modulate = Color(FROST_COLOR, 0.9)
+		s.no_depth_test = true
+		s.render_priority = 2
+		frost_mark.add_child(s)
+		var l := Label3D.new()
+		l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		l.fixed_size = true
+		l.pixel_size = FROST_MARK_TEXT
+		l.font_size = 32
+		l.outline_size = 8
+		l.outline_modulate = Color(0, 0, 0, 0.6)
+		l.modulate = Color(0.9, 0.97, 1.0)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		l.offset = Vector2(12, 0)
+		l.no_depth_test = true
+		l.render_priority = 2
+		frost_mark.add_child(l)
+		_frost_mark_label = l
+		add_child(frost_mark)
+		_frost_mark_n = -1
+	var c := chest()
+	var cam := get_viewport().get_camera_3d()
+	_frost_los_wait -= get_process_delta_time()
+	if _frost_los_wait <= 0.0 and cam:
+		_frost_los_wait = FROST_MARK_LOS
+		var q := PhysicsRayQueryParameters3D.create(cam.global_position, c, 1)
+		_frost_los = get_world_3d().direct_space_state.intersect_ray(q).is_empty()
+	frost_mark.visible = _frost_los or tag.no_depth_test
+	if not frost_mark.visible:
+		return
+	if frost_layers != _frost_mark_n:
+		_frost_mark_n = frost_layers
+		_frost_mark_label.text = "%d/%d" % [frost_layers, FROST_MAX]
+	frost_mark.global_position = c
+
+
+## Bloco do congelado das camadas: o mesmo da Prisão, menos na própria tela (a câmera está
+## dentro da cabeça; lá o aviso é o HUD). A Prisão, se vier junto, cuida do bloco.
+func _frost_visual_sync(on: bool) -> void:
+	if on == _frost_shown or ice_timer > 0.0:
+		return
+	_frost_shown = on
+	if not is_human:
+		_ice_visual(on)
+
+
+## Congelou (1) ou quebrou o gelo (2), em todas as máquinas.
+func _frost_fx(kind: int) -> void:
+	_show_frost_fx(kind)
+	if Net.online and is_inside_tree():
+		_net_frost_fx.rpc(kind)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_frost_fx(kind: int) -> void:
+	_show_frost_fx(kind)
+
+
+func _show_frost_fx(kind: int) -> void:
+	if kind == 1:
+		Effects.burst(get_parent(), chest(), 1.4, FROST_COLOR, 0.25)
+		Sfx.at(self, "pickup", chest())
+	else:
+		Effects.explosion(get_parent(), chest(), 1.6, ICE_COLOR, 0.3)
+		Effects.sparks(get_parent(), chest(), ICE_COLOR, 12, 9.0)
+		Sfx.at(self, "hit", chest())
 
 
 ## Congelado: só a física. Desliza com pouco atrito, cai das beiradas, quica no vazio.
@@ -6482,6 +6853,7 @@ func _shoot() -> void:
 		meteor_left -= 1
 	shot_bonus = float(stats["last_shot"]) - 1.0 if ammo == 0 else 0.0
 	_volley()
+	strike_timer = 0.0   # Arrancada: só o próximo tiro (o leque inteiro)
 	if ammo == 0:
 		burst_left = 0   # a rajada acaba com o pente
 		if stats["shield_on_empty"] > 0 and shield_cd <= 0.0 and silence_timer <= 0.0:
@@ -6576,6 +6948,8 @@ func damage_sum() -> float:
 	sum += speed_bonus()
 	if is_still_aiming():
 		sum += STILL_DAMAGE * stats["still_aim"]
+	if strike_timer > 0.0:
+		sum += STRIKE_DAMAGE   # Arrancada
 	return sum + realm_bonus()
 
 
@@ -6911,7 +7285,8 @@ func burn_dps_mult() -> float:
 func _fuel_mult() -> float:
 	if not is_instance_valid(burn_from) or burn_from.stats["fuel"] <= 0:
 		return 1.0
-	if poisons.is_empty() and slow_timer <= 0.0 and blind_timer <= 0.0 and silence_timer <= 0.0 and daze_timer <= 0.0:
+	if poisons.is_empty() and slow_timer <= 0.0 and blind_timer <= 0.0 and silence_timer <= 0.0 and daze_timer <= 0.0 \
+			and frost_layers <= 0 and frost_freeze <= 0.0:
 		return 1.0
 	return 1.0 + FUEL_BONUS
 
@@ -6943,16 +7318,20 @@ func receive_detonation(from_name: String) -> void:
 		burn_acc = 0.0
 		burn_from = null
 		burn_heat = 0.0
-	if poison + burn <= 0.0:
+	var frost := 0.0
+	if frost_layers > 0 and frost_from == from:
+		frost = DETONATE_FROST * frost_layers   # camadas: dano fixo, fora do multiplicador
+		frost_layers = 0
+	if poison + burn + frost <= 0.0:
 		return
 	if poison > 0.0:
 		poisons = poisons.filter(func(p): return p["from"] != from)
 	var mult := DETONATE_BOTH if poison > 0.0 and burn > 0.0 else DETONATE_MULT
-	var kind := 3 if poison > 0.0 and burn > 0.0 else (1 if poison > 0.0 else 2)
+	var kind := (1 if poison > 0.0 else 0) | (2 if burn > 0.0 else 0) | (4 if frost > 0.0 else 0)
 	_show_detonation(kind)
 	if Net.online:
 		_net_detonation.rpc(kind)
-	take_damage(minf(DETONATE_CAP, (poison + burn) * mult), from, true)
+	take_damage(minf(DETONATE_CAP, (poison + burn) * mult + frost), from, true)
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -6965,7 +7344,9 @@ func _show_detonation(kind: int) -> void:
 	if kind & 1:
 		Effects.explosion(get_parent(), chest(), 1.6, CONTAGION_COLOR, 0.3)
 	if kind & 2:
-		Effects.explosion(get_parent(), chest(), 1.3 if kind == 3 else 1.6, BURN_COLOR, 0.3)
+		Effects.explosion(get_parent(), chest(), 1.3 if kind & 1 else 1.6, BURN_COLOR, 0.3)
+	if kind & 4:
+		Effects.explosion(get_parent(), chest(), 1.0 if kind & 3 else 1.6, FROST_COLOR, 0.3)
 
 
 ## Reação em Cadeia: uma aflição terminou aqui (máquina dona). power: a força dela, para
@@ -7028,6 +7409,8 @@ func receive_chain(from_name: String, dmg: float, effects: Array) -> void:
 				silence(from)
 			"daze":
 				_daze(DAZE_TIME, from)
+			"frost":
+				add_frost(int(power), from)
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -7186,9 +7569,14 @@ func take_area_damage(amount: float, from: Player, tick := false) -> void:
 ## serra, alto demais), que o Couro Grosso não conta e a Caçada ignora. affliction: tick de
 ## aflição (veneno, queimadura), o único que o Ácido e a Corrosão contam.
 func take_damage(amount: float, from: Player, flash := true, ignore_armor := false, tick := false, affliction := false) -> void:
-	if not alive or amount <= 0.0 or protect_timer > 0.0 or spawn_protect > 0.0 or ice_timer > 0.0:
+	if not alive or amount <= 0.0 or protect_timer > 0.0 or spawn_protect > 0.0:
+		return
+	if ice_timer > 0.0:
+		_ice_store(amount, from)   # Prisão de Gelo: não tira vida agora; uma parte sai no degelo
 		return
 	if from and from != self and not is_ally(from):
+		if frost_freeze > 0.0 and not tick:
+			amount = _frost_break(amount, from)
 		if from.stats["mark"] > 0:
 			amount = _mark_hit(amount, from)
 		if affliction:
@@ -7328,6 +7716,15 @@ func _apply_death_now(killer: String, assists: Array) -> void:
 	Sfx.at(self, "death", chest())
 	_mech_clear()
 	_clone_clear()
+	frost_layers = 0
+	frost_freeze = 0.0
+	thermal_from = null
+	if frost_mark:
+		frost_mark.visible = false
+	if _frost_shown:
+		_frost_shown = false
+		if ice_timer <= 0.0:
+			_ice_visual(false)
 	died.emit(self)
 
 

@@ -2,6 +2,7 @@ class_name Hud
 extends CanvasLayer
 ## Interface durante a luta. Tudo é criado por código; nada aqui captura o mouse.
 
+const FROST_ICON := preload("res://assets/card_icons/marca_gelo.svg")   # selo do Congelamento
 const HIT_SHOW := 0.22    # marcador de acerto (X branco)
 const KILL_SHOW := 0.6    # marcador de abate (X vermelho, maior)
 const AMMO_RADIUS := 26.0       # arco do pente, à direita da mira (px)
@@ -795,6 +796,11 @@ func _update_status() -> void:
 		items.append(["LENTO", Color(0.55, 0.8, 1.0)])
 	if not me.poisons.is_empty():
 		items.append(["ENVENENADO", Color(0.55, 0.95, 0.35)])
+	# Congelamento (2026-10-15, pedido do usuário): floco de gelo e o contador, sem mais nada.
+	if me.frost_freeze > 0.0 and me.ice_timer <= 0.0:
+		items.append(["CONGELADO", Player.FROST_COLOR, FROST_ICON])
+	elif me.frost_layers > 0:
+		items.append(["%d/%d" % [me.frost_layers, Player.FROST_MAX], Player.FROST_COLOR, FROST_ICON])
 	if me.silence_timer > 0.0:
 		items.append(["ESCUDO BLOQUEADO", Ui.DANGER])
 	if me.is_too_high():
@@ -838,6 +844,10 @@ func _update_status() -> void:
 		items.append(["PASSO LIGEIRO +%d%%  %.1f" % [roundi(me.stats["shield_haste"] * 100.0), me.haste_timer], CardDB.CATEGORY_COLORS["Escudo"]])
 	if me.parkour_timer > 0.0 and me.stats["parkour"] > 0:
 		items.append(["PARKOUR +%d%%  %.1f" % [roundi(Player.PARKOUR_SPEED * me.stats["parkour"] * 100.0), me.parkour_timer], CardDB.CATEGORY_COLORS["Movimento"]])
+	if me.strike_timer > 0.0:
+		items.append(["ARRANCADA +%d%%  %.1f" % [roundi(Player.STRIKE_DAMAGE * 100.0), me.strike_timer], CardDB.CATEGORY_COLORS["Movimento"]])
+	if me.pressure_timer > 0.0:
+		items.append(["PRESSÃO +%d%%  %.1f" % [roundi(Player.PRESSURE_SPEED * 100.0), me.pressure_timer], CardDB.CATEGORY_COLORS["Movimento"]])
 	if me.tough_timer > 0.0:
 		items.append(["CASCA DURA %.1f" % me.tough_timer, Player.TOUGH_COLOR])
 	if me.ice_timer > 0.0:
@@ -883,7 +893,7 @@ func _update_status() -> void:
 	for c in status_row.get_children():
 		c.queue_free()
 	for it in items:
-		status_row.add_child(_status_chip(it[0], it[1]))
+		status_row.add_child(_status_chip(it[0], it[1], it[2] if it.size() > 2 else null))
 
 
 ## Domínio do Rei: aviso ao entrar e ao vencer (o tempo e o bônus ficam no selo).
@@ -898,7 +908,8 @@ func _on_realm_changed(entered: bool, won: bool) -> void:
 
 
 ## Selo de estado: texto em negrito na cor, fundo escuro e um traço da cor à esquerda.
-func _status_chip(text: String, color: Color) -> Control:
+## Com ícone (icon): o desenho na cor antes do texto.
+func _status_chip(text: String, color: Color, icon: Texture2D = null) -> Control:
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 12)
@@ -911,9 +922,27 @@ func _status_chip(text: String, color: Color) -> Control:
 	box.content_margin_right = 9
 	box.content_margin_top = 3
 	box.content_margin_bottom = 3
-	l.add_theme_stylebox_override("normal", box)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return l
+	if icon == null:
+		l.add_theme_stylebox_override("normal", box)
+		return l
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", box)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 5)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var pic := TextureRect.new()
+	pic.texture = icon
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pic.custom_minimum_size = Vector2(14, 14)
+	pic.modulate = color.lerp(Color.WHITE, 0.2)
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(pic)
+	row.add_child(l)
+	panel.add_child(row)
+	return panel
 
 
 func set_score(p_score: Dictionary, round_num: int, block_end: int) -> void:
