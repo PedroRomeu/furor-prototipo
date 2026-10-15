@@ -2643,6 +2643,7 @@ func _tick(delta: float) -> void:
 		echo_timer -= delta
 		if echo_timer <= 0.0 and alive and silence_timer <= 0.0:
 			shield_timer = stats["shield_duration"]
+			_shield_effects()
 			echo_left -= 1
 			if echo_left > 0:
 				echo_timer = stats["shield_duration"] + ECHO_DELAY
@@ -6630,8 +6631,18 @@ func _activate_shield() -> void:
 	else:
 		shield_cd = stats["shield_duration"] + stats["shield_cooldown"]
 		shield_extra = stats["shield_charges"] - 1
-	bash_hits.clear()
 	adrenaline_used = false
+	if stats["shield_echo"] > 0 and echo_timer <= 0.0:
+		echo_timer = stats["shield_duration"] + ECHO_DELAY
+		echo_left = stats["shield_echo"]
+	_shield_effects()
+
+
+## Efeitos das cartas de Escudo ao levantar. Também na levantada automática do Eco, que desde
+## 2026-10-14 repete os efeitos (pedido do usuário: a build de escudo estava fraca; antes era
+## só o bloqueio), Teleporte e Investida inclusive (pedido dele: mais movimento na build).
+func _shield_effects() -> void:
+	bash_hits.clear()
 	# Desde 2026-10-07 os efeitos não têm recarga própria: o custo de cada carta está na
 	# recarga do E, e a levantada extra do Escudo Duplo repete todos (pedido do usuário).
 	# O colete da Couraça é o mesmo do item do mapa: um só, até ARMOR_MAX.
@@ -6670,9 +6681,6 @@ func _activate_shield() -> void:
 		Bullet.fire(self, chest() + Vector3.UP * 0.6, dir.normalized(), 0.8, k == 0,
 			{"speed": 11.0, "gravity": 18.0, "explosion": maxf(3.0, float(stats["explosion"])),
 			"radius": 0.25, "bounces": 0, "homing": 0.0, "seek": 0.0, "boomerang": false, "split": 0, "sticky": false})
-	if stats["shield_echo"] > 0 and echo_timer <= 0.0:
-		echo_timer = stats["shield_duration"] + ECHO_DELAY
-		echo_left = stats["shield_echo"]
 	if stats["shield_teleport"] > 0:
 		_teleport_forward()
 	var mask := _shield_area_mask()

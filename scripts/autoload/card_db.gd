@@ -574,7 +574,7 @@ var CARDS := {
 		"desc": "O escudo lança 5 bombas em arco à sua volta. Recarga do escudo +1 s.",
 		"mods": [{"stat": "shield_bombs", "add": 5}, {"stat": "shield_cooldown", "add": 1.0}]},
 	"eco": {"name": "Eco", "cat": "Escudo", "rarity": "lendario",
-		"desc": "O escudo se levanta de novo sozinho 0,5 s depois (só o bloqueio, sem os efeitos), uma vez a mais por cópia. Recarga do escudo +1 s.",
+		"desc": "O escudo se levanta de novo sozinho 0,5 s depois, com os efeitos das suas outras cartas de Escudo, uma vez a mais por cópia. Recarga do escudo +1 s.",
 		"mods": [{"stat": "shield_echo", "add": 1}, {"stat": "shield_cooldown", "add": 1.0}]},
 	"ultima_defesa": {"name": "Última Defesa", "cat": "Escudo", "rarity": "raro", "max": 1,
 		"desc": "Quando o pente esvazia, o escudo levanta sozinho (se estiver pronto). Recarga do escudo +0,5 s.",
