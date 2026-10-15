@@ -140,7 +140,7 @@ shows in a corner during the match.
 ## Match rules
 
 - Decks of 30 to 50 cards, up to 3 copies each. More copies = more chance of the card
-  showing up. With 130 cards there are always some left out.
+  showing up. With 132 cards there are always some left out.
 - **Baralhos** (decks) screen: create as many named decks as you want, starting from a
   template (Equilibrado, Atirador, Muralha, Acrobata, Caos, Aleatório or Vazio). The editor
   has the card collection on the left and your deck on the right. Click a card to add it,
@@ -267,12 +267,14 @@ All numbers are provisional, to be tuned by playing.
 
 ## Cards
 
-130 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst...), **Balas**
+132 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst...), **Balas**
 (bullets: ricochet, homing, explosive, poison, freezing, a toxic cloud or a short black hole
 where the bullet lands; Veneno is slow and long (5 s, stacks), Queimadura fast and short
-(Bala Incendiária, Chamas, Brasa, Combustível; does not stack); the screen edges turn
+(Bala Incendiária, Chamas, Brasa, Combustível, Combustão Lenta for a longer but weaker burn, at
+most 4 s; does not stack); the screen edges turn
 green when poisoned and catch fire when burning, stronger with more damage; and Marca,
-Persistência, Ácido, Corrosão, Contágio and Estouro (a shield card that bursts them all at
+Persistência, Ácido, Corrosão, Contágio, Reação em Cadeia (an affliction that ends makes the
+enemy explode, colored by the affliction, passing it on to those nearby) and Estouro (a shield card that bursts them all at
 once) build around these "aflições" (effects that last on the enemy); Sanguessuga glows
 green when it heals...), **Escudo** (shield: what happens when raising it or reflecting;
 Pancada, Escudo Duplo, Couraça and Fortaleza make a close-range shield build, and Serra,

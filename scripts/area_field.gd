@@ -138,7 +138,7 @@ static func shield(owner: Player, mask: int, pos: Vector3) -> void:
 		Effects.sparks(parent, center, FROST_COLOR, 12, 9.0)
 		for p: Player in _local_enemies(owner):
 			if p.chest().distance_to(center) < r:
-				p.apply_slow(FROST_SLOW, FROST_TIME + FROST_TIME_STEP * (n - 1))
+				p.apply_slow(FROST_SLOW, FROST_TIME + FROST_TIME_STEP * (n - 1), owner)
 				p.take_area_damage(FROST_DAMAGE, owner)
 
 
@@ -261,7 +261,7 @@ func _physics_step(delta: float) -> void:
 			tick = FLAMES_TICK
 			for p: Player in _local_enemies(owner_player):
 				if _inside(p):
-					p.apply_burn(power, BURN_AFTER + FLAMES_TICK, owner_player)
+					p.apply_burn(power * owner_player.burn_dps_mult(), BURN_AFTER + FLAMES_TICK, owner_player)
 		Kind.CLOUD:
 			tick = CLOUD_TICK
 			var now := Time.get_ticks_msec()

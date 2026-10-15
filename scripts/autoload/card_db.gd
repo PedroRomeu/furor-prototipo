@@ -57,7 +57,7 @@ const LIMITS := {
 	# davam explosão de 21 m, roubo de vida de 75% etc.
 	"explosion": [0.0, 6.0],
 	"lifesteal": [0.0, 0.5],
-	"poison": [0.0, 1.0],
+	"poison": [0.0, 2.0],   # 1,0 até 2026-10-14 (Veneno 35% -> 60%: o total do veneno passa o do fogo)
 	"burn": [0.0, 1.5],
 	"knockback": [0.0, 24.0],
 	"execute": [0.0, 1.0],
@@ -218,7 +218,7 @@ const MASTERS := {
 ## "recarga" confundiam). As descrições das cartas usam só estes termos; o editor mostra a
 ## lista no botão "?".
 const GLOSSARY := [
-	["Dano", "Quanto cada bala tira de vida (25 na arma base)."],
+	["Dano", "Quanto cada bala tira de vida (25 na arma base). Todo bônus de Dano soma num só, inclusive os de momento (crítico, Última Bala, Fúria, Executor...): +45% e +150% = +195%. Carta que multiplica o dano diz isso nela."],
 	["Cadência", "Quantos tiros por segundo. Cadência +43% = 43% mais tiros no mesmo tempo; Cadência x3 = o triplo."],
 	["Velocidade da bala", "Quão rápido a bala voa até o alvo. Mais veloz chega antes e é mais fácil de acertar de longe."],
 	["Queda da bala", "Quanto a bala cai durante o voo. -50% cai metade; x2 cai o dobro."],
@@ -273,9 +273,9 @@ const ARCHETYPES := {
 	"Veneno": {"desc": "Aplicar e espalhar Veneno, que empilha a cada acerto.",
 		"cards": ["veneno", "nuvem_toxica", "contagio"]},
 	"Queimadura": {"desc": "Aplicar Queimadura, que tira muito por segundo e não empilha.",
-		"cards": ["chamas", "incendiaria", "brasa", "combustivel"]},
+		"cards": ["chamas", "incendiaria", "brasa", "combustivel", "combustao_lenta"]},
 	"Aflição": {"desc": "Melhorar todo efeito que fica no inimigo: durar mais, marcar, estourar, impedir a cura.",
-		"cards": ["marca", "persistencia", "acido", "corrosao", "estouro"]},
+		"cards": ["marca", "persistencia", "acido", "corrosao", "estouro", "reacao_em_cadeia"]},
 	"Espelho": {"desc": "Refletir as balas do inimigo com o escudo.",
 		"cards": ["escudo_firme", "reflexos", "espelho_cortante", "adrenalina", "espelho_duplo",
 			"espelho_perseguidor", "espelho_gigante", "escudo_duplo", "eco", "escudo_de_papel"]},
@@ -375,10 +375,10 @@ var CARDS := {
 		"desc": "Enquanto você recarrega, aparece uma faixa dourada no anel da mira: aperte recarregar de novo nela para terminar na hora, e o pente seguinte causa +15% de dano. Fora da faixa, recarregar atrasa 0,4 s. Uma tentativa por vez.",
 		"mods": [{"stat": "perfect_reload", "add": 1}]},
 	"ultima_bala": {"name": "Última Bala", "cat": "Arma", "rarity": "raro",
-		"desc": "A última bala do pente causa 2,5x o dano.",
+		"desc": "A última bala do pente causa +150% de dano.",
 		"mods": [{"stat": "last_shot", "add": 1.5}]},
 	"sortudo": {"name": "Sortudo", "cat": "Arma", "rarity": "epico",
-		"desc": "Cada bala tem 20% de chance de ser crítica: 2,5x o dano.",
+		"desc": "Cada bala tem 20% de chance de ser crítica: +150% de dano.",
 		"mods": [{"stat": "crit_chance", "add": 0.2}]},
 	# Munição (2026-10-11, pedido do usuário depois da Rajada gastar pente; números meus,
 	# aprovados). Reciclagem: Player.bullet_refund (a bala leva o número do clique).
@@ -418,8 +418,8 @@ var CARDS := {
 		"desc": "As balas explodem ao bater (raio de 3 m). Dano -15%.",
 		"mods": [{"stat": "explosion", "add": 3.0}, {"stat": "damage", "mul": 0.85}]},
 	"veneno": {"name": "Veneno", "cat": "Balas", "rarity": "raro",
-		"desc": "Acertar aplica Veneno: mais 35% do dano, tirado ao longo de 5 s. Pente -1.",
-		"mods": [{"stat": "poison", "add": 0.35}, {"stat": "mag_size", "add": -1}]},
+		"desc": "Acertar aplica Veneno: mais 60% do dano, tirado ao longo de 5 s. Pente -1.",
+		"mods": [{"stat": "poison", "add": 0.6}, {"stat": "mag_size", "add": -1}]},
 	# Bala Incendiária (2026-10-14, pedido do usuário: Queimadura pelo tiro, rápida e curta
 	# como no The Bazaar; números meus aprovados).
 	"incendiaria": {"name": "Bala Incendiária", "cat": "Balas", "rarity": "raro", "max": 3,
@@ -432,6 +432,11 @@ var CARDS := {
 	"combustivel": {"name": "Combustível", "cat": "Balas", "rarity": "raro", "max": 1,
 		"desc": "Sua Queimadura tira 40% mais em quem também está com outra aflição: Veneno, Lentidão, Cegueira, Tontura ou Escudo bloqueado. Dano -5%.",
 		"mods": [{"stat": "fuel", "add": 1}, {"stat": "damage", "mul": 0.95}]},
+	# Combustão Lenta (2026-10-14, pedido do usuário: mais tempo de fogo sem desbalancear):
+	# Player.SLOW_BURN_*; teto de 4 s na Queimadura (BURN_MAX_TIME).
+	"combustao_lenta": {"name": "Combustão Lenta", "cat": "Balas", "rarity": "raro", "max": 2,
+		"desc": "Sua Queimadura dura +0,5 s, mas tira 10% menos por segundo. A Queimadura dura no máximo 4 s.",
+		"mods": [{"stat": "slow_burn", "add": 1}]},
 	"congelante": {"name": "Bala Gelada", "cat": "Balas", "rarity": "raro",
 		"desc": "Acertar aplica Lentidão: o alvo anda 35% mais devagar por 1,5 s.",
 		"mods": [{"stat": "slow", "add": 0.35}]},
@@ -465,6 +470,10 @@ var CARDS := {
 	"contagio": {"name": "Contágio", "cat": "Balas", "rarity": "epico", "max": 1,
 		"desc": "Seu Veneno pula, com metade da força, para inimigos a até 4 m de quem está envenenado; sem ninguém perto, volta para o próprio envenenado. Cada um pega isso no máximo a cada 4 s e o veneno que pulou não pula de novo. Só vale com Veneno ou Nuvem Tóxica. Pente -1.",
 		"mods": [{"stat": "contagion", "add": 1}, {"stat": "mag_size", "add": -1}]},
+	# Reação em Cadeia (2026-10-14, ideia do usuário; números meus aprovados): Player.CHAIN_*.
+	"reacao_em_cadeia": {"name": "Reação em Cadeia", "cat": "Balas", "rarity": "epico", "max": 2,
+		"desc": "Quando uma aflição sua termina num inimigo, ele explode: toma 12 de dano e causa 12 a outros inimigos a até 4 m, que pegam de novo a aflição que terminou. Cada um explode no máximo a cada 3 s. Com 2 cópias, 20 de dano e 5 m. Recarregar +0,3 s.",
+		"mods": [{"stat": "chain_blast", "add": 1}, {"stat": "reload_time", "add": 0.3}]},
 	"executor": {"name": "Executor", "cat": "Balas", "rarity": "raro",
 		"desc": "+60% de dano em quem está abaixo de 40% da vida.",
 		"mods": [{"stat": "execute", "add": 0.6}]},
@@ -969,6 +978,8 @@ func compute_stats(base: Dictionary, card_ids: Array) -> Dictionary:
 			stats[stat] /= 1.0 + bonus[stat]
 		else:
 			stats[stat] *= 1.0 + bonus[stat]
+	# Os bônus de situação somam a este (Player.shot_damage), em vez de multiplicar o dano.
+	stats["damage_bonus"] = bonus.get("damage", 0.0)
 	for stat in LIMITS:
 		stats[stat] = clampf(stats[stat], LIMITS[stat][0], LIMITS[stat][1])
 	var size: float = stats["body_scale"] * pow(stats["max_health"] / base["max_health"], HEALTH_SIZE_EXP)

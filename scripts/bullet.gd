@@ -113,7 +113,7 @@ const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", 
 	"boomerang", "returning", "bounce_damage", "sticky", "split", "grow", "swap", "blind",
 	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls",
 	"toxic", "hole", "laser", "ice", "meteor", "rocket", "missile", "blast_radius", "blast_damage", "life", "drill",
-	"bounce_life", "click"]
+	"bounce_life", "click", "bonus"]
 ## Bala Fantasma: só paredes contam (superfície quase em pé); no chão e no topo das peças a
 ## bala para ou quica como as outras.
 const GHOST_WALL_NORMAL_Y := 0.7
@@ -165,6 +165,7 @@ var returning := false
 var bounce_damage := 0.0
 var bounce_hits := 0     # Tabelinha: quiques já dados (o bônus soma, não multiplica)
 var grow_mult := 1.0     # Bola de Neve: quanto do dano já veio do crescimento
+var bonus := 1.0         # 1 + soma dos bônus de Dano no disparo (Player.damage_sum); os do acerto somam aqui
 var sticky := false
 var split := 0
 var grow := 0.0
@@ -207,7 +208,9 @@ static func fire(from: Player, pos: Vector3, dir: Vector3, damage_mult := 1.0, w
 	var s := from.stats
 	b.shooter = from
 	b.bounce_life = maxf(BOUNCE_LIFE_MIN, BOUNCE_LIFE / sqrt(maxf(1.0, s["bullet_count"])))
-	b.damage = from.shot_damage() * damage_mult
+	# overrides["bonus"]: bônus a mais deste disparo (Última Bala, crítico), somado aos outros.
+	b.bonus = from.damage_sum() + float(overrides.get("bonus", 0.0))
+	b.damage = from.damage_for(b.bonus) * damage_mult
 	var size := pow(b.damage / float(Player.BASE_STATS["damage"]), DAMAGE_SIZE_EXP)
 	b.radius = s["bullet_radius"] * maxf(size, DAMAGE_SIZE_MIN)
 	b.bounces = s["bounces"]
@@ -220,7 +223,7 @@ static func fire(from: Player, pos: Vector3, dir: Vector3, damage_mult := 1.0, w
 	b.blast_radius = s["blast_radius"]
 	b.blast_damage = s["blast_damage"]
 	b.poison = s["poison"]
-	b.burn = s["burn"]
+	b.burn = s["burn"] * from.burn_dps_mult()
 	b.slow = s["slow"]
 	b.push = s["knockback"]
 	b.shield_break = s["shield_break"] > 0
@@ -249,7 +252,7 @@ static func fire(from: Player, pos: Vector3, dir: Vector3, damage_mult := 1.0, w
 		if key == "speed":
 			speed = overrides[key]
 			b.lazy_top = 0.0
-		else:
+		elif key != "bonus":
 			b.set(key, overrides[key])
 	b.velocity = dir * speed
 	b.sound = with_sound
@@ -567,7 +570,8 @@ func _update_flight(delta: float) -> void:
 		# O crescimento próprio da carta tem teto; o que vem do dano, não.
 		# Raio próprio: ~1,5x no fim do GROW_TIME por carta (era 0,25/s com 2 s).
 		radius = minf(radius * (1.0 + grow * 0.4 / GROW_TIME * delta), maxf(radius, MAX_GROW_RADIUS))
-		var target := 1.0 + grow * minf(age, GROW_TIME) / GROW_TIME
+		# O crescimento soma aos bônus do disparo (soma única): grow_mult = (bonus + somado) / bonus.
+		var target := 1.0 + grow * minf(age, GROW_TIME) / GROW_TIME / bonus
 		_scale_damage(target / grow_mult)
 		grow_mult = target
 	if boomerang and not returning and not reflected and age > BOOMERANG_TIME:
@@ -890,23 +894,28 @@ func _hit_player(target: Player, point: Vector3) -> void:
 		queue_free()
 		return
 	var dmg := damage
+	# Executor e Vingança somam aos bônus do disparo (soma única, Player.shot_damage).
+	var hit_bonus := 0.0
 	if execute > 0.0 and target.health < target.stats["max_health"] * 0.4:
-		dmg *= 1.0 + execute
+		hit_bonus += execute
 	if is_instance_valid(shooter) and shooter.stats["revenge"] > 0.0 and String(target.name) == shooter.revenge_target:
-		dmg *= 1.0 + shooter.stats["revenge"]   # Vingança
+		hit_bonus += shooter.stats["revenge"]   # Vingança
+	if hit_bonus > 0.0:
+		var sum := bonus * grow_mult   # com o que a Bola de Neve já somou
+		dmg *= (sum + hit_bonus) / sum
 	dmg *= target.bullet_taken_mult()   # Vulto (o veneno também sai do dano reduzido)
 	if push > 0.0 and target != shooter:   # a própria bala quicada não empurra (virava elevador)
 		target.knockback(velocity.normalized() * push + Vector3.UP * 3.0)
 	if slow > 0.0:
-		target.apply_slow(slow)
+		target.apply_slow(slow, Player.SLOW_TIME, shooter)
 	if poison > 0.0:
 		target.apply_poison(dmg * poison, shooter)
 	if burn > 0.0:
 		target.apply_burn(dmg * burn, Player.BURN_HIT_TIME, shooter, true)
 	if shield_break:
-		target.silence()
+		target.silence(shooter)
 	if blind > 0.0:
-		target.apply_blind(blind)
+		target.apply_blind(blind, shooter)
 	if swap and is_instance_valid(shooter) and shooter.alive:
 		target.begin_swap(shooter)
 	target.take_damage(dmg, shooter, true, drill)
