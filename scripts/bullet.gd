@@ -49,6 +49,9 @@ const CEILING_Y := 30.0
 const MAX_BULLETS := 300
 const REMOTE_WAIT := 0.3
 const TRAIL_POINTS := 6
+## Bumerangue: dá meia-volta aos BOOMERANG_TIME s ou, com Alcance, ao chegar a RANGE_FADE m do
+## limite (2026-10-15, pedido do usuário: com alcance curto a bala sumia antes de voltar).
+## Na volta o Alcance não vale (ela vem atrás de quem atirou).
 const BOOMERANG_TIME := 0.5
 const STICKY_FUSE := 0.6
 const STICKY_RADIUS := 3.5
@@ -514,7 +517,7 @@ func _physics_step(delta: float) -> void:
 	if age > life or (ice and age * velocity.length() > Player.ICE_RANGE):
 		queue_free()
 		return
-	if reach > 0.0:
+	if reach > 0.0 and not returning:
 		var left := reach - global_position.distance_to(origin)
 		if left < 0.0:
 			queue_free()
@@ -607,7 +610,8 @@ func _update_flight(delta: float) -> void:
 		var target := 1.0 + grow * minf(age, GROW_TIME) / GROW_TIME / bonus
 		_scale_damage(target / grow_mult)
 		grow_mult = target
-	if boomerang and not returning and not reflected and age > BOOMERANG_TIME:
+	if boomerang and not returning and not reflected and (age > BOOMERANG_TIME
+			or (reach > 0.0 and global_position.distance_to(origin) > reach - RANGE_FADE)):
 		returning = true
 		velocity = -velocity
 	if returning:

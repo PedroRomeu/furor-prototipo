@@ -226,7 +226,7 @@ const GLOSSARY := [
 	["Cadência", "Quantos tiros por segundo. Cadência +43% = 43% mais tiros no mesmo tempo; Cadência x3 = o triplo."],
 	["Velocidade da bala", "Quão rápido a bala voa até o alvo. Mais veloz chega antes e é mais fácil de acertar de longe."],
 	["Queda da bala", "Quanto a bala cai durante o voo. -50% cai metade; x2 cai o dobro."],
-	["Alcance", "Até onde a bala vai: ela some ao ficar mais longe que isso, em linha reta, de onde o tiro saiu (quiques e Bumerangue valem enquanto estiverem dentro). Sem perda de Alcance nas cartas não há limite. As perdas multiplicam e param em 12 m; os ganhos valem sobre o que sobrou."],
+	["Alcance", "Até onde a bala vai: ela some ao ficar mais longe que isso, em linha reta, de onde o tiro saiu (quiques valem enquanto estiverem dentro; a bala do Bumerangue vira 3 m antes do fim e volta). Sem perda de Alcance nas cartas não há limite. As perdas multiplicam e param em 12 m; os ganhos valem sobre o que sobrou."],
 	["Tamanho da bala", "O tamanho da bala: maior é mais fácil de acertar. Ela também cresce um pouco com o dano."],
 	["Pente", "Quantos tiros você dá antes de precisar recarregar."],
 	["Recarregar", "O tempo para encher o pente de novo (tecla de recarregar ou pente vazio)."],
@@ -524,7 +524,7 @@ var CARDS := {
 		"mods": [{"stat": "execute", "add": 0.6}]},
 
 	"bumerangue": {"name": "Bumerangue", "cat": "Balas", "rarity": "epico", "max": 1,
-		"desc": "Depois de meio segundo as balas dão meia-volta e voltam para você, acertando de novo no caminho.",
+		"desc": "Depois de meio segundo, ou 3 m antes do fim do Alcance, as balas dão meia-volta e voltam para você, acertando de novo no caminho. Na volta o Alcance não vale.",
 		"mods": [{"stat": "boomerang", "add": 1}]},
 	"tabelinha": {"name": "Tabelinha", "cat": "Balas", "rarity": "lendario",
 		"desc": "Cada quique soma +30% do dano de saída à bala. Não dá quiques: junte com Ricochete ou outras cartas de quique.",
