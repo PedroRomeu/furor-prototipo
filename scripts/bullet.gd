@@ -113,7 +113,11 @@ const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", 
 	"boomerang", "returning", "bounce_damage", "sticky", "split", "grow", "swap", "blind",
 	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls",
 	"toxic", "hole", "laser", "ice", "meteor", "rocket", "missile", "blast_radius", "blast_damage", "life", "drill",
-	"bounce_life", "click", "bonus", "ambush", "close", "origin"]
+	"bounce_life", "click", "bonus", "ambush", "close", "origin", "reach"]
+## Alcance (Player.RANGE_FREE): nos últimos RANGE_FADE m a bala encolhe (só o desenho; o
+## tamanho que acerta não muda) até RANGE_FADE_MIN, e some ao passar do alcance.
+const RANGE_FADE := 3.0
+const RANGE_FADE_MIN := 0.25
 ## Cano Serrado (2026-10-15, build de escopeta; números meus aprovados): pela distância de onde
 ## o tiro saiu até onde acertou, soma até CLOSE_BONUS ao dano (soma única) até CLOSE_NEAR m,
 ## caindo a zero em CLOSE_ZERO m; de CLOSE_ZERO a CLOSE_FAR o dano cai até CLOSE_FAR_MULT.
@@ -198,7 +202,9 @@ var ambush := false    # tiro da Emboscada que atravessa paredes (Camuflagem): s
 var drill := false
 var click := 0      # Reciclagem: número do clique de quem atirou (0 = não devolve)
 var close := 0      # Cano Serrado (0 = sem a carta)
-var origin := Vector3.ZERO   # de onde o tiro saiu (Cano Serrado mede a distância daqui)
+var origin := Vector3.ZERO   # de onde o tiro saiu (Cano Serrado e Alcance medem daqui)
+var reach := 0.0    # Alcance em metros (0 = sem limite)
+var _fade := 1.0    # encolhimento no fim do alcance (só o desenho)
 var _drilled: Array = []
 var sound := false
 var age := 0.0
@@ -254,6 +260,9 @@ static func fire(from: Player, pos: Vector3, dir: Vector3, damage_mult := 1.0, w
 	b.guided = s["guided"] > 0
 	b.close = s["close_range"]
 	b.origin = pos
+	# Tiros especiais das mestras (trocam a velocidade: foguete, laser, perfurante) não têm alcance.
+	if not overrides.has("speed"):
+		b.reach = from.bullet_reach()
 	if b.guided:
 		b.gravity = 0.0
 	var speed := float(s["bullet_speed"])
@@ -429,7 +438,7 @@ func _scale_damage(k: float) -> void:
 
 
 func _resize_core() -> void:
-	var w := maxf(0.09, radius)
+	var w := maxf(0.09, radius) * _fade
 	core.scale = Vector3(w, w, w * (6.0 if pierce else 2.4))
 
 
@@ -505,6 +514,14 @@ func _physics_step(delta: float) -> void:
 	if age > life or (ice and age * velocity.length() > Player.ICE_RANGE):
 		queue_free()
 		return
+	if reach > 0.0:
+		var left := reach - global_position.distance_to(origin)
+		if left < 0.0:
+			queue_free()
+			return
+		if left < RANGE_FADE and core:
+			_fade = maxf(RANGE_FADE_MIN, left / RANGE_FADE)
+			_resize_core()
 	if fuse > 0.0:
 		fuse -= delta
 		if fuse <= 0.0:
@@ -1077,6 +1094,10 @@ func _apply_reflect(new_owner: Player, point: Vector3, dir: Vector3, new_damage:
 	reflected = true
 	click = 0   # o clique era de quem atirou, não de quem refletiu
 	close = 0
+	reach = 0.0   # a bala devolvida não leva o alcance de quem atirou
+	if _fade < 1.0 and core:
+		_fade = 1.0
+		_resize_core()
 	bounced = false
 	returning = false
 	gravity = 0.0

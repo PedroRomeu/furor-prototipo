@@ -207,6 +207,7 @@ func _ready_practice() -> void:
 	hud.add_child(practice_panel)
 	me.damage_dealt.connect(practice_panel.add_damage)
 	me.fired.connect(practice_panel.add_shot)
+	practice_panel.player = me
 	practice_cards = PracticeCards.new()
 	add_child(practice_cards)
 	practice_cards.applied.connect(_practice_apply)

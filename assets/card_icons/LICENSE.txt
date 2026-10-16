@@ -179,3 +179,5 @@ marca_gelo.svg <- snowflake-1 (Lorc) (marcador de camadas de Congelamento na HUD
 cano_serrado.svg <- blunderbuss (Lorc)
 arrancada.svg <- charging-bull (Delapouite)
 pressao.svg <- fist (Lorc)
+choke.svg <- funnel (Delapouite)
+silenciador.svg <- silenced (Delapouite)

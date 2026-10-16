@@ -287,9 +287,13 @@ func _movement(delta: float, foe: Player, sees: bool) -> Vector3:
 	var wish := Vector3.ZERO
 	# Prorrogação: fora do círculo, ou a menos de ZONE_MARGIN da borda, corre para o centro.
 	var flat_dist := Vector2(p.global_position.x, p.global_position.z).length()
+	# Com Alcance curto, luta mais perto (sem ele, as distâncias de sempre).
+	var reach := p.bullet_reach()
+	var far := minf(FAR, reach * 0.8) if reach > 0.0 else FAR
+	var near := minf(NEAR, reach * 0.35) if reach > 0.0 else NEAR
 	if p.realm == 0 and flat_dist > Player.zone_radius - ZONE_MARGIN:
 		wish = _follow_path(delta, Vector3(0.0, p.global_position.y, 0.0))
-	elif sees and dist < FAR:
+	elif sees and dist < far:
 		strafe_timer -= delta
 		if strafe_timer <= 0.0:
 			strafe_timer = randf_range(0.4, 1.4)
@@ -301,9 +305,9 @@ func _movement(delta: float, foe: Player, sees: bool) -> Vector3:
 		to.y = 0.0
 		to = to.normalized()
 		var forward := 0.0
-		if dist > NEAR * 1.6:
+		if dist > near * 1.6:
 			forward = 0.6
-		elif dist < NEAR:
+		elif dist < near:
 			forward = -1.0
 		wish = (to.cross(Vector3.UP) * strafe_dir + to * forward).normalized()
 	else:
@@ -385,7 +389,10 @@ func _aim_and_shoot(delta: float, foe: Player, sees: bool, wish: Vector3) -> voi
 	p.look_at_point(target, float(cfg["turn"]) * delta)
 	var forward := -p.head.global_transform.basis.z
 	click_cd -= delta
-	if forward.angle_to(target - eye) < 0.06 and aim_seen >= float(cfg["react"]):
+	# Alcance: não gasta bala que vai sumir antes de chegar (os tiros das mestras não têm alcance).
+	var reach := 0.0 if straight and p.stats["guided"] <= 0 else p.bullet_reach()
+	var in_reach := reach <= 0.0 or eye.distance_to(foe.chest()) < reach * 0.95
+	if in_reach and forward.angle_to(target - eye) < 0.06 and aim_seen >= float(cfg["react"]):
 		# Semiautomática: o bot clica num ritmo de gente (6 a 8 por segundo); segurar só
 		# repete o tiro com a Metralhadora. think() solta o botão a cada quadro.
 		if p.stats["auto_fire"] > 0:

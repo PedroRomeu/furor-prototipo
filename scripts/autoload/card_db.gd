@@ -79,7 +79,8 @@ const LIMITS := {
 ## Atributos em que a porcentagem de melhoria soma em vez de multiplicar (ver compute_stats).
 ## Os que não estão aqui (gravidade da bala, tamanho do corpo) multiplicam sempre.
 const HIGHER_BETTER := ["damage", "max_health", "bullet_speed", "bullet_radius", "move_speed",
-	"jump_velocity", "dash_power", "air_control", "slide_boost", "shield_size", "mag_size"]
+	"jump_velocity", "dash_power", "air_control", "slide_boost", "shield_size", "mag_size",
+	"bullet_range"]
 const LOWER_BETTER := ["fire_interval", "reload_time", "shield_cooldown", "dash_cooldown"]
 
 ## Piso das pioras (2026-10-04, pedido do usuário: investir em perder algo não pode afundar o
@@ -90,7 +91,8 @@ const PENALTY_CEIL := 2.5
 const PENALTY_FLOOR_ABS := {"mag_size": 1}   # pente: as perdas param em 1 bala
 ## Atributos com piso próprio (x a base). Velocidade da bala (2026-10-11, pedido do usuário:
 ## a bala "lenta" das cartas de tamanho quase não pesava, parava em 16,8 m/s): 9,6 m/s.
-const PENALTY_FLOOR_BY := {"bullet_speed": 0.2}
+## Alcance (2026-10-15): as perdas param em 12 m (0,06 x Player.RANGE_FREE).
+const PENALTY_FLOOR_BY := {"bullet_speed": 0.2, "bullet_range": 0.06}
 ## Recarga do escudo (2026-10-07): os custos das cartas (+1 s, +0,5 s) somam até este teto,
 ## no lugar do PENALTY_CEIL (2,5x apagaria o custo da 3a carta em diante). As porcentagens
 ## que pioram (Escudo Duplo) entram depois das reduções, sobre o total; LIMITS dá 1 a 20 s.
@@ -224,6 +226,7 @@ const GLOSSARY := [
 	["Cadência", "Quantos tiros por segundo. Cadência +43% = 43% mais tiros no mesmo tempo; Cadência x3 = o triplo."],
 	["Velocidade da bala", "Quão rápido a bala voa até o alvo. Mais veloz chega antes e é mais fácil de acertar de longe."],
 	["Queda da bala", "Quanto a bala cai durante o voo. -50% cai metade; x2 cai o dobro."],
+	["Alcance", "Até onde a bala vai: ela some ao ficar mais longe que isso, em linha reta, de onde o tiro saiu (quiques e Bumerangue valem enquanto estiverem dentro). Sem perda de Alcance nas cartas não há limite. As perdas multiplicam e param em 12 m; os ganhos valem sobre o que sobrou."],
 	["Tamanho da bala", "O tamanho da bala: maior é mais fácil de acertar. Ela também cresce um pouco com o dano."],
 	["Pente", "Quantos tiros você dá antes de precisar recarregar."],
 	["Recarregar", "O tempo para encher o pente de novo (tecla de recarregar ou pente vazio)."],
@@ -294,7 +297,7 @@ const ARCHETYPES := {
 	"Corpo a corpo": {"desc": "Encostar no inimigo e bater.",
 		"cards": ["escopeta", "atropelar", "cacador", "sede_de_sangue", "meteoro", "troca_troca",
 			"pancada", "investida", "cacada", "serra", "pisao", "bote", "cano_serrado", "arrancada",
-			"pressao", "bumerangue"]},
+			"pressao", "bumerangue", "choke", "silenciador"]},
 	"Tanque": {"desc": "Vida, cura e colete.",
 		"cards": ["vigor", "tanque", "defensor", "sanguessuga", "regeneracao", "fenix", "gigantao",
 			"fortaleza", "couraca", "restauracao", "eco", "blindado", "peso_pesado", "segunda_pele", "casca_dura",
@@ -341,8 +344,8 @@ var CARDS := {
 	# Cano Serrado (2026-10-15, build de escopeta pedida pelo usuário; números meus aprovados).
 	# Bullet.CLOSE_*: a distância vai de onde o tiro saiu até onde acertou.
 	"cano_serrado": {"name": "Cano Serrado", "cat": "Arma", "rarity": "epico", "max": 1,
-		"desc": "Suas balas causam +50% de dano a até 5 m; o bônus cai até zero aos 12 m, e a partir de 15 m o dano é -30%. Leque 50% mais aberto. Velocidade da bala -20%.",
-		"mods": [{"stat": "close_range", "add": 1}, {"stat": "spread", "mul": 1.5}, {"stat": "bullet_speed", "mul": 0.8}]},
+		"desc": "Suas balas causam +50% de dano a até 5 m; o bônus cai até zero aos 12 m, e a partir de 15 m o dano é -30%. Leque 50% mais aberto. Alcance -80%.",
+		"mods": [{"stat": "close_range", "add": 1}, {"stat": "spread", "mul": 1.5}, {"stat": "bullet_range", "mul": 0.2}]},
 	"escopeta": {"name": "Escopeta", "cat": "Arma", "rarity": "raro", "max": 1,
 		"desc": "+3 balas por tiro (4 no total), em leque, e cada bala gasta 1 do pente (com o pente quase vazio, saem só as que houver). Pente +4. Dano -40%.",
 		"mods": [{"stat": "bullet_count", "add": 3}, {"stat": "shot_ammo", "add": 3}, {"stat": "spread", "add": 1.0},
@@ -357,12 +360,12 @@ var CARDS := {
 		"desc": "Pente +9. Dano -33%. Recarregar +0,8 s.",
 		"mods": [{"stat": "mag_size", "add": 9}, {"stat": "damage", "mul": 0.67}, {"stat": "reload_time", "add": 0.8}]},
 	"bala_gigante": {"name": "Bala Gigante", "cat": "Arma", "rarity": "raro",
-		"desc": "Tamanho da bala x2. Dano +10%. Velocidade da bala -40% e queda da bala x2.",
-		"mods": [{"stat": "bullet_radius", "mul": 2.0}, {"stat": "damage", "mul": 1.1}, {"stat": "bullet_speed", "mul": 0.6},
-			{"stat": "bullet_gravity", "mul": 2.0}]},
+		"desc": "Tamanho da bala x2. Dano +10%. Alcance -30% e queda da bala +30%.",
+		"mods": [{"stat": "bullet_radius", "mul": 2.0}, {"stat": "damage", "mul": 1.1}, {"stat": "bullet_range", "mul": 0.7},
+			{"stat": "bullet_gravity", "mul": 1.3}]},
 	"bala_de_canhao": {"name": "Bala de Canhão", "cat": "Arma", "rarity": "raro",
-		"desc": "Dano +35%. Tamanho da bala x2. Velocidade da bala -50%. Cadência -23%. Recarregar +0,3 s.",
-		"mods": [{"stat": "damage", "mul": 1.35}, {"stat": "bullet_radius", "mul": 2.0}, {"stat": "bullet_speed", "mul": 0.5},
+		"desc": "Dano +35%. Tamanho da bala x2. Alcance -40%. Cadência -23%. Recarregar +0,3 s.",
+		"mods": [{"stat": "damage", "mul": 1.35}, {"stat": "bullet_radius", "mul": 2.0}, {"stat": "bullet_range", "mul": 0.6},
 			{"stat": "fire_interval", "mul": 1.3}, {"stat": "reload_time", "add": 0.3}]},
 	"imprudente": {"name": "Imprudente", "cat": "Arma", "rarity": "epico",
 		"desc": "Cadência x2. Tempo para recarregar +50%. Vida -15%.",
@@ -404,10 +407,22 @@ var CARDS := {
 		"mods": [{"stat": "mag_size", "mul": 1.5}, {"stat": "reload_time", "add": 0.4}]},
 	# Cartucheira (2026-10-13, ideia do usuário para a build de spam: chance de a bala não sair
 	# do pente; custo só na velocidade da bala, para pesar no sniper e quase nada de perto;
-	# 10% por cópia até 3, escolhas dele; Player._shoot sorteia por bala do pente).
+	# 10% por cópia até 3, escolhas dele; Player._shoot sorteia por bala do pente). Desde
+	# 2026-10-15 o custo é Alcance -15% (era velocidade -10%), que faz isso melhor.
 	"cartucheira": {"name": "Cartucheira", "cat": "Arma", "rarity": "comum", "max": 3,
-		"desc": "Cada bala tem 10% de chance de não sair do pente. Velocidade da bala -10%.",
-		"mods": [{"stat": "free_ammo", "add": 0.1}, {"stat": "bullet_speed", "mul": 0.9}]},
+		"desc": "Cada bala tem 10% de chance de não sair do pente. Alcance -15%.",
+		"mods": [{"stat": "free_ammo", "add": 0.1}, {"stat": "bullet_range", "mul": 0.85}]},
+	# Alcance (2026-10-15, pedido do usuário para a build de escopeta: a bala de perto saía
+	# lenta e caindo). As cartas de bala pesada cortam o Alcance no lugar da velocidade; quem
+	# não tem perda de Alcance não tem limite nenhum. Choke e Silenciador devolvem parte, sobre
+	# o que sobrou (números meus, para ele conferir); sem perda de Alcance, o ganho não muda nada.
+	"choke": {"name": "Choke", "cat": "Arma", "rarity": "comum", "max": 3,
+		"desc": "Alcance +25%. Leque 20% mais fechado.",
+		"mods": [{"stat": "bullet_range", "mul": 1.25}, {"stat": "spread", "mul": 0.8}]},
+	"silenciador": {"name": "Silenciador", "cat": "Arma", "rarity": "raro", "max": 1,
+		"desc": "Alcance +60%. Velocidade da bala +20%. Tamanho da bala -15%.",
+		"mods": [{"stat": "bullet_range", "mul": 1.6}, {"stat": "bullet_speed", "mul": 1.2},
+			{"stat": "bullet_radius", "mul": 0.85}]},
 	# Sangue Frio: o oposto da build de movimento (Player.still_aim).
 	"sangue_frio": {"name": "Sangue Frio", "cat": "Arma", "rarity": "raro", "max": 2,
 		"desc": "Parado ou agachado no chão: dano +25% e velocidade da bala +30%. Com 2 cópias, +50% e +60%.",

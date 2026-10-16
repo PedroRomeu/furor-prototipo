@@ -2,7 +2,8 @@ class_name PracticePanel
 extends PanelContainer
 ## Painel de dano da sala de teste, no canto direito: DPS dos últimos 3 s, o melhor DPS,
 ## dano total, maior golpe, tiros e golpes, e em quanto tempo o melhor DPS tira 100 de
-## vida. Conta todo dano que você causa (balas, áreas, mestras). Z zera.
+## vida. Conta todo dano que você causa (balas, áreas, mestras). Z zera. Também mostra o
+## Alcance das suas balas (2026-10-15).
 ## Textos atualizados 4 vezes por segundo (Label, sem desenho de formas).
 
 const WINDOW := 3.0
@@ -17,6 +18,7 @@ var _shots := 0
 var _clock := 0.0
 var _wait := 0.0
 var _values := {}
+var player: Player   # quem joga (para mostrar o Alcance)
 
 
 func _ready() -> void:
@@ -34,6 +36,7 @@ func _ready() -> void:
 	_values["total"] = _row(col, "Dano total")
 	_values["big"] = _row(col, "Maior golpe")
 	_values["hits"] = _row(col, "Tiros / golpes")
+	_values["reach"] = _row(col, "Alcance")
 	col.add_child(Ui.gap(2))
 	col.add_child(Ui.label("Z  zerar   ·   B  cartas e mestra", 12, Ui.MUTED))
 	reset()
@@ -93,3 +96,6 @@ func _refresh() -> void:
 	_values["total"].text = "%.0f" % _total
 	_values["big"].text = "%.0f" % _biggest
 	_values["hits"].text = "%d / %d" % [_shots, _hits]
+	if is_instance_valid(player):
+		var reach := player.bullet_reach()
+		_values["reach"].text = "%.0f m" % reach if reach > 0.0 else "sem limite"

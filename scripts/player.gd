@@ -57,6 +57,7 @@ const BASE_STATS := {
 	"reload_time": 1.3,
 	"bullet_speed": 48.0,
 	"bullet_gravity": 7.0,
+	"bullet_range": 200.0,   # Alcance (m); RANGE_FREE ou mais = sem limite
 	"bullet_count": 1,
 	"free_ammo": 0.0,   # Cartucheira: chance de cada bala não sair do pente
 	"shot_ammo": 0,     # balas do pente a mais por tiro (Escopeta: cada bala do leque gasta 1)
@@ -1200,6 +1201,18 @@ var strike_timer := 0.0     # Arrancada: o próximo tiro sai mais forte enquanto
 var pressure_timer := 0.0   # Pressão: mais rápido enquanto > 0
 var _pressure_next := 0     # Pressão: ms em que pode valer de novo
 var _flat_next := {}        # FLAT_GAP: atirador -> ms em que o próximo efeito fixo vale (máquina do alvo)
+## Alcance (2026-10-15, build de escopeta): a bala some ao ficar a mais de stats["bullet_range"]
+## m, em linha reta, de onde saiu. A base é RANGE_FREE, que quer dizer sem limite: só quem tem
+## perda de Alcance nas cartas sente (os ganhos sozinhos voltam a RANGE_FREE ou mais).
+const RANGE_FREE := 200.0
+
+
+## Alcance desta arma em metros, ou 0.0 se não tiver limite.
+func bullet_reach() -> float:
+	var r := float(stats["bullet_range"])
+	return r if r < RANGE_FREE - 0.01 else 0.0
+
+
 ## Sangue Frio: por cópia, +25% de dano e balas 30% mais rápidas parado (abaixo de 1 m/s) ou
 ## agachado sem deslizar, no chão.
 const STILL_DAMAGE := 0.25

@@ -192,11 +192,11 @@ const NEWS := [
 	"Aflições: Veneno lento e longo, Queimadura rápida e curta, tela verde ou em chamas.",
 	"Congelamento: camadas de gelo até congelar o inimigo, e o próximo golpe quebra o gelo (Bala de Gelo, Estilhaço, Choque Térmico).",
 	"Prisão de Gelo mais forte: caco que estilhaça e bloco que guarda o dano.",
-	"Build de escopeta: Cano Serrado (forte de perto, fraco de longe), Arrancada e Pressão.",
+	"Build de escopeta: Cano Serrado, Arrancada, Pressão, Choke e Silenciador; balas pesadas perdem Alcance, não velocidade.",
 	"Dano em soma única: os bônus somam em vez de multiplicar.",
 	"Domínio do Rei, Arpéu Ventoso, Eco e Camuflagem refeitos.",
 	"Prorrogação mais cedo nas primeiras rodadas e relógio no topo da tela.",
-	"19 cartas comuns novas (139 no total).",
+	"21 cartas comuns novas (141 no total).",
 ]
 static var _play_tab := "Treino"   # lembra a última aba enquanto o jogo roda
 static var _side_page := 0         # e a última página da coluna da direita
