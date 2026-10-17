@@ -355,7 +355,7 @@ func _reset() -> void:
 
 
 func _back() -> void:
-	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+	get_tree().change_scene_to_file.call_deferred("res://scenes/main_menu.tscn")   # adiado: ver deck_editor._back
 
 
 static func _thousands(n: int) -> String:

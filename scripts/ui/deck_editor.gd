@@ -991,13 +991,13 @@ func _ask_craft(id: String) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
+		get_viewport().set_input_as_handled()   # antes de trocar de tela: depois ela já saiu da árvore
 		if craft_box.visible:
 			craft_box.visible = false
 		elif picker.visible:
 			picker.visible = false
 		else:
 			_back()
-		get_viewport().set_input_as_handled()
 
 
 ## Na sala online: o anfitrião começou enquanto você editava.
@@ -1010,9 +1010,11 @@ func _open_practice() -> void:
 	_save()
 	GameState.editing = index
 	GameState.practice = true
-	get_tree().change_scene_to_file("res://scenes/match.tscn")
+	get_tree().change_scene_to_file.call_deferred("res://scenes/match.tscn")
 
 
 func _back() -> void:
 	_save()
-	get_tree().change_scene_to_file("res://scenes/decks.tscn")
+	# Adiado (2026-10-17): o Esc às vezes fechava o jogo nesta tela; trocar de cena no meio do
+	# tratamento da tecla tirava a tela da árvore com o evento ainda passando por ela.
+	get_tree().change_scene_to_file.call_deferred("res://scenes/decks.tscn")

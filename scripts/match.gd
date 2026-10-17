@@ -381,7 +381,7 @@ func _leave_practice() -> void:
 	pause_menu.close()
 	GameState.practice = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	get_tree().change_scene_to_file("res://scenes/deck_editor.tscn")
+	get_tree().change_scene_to_file.call_deferred("res://scenes/deck_editor.tscn")
 
 
 ## Qualidade gráfica (Configurações). Medido num Intel HD (OpenGL via ANGLE), 1280x720:
@@ -1112,7 +1112,7 @@ func _to_menu() -> void:
 	pause_menu.close()
 	Net.stop()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+	get_tree().change_scene_to_file.call_deferred("res://scenes/main_menu.tscn")
 
 
 ## Fim da partida online: volta para a sala sem fechar a conexão (o menu abre na página
@@ -1121,7 +1121,7 @@ func _to_room() -> void:
 	pause_menu.close()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	GameState.from_lobby = true
-	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+	get_tree().change_scene_to_file.call_deferred("res://scenes/main_menu.tscn")
 
 
 ## Autoteste: sai no fim. Com "--sala" em rede, a primeira partida volta à sala (o host

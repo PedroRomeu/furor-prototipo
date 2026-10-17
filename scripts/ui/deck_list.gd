@@ -164,7 +164,7 @@ func _mix_text(cards: Array) -> String:
 
 func _edit(i: int) -> void:
 	GameState.editing = i
-	get_tree().change_scene_to_file("res://scenes/deck_editor.tscn")
+	get_tree().change_scene_to_file.call_deferred("res://scenes/deck_editor.tscn")
 
 
 func _duplicate(i: int) -> void:
@@ -315,6 +315,7 @@ func _create() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
+		get_viewport().set_input_as_handled()
 		if overlay.visible:
 			overlay.visible = false
 		else:
@@ -326,4 +327,4 @@ func _on_match_starting() -> void:
 
 
 func _back() -> void:
-	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+	get_tree().change_scene_to_file.call_deferred("res://scenes/main_menu.tscn")   # adiado: ver deck_editor._back

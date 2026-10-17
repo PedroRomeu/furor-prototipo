@@ -220,7 +220,7 @@ func _ready() -> void:
 func go_to_match() -> void:
 	bot_count = 0
 	from_lobby = false
-	get_tree().change_scene_to_file("res://scenes/match.tscn")
+	get_tree().change_scene_to_file.call_deferred("res://scenes/match.tscn")
 
 
 func set_mouse_sens(value: float) -> void:

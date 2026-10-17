@@ -152,7 +152,7 @@ func _home_page() -> Control:
 	play.add_theme_font_size_override("font_size", 22)
 	menu.add_child(play)
 	menu.add_child(_menu_button("Baralhos", _open_decks))
-	menu.add_child(_menu_button("Loja", func(): get_tree().change_scene_to_file("res://scenes/shop.tscn")))
+	menu.add_child(_menu_button("Loja", func(): get_tree().change_scene_to_file.call_deferred("res://scenes/shop.tscn")))
 	menu.add_child(_menu_button("Personalizar", _open_custom))
 	menu.add_child(_menu_button("Configurações", func(): _show(Page.SETTINGS)))
 	menu.add_child(_menu_button("Sair", func(): get_tree().quit()))
@@ -945,7 +945,7 @@ func _nick_edit() -> LineEdit:
 # ---------------------------------------------------------------- ações
 
 func _open_decks() -> void:
-	get_tree().change_scene_to_file("res://scenes/decks.tscn")
+	get_tree().change_scene_to_file.call_deferred("res://scenes/decks.tscn")
 
 
 ## Da sala: a conexão continua aberta e a tela de Baralhos volta para cá.
@@ -977,7 +977,7 @@ func _refresh_solo() -> void:
 
 func _play_bots() -> void:
 	GameState.bot_count = bot_count
-	get_tree().change_scene_to_file("res://scenes/match.tscn")
+	get_tree().change_scene_to_file.call_deferred("res://scenes/match.tscn")
 
 
 func _host() -> void:
