@@ -219,7 +219,7 @@ func _draw_shield() -> void:
 		_draw_missile()
 		return
 	var total: float = me.stats["shield_duration"] + me.stats["shield_cooldown"]
-	var silenced: bool = me.silence_timer > 0.0
+	var silenced: bool = me.silence_timer > 0.0 or me.sword_timer > 0.0   # Espada na mão: sem escudo
 	var active: bool = me.is_shielding()
 	var charge := 1.0 if active or me.shield_cd <= 0.0 else clampf(1.0 - me.shield_cd / maxf(0.01, total), 0.0, 1.0)
 	var color := Ui.DANGER if silenced else SHIELD_COLOR

@@ -78,6 +78,8 @@ const SEEK_CHANCE_MIN := 0.35
 const SEEK_CHANCE_GAIN := 0.35
 const SEEK_CHANCE_K := 2.0
 const SEEK_RADIUS_MIN := 3.5   # era 4 (e curva 4,5) até 2026-10-07: forte com 1 cópia
+## Raspão (2026-10-17): passar a até isto da cápsula do inimigo sem acertar aplica as aflições.
+const GRAZE_RANGE := 1.0
 const SEEK_RADIUS_GAIN := 4.0   # era 2,5 até 2026-10-11: 1 cópia igual, as seguintes vão mais longe
 const SEEK_RADIUS_K := 3.0
 const SEEK_TURN_MIN := 8.0    # era 4 (+2) até 2026-10-11: a bala verde errava demais (30% acertava
@@ -209,6 +211,7 @@ var origin := Vector3.ZERO   # de onde o tiro saiu (Cano Serrado e Alcance medem
 var reach := 0.0    # Alcance em metros (0 = sem limite)
 var _fade := 1.0    # encolhimento no fim do alcance (só o desenho)
 var _drilled: Array = []
+var _grazed: Array = []   # Raspão: inimigos por quem esta bala já passou perto
 var sound := false
 var age := 0.0
 var waiting := 0.0
@@ -229,7 +232,8 @@ static func fire(from: Player, pos: Vector3, dir: Vector3, damage_mult := 1.0, w
 	var s := from.stats
 	b.shooter = from
 	b.bounce_life = maxf(BOUNCE_LIFE_MIN, BOUNCE_LIFE / sqrt(maxf(1.0, s["bullet_count"])))
-	# overrides["bonus"]: bônus a mais deste disparo (Última Bala, crítico), somado aos outros.
+	# overrides["bonus"]: bônus de Dano a mais deste disparo, somado aos outros (crítico e Última
+	# Bala multiplicam desde 2026-10-17: vêm em damage_mult).
 	b.bonus = from.damage_sum() + float(overrides.get("bonus", 0.0))
 	b.damage = from.damage_for(b.bonus) * damage_mult
 	var size := pow(b.damage / float(Player.BASE_STATS["damage"]), DAMAGE_SIZE_EXP)
@@ -698,6 +702,8 @@ func _player_on_segment(from: Vector3, end: Vector3) -> Dictionary:
 	var best_dist := INF
 	var mid := (from + end) * 0.5
 	var half := from.distance_to(end) * 0.5
+	var graze_on: bool = is_instance_valid(shooter) and shooter.stats["graze"] > 0
+	var near := radius + (GRAZE_RANGE if graze_on else 0.0)
 	for node in _players:
 		if not is_instance_valid(node):
 			continue
@@ -707,7 +713,7 @@ func _player_on_segment(from: Vector3, end: Vector3) -> Dictionary:
 		# Descarte rápido: longe demais do trecho para a cápsula (ou o escudo) alcançar.
 		var body: float = p.height * 0.5 * float(p.stats["body_scale"])
 		var center := p.global_position + Vector3(0.0, body, 0.0)
-		if center.distance_to(mid) > half + body + p.hit_radius() + radius:
+		if center.distance_to(mid) > half + body + p.hit_radius() + near:
 			continue
 		if is_instance_valid(shooter) and shooter.is_ally(p) and p.hooked_by == null:
 			continue   # 2x2: a bala atravessa o parceiro (menos preso no Gancho: escudo humano)
@@ -717,7 +723,12 @@ func _player_on_segment(from: Vector3, end: Vector3) -> Dictionary:
 			continue   # Esquiva: no dash a bala atravessa (quem decide é a máquina do alvo)
 		var seg := p.hit_segment()
 		var pts := Geometry3D.get_closest_points_between_segments(from, end, seg[0], seg[1])
-		if pts[0].distance_to(pts[1]) > p.hit_radius() + radius:
+		var gap := pts[0].distance_to(pts[1])
+		if gap > p.hit_radius() + radius:
+			# Raspão: só depois de a bala passar pelo ponto mais perto (senão acertaria em seguida).
+			if graze_on and p.is_local and p != shooter and gap <= p.hit_radius() + radius + GRAZE_RANGE \
+					and pts[0].distance_squared_to(end) > 0.0001 and not shooter.is_ally(p) and not p in _grazed:
+				_graze(p)
 			continue
 		var d := from.distance_to(pts[0])
 		if d < best_dist:
@@ -963,21 +974,16 @@ func _hit_player(target: Player, point: Vector3) -> void:
 	var flat := target.flat_ready(shooter) if is_instance_valid(shooter) else false
 	if push > 0.0 and target != shooter:   # a própria bala quicada não empurra (virava elevador)
 		target.knockback(velocity.normalized() * push + Vector3.UP * 3.0)
-	if slow > 0.0:
-		target.apply_slow(slow, Player.SLOW_TIME, shooter)
-	if poison > 0.0:
-		target.apply_poison(dmg * poison, shooter)
-	if burn > 0.0:
-		target.apply_burn(dmg * burn, Player.BURN_HIT_TIME, shooter, flat)
-	if shield_break:
-		target.silence(shooter)
-	if blind > 0.0:
-		target.apply_blind(blind, shooter)
+	var had := target.affliction_mask()
+	_afflict(target, dmg, flat)
 	if swap and is_instance_valid(shooter) and shooter.alive:
 		target.begin_swap(shooter)
 	target.take_damage(dmg, shooter, true, drill)
 	if flat:
 		target.frost_hit(shooter)   # depois do dano: o tiro que congela não quebra o gelo
+	if is_instance_valid(shooter) and shooter != target and shooter.stats["fresh_refund"] > 0 \
+			and not shooter.is_ally(target) and target.affliction_mask() & ~had != 0:
+		shooter.remote_call("fresh_refund")   # Dose Extra
 	if is_instance_valid(shooter) and shooter != target and shooter.stats["pressure"] > 0 \
 			and shooter.chest().distance_to(target.chest()) <= Player.PRESSURE_RANGE:
 		shooter.remote_call("pressure_hit")
@@ -1210,3 +1216,27 @@ class TrailBatch extends MeshInstance3D:
 				prev_b = c
 		if open:
 			imesh.surface_end()
+
+
+## As aflições da bala no alvo (acerto e Raspão). dmg: o dano que vale para Veneno e Queimadura.
+func _afflict(target: Player, dmg: float, flat: bool) -> void:
+	if slow > 0.0:
+		target.apply_slow(slow, Player.SLOW_TIME, shooter)
+	if poison > 0.0:
+		target.apply_poison(Player.dot_base(dmg, Player.POISON_ABOVE) * poison, shooter)
+	if burn > 0.0:
+		target.apply_burn(Player.dot_base(dmg, Player.BURN_ABOVE) * burn, Player.BURN_HIT_TIME, shooter, flat)
+	if shield_break:
+		target.silence(shooter)
+	if blind > 0.0:
+		target.apply_blind(blind, shooter)
+
+
+## Raspão: a bala passou perto deste inimigo sem acertar (máquina dele). As aflições, sem dano,
+## no máximo uma vez a cada Player.FLAT_GAP s deste atirador (a camada de gelo vem junto).
+func _graze(target: Player) -> void:
+	_grazed.append(target)
+	if target.is_shielding() or target.ice_timer > 0.0 or not target.flat_ready(shooter):
+		return
+	_afflict(target, damage, false)
+	target.frost_hit(shooter)

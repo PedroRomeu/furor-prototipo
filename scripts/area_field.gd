@@ -156,9 +156,9 @@ static func on_impact(owner: Player, point: Vector3, normal: Vector3, toxic: int
 		if near:
 			near.life = maxf(near.life, t)
 			near.time_total = maxf(near.time_total, near.life)
-			near.power = maxf(near.power, damage * CLOUD_DPS)
+			near.power = maxf(near.power, Player.dot_base(damage, Player.POISON_ABOVE) * CLOUD_DPS)
 		elif _may_spawn(owner, Kind.CLOUD, CLOUD_GAP, CLOUD_MAX):
-			_spawn(owner, Kind.CLOUD, center, r, t, damage * CLOUD_DPS)
+			_spawn(owner, Kind.CLOUD, center, r, t, Player.dot_base(damage, Player.POISON_ABOVE) * CLOUD_DPS)
 	if hole > 0 and _may_spawn(owner, Kind.HOLE, HOLE_GAP, HOLE_MAX):
 		_spawn(owner, Kind.HOLE, point + normal * 0.5, HOLE_RADIUS + HOLE_RADIUS_STEP * (hole - 1),
 			HOLE_TIME, HOLE_PULL + HOLE_PULL_STEP * (hole - 1))

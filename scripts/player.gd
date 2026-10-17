@@ -64,7 +64,7 @@ const BASE_STATS := {
 	"spread": 4.0,
 	"burst": 1,
 	"bullet_radius": 0.15,
-	"last_shot": 1.0,
+	"last_shot": 0,
 	"crit_chance": 0.0,
 	"bounces": 0,
 	"homing": 0.0,
@@ -133,6 +133,7 @@ const BASE_STATS := {
 	"stomp": 0,           # Pisão
 	"heavy": 0.0,         # Peso Pesado: fração a menos dos empurrões
 	"armor_regen": 0.0,   # Segunda Pele: colete a cada SKIN_DELAY sem levar dano
+	"armor_pierce": 0.0,  # Núcleo de Aço: fração do que o colete absorveria que vai na vida
 	"parkour": 0,         # Parkour: pulo de parede devolve dash no ar e dá velocidade
 	"perfect_reload": 0,  # Recarga Perfeita
 	"tough": 0,           # Casca Dura
@@ -160,6 +161,8 @@ const BASE_STATS := {
 	"recoil": 0,          # Pólvora Extra: cópias; o coice cresce mais rápido que elas (_recoil)
 	"body_scale": 1.0,
 	"chase": 0.0,
+	"fresh_refund": 0,    # Dose Extra: aflição nova no inimigo devolve 1 bala
+	"graze": 0,           # Raspão: bala que passa perto aplica as aflições (Bullet.GRAZE_RANGE)
 	"camo": 0,
 	"rocket_jump": 0,
 	"rocket_boots": 0,   # Bota Foguete (carta mestra)
@@ -444,13 +447,25 @@ const DETONATE_CAP := 60.0
 const BURN_COLOR := Color(1.0, 0.5, 0.15)
 ## Reação em Cadeia (2026-10-14, ideia do usuário, números meus aprovados): quando uma
 ## aflição de quem tem a carta termina num inimigo (fica livre dela; Estouro e morte não
-## contam), ele explode: toma CHAIN_DAMAGE e causa o mesmo a outros inimigos a até
+## contam), ele explode: toma o dano (CHAIN_SHARE) e causa o mesmo a outros inimigos a até
 ## CHAIN_RANGE m, que pegam de novo a aflição que terminou, do mesmo dono (pode voltar e
 ## explodir de novo: o usuário achou justo). Cada alvo explode no máximo a cada CHAIN_GUARD s.
-## Valores por cópias (1, 2). Dano fixo: não cresce com as cartas de Dano.
-const CHAIN_DAMAGE := [12.0, 20.0]
+## Valores por cópias (1, 2).
+## Desde 2026-10-17 (pedido do usuário: o fixo dava dano de graça ao spam) o dano é uma parte
+## do dano da bala de quem tem a carta, entre CHAIN_MIN e CHAIN_MAX (por cópias).
+const CHAIN_SHARE := [0.5, 0.8]
+const CHAIN_MIN := 5.0
+const CHAIN_MAX := [25.0, 40.0]
 const CHAIN_RANGE := [4.0, 5.0]
 const CHAIN_GUARD := 3.0
+## Veneno e Queimadura pela bala (2026-10-17, pedido do usuário: fortes demais no fim da
+## partida, fracos no começo): a parte do dano acima de DOT_KNEE rende menos (Veneno 60% -> 40%,
+## Queimadura 50% -> 35%, Nuvem Tóxica 30% -> 20%).
+const DOT_KNEE := 40.0
+const POISON_ABOVE := 2.0 / 3.0
+const BURN_ABOVE := 0.7
+## Caçador (refeito em 2026-10-17): vale por CHASE_TIME depois de acertar, na direção de quem levou.
+const CHASE_TIME := 2.0
 ## Cor da explosão pela aflição que terminou (pedido do usuário).
 const CHAIN_COLORS := {"poison": CONTAGION_COLOR, "burn": Color(1.0, 0.28, 0.15),
 	"slow": Color(0.45, 0.7, 1.0), "blind": Color(1.0, 1.0, 0.85), "silence": Color(0.75, 0.5, 1.0),
@@ -476,7 +491,11 @@ const BURST_GAP := 0.07
 const SHOT_BUFFER := 0.15
 const ADRENALINE_GAP := 0.4
 const ADRENALINE_CUT := 0.5   # Adrenalina: parte da recarga que falta cortada ao refletir
-const CRIT_BONUS := 1.5   # crítico: +150% de dano, somado aos outros bônus (shot_damage)
+## Crítico e Última Bala multiplicam o dano (2026-10-17, pedido do usuário: com a soma única a
+## sniper ficou sem dano na rodada 20). Última Bala: x2 com 1 cópia, +0,5 por cópia a mais.
+const CRIT_MULT := 2.0
+const LAST_SHOT_MULT := 2.0
+const LAST_SHOT_STEP := 0.5
 const TELEPORT_RANGE := 7.0
 ## Teleporte (refeito em 2026-10-05, como no Furor): atravessa paredes. Se o ponto cair
 ## dentro de uma peça, procura lugar livre na mesma linha, primeiro à frente até este
@@ -614,7 +633,7 @@ const SCOPE_SPEED := 0.6
 ## de pé, bloqueia. Sem golpe por COMBO_RESET, o combo volta ao primeiro.
 const SWORD_TIME := 8.0
 const SWORD_RANGE := 3.2
-const SWORD_ARC := 65.0          # graus para cada lado
+const SWORD_ARC := 60.0          # graus para cada lado (65 até 2026-10-17)
 const THRUST_RANGE := 3.6
 const THRUST_ARC := 25.0
 const SWORD_DAMAGE := [1.0, 1.0, 1.6]
@@ -623,6 +642,11 @@ const THRUST_GAP := 0.55         # depois da estocada
 const COMBO_RESET := 0.9
 const THRUST_DASH := 0.13        # duração do avanço da estocada (na velocidade do dash)
 const SWORD_COLOR := Color(0.75, 0.88, 1.0)
+## Nerf de 2026-10-17 (o usuário, depois de um amigo jogar com ela): com a espada na mão, -20% de
+## velocidade e sem o escudo do E; recarga 16 -> 22 s (CardDB).
+const SWORD_SPEED := 0.8
+const SWORD_PACE_MIN := 1.0   # nunca mais rápida que antes (com 0,7, 3 Gatilhos Leves batiam 84/s)
+const SWORD_PACE_MAX := 2.5
 ## Formiga (2026-10-06): Q encolhe por SHRINK_TIME (tamanho x SHRINK_SCALE, junto com a área
 ## que as balas acertam; a colisão com o cenário não muda, para não prender ninguém na
 ## parede ao crescer) e dá SHRINK_SPEED de velocidade. Q de novo volta antes. Ao crescer,
@@ -648,7 +672,7 @@ const RECOIL_KICK := 0.03
 const HIT_FLASH_TIME := 0.14   # o modelo atingido pisca em branco por este tempo
 ## Métodos que a outra máquina pode chamar neste jogador (ver remote_call).
 const ASSIST_TIME := 10.0   # placar: dano nos últimos 10 s antes da morte conta assistência
-const REMOTE_METHODS := ["receive_grapple_kick", "receive_shockwave", "credit_damage", "bullet_refund", "teleport_to", "swap_to", "receive_stomp",
+const REMOTE_METHODS := ["receive_grapple_kick", "receive_shockwave", "credit_damage", "bullet_refund", "fresh_refund", "teleport_to", "swap_to", "receive_stomp",
 	"receive_slash", "ice_shove", "receive_slap", "receive_beam", "receive_hook", "hook_blocked",
 	"hook_throw", "hook_release", "receive_bowl", "receive_slam", "receive_realm", "realm_blocked",
 	"mark_seen", "receive_contagion", "receive_detonation", "receive_chain", "receive_shatter",
@@ -1129,6 +1153,8 @@ var heal_glow := 0.0   # Sanguessuga: 1 -> 0 em HEAL_GLOW_TIME (modelo e HUD)
 var _net_heal := false
 var silence_timer := 0.0
 var silence_guard := 0.0   # Atordoante: enquanto > 0, novo atordoamento não pega
+var chase_target: Player   # Caçador: o último inimigo acertado
+var chase_timer := 0.0
 var bloodlust_timer := 0.0
 var since_damage := 0.0
 var since_attack := 0.0   # tiro ou golpe de Espada (Regeneração)
@@ -1298,7 +1324,7 @@ var slam_height := 0.0    # altura do chão quando o Meteoro começou
 var slam_cd := 0.0
 var rj_charges := RJ_CHARGES   # Pulo-Foguete: lançamentos que ainda valem até tocar o chão
 var slam_pressed := false # Meteoro: agachar apertado no ar neste passo (não vira dash)
-var shot_bonus := 0.0     # bônus de dano do disparo atual (Última Bala), somado em shot_damage
+var shot_mult := 1.0      # multiplicador de dano do disparo atual (Última Bala)
 var shot_count := 1       # balas do disparo atual (Escopeta com o pente quase vazio: menos)
 var free_ammo_shown := 0    # Cartucheira: quantas balas do último tiro saíram de graça (HUD)
 var free_ammo_flash := -100000   # quando (ms), para a piscada no arco do pente
@@ -2738,6 +2764,7 @@ func _tick(delta: float) -> void:
 			_chain_end("silence", 0.0, aff_from.get("silence"))
 	silence_guard = maxf(0.0, silence_guard - delta)
 	bloodlust_timer = maxf(0.0, bloodlust_timer - delta)
+	chase_timer = maxf(0.0, chase_timer - delta)
 	if blind_timer > 0.0:
 		blind_timer = maxf(0.0, blind_timer - delta)
 		if blind_timer <= 0.0:
@@ -2830,7 +2857,9 @@ func _target_speed() -> float:
 		speed *= 1.0 + SHRINK_SPEED
 	if mech_state > 0:
 		speed *= MECH_BUILD_SPEED if mech_state == 1 else MECH_SPEED
-	if stats["chase"] > 0.0 and _toward_enemy():
+	if sword_timer > 0.0:
+		speed *= SWORD_SPEED
+	if chase_timer > 0.0 and _toward(chase_target):
 		speed *= 1.0 + stats["chase"]
 	if is_surviving():
 		speed *= 1.0 + stats["survival_speed"]
@@ -2843,16 +2872,13 @@ func is_surviving() -> bool:
 
 
 ## Caçador: andando na direção de algum inimigo (até 45 graus de desvio)?
-func _toward_enemy() -> bool:
+func _toward(enemy: Player) -> bool:
 	var wish := _wish_dir()
-	if wish == Vector3.ZERO:
+	if wish == Vector3.ZERO or not is_instance_valid(enemy) or not enemy.alive:
 		return false
-	for enemy in enemies():
-		var to: Vector3 = enemy.global_position - global_position
-		to.y = 0.0
-		if to.length() > 0.1 and wish.normalized().dot(to.normalized()) > 0.7:
-			return true
-	return false
+	var to: Vector3 = enemy.global_position - global_position
+	to.y = 0.0
+	return to.length() > 0.1 and wish.normalized().dot(to.normalized()) > 0.7
 
 
 func _wish_dir() -> Vector3:
@@ -3605,9 +3631,12 @@ func teleport_to(pos: Vector3) -> void:
 
 ## Quem causou dano recebe o crédito: roubo de vida, Sede de Sangue e o som de acerto.
 ## tick: dano contínuo (veneno, queimadura, nuvem, serra), que não recarrega o dash da Caçada.
-func credit_damage(amount: float, lethal := false, tick := false) -> void:
+func credit_damage(amount: float, lethal := false, tick := false, victim := "") -> void:
 	if not alive:
 		return
+	if stats["chase"] > 0.0 and not tick and victim != "":
+		chase_target = get_parent().get_node_or_null(victim) as Player
+		chase_timer = CHASE_TIME
 	if stats["lifesteal"] > 0.0:
 		var before := health
 		heal(amount * stats["lifesteal"])
@@ -3657,7 +3686,7 @@ func _act(delta: float) -> void:
 		_end_shrink(true)   # Formiga: Q de novo volta ao tamanho antes do tempo
 	elif in_master and master_ready() and hook_state == 0:
 		_use_master()
-	if in_shield and shield_cd <= 0.0 and silence_timer <= 0.0:
+	if in_shield and shield_cd <= 0.0 and silence_timer <= 0.0 and sword_timer <= 0.0:
 		_activate_shield()
 	_shield_bash()
 	shot_queued = maxf(0.0, shot_queued - delta)
@@ -5198,13 +5227,21 @@ func _rest_sword() -> void:
 
 
 ## Um golpe do combo: decide os acertos (máquina dona), anima e avisa as outras máquinas.
+## Ritmo da espada (2026-10-17, proposta minha aprovada): os golpes seguem a Cadência das cartas
+## (intervalo de tiro sobre o da arma base), entre SWORD_PACE_MIN e SWORD_PACE_MAX. Antes a
+## espada levava o dano das cartas sem pagar a cadência, o pente e o recarregar delas.
+func sword_pace() -> float:
+	return clampf(float(stats["fire_interval"]) / float(BASE_STATS["fire_interval"]), SWORD_PACE_MIN, SWORD_PACE_MAX)
+
+
 func _swing() -> void:
 	since_attack = 0.0
 	spawn_protect = 0.0   # atacar encerra a proteção do começo da rodada
 	var step := combo_step
 	combo_step = (step + 1) % 3
-	combo_idle = COMBO_RESET
-	fire_timer = THRUST_GAP if step == 2 else SWORD_GAP
+	var pace := sword_pace()
+	combo_idle = COMBO_RESET * pace
+	fire_timer = (THRUST_GAP if step == 2 else SWORD_GAP) * pace
 	swing_hits.clear()
 	reveal()
 	if step == 2:
@@ -5316,7 +5353,7 @@ func _fire_sniper() -> void:
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + aim * 300.0, 2, [get_rid()])
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	var target: Vector3 = hit["position"] if not hit.is_empty() else origin + aim * 300.0
-	shot_bonus = 0.0
+	shot_mult = 1.0
 	Bullet.fire(self, muzzle.global_position, (target - muzzle.global_position).normalized(), SNIPER_DAMAGE, true,
 		{"speed": SNIPER_SPEED, "gravity": 0.0, "ghost": true, "pierce": true, "laser": true, "bounces": 0,
 		"split": 0, "sticky": false, "boomerang": false, "guided": false, "seek": 0.0, "homing": 0.0,
@@ -5336,7 +5373,7 @@ func _fire_ice() -> void:
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + aim * ICE_RANGE, 1 | 2, [get_rid()])
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	var target: Vector3 = hit["position"] if not hit.is_empty() else origin + aim * ICE_RANGE
-	shot_bonus = 0.0
+	shot_mult = 1.0
 	Bullet.fire(self, muzzle.global_position, (target - muzzle.global_position).normalized(), 0.0, true,
 		{"speed": ICE_SPEED, "ice": true, "radius": ICE_SHARD_RADIUS, "gravity": 0.0, "bounces": 0, "ghost_walls": 0,
 		"explosion": 0.0, "poison": 0.0, "burn": 0.0, "slow": 0.0, "push": 0.0, "shield_break": false, "execute": 0.0,
@@ -6763,7 +6800,7 @@ func _fire_rocket() -> void:
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + aim * 300.0, 1 | 2, [get_rid()])
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	var target: Vector3 = hit["position"] if not hit.is_empty() else origin + aim * 300.0
-	shot_bonus = 0.0
+	shot_mult = 1.0
 	Bullet.fire(self, muzzle.global_position, (target - muzzle.global_position).normalized(), ROCKET_DAMAGE, true,
 		{"speed": ROCKET_SPEED, "gravity": 0.0, "explosion": maxf(ROCKET_EXPLOSION, float(stats["explosion"])),
 		"bounces": 0, "split": 0, "sticky": false, "boomerang": false, "guided": false, "pierce": false})
@@ -6864,7 +6901,7 @@ func _shoot() -> void:
 	meteor_shot = meteor_left > 0
 	if meteor_shot:
 		meteor_left -= 1
-	shot_bonus = float(stats["last_shot"]) - 1.0 if ammo == 0 else 0.0
+	shot_mult = LAST_SHOT_MULT + LAST_SHOT_STEP * (stats["last_shot"] - 1) if ammo == 0 and stats["last_shot"] > 0 else 1.0
 	_volley()
 	strike_timer = 0.0   # Arrancada: só o próximo tiro (o leque inteiro)
 	if ammo == 0:
@@ -6904,10 +6941,9 @@ func _volley() -> void:
 		var dir := (target - muzzle.global_position).normalized()
 		if count > 1:
 			dir = dir.rotated(Vector3.UP, spread * (k - (count - 1) / 2.0))
-		var mult := 1.0
 		var crit := randf() < float(stats["crit_chance"])
-		var extra := {"crit": crit, "click": click_id,
-			"bonus": shot_bonus + (CRIT_BONUS if crit else 0.0)}
+		var mult := shot_mult * (CRIT_MULT if crit else 1.0)
+		var extra := {"crit": crit, "click": click_id}
 		if pierce_shot:
 			# Perfurante: reta, bem mais rápida e atravessando paredes.
 			extra.merge({"speed": float(stats["bullet_speed"]) * PIERCE_SPEED, "gravity": 0.0,
@@ -6989,6 +7025,25 @@ func is_still_aiming() -> bool:
 
 ## Reciclagem: uma bala acertou alguém (chamado pela máquina do alvo). Cada bala que
 ## acerta devolve 1 por cópia (2026-10-13, pedido do usuário; antes era 1 vez por clique).
+## Dose Extra: o acerto pôs uma aflição que o inimigo não tinha (máquina de quem atirou).
+func fresh_refund() -> void:
+	if stats["fresh_refund"] > 0 and alive:
+		ammo = mini(ammo + 1, stats["mag_size"])
+
+
+## Aflições que este jogador tem agora, uma por bit (Dose Extra compara antes e depois do acerto).
+func affliction_mask() -> int:
+	return int(not poisons.is_empty()) | int(burn_timer > 0.0) << 1 | int(slow_timer > 0.0) << 2 \
+		| int(blind_timer > 0.0) << 3 | int(silence_timer > 0.0) << 4 \
+		| int(frost_layers > 0 or frost_freeze > 0.0) << 5 | int(daze_timer > 0.0) << 6
+
+
+## Veneno (above POISON_ABOVE) e Queimadura (BURN_ABOVE) pela bala: dano que conta, com a parte
+## acima de DOT_KNEE rendendo menos.
+static func dot_base(dmg: float, above: float) -> float:
+	return dmg if dmg <= DOT_KNEE else DOT_KNEE + (dmg - DOT_KNEE) * above
+
+
 func bullet_refund(_click: int) -> void:
 	if stats["recycle"] <= 0 or not alive:
 		return
@@ -7384,8 +7439,8 @@ func _chain_step() -> void:
 		if e["from"] == from and not e["kind"] in kinds:
 			kinds.append(e["kind"])
 			effects.append([e["kind"], e["power"]])
-	var n := clampi(int(from.stats["chain_blast"]), 1, CHAIN_DAMAGE.size()) - 1
-	var dmg: float = CHAIN_DAMAGE[n]
+	var n := clampi(int(from.stats["chain_blast"]), 1, CHAIN_SHARE.size()) - 1
+	var dmg := clampf(float(from.stats["damage"]) * CHAIN_SHARE[n], CHAIN_MIN, CHAIN_MAX[n])
 	var r: float = CHAIN_RANGE[n]
 	_show_chain(kinds, r)
 	if Net.online:
@@ -7624,6 +7679,8 @@ func take_damage(amount: float, from: Player, flash := true, ignore_armor := fal
 		amount = _mech_absorb(amount)
 		mech_broke = mech_armor <= 0.0
 	var absorbed := 0.0 if ignore_armor else minf(armor, amount)
+	if absorbed > 0.0 and not tick and from and from != self and not is_ally(from):
+		absorbed *= 1.0 - minf(float(from.stats["armor_pierce"]), 1.0)   # Núcleo de Aço
 	armor -= absorbed
 	health -= amount - absorbed
 	if last_stand_timer > 0.0:
@@ -7645,7 +7702,7 @@ func take_damage(amount: float, from: Player, flash := true, ignore_armor := fal
 		if is_human:
 			Sfx.ui(self, "hurt")
 		if from and from != self:
-			from.remote_call("credit_damage", [hit_total, health <= 0.0 and revives_left == 0, tick])
+			from.remote_call("credit_damage", [hit_total, health <= 0.0 and revives_left == 0, tick, String(name)])
 	if mech_broke:
 		_mech_end()   # blindagem zerada: sai e explode com o máximo
 	if health <= 0.0:

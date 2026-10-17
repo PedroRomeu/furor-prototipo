@@ -140,7 +140,7 @@ shows in a corner during the match.
 ## Match rules
 
 - Decks of 30 to 50 cards, up to 3 copies each. More copies = more chance of the card
-  showing up. With 141 cards there are always some left out.
+  showing up. With 144 cards there are always some left out.
 - **Baralhos** (decks) screen: create as many named decks as you want, starting from a
   template (Equilibrado, Atirador, Muralha, Acrobata, Caos, Aleatório or Vazio). The editor
   has the card collection on the left and your deck on the right. Click a card to add it,
@@ -185,7 +185,8 @@ shows in a corner during the match.
   flying fast) and **Gancho** (Body, Q: a hook that pulls the enemy to you and holds them as
   a human shield; click to throw them: a wall hurts them, another enemy hurts and dazes both). Also: **Espada** (Weapon, Q: a big
   sword for 8 s with a 3-hit combo: slash right, slash left and a lunging thrust; a raised
-  shield blocks it), **Sniper** (Weapon, Q: a sniper with ONE laser shot
+  shield blocks it; while holding it you move 20% slower, cannot raise your own shield and swing
+  slower if your cards slowed your fire rate), **Sniper** (Weapon, Q: a sniper with ONE laser shot
   that goes through every wall and deals 4x damage; right click to aim with the scope),
   **Bazuca** (Weapon, Q: 6 s of
   bazooka, 3 rockets), **Perfurante** (Bullets, Q: 3 straight fast shots with +30% damage that go
@@ -268,7 +269,7 @@ All numbers are provisional, to be tuned by playing.
 
 ## Cards
 
-141 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst, Cano Serrado for
+144 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst, Cano Serrado for
 close range; heavy bullets cut Range, so they vanish past a distance instead of slowing down,
 and Choke and Silenciador give some back; without Range cuts bullets fly as far as ever...), **Balas**
 (bullets: ricochet, homing, explosive, poison, slow, freezing layers that freeze the enemy
