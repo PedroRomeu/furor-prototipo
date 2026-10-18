@@ -846,6 +846,8 @@ func _update_status() -> void:
 		items.append(["PARKOUR +%d%%  %.1f" % [roundi(Player.PARKOUR_SPEED * me.stats["parkour"] * 100.0), me.parkour_timer], CardDB.CATEGORY_COLORS["Movimento"]])
 	if me.strike_timer > 0.0:
 		items.append(["ARRANCADA +%d%%  %.1f" % [roundi(Player.STRIKE_DAMAGE * 100.0), me.strike_timer], CardDB.CATEGORY_COLORS["Movimento"]])
+	if me.feast_stacks > 0:
+		items.append(["FOME %d/%d  +%d%% DE DANO" % [me.feast_stacks, Player.FEAST_MAX, roundi(Player.FEAST_DAMAGE * me.feast_stacks * 100.0)], CardDB.CATEGORY_COLORS["Corpo"]])
 	if me.pressure_timer > 0.0:
 		items.append(["PRESSÃO +%d%%  %.1f" % [roundi(Player.PRESSURE_SPEED * 100.0), me.pressure_timer], CardDB.CATEGORY_COLORS["Movimento"]])
 	if me.tough_timer > 0.0:

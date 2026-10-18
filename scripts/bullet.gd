@@ -127,11 +127,18 @@ const RANGE_FADE_MIN := 0.25
 ## o tiro saiu até onde acertou, soma até CLOSE_BONUS ao dano (soma única) até CLOSE_NEAR m,
 ## caindo a zero em CLOSE_ZERO m; de CLOSE_ZERO a CLOSE_FAR o dano cai até CLOSE_FAR_MULT.
 ## A bala do Bumerangue que volta e acerta perto de quem atirou ganha o bônus.
-const CLOSE_BONUS := 0.5
+const CLOSE_BONUS := 0.6
 const CLOSE_NEAR := 5.0
 const CLOSE_ZERO := 12.0
 const CLOSE_FAR := 15.0
 const CLOSE_FAR_MULT := 0.7
+## Cano Serrado, área de acerto de perto (2026-10-18, ideia do usuário; números meus aprovados):
+## o leque aberto fazia as balas de fora passarem raspando do lado do corpo a 3-7 m. A bala
+## acerta passando até CLOSE_PAD m a mais do corpo até CLOSE_PAD_FULL m de onde saiu; a folga
+## cai a zero em CLOSE_PAD_ZERO m. A bala não curva: só o critério de acerto fica mais largo.
+const CLOSE_PAD := 0.25
+const CLOSE_PAD_FULL := 3.0
+const CLOSE_PAD_ZERO := 6.0
 ## Bala Fantasma: só paredes contam (superfície quase em pé); no chão e no topo das peças a
 ## bala para ou quica como as outras.
 const GHOST_WALL_NORMAL_Y := 0.7
@@ -703,7 +710,7 @@ func _player_on_segment(from: Vector3, end: Vector3) -> Dictionary:
 	var mid := (from + end) * 0.5
 	var half := from.distance_to(end) * 0.5
 	var graze_on: bool = is_instance_valid(shooter) and shooter.stats["graze"] > 0
-	var near := radius + (GRAZE_RANGE if graze_on else 0.0)
+	var near := radius + (GRAZE_RANGE if graze_on else 0.0) + (CLOSE_PAD if close > 0 else 0.0)
 	for node in _players:
 		if not is_instance_valid(node):
 			continue
@@ -724,7 +731,10 @@ func _player_on_segment(from: Vector3, end: Vector3) -> Dictionary:
 		var seg := p.hit_segment()
 		var pts := Geometry3D.get_closest_points_between_segments(from, end, seg[0], seg[1])
 		var gap := pts[0].distance_to(pts[1])
-		if gap > p.hit_radius() + radius:
+		var pad := 0.0
+		if close > 0:
+			pad = CLOSE_PAD * clampf((CLOSE_PAD_ZERO - origin.distance_to(pts[0])) / (CLOSE_PAD_ZERO - CLOSE_PAD_FULL), 0.0, 1.0)
+		if gap > p.hit_radius() + radius + pad:
 			# Raspão: só depois de a bala passar pelo ponto mais perto (senão acertaria em seguida).
 			if graze_on and p.is_local and p != shooter and gap <= p.hit_radius() + radius + GRAZE_RANGE \
 					and pts[0].distance_squared_to(end) > 0.0001 and not shooter.is_ally(p) and not p in _grazed:

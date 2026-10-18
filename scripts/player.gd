@@ -389,7 +389,8 @@ const BASH_RANGE := 2.2         # Pancada: alcance do escudo, do peito de um ao 
 const SHIELD_DOUBLE_GAP := 0.5  # Escudo Duplo: espera entre a primeira e a segunda vez
 ## Atordoante: escudo bloqueado SILENCE_TIME e depois SILENCE_GUARD s sem poder ser atordoado
 ## de novo (2026-10-11; era 1,5 s renovando a cada acerto: com muitas balas, sem escudo direto).
-const SILENCE_TIME := 2.0
+## 2 -> 1,5 s em 2026-10-18 (pedido do usuário: com a build de cadência, o 1o acerto era morte certa).
+const SILENCE_TIME := 1.5
 const SILENCE_GUARD := 3.0
 ## Flash: depois de cegar, o mesmo alvo fica BLIND_GUARD s sem poder ser cegado de novo, de
 ## quem for (2026-10-11; renovando a cada acerto, muitas balas deixavam a tela branca direto).
@@ -650,7 +651,10 @@ const THRUST_DASH := 0.13        # duração do avanço da estocada (na velocida
 const SWORD_COLOR := Color(0.75, 0.88, 1.0)
 ## Nerf de 2026-10-17 (o usuário, depois de um amigo jogar com ela): com a espada na mão, -20% de
 ## velocidade e sem o escudo do E; recarga 16 -> 22 s (CardDB).
-const SWORD_SPEED := 0.8
+## 2026-10-18 (pedido do usuário): -25% de velocidade, recarga 24 s e o parry: escudo que bloqueia
+## um golpe deixa quem tem a espada tonto (_daze) por PARRY_DAZE e volta o combo ao 1o golpe.
+const SWORD_SPEED := 0.75
+const PARRY_DAZE := 0.6
 const SWORD_PACE_MIN := 1.0   # nunca mais rápida que antes (com 0,7, 3 Gatilhos Leves batiam 84/s)
 const SWORD_PACE_MAX := 2.5
 ## Formiga (2026-10-06): Q encolhe por SHRINK_TIME (tamanho x SHRINK_SCALE, junto com a área
@@ -679,7 +683,7 @@ const HIT_FLASH_TIME := 0.14   # o modelo atingido pisca em branco por este temp
 ## Métodos que a outra máquina pode chamar neste jogador (ver remote_call).
 const ASSIST_TIME := 10.0   # placar: dano nos últimos 10 s antes da morte conta assistência
 const REMOTE_METHODS := ["receive_grapple_kick", "receive_shockwave", "credit_damage", "bullet_refund", "fresh_refund", "teleport_to", "swap_to", "receive_stomp",
-	"receive_slash", "ice_shove", "receive_slap", "receive_beam", "receive_hook", "hook_blocked",
+	"receive_slash", "receive_parry", "ice_shove", "receive_slap", "receive_beam", "receive_hook", "hook_blocked",
 	"hook_throw", "hook_release", "receive_bowl", "receive_slam", "receive_realm", "realm_blocked",
 	"mark_seen", "receive_contagion", "receive_detonation", "receive_chain", "receive_shatter",
 	"pressure_hit"]
@@ -1142,6 +1146,7 @@ var click_id := 0       # número do clique; vai na bala (Reciclagem: 0 = não d
 var skin_stacks := 0          # Couro Grosso: redução atual por golpe
 var skin_stack_timer := 0.0   # Couro Grosso: tempo desde o último golpe levado
 var revenge_target := ""      # Vingança: nome do nó de quem te matou na rodada anterior
+var feast_stacks := 0         # Banquete: acúmulos de Fome (passam de uma rodada para outra)
 var was_on_floor := true
 var was_shielding := false
 var eye_dip := 0.0
@@ -1224,6 +1229,14 @@ const PRESSURE_RANGE := 6.0
 const PRESSURE_SPEED := 0.25
 const PRESSURE_TIME := 1.5
 const PRESSURE_DASH := 1.0
+## Banquete (refeito em 2026-10-18, pedido do usuário: a cura de 30 era inútil, e no 1 contra 1
+## o abate encerra a rodada). Abate cura toda a vida e dá 1 acúmulo de Fome: FEAST_DAMAGE de
+## dano (soma única) e FEAST_HEALTH de vida máxima por acúmulo, até FEAST_MAX. Morrer zera
+## (reset_for_round, como a Vingança): na prática premia sequência de vitórias. Números meus
+## aprovados.
+const FEAST_DAMAGE := 0.08
+const FEAST_HEALTH := 0.05
+const FEAST_MAX := 3
 ## Efeitos de valor fixo por acerto (camada de gelo, Brasa, Hipotermia, Pressão) contam no
 ## máximo uma vez a cada FLAT_GAP s de cada atirador em cada alvo (2026-10-15, pedido do
 ## usuário: o baralho de spam não pode ser o principal das aflições; não proíbe, só
@@ -1713,6 +1726,8 @@ func reset_for_round(spawn: Transform3D) -> void:
 	# Vingança: quem te matou na rodada que acabou (quem sobreviveu não tem alvo). Igual em
 	# todas as máquinas: death_killer vem do _net_die.
 	revenge_target = death_killer if not alive else ""
+	if not alive:
+		feast_stacks = 0   # Banquete: morrer zera a Fome
 	skin_stacks = 0
 	unstable_cards.clear()
 	unstable_timer = 0.0
@@ -1724,6 +1739,7 @@ func reset_for_round(spawn: Transform3D) -> void:
 	_grapple_clear()
 	grapple_refund = 0.0
 	stats = CardDB.compute_stats(BASE_STATS, cards)
+	_feast_mods()
 	var masters := cards.filter(CardDB.is_master)
 	master_id = masters[0] if not masters.is_empty() else ""
 	master_cd = 0.0
@@ -3696,7 +3712,13 @@ func credit_damage(amount: float, lethal := false, tick := false, victim := "") 
 		dash_cd = 0.0
 		air_dashes_left = mini(air_dashes_left + 1, stats["air_dashes"])
 	if lethal and stats["kill_heal"] > 0.0:
-		heal(stats["kill_heal"])   # Banquete
+		# Banquete: mais um acúmulo de Fome (a vida máxima sobe antes) e cura toda a vida.
+		if feast_stacks < FEAST_MAX:
+			_net_feast(feast_stacks + 1)
+			if Net.online and is_inside_tree():
+				_net_feast.rpc(feast_stacks)
+		heal(stats["max_health"])
+		heal_flash()
 	if lethal and last_stand_timer > 0.0:
 		# Último Suspiro: abateu alguém a tempo, volta com metade da vida.
 		last_stand_timer = 0.0
@@ -3918,10 +3940,25 @@ func _unstable_set(ids: Array) -> void:
 	_recompute_stats()
 
 
+## Banquete: vida máxima a mais pela Fome, por cima das cartas (chamado depois de compute_stats).
+func _feast_mods() -> void:
+	if feast_stacks > 0:
+		stats["max_health"] = minf(float(stats["max_health"]) * (1.0 + FEAST_HEALTH * feast_stacks),
+				CardDB.LIMITS["max_health"][1])
+
+
+## Banquete: novo número de acúmulos; nas outras máquinas, para a barra de vida bater.
+@rpc("authority", "call_remote", "reliable")
+func _net_feast(stacks: int) -> void:
+	feast_stacks = stacks
+	_recompute_stats()
+
+
 ## Atributos no meio da rodada com as cartas da partida, da prorrogação e as instáveis.
 func _recompute_stats() -> void:
 	var old_max: float = stats["max_health"]
 	stats = CardDB.compute_stats(BASE_STATS, cards + overtime_cards + unstable_cards)
+	_feast_mods()
 	if chaos and master_id != "":
 		_chaos_set(master_id)
 	if has_meta("shrunk") and get_meta("shrunk"):
@@ -5346,9 +5383,23 @@ func receive_slash(dmg: float, from_name: String, push: Vector3) -> void:
 		reflect_flash = 1.0
 		Sfx.at(self, "reflect", chest())
 		Effects.burst(get_parent(), chest(), 1.2, Color(0.5, 0.9, 1.0), 0.15)
+		var attacker := get_parent().get_node_or_null(from_name) as Player
+		if attacker:
+			attacker.remote_call("receive_parry", [String(name)])   # parry
 		return
 	knockback(push + Vector3.UP * 2.5)
 	take_damage(dmg, get_parent().get_node_or_null(from_name) as Player)
+
+
+## Parry (na máquina de quem tem a espada): o golpe bateu num escudo levantado. Tonto por
+## PARRY_DAZE (sem golpear e lento), a estocada para e o combo volta ao primeiro golpe.
+func receive_parry(from_name: String) -> void:
+	if not alive or sword_timer <= 0.0:
+		return
+	combo_step = 0
+	thrust_timer = 0.0
+	dash_timer = 0.0
+	_daze(PARRY_DAZE, get_parent().get_node_or_null(from_name) as Player)
 
 
 ## Visual do golpe: arco (ou traço, na estocada) na frente do corpo, som e animação.
@@ -7047,6 +7098,7 @@ func damage_sum() -> float:
 		sum += STILL_DAMAGE * stats["still_aim"]
 	if strike_timer > 0.0:
 		sum += STRIKE_DAMAGE   # Arrancada
+	sum += FEAST_DAMAGE * feast_stacks   # Banquete
 	return sum + realm_bonus()
 
 
