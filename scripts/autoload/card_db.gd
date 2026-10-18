@@ -312,7 +312,11 @@ const ARCHETYPES := {
 			"cacada", "botas_leves", "pisao", "dash_duplo", "parkour", "velocidade_letal", "vulto", "bote"]},
 	"Tudo ou nada": {"desc": "Troca vida por poder.",
 		"cards": ["fragil", "canhao_de_vidro", "imprudente", "nanico", "furia", "fenix", "molas",
-			"escudo_de_papel", "instinto", "leveza"]},
+			"escudo_de_papel", "instinto", "leveza", "mosquito"]},
+	# Mosquito (2026-10-18, build dos amigos do usuário): pequeno, veneno, cura e movimento.
+	"Mosquito": {"desc": "Corpo pequeno e pouca vida: cadência, veneno e cura para compensar.",
+		"cards": ["mosquito", "nanico", "fragil", "leveza", "sanguessuga", "metabolismo", "veneno",
+			"pulo_duplo", "planador"]},
 }
 
 ## O corpo cresce com a vida máxima, de leve (como no Furor): 1,8x de vida = 19% maior,
@@ -753,6 +757,11 @@ var CARDS := {
 	"leveza": {"name": "Leveza", "cat": "Corpo", "rarity": "comum",
 		"desc": "Velocidade de movimento +15%. Vida -15%.",
 		"mods": [{"stat": "move_speed", "mul": 1.15}, {"stat": "max_health", "mul": 0.85}]},
+	# Mosquito (2026-10-18, ideia do usuário para formalizar a build "mosquito"; números meus,
+	# vida -20% dele). Segue o tamanho do momento: Player.mosquito_small, MOSQUITO_*.
+	"mosquito": {"name": "Mosquito", "cat": "Corpo", "rarity": "raro", "max": 1,
+		"desc": "Quanto menor o seu corpo, mais rápido você atira e mais vida rouba: para cada 10% abaixo do tamanho normal, Cadência +8% e roubo de vida +2% (no máximo 55% abaixo). Vida -20%.",
+		"mods": [{"stat": "mosquito", "add": 1}, {"stat": "max_health", "mul": 0.8}]},
 
 	# Movimento
 	"pulo_duplo": {"name": "Pulo Duplo", "cat": "Movimento", "rarity": "raro",
@@ -1053,6 +1062,7 @@ func compute_stats(base: Dictionary, card_ids: Array) -> Dictionary:
 			stats[stat] *= 1.0 + bonus[stat]
 	# Os bônus de situação somam a este (Player.shot_damage), em vez de multiplicar o dano.
 	stats["damage_bonus"] = bonus.get("damage", 0.0)
+	stats["fire_bonus"] = bonus.get("fire_interval", 0.0)   # o Mosquito soma a este (Player.fire_interval)
 	for stat in LIMITS:
 		stats[stat] = clampf(stats[stat], LIMITS[stat][0], LIMITS[stat][1])
 	var size: float = stats["body_scale"] * pow(stats["max_health"] / base["max_health"], HEALTH_SIZE_EXP)

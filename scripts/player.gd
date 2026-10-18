@@ -160,6 +160,8 @@ const BASE_STATS := {
 	"radar": 0,
 	"recoil": 0,          # Pólvora Extra: cópias; o coice cresce mais rápido que elas (_recoil)
 	"body_scale": 1.0,
+	"mosquito": 0,        # Mosquito: cadência e roubo de vida por ser pequeno (MOSQUITO_*)
+	"fire_bonus": 0.0,    # soma dos bônus de Cadência das cartas, já dentro de "fire_interval"
 	"chase": 0.0,
 	"fresh_refund": 0,    # Dose Extra: aflição nova no inimigo devolve 1 bala
 	"graze": 0,           # Raspão: bala que passa perto aplica as aflições (Bullet.GRAZE_RANGE)
@@ -657,6 +659,12 @@ const SWORD_SPEED := 0.75
 const PARRY_DAZE := 0.6
 const SWORD_PACE_MIN := 1.0   # nunca mais rápida que antes (com 0,7, 3 Gatilhos Leves batiam 84/s)
 const SWORD_PACE_MAX := 2.5
+## Mosquito (2026-10-18): por fração do corpo abaixo do normal (0,1 = 10% menor), soma
+## MOSQUITO_CADENCE x a fração de Cadência e MOSQUITO_LIFESTEAL x a fração de roubo de vida,
+## até MOSQUITO_MAX abaixo. Vale o tamanho do momento (Formiga ajuda, Mecha zera).
+const MOSQUITO_CADENCE := 0.8
+const MOSQUITO_LIFESTEAL := 0.2
+const MOSQUITO_MAX := 0.55
 ## Formiga (2026-10-06): Q encolhe por SHRINK_TIME (tamanho x SHRINK_SCALE, junto com a área
 ## que as balas acertam; a colisão com o cenário não muda, para não prender ninguém na
 ## parede ao crescer) e dá SHRINK_SPEED de velocidade. Q de novo volta antes. Ao crescer,
@@ -3701,9 +3709,10 @@ func credit_damage(amount: float, lethal := false, tick := false, victim := "") 
 	if stats["chase"] > 0.0 and not tick and victim != "":
 		chase_target = get_parent().get_node_or_null(victim) as Player
 		chase_timer = CHASE_TIME
-	if stats["lifesteal"] > 0.0:
+	var lifesteal := minf(float(stats["lifesteal"]) + MOSQUITO_LIFESTEAL * mosquito_small(), CardDB.LIMITS["lifesteal"][1])
+	if lifesteal > 0.0:
 		var before := health
-		heal(amount * stats["lifesteal"])
+		heal(amount * lifesteal)
 		if health > before:
 			heal_flash()
 	if stats["bloodlust"] > 0.0:
@@ -5316,7 +5325,24 @@ func _rest_sword() -> void:
 ## (intervalo de tiro sobre o da arma base), entre SWORD_PACE_MIN e SWORD_PACE_MAX. Antes a
 ## espada levava o dano das cartas sem pagar a cadência, o pente e o recarregar delas.
 func sword_pace() -> float:
-	return clampf(float(stats["fire_interval"]) / float(BASE_STATS["fire_interval"]), SWORD_PACE_MIN, SWORD_PACE_MAX)
+	return clampf(fire_interval() / float(BASE_STATS["fire_interval"]), SWORD_PACE_MIN, SWORD_PACE_MAX)
+
+
+## Quanto o corpo está abaixo do tamanho normal, para o Mosquito (0 sem a carta).
+func mosquito_small() -> float:
+	if stats["mosquito"] <= 0:
+		return 0.0
+	return clampf(1.0 - float(stats["body_scale"]), 0.0, MOSQUITO_MAX)
+
+
+## Intervalo entre tiros de agora: o bônus do Mosquito soma aos de Cadência das cartas.
+func fire_interval() -> float:
+	var interval: float = stats["fire_interval"]
+	var small := mosquito_small()
+	if small <= 0.0:
+		return interval
+	var sum := 1.0 + float(stats["fire_bonus"])
+	return maxf(interval * sum / (sum + MOSQUITO_CADENCE * small), CardDB.LIMITS["fire_interval"][0])
 
 
 func _swing() -> void:
@@ -6970,7 +6996,7 @@ func _fire() -> void:
 	click_id += 1
 	burst_left = stats["burst"] - 1
 	burst_timer = BURST_GAP
-	fire_timer = maxf(stats["fire_interval"], stats["burst"] * BURST_GAP)
+	fire_timer = maxf(fire_interval(), stats["burst"] * BURST_GAP)
 	_shoot()
 
 
