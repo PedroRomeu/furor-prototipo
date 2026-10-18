@@ -817,7 +817,7 @@ var CARDS := {
 		"desc": "Cada dash seu emenda outro sozinho logo depois, para onde você estiver apertando (curva no meio). Os efeitos de dash se repetem e no ar o extra não gasta dash. Com 2 cópias são 3 dashes. Recarga do dash +0,3 s.",
 		"mods": [{"stat": "dash_echo", "add": 1}, {"stat": "dash_cooldown", "add": 0.3}]},
 	"pisao": {"name": "Pisão", "cat": "Movimento", "rarity": "raro", "max": 3,
-		"desc": "Cair na cabeça de um inimigo (pulando ou no dash pelo ar) causa 20 de dano e te quica para cima, devolvendo o dash e os pulos no ar. +10 de dano por cópia.",
+		"desc": "Cair na cabeça de um inimigo (pulando ou no dash pelo ar) causa 20 de dano e te quica para cima, devolvendo o dash e os pulos no ar. Caindo quase na cabeça, o ar te puxa de leve até ela (mais com mais cópias). +10 de dano por cópia.",
 		"mods": [{"stat": "stomp", "add": 1}]},
 	# Build de movimento (2026-10-11, pedido do usuário: velocidade vira dano e defesa, e
 	# chegar no corpo do inimigo; números meus, aprovados). Código em Player.shot_damage,

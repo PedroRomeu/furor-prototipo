@@ -578,6 +578,12 @@ const STOMP_DAMAGE := 20.0
 const STOMP_DAMAGE_STEP := 10.0   # por cópia a mais
 const STOMP_BOUNCE := 14.0        # sobe ~3,3 m com GRAVITY_RISE
 const STOMP_REPEAT := 0.5
+## Ajuda de mira do Pisão (2026-10-17, ideia do usuário; números meus): caindo sobre um
+## inimigo, se a queda prevista vai errar a cabeça por pouco, o ar empurra de leve para o
+## lado certo. Sempre ligada; cópias aumentam a margem que ela salva e a força do empurrão.
+const STOMP_ASSIST_EXTRA := [0.2, 0.4, 0.6]      # m além da área do pisão (1, 2, 3 cópias)
+const STOMP_ASSIST_ACCEL := [10.0, 14.0, 18.0]   # m/s² no máximo
+const STOMP_ASSIST_HEIGHT := 3.0                 # só olha inimigos até 3 m abaixo dos pés
 ## Caído no 2x2 (2026-10-06, pedido do usuário; números meus, com base no Apex, que revive
 ## em 5 s e encolhe o prazo a cada queda, e no Fortnite, 10 s): com o parceiro de pé, o golpe
 ## fatal derruba em vez de matar. Caído, se arrasta devagar, não atira nem usa nada, e NINGUÉM
@@ -2642,6 +2648,8 @@ func _physics_step(delta: float) -> void:
 	if grapple_state < 2 or not _grapple_move(delta):
 		_move(delta)
 	_act(delta)
+	if stats["stomp"] > 0 and velocity.y < 0.0 and not is_on_floor():
+		_stomp_assist(delta)
 	var fall_speed := velocity.y
 	var before_h := Vector3(velocity.x, 0.0, velocity.z)
 	move_and_slide()
@@ -3248,6 +3256,46 @@ func _check_stomp(fall_speed: float) -> void:
 		if flat < reach and dy > low and dy < 0.35:
 			_stomp(enemy, now)
 			return
+
+
+## Prevê onde os pés passam na altura da cabeça de cada inimigo abaixo (queda com
+## GRAVITY_FALL, inimigo andando reto) e, se o erro previsto cabe na margem extra, puxa a
+## velocidade de lado até a queda ficar dentro da área, sem passar de STOMP_ASSIST_ACCEL.
+## No dash pelo ar não ajuda: a área do dash já é maior.
+func _stomp_assist(delta: float) -> void:
+	if dash_timer > 0.0:
+		return
+	var lv := clampi(int(stats["stomp"]), 1, 3) - 1
+	var my_scale: float = stats["body_scale"]
+	var my_h := Vector2(velocity.x, velocity.z)
+	var v := -velocity.y
+	var best := Vector2.ZERO
+	var best_gap := INF
+	for enemy in enemies():
+		var their_scale: float = enemy.stats["body_scale"]
+		var dy: float = global_position.y - (enemy.global_position.y + enemy.height * their_scale)
+		if dy <= 0.0 or dy > STOMP_ASSIST_HEIGHT:
+			continue
+		var t := (-v + sqrt(v * v + 2.0 * GRAVITY_FALL * dy)) / GRAVITY_FALL
+		if t < 0.05:
+			continue
+		# Inimigo de outra máquina não tem velocidade aqui: conta parado.
+		var their_h := Vector2(enemy.velocity.x, enemy.velocity.z) if enemy.is_local else Vector2.ZERO
+		var rel := Vector2(global_position.x - enemy.global_position.x, global_position.z - enemy.global_position.z) \
+				+ (my_h - their_h) * t
+		var reach := RADIUS * (my_scale + their_scale) * 1.1
+		# Mira um pouco para dentro da borda, para não depender do último quadro.
+		var gap := rel.length() - reach * 0.75
+		if gap <= 0.0:
+			return   # já vai acertar alguém
+		if gap < STOMP_ASSIST_EXTRA[lv] + reach * 0.25 and gap < best_gap:
+			best_gap = gap
+			best = -rel.normalized() * gap / t
+	if best_gap == INF:
+		return
+	var push := best.limit_length(STOMP_ASSIST_ACCEL[lv] * delta)
+	velocity.x += push.x
+	velocity.z += push.y
 
 
 func _standing_on_player() -> bool:
