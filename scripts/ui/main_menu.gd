@@ -47,6 +47,11 @@ var preview: LookPreview
 var look_name: Label
 var look_grid: GridContainer
 var lobby_look: Array = []     # [miniatura, nome] do visual na Sala
+var update_corner: VBoxContainer   # canto de baixo à direita do Início: aviso de versão nova
+var update_box: PanelContainer
+var update_text: Label
+var update_bar: Control
+var update_buttons: HBoxContainer
 
 
 func _ready() -> void:
@@ -77,6 +82,10 @@ func _ready() -> void:
 	for p in pages.values():
 		p.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		stack.add_child(p)
+	update_corner = _update_corner()
+	stack.add_child(update_corner)
+	Updater.changed.connect(_refresh_update)
+	_refresh_update()
 	map_picker = MapPicker.new()
 	add_child(map_picker)
 	_show(Page.HOME)
@@ -115,6 +124,8 @@ func _show(p: Page) -> void:
 		map_picker.close()
 	for k in pages:
 		pages[k].visible = k == p
+	if update_corner:
+		update_corner.visible = p == Page.HOME
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -903,6 +914,66 @@ func _deck_card() -> Control:
 	col.add_child(Ui.category_bar(cards))
 	b.custom_minimum_size.y = 118
 	return b
+
+
+## Canto de baixo à direita do Início: a build atual em cinza e, quando o Updater acha uma
+## mais nova no GitHub, uma caixa pequena com o aviso, a barra do download e os botões.
+func _update_corner() -> VBoxContainer:
+	var corner := Ui.vbox(8)
+	corner.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	corner.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	corner.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	update_box = PanelContainer.new()
+	var style := Ui.box(Ui.SURFACE, 12, Ui.LINE)
+	style.content_margin_top = 12
+	style.content_margin_bottom = 12
+	update_box.add_theme_stylebox_override("panel", style)
+	update_box.custom_minimum_size.x = 300
+	corner.add_child(update_box)
+	var col := Ui.vbox(8)
+	update_box.add_child(col)
+	col.add_child(Ui.label("NOVA VERSÃO", 12, Ui.MUTED, true))
+	update_text = Ui.label("", 14, Ui.TEXT)
+	update_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(update_text)
+	update_bar = Ui.progress_bar(0.0, 1.0)
+	col.add_child(update_bar)
+	update_buttons = Ui.hbox(6)
+	col.add_child(update_buttons)
+	var build := Ui.label("Versão " + Net.BUILD, 12, Ui.MUTED)
+	build.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	corner.add_child(build)
+	return corner
+
+
+func _refresh_update() -> void:
+	var s := Updater.state
+	update_box.visible = s in [Updater.State.AVAILABLE, Updater.State.DOWNLOADING,
+		Updater.State.INSTALLING, Updater.State.FAILED]
+	update_bar.visible = s == Updater.State.DOWNLOADING
+	if s == Updater.State.DOWNLOADING:
+		# Chamado a cada quadro durante o download: só o texto e a barra mudam.
+		update_text.text = "Baixando a versão %s... %d%%" % [Updater.latest, roundi(Updater.progress() * 100)]
+		update_bar.get_child(0).anchor_right = Updater.progress()
+		if update_buttons.get_child_count() == 0:
+			return
+	for b in update_buttons.get_children():
+		b.queue_free()
+	match s:
+		Updater.State.AVAILABLE:
+			update_text.text = "A versão %s está disponível." % Updater.latest
+			update_buttons.add_child(Ui.button("Atualizar", Updater.start, 110))
+			update_buttons.add_child(Ui.flat(Ui.button("Ver no site", Updater.open_page)))
+		Updater.State.INSTALLING:
+			update_text.text = "Instalando. O jogo vai reabrir sozinho."
+		Updater.State.FAILED:
+			update_text.text = Updater.error + " Baixe pelo site; seus baralhos ficam."
+			update_text.add_theme_color_override("font_color", Ui.WARN)
+			update_buttons.add_child(Ui.button("Abrir o site", Updater.open_page, 110))
+			update_buttons.add_child(Ui.flat(Ui.button("Tentar de novo", Updater.start)))
+	if s != Updater.State.FAILED:
+		update_text.add_theme_color_override("font_color", Ui.TEXT)
 
 
 ## Lista dos baralhos (incompletos aparecem, mas não dá para escolher). Trocar em um

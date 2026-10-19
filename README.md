@@ -8,10 +8,16 @@ appear in the game, with a translation where it helps.
 
 ## Download and play
 
-Get `Furor.zip` from the [latest release](https://github.com/PedroRomeu/furor-prototipo/releases/latest),
+Get `Furor-<build>.zip` from the [latest release](https://github.com/PedroRomeu/furor-prototipo/releases/latest),
 extract it anywhere and run `Furor.exe`. Nothing to install. Windows may show "Windows
 protected your PC" because the .exe is not signed: click **More info > Run anyway**.
 Everyone playing together needs the **same version**.
+
+From build 0.9.0.8 on, the game checks GitHub when the main menu opens. If there is a newer
+build, a small box in the bottom right corner offers **Atualizar** (Update): the game
+downloads it, replaces its own `Furor.exe` and reopens. Decks and settings live in
+`%APPDATA%\Godot\app_userdata\`, outside the game folder, so they are kept. If the folder is
+read-only, the box links to the release page instead.
 
 ## Open the project
 
