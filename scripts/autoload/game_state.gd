@@ -550,6 +550,65 @@ func equip(index: int) -> void:
 		save_decks()
 
 
+## Código para compartilhar um baralho (2026-10-20): "FUROR1-" + base64 do texto
+## "nome|mestra|id*cópias,id*cópias..." comprimido. Guarda o nome interno das cartas, não a
+## posição na lista, para o código continuar valendo quando entrarem cartas novas.
+const DECK_CODE_PREFIX := "FUROR1-"
+
+
+func deck_code(index: int) -> String:
+	var d: Dictionary = decks[index]
+	var counts := {}
+	for id in d["cards"]:
+		counts[id] = counts.get(id, 0) + 1
+	var parts := PackedStringArray()
+	for id in counts:
+		parts.append(id if counts[id] == 1 else "%s*%d" % [id, counts[id]])
+	var name_safe := str(d["name"]).replace("|", "/")
+	var raw := ("%s|%s|%s" % [name_safe, d["master"], ",".join(parts)]).to_utf8_buffer()
+	var b64 := Marshalls.raw_to_base64(raw.compress(FileAccess.COMPRESSION_DEFLATE))
+	return DECK_CODE_PREFIX + b64.replace("+", "-").replace("/", "_").trim_suffix("=").trim_suffix("=")
+
+
+## Lê um código. Devolve {} se não for válido; senão {"name", "master", "cards",
+## "missing": nomes internos que esta versão não conhece ou que passaram do limite}.
+func parse_deck_code(text: String) -> Dictionary:
+	text = text.strip_edges()
+	var at := text.find(DECK_CODE_PREFIX)
+	if at < 0:
+		return {}
+	var b64 := text.substr(at + DECK_CODE_PREFIX.length()).split(" ")[0].replace("-", "+").replace("_", "/")
+	var allowed := RegEx.create_from_string("^[A-Za-z0-9+/]+=*$")
+	if allowed.search(b64) == null or b64.trim_suffix("=").trim_suffix("=").length() % 4 == 1:
+		return {}   # sem isso o Godot imprime erro de base64 a cada letra digitada errada
+	while b64.length() % 4 != 0:
+		b64 += "="
+	var packed := Marshalls.base64_to_raw(b64)
+	if packed.is_empty():
+		return {}
+	var raw := packed.decompress_dynamic(64 * 1024, FileAccess.COMPRESSION_DEFLATE)
+	var fields := raw.get_string_from_utf8().split("|")
+	if fields.size() != 3:
+		return {}
+	var master := CardDB.MASTER_REPLACED.get(fields[1], fields[1]) as String
+	var missing: Array = []
+	if not CardDB.is_master(master):
+		missing.append(fields[1])
+		master = CardDB.MASTER_DEFAULT
+	var cards: Array = []
+	for part in fields[2].split(",", false):
+		var bits := part.split("*")
+		var id := bits[0]
+		var n := clampi(int(bits[1]) if bits.size() > 1 else 1, 1, CardDB.MAX_COPIES)
+		for k in n:
+			if CardDB.CARDS.has(id) and not CardDB.is_master(id) and cards.count(id) < CardDB.MAX_COPIES and cards.size() < CardDB.DECK_MAX:
+				cards.append(id)
+			elif not missing.has(id):
+				missing.append(id)
+	var deck_name := fields[0].strip_edges().left(24)
+	return {"name": deck_name if deck_name != "" else new_deck_name(), "master": master, "cards": cards, "missing": missing}
+
+
 ## Nome livre do tipo "Baralho 3".
 func new_deck_name() -> String:
 	var n := decks.size() + 1

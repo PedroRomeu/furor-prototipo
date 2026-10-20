@@ -155,6 +155,10 @@ shows in a corner during the match.
   well; a card can be in several), rarity and "only cards in the deck". The master card sits
   in its own slot; click it to choose another. The **equipped** deck is the one used in
   matches.
+- **Deck codes** (build 0.9.0.9): in the "⋯" menu of a deck, **Copiar código** copies a
+  text code of the deck (name, master card and cards). A friend clicks **Colar código** on the
+  Baralhos screen and gets a copy of it as a new deck. Cards their version does not have are
+  left out, with a warning.
 - **Master card**: each deck has one, picked in its own slot in the editor, outside the
   card count. You start every match with it. New in 0.8.0: **Cartas Instáveis** (Bullets, Q:
   3 random common cards from your deck for 8 s, shown over your name), **Domínio do Rei**

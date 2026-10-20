@@ -47,6 +47,11 @@ func _ready() -> void:
 		Net.match_starting.connect(_on_match_starting)
 	header.add_child(titles)
 	header.add_child(Ui.spacer())
+	var paste_button := Ui.button("Colar código", _open_paste, 150)
+	paste_button.custom_minimum_size.y = 44
+	paste_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	paste_button.tooltip_text = "Criar um baralho a partir do código que um amigo mandou"
+	header.add_child(paste_button)
 	var new_button := Ui.accent(Ui.button("+  Novo baralho", _open_new, 190))
 	new_button.custom_minimum_size.y = 44
 	new_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -144,10 +149,17 @@ func _deck_tile(i: int) -> Control:
 	more.tooltip_text = "Mais opções"
 	more.custom_minimum_size = Vector2(40, 36)
 	var popup := more.get_popup()
+	popup.add_item("Copiar código", 2)
 	popup.add_item("Duplicar", 0)
 	popup.add_item("Apagar", 1)
-	popup.set_item_disabled(1, GameState.decks.size() <= 1)
-	popup.id_pressed.connect(func(id): _duplicate(i) if id == 0 else _confirm_delete(i))
+	popup.set_item_disabled(popup.get_item_index(1), GameState.decks.size() <= 1)
+	popup.id_pressed.connect(func(id):
+		if id == 0:
+			_duplicate(i)
+		elif id == 1:
+			_confirm_delete(i)
+		else:
+			_show_code(i))
 	buttons.add_child(more)
 	return panel
 
@@ -210,12 +222,12 @@ func _open_overlay(title: String) -> VBoxContainer:
 	return overlay_body
 
 
-func _overlay_buttons(confirm: Button) -> void:
+func _overlay_buttons(confirm: Button, cancel_text := "Cancelar") -> void:
 	var buttons := Ui.hbox(10)
 	overlay_body.add_child(Ui.gap(4))
 	overlay_body.add_child(buttons)
 	buttons.add_child(Ui.spacer())
-	buttons.add_child(Ui.flat(Ui.button("Cancelar", func(): overlay.visible = false, 110)))
+	buttons.add_child(Ui.flat(Ui.button(cancel_text, func(): overlay.visible = false, 110)))
 	confirm.custom_minimum_size = Vector2(160, 42)
 	buttons.add_child(confirm)
 
@@ -233,6 +245,73 @@ func _confirm_delete(i: int) -> void:
 	confirm.add_theme_stylebox_override("hover", Ui.box(Ui.DANGER.darkened(0.45), 8, Ui.DANGER))
 	confirm.add_theme_color_override("font_color", Ui.DANGER.lightened(0.4))
 	_overlay_buttons(confirm)
+
+
+## Copiar código: põe o código na área de transferência e mostra num campo, para dar para
+## copiar à mão se a área de transferência falhar.
+func _show_code(i: int) -> void:
+	var code := GameState.deck_code(i)
+	DisplayServer.clipboard_set(code)
+	var col := _open_overlay("Código do baralho")
+	var text := Ui.label("Copiado. Mande para um amigo: ele abre Baralhos, clica em \"Colar código\" e ganha uma cópia de \"%s\"." % GameState.decks[i]["name"], 15, Ui.MUTED)
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(text)
+	var field := LineEdit.new()
+	field.text = code
+	field.editable = false
+	field.custom_minimum_size.y = 42
+	col.add_child(field)
+	_overlay_buttons(Ui.accent(Ui.button("Copiar de novo", func(): DisplayServer.clipboard_set(code))), "Fechar")
+
+
+## Colar código: o campo já vem com o que estiver na área de transferência; embaixo, o que o
+## código traz (nome, mestra, cartas e o que esta versão não conhece) antes de criar.
+func _open_paste() -> void:
+	var col := _open_overlay("Colar código")
+	var field := LineEdit.new()
+	field.placeholder_text = "Cole aqui o código (começa com %s)" % GameState.DECK_CODE_PREFIX
+	field.custom_minimum_size.y = 42
+	col.add_child(field)
+	var info := Ui.label("", 14, Ui.MUTED)
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(info)
+	var confirm := Ui.accent(Ui.button("Adicionar baralho", func(): pass))
+	var state := {"deck": {}}   # dicionário: a função anônima copia variáveis soltas
+	var update := func(t: String):
+		state["deck"] = GameState.parse_deck_code(t)
+		var d: Dictionary = state["deck"]
+		confirm.disabled = d.is_empty()
+		if d.is_empty():
+			info.text = "" if t.strip_edges() == "" else "Código inválido."
+			info.add_theme_color_override("font_color", Ui.DANGER)
+			return
+		var lines := PackedStringArray(["%s  ·  mestra %s  ·  %d cartas" % [d["name"], CardDB.card_name(d["master"]), d["cards"].size()]])
+		var color := Ui.MUTED
+		if not d["missing"].is_empty():
+			lines.append("Ficaram de fora (não existem nesta versão ou passaram do limite): %s." % ", ".join(PackedStringArray(d["missing"].map(func(id): return CardDB.card_name(id) if CardDB.CARDS.has(id) else id))))
+			color = Ui.WARN
+		if d["cards"].size() < CardDB.DECK_MIN:
+			lines.append("Ficou com menos de %d cartas: complete no editor antes de equipar." % CardDB.DECK_MIN)
+			color = Ui.WARN
+		info.text = "\n".join(lines)
+		info.add_theme_color_override("font_color", color)
+	field.text_changed.connect(update)
+	confirm.pressed.connect(func():
+		var d: Dictionary = state["deck"]
+		if d.is_empty():
+			return
+		overlay.visible = false
+		GameState.add_deck(d["name"], d["cards"], d["master"])
+		_refresh())
+	field.text_submitted.connect(func(_t):
+		if not confirm.disabled:
+			confirm.pressed.emit())
+	var clip := DisplayServer.clipboard_get()
+	if clip.contains(GameState.DECK_CODE_PREFIX):
+		field.text = clip.strip_edges()
+	update.call(field.text)
+	_overlay_buttons(confirm)
+	field.grab_focus.call_deferred()
 
 
 ## Novo baralho: nome e o modelo de partida (uma linha por modelo, nome e frase).
