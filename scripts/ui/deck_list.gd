@@ -30,29 +30,29 @@ func _ready() -> void:
 
 	var header := Ui.hbox(16)
 	column.add_child(header)
-	var back := Ui.flat(Ui.button("‹  Sala" if GameState.from_lobby else "‹  Menu", _back))
+	var back := Ui.flat(Ui.button(tr("‹  Lobby") if GameState.from_lobby else "‹  Menu", _back))
 	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	header.add_child(back)
 	var titles := Ui.vbox(2)
 	var title_row := Ui.hbox(12)
 	titles.add_child(title_row)
-	title_row.add_child(Ui.label("Baralhos", 32, Ui.TEXT, true))
+	title_row.add_child(Ui.label(tr("Decks"), 32, Ui.TEXT, true))
 	count_label = Ui.label("", 15, Ui.MUTED)
 	count_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	title_row.add_child(count_label)
-	titles.add_child(Ui.label("O baralho equipado é o que você leva para as partidas.", 15, Ui.MUTED))
+	titles.add_child(Ui.label(tr("Your equipped deck is the one you take into matches."), 15, Ui.MUTED))
 	if GameState.from_lobby:
 		# Continua na sala: se o anfitrião começar, a partida abre daqui mesmo.
-		titles.add_child(Ui.label("Você continua na sala. Se o anfitrião começar, a partida abre sozinha.", 14, Ui.WARN))
+		titles.add_child(Ui.label(tr("You're still in the lobby. If the host starts, the match opens on its own."), 14, Ui.WARN))
 		Net.match_starting.connect(_on_match_starting)
 	header.add_child(titles)
 	header.add_child(Ui.spacer())
-	var paste_button := Ui.button("Colar código", _open_paste, 150)
+	var paste_button := Ui.button(tr("Paste code"), _open_paste, 150)
 	paste_button.custom_minimum_size.y = 44
 	paste_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	paste_button.tooltip_text = "Criar um baralho a partir do código que um amigo mandou"
+	paste_button.tooltip_text = tr("Create a deck from a code a friend sent you")
 	header.add_child(paste_button)
-	var new_button := Ui.accent(Ui.button("+  Novo baralho", _open_new, 190))
+	var new_button := Ui.accent(Ui.button(tr("+  New deck"), _open_new, 190))
 	new_button.custom_minimum_size.y = 44
 	new_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	header.add_child(new_button)
@@ -79,7 +79,7 @@ func _refresh() -> void:
 	for i in GameState.decks.size():
 		grid.add_child(_deck_tile(i))
 	var n := GameState.decks.size()
-	count_label.text = "%d baralho%s" % [n, "" if n == 1 else "s"]
+	count_label.text = tr_n("%d deck", "%d decks", n) % n
 
 
 ## Cartão de um baralho: ícone da mestra à esquerda; nome, estado e mistura dos grupos à
@@ -103,7 +103,7 @@ func _deck_tile(i: int) -> Control:
 	var top := Ui.hbox(14)
 	col.add_child(top)
 	var cover := CardIcon.make(deck["master"], 56)
-	cover.tooltip_text = "Mestra: " + CardDB.card_name(deck["master"])
+	cover.tooltip_text = tr("Master: %s") % CardDB.card_name(deck["master"])
 	top.add_child(cover)
 	var texts := Ui.vbox(2)
 	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -130,28 +130,28 @@ func _deck_tile(i: int) -> Control:
 	var buttons := Ui.hbox(8)
 	col.add_child(buttons)
 	if equipped:
-		var mark := Ui.label("✓  Equipado", 14, Ui.ACCENT, true)
+		var mark := Ui.label(tr("✓  Equipped"), 14, Ui.ACCENT, true)
 		mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		buttons.add_child(mark)
 	else:
-		var equip := Ui.button("Equipar", func(): GameState.equip(i); _refresh(), 100)
+		var equip := Ui.button(tr("Equip"), func(): GameState.equip(i); _refresh(), 100)
 		equip.custom_minimum_size.y = 36
 		equip.disabled = not valid
-		equip.tooltip_text = "" if valid else "Precisa de pelo menos %d cartas" % CardDB.DECK_MIN
+		equip.tooltip_text = "" if valid else tr("Needs at least %d cards") % CardDB.DECK_MIN
 		buttons.add_child(equip)
 	buttons.add_child(Ui.spacer())
-	var edit := Ui.button("Editar", _edit.bind(i), 90)
+	var edit := Ui.button(tr("Edit"), _edit.bind(i), 90)
 	edit.custom_minimum_size.y = 36
 	buttons.add_child(edit)
 	var more := MenuButton.new()
 	more.text = "⋯"
 	more.flat = false
-	more.tooltip_text = "Mais opções"
+	more.tooltip_text = tr("More options")
 	more.custom_minimum_size = Vector2(40, 36)
 	var popup := more.get_popup()
-	popup.add_item("Copiar código", 2)
-	popup.add_item("Duplicar", 0)
-	popup.add_item("Apagar", 1)
+	popup.add_item(tr("Copy code"), 2)
+	popup.add_item(tr("Duplicate"), 0)
+	popup.add_item(tr("Delete"), 1)
 	popup.set_item_disabled(popup.get_item_index(1), GameState.decks.size() <= 1)
 	popup.id_pressed.connect(func(id):
 		if id == 0:
@@ -170,8 +170,8 @@ func _mix_text(cards: Array) -> String:
 	for cat in CardDB.CATEGORY_COLORS:
 		var n := cards.filter(func(id): return CardDB.CARDS[id]["cat"] == cat).size()
 		if n > 0:
-			parts.append("%s %d" % [cat, n])
-	return "  ·  ".join(parts) if not parts.is_empty() else "Sem cartas"
+			parts.append("%s %d" % [CardDB.category_name(cat), n])
+	return "  ·  ".join(parts) if not parts.is_empty() else tr("No cards")
 
 
 func _edit(i: int) -> void:
@@ -181,7 +181,7 @@ func _edit(i: int) -> void:
 
 func _duplicate(i: int) -> void:
 	var d: Dictionary = GameState.decks[i]
-	GameState.add_deck("%s (cópia)" % d["name"], d["cards"], d["master"])
+	GameState.add_deck(tr("%s (copy)") % d["name"], d["cards"], d["master"])
 	_refresh()
 
 
@@ -222,7 +222,9 @@ func _open_overlay(title: String) -> VBoxContainer:
 	return overlay_body
 
 
-func _overlay_buttons(confirm: Button, cancel_text := "Cancelar") -> void:
+func _overlay_buttons(confirm: Button, cancel_text := "") -> void:
+	if cancel_text == "":
+		cancel_text = tr("Cancel")
 	var buttons := Ui.hbox(10)
 	overlay_body.add_child(Ui.gap(4))
 	overlay_body.add_child(buttons)
@@ -233,11 +235,11 @@ func _overlay_buttons(confirm: Button, cancel_text := "Cancelar") -> void:
 
 
 func _confirm_delete(i: int) -> void:
-	var col := _open_overlay("Apagar baralho")
-	var text := Ui.label("Apagar \"%s\"? Não dá para desfazer." % GameState.decks[i]["name"], 15, Ui.MUTED)
+	var col := _open_overlay(tr("Delete deck"))
+	var text := Ui.label(tr("Delete \"%s\"? This can't be undone.") % GameState.decks[i]["name"], 15, Ui.MUTED)
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(text)
-	var confirm := Ui.button("Apagar", func():
+	var confirm := Ui.button(tr("Delete"), func():
 		overlay.visible = false
 		GameState.delete_deck(i)
 		_refresh())
@@ -252,8 +254,8 @@ func _confirm_delete(i: int) -> void:
 func _show_code(i: int) -> void:
 	var code := GameState.deck_code(i)
 	DisplayServer.clipboard_set(code)
-	var col := _open_overlay("Código do baralho")
-	var text := Ui.label("Copiado. Mande para um amigo: ele abre Baralhos, clica em \"Colar código\" e ganha uma cópia de \"%s\"." % GameState.decks[i]["name"], 15, Ui.MUTED)
+	var col := _open_overlay(tr("Deck code"))
+	var text := Ui.label(tr("Copied. Send it to a friend: they open Decks, click \"Paste code\" and get a copy of \"%s\".") % GameState.decks[i]["name"], 15, Ui.MUTED)
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(text)
 	var field := LineEdit.new()
@@ -261,37 +263,37 @@ func _show_code(i: int) -> void:
 	field.editable = false
 	field.custom_minimum_size.y = 42
 	col.add_child(field)
-	_overlay_buttons(Ui.accent(Ui.button("Copiar de novo", func(): DisplayServer.clipboard_set(code))), "Fechar")
+	_overlay_buttons(Ui.accent(Ui.button(tr("Copy again"), func(): DisplayServer.clipboard_set(code))), tr("Close"))
 
 
 ## Colar código: o campo já vem com o que estiver na área de transferência; embaixo, o que o
 ## código traz (nome, mestra, cartas e o que esta versão não conhece) antes de criar.
 func _open_paste() -> void:
-	var col := _open_overlay("Colar código")
+	var col := _open_overlay(tr("Paste code"))
 	var field := LineEdit.new()
-	field.placeholder_text = "Cole aqui o código (começa com %s)" % GameState.DECK_CODE_PREFIX
+	field.placeholder_text = tr("Paste the code here (it starts with %s)") % GameState.DECK_CODE_PREFIX
 	field.custom_minimum_size.y = 42
 	col.add_child(field)
 	var info := Ui.label("", 14, Ui.MUTED)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(info)
-	var confirm := Ui.accent(Ui.button("Adicionar baralho", func(): pass))
+	var confirm := Ui.accent(Ui.button(tr("Add deck"), func(): pass))
 	var state := {"deck": {}}   # dicionário: a função anônima copia variáveis soltas
 	var update := func(t: String):
 		state["deck"] = GameState.parse_deck_code(t)
 		var d: Dictionary = state["deck"]
 		confirm.disabled = d.is_empty()
 		if d.is_empty():
-			info.text = "" if t.strip_edges() == "" else "Código inválido."
+			info.text = "" if t.strip_edges() == "" else tr("Invalid code.")
 			info.add_theme_color_override("font_color", Ui.DANGER)
 			return
-		var lines := PackedStringArray(["%s  ·  mestra %s  ·  %d cartas" % [d["name"], CardDB.card_name(d["master"]), d["cards"].size()]])
+		var lines := PackedStringArray([tr("%s  ·  master %s  ·  %d cards") % [d["name"], CardDB.card_name(d["master"]), d["cards"].size()]])
 		var color := Ui.MUTED
 		if not d["missing"].is_empty():
-			lines.append("Ficaram de fora (não existem nesta versão ou passaram do limite): %s." % ", ".join(PackedStringArray(d["missing"].map(func(id): return CardDB.card_name(id) if CardDB.CARDS.has(id) else id))))
+			lines.append(tr("Left out (not in this version or over the limit): %s.") % ", ".join(PackedStringArray(d["missing"].map(func(id): return CardDB.card_name(id) if CardDB.CARDS.has(id) else id))))
 			color = Ui.WARN
 		if d["cards"].size() < CardDB.DECK_MIN:
-			lines.append("Ficou com menos de %d cartas: complete no editor antes de equipar." % CardDB.DECK_MIN)
+			lines.append(tr("It has fewer than %d cards: fill it in the editor before equipping.") % CardDB.DECK_MIN)
 			color = Ui.WARN
 		info.text = "\n".join(lines)
 		info.add_theme_color_override("font_color", color)
@@ -316,15 +318,15 @@ func _open_paste() -> void:
 
 ## Novo baralho: nome e o modelo de partida (uma linha por modelo, nome e frase).
 func _open_new() -> void:
-	var col := _open_overlay("Novo baralho")
-	Ui.section(col, "NOME", null, 4)
+	var col := _open_overlay(tr("New deck"))
+	Ui.section(col, tr("NAME"), null, 4)
 	name_edit = LineEdit.new()
 	name_edit.custom_minimum_size.y = 42
 	name_edit.max_length = 24
 	name_edit.text = GameState.new_deck_name()
 	name_edit.text_submitted.connect(func(_t): _create())
 	col.add_child(name_edit)
-	Ui.section(col, "COMEÇAR COM", null, 6)
+	Ui.section(col, tr("START WITH"), null, 6)
 	var list := Ui.vbox(6)
 	col.add_child(list)
 	template_rows.clear()
@@ -332,9 +334,9 @@ func _open_new() -> void:
 	for t in CardDB.TEMPLATES.size():
 		list.add_child(_template_row(t))
 	_style_templates()
-	var hint := Ui.label("Dá para trocar tudo depois no editor.", 13, Ui.MUTED)
+	var hint := Ui.label(tr("You can change everything later in the editor."), 13, Ui.MUTED)
 	col.add_child(hint)
-	_overlay_buttons(Ui.accent(Ui.button("Criar e editar", _create)))
+	_overlay_buttons(Ui.accent(Ui.button(tr("Create and edit"), _create)))
 	name_edit.grab_focus.call_deferred()
 	name_edit.select_all.call_deferred()
 
@@ -365,10 +367,10 @@ func _template_row(t: int) -> Control:
 	texts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(texts)
-	var name_label := Ui.label(tpl["name"], 15, Ui.TEXT, true)
+	var name_label := Ui.label(CardDB.template_name(t), 15, Ui.TEXT, true)
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texts.add_child(name_label)
-	var text: String = tpl["desc"]
+	var text: String = CardDB.template_desc(t)
 	var desc := Ui.label(text.left(1).to_upper() + text.substr(1) + ".", 13, Ui.MUTED)
 	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texts.add_child(desc)

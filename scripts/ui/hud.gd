@@ -209,7 +209,7 @@ func setup(p_me: Player, all_players: Array, p_teams := false, p_mode := "ffa", 
 	mode_label.text = GameModes.label(mode, start_lives)
 	me.damaged.connect(_on_me_damaged)
 	me.damage_dealt.connect(_on_damage_dealt)
-	me.chaos_drawn.connect(func(id): toast("Caos: " + CardDB.card_name(id)))
+	me.chaos_drawn.connect(func(id): toast("%s: %s" % [CardDB.card_name("caos"), CardDB.card_name(id)]))
 	me.unstable_drawn.connect(func(ids): toast(", ".join(ids.map(CardDB.card_name))))
 	me.overtime_card.connect(overtime.on_card)
 	overtime.me = me
@@ -218,7 +218,7 @@ func setup(p_me: Player, all_players: Array, p_teams := false, p_mode := "ffa", 
 	scoreboard.setup(me, players)
 	kill_feed.me = me
 	damage_fx.me = me
-	tab_hint.text = "[%s] placar e cartas" % GameState.key_text("scoreboard")
+	tab_hint.text = tr("[%s] scoreboard and cards") % GameState.key_text("scoreboard")
 	if teams_on:
 		_build_team_bar()
 		score_box.visible = false
@@ -232,7 +232,7 @@ func setup(p_me: Player, all_players: Array, p_teams := false, p_mode := "ffa", 
 
 ## Sala de teste: sem placar de rodadas no topo.
 func set_practice() -> void:
-	mode_label.text = "Sala de teste"
+	mode_label.text = tr("Test room")
 	score_box.visible = false
 
 
@@ -285,7 +285,7 @@ func set_duel(pair: Array, p_lives: Dictionary, queue: Array) -> void:
 		for x in players:
 			if String(x.name) == n:
 				waiting.append(x.player_name)
-	duel_queue_label.text = "Próximos: " + ", ".join(waiting) if not waiting.is_empty() else ""
+	duel_queue_label.text = tr("Next: %s") % ", ".join(waiting) if not waiting.is_empty() else ""
 
 
 ## Corações das vidas: cheios os que restam, vazios (só contorno) os perdidos.
@@ -366,7 +366,7 @@ func _score_box(team: int) -> Control:
 	col.add_theme_constant_override("separation", -4)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(col)
-	var name_label := _ui_label(String(GameState.TEAM_NAMES[team]).to_upper(), 11, color.lightened(0.45), true)
+	var name_label := _ui_label(GameState.team_name(team).to_upper(), 11, color.lightened(0.45), true)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(name_label)
 	var number := _ui_label("0", 30, Color.WHITE, true)
@@ -466,15 +466,15 @@ func _update_downed() -> void:
 			if p.downed and me.is_ally(p) and p.global_position.distance_to(me.global_position) < Player.REVIVE_RADIUS:
 				reviving_who = p
 	if reviving_who:
-		down_label.text = "Revivendo %s..." % reviving_who.player_name
+		down_label.text = tr("Reviving %s...") % reviving_who.player_name
 		return
 	if me.downed != downed_view:
 		downed_view = me.downed
 		_hide_combat(downed_view or dead_view)
 	if downed_view:
 		var reviving := me.revive_progress > 0.0
-		down_label.text = "CAÍDO   %d s\n%s" % [ceili(me.bleed_timer),
-			"Revivendo..." if reviving else "Seu parceiro revive você ficando perto por %d s" % roundi(Player.REVIVE_TIME)]
+		down_label.text = tr("DOWN   %d s\n%s") % [ceili(me.bleed_timer),
+			tr("Reviving...") if reviving else tr("Your teammate revives you by staying close for %d s") % roundi(Player.REVIVE_TIME)]
 	else:
 		down_label.text = ""
 
@@ -516,11 +516,11 @@ func _build_spectate_modes() -> void:
 	spectate_modes.add_theme_constant_override("separation", 6)
 	spectate_modes.visible = false
 	add_child(spectate_modes)
-	for title in ["1ª pessoa", "3ª pessoa", "Livre"]:
+	for title in ["1st person", "3rd person", "Free"]:   # i18n
 		var chip := PanelContainer.new()
 		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		chip.add_theme_stylebox_override("panel", _mode_style(false))
-		var l := _ui_label(title, 14, Ui.MUTED, true)
+		var l := _ui_label(tr(title), 14, Ui.MUTED, true)
 		l.add_theme_constant_override("outline_size", 0)
 		chip.add_child(l)
 		spectate_modes.add_child(chip)
@@ -809,28 +809,28 @@ func _update_ammo() -> void:
 	if me.sword_timer > 0.0:
 		big = ["→", "←", "↑"][me.combo_step]
 		small = ""
-		sub = "ESPADA  %.0f s" % ceilf(me.sword_timer)
+		sub = "%s  %.0f s" % [CardDB.card_name("espada").to_upper(), ceilf(me.sword_timer)]
 		sub_color = Ui.ACCENT
 	elif me.sniper_timer > 0.0:
 		big = str(me.sniper_shots)
 		small = "/ 1"
-		sub = "SNIPER  %.0f s" % ceilf(me.sniper_timer)
+		sub = "%s  %.0f s" % [CardDB.card_name("sniper").to_upper(), ceilf(me.sniper_timer)]
 		sub_color = Ui.ACCENT
 	elif me.bazooka_timer > 0.0:
 		big = str(me.rockets_left)
 		small = "/ %d" % Player.BAZOOKA_ROCKETS
-		sub = "BAZUCA  %.0f s" % ceilf(me.bazooka_timer)
+		sub = "%s  %.0f s" % [CardDB.card_name("bazuca").to_upper(), ceilf(me.bazooka_timer)]
 		sub_color = Ui.ACCENT
 	elif me.reload_timer > 0.0:
-		sub = "RECARREGANDO"
+		sub = tr("RELOADING")
 		sub_color = Color(1, 1, 1, 0.75)
 	elif me.perfect_mag:
-		sub = "RECARGA PERFEITA +15%"
+		sub = CardDB.card_name("recarga_perfeita").to_upper() + " +15%"
 		sub_color = Player.PERFECT_COLOR
 	if me.pierce_left > 0 and me.bazooka_timer <= 0.0:
-		sub = ("%s  ·  " % sub if sub != "" else "") + "PERFURANTES %d" % me.pierce_left
+		sub = ("%s  ·  " % sub if sub != "" else "") + tr("PIERCING %d") % me.pierce_left
 	if me.meteor_left > 0 and me.bazooka_timer <= 0.0:
-		sub = ("%s  ·  " % sub if sub != "" else "") + "METEOROS %d  %.0f s" % [me.meteor_left, ceilf(me.meteor_window)]
+		sub = ("%s  ·  " % sub if sub != "" else "") + tr("METEORS %d  %.0f s") % [me.meteor_left, ceilf(me.meteor_window)]
 		sub_color = MeteorStrike.COLOR
 		sub_color = Bullet.PIERCE_COLOR.lerp(Color.WHITE, 0.3)
 	ammo_label.text = big
@@ -863,106 +863,108 @@ func _update_realm_veil() -> void:
 ## Estados do jogador em selos acima da vida; só refaz quando a lista muda.
 func _update_status() -> void:
 	var items := []
+	# Selos com nome de carta usam CardDB.card_name (já traduzido); os outros, tr(). Só os
+	# selos ligados custam uma tradução por quadro.
 	if me.revives_left > 0:
-		items.append(["FÊNIX %d" % me.revives_left, Color(1.0, 0.6, 0.25)])
+		items.append(["%s %d" % [_card_tag("fenix"), me.revives_left], Color(1.0, 0.6, 0.25)])
 	if me.spawn_protect > 0.0:
-		items.append(["PROTEGIDO %.1f  ·  atacar encerra" % me.spawn_protect, Player.PROTECT_COLOR])
+		items.append([tr("PROTECTED %.1f  ·  attacking ends it") % me.spawn_protect, Player.PROTECT_COLOR])
 	if me.slow_timer > 0.0:
-		items.append(["LENTO", Color(0.55, 0.8, 1.0)])
+		items.append([tr("SLOWED"), Color(0.55, 0.8, 1.0)])
 	if not me.poisons.is_empty():
-		items.append(["ENVENENADO", Color(0.55, 0.95, 0.35)])
+		items.append([tr("POISONED"), Color(0.55, 0.95, 0.35)])
 	# Congelamento (2026-10-15, pedido do usuário): floco de gelo e o contador, sem mais nada.
 	if me.frost_freeze > 0.0 and me.ice_timer <= 0.0:
-		items.append(["CONGELADO", Player.FROST_COLOR, FROST_ICON])
+		items.append([tr("FROZEN"), Player.FROST_COLOR, FROST_ICON])
 	elif me.frost_layers > 0:
 		items.append(["%d/%d" % [me.frost_layers, Player.FROST_MAX], Player.FROST_COLOR, FROST_ICON])
 	if me.silence_timer > 0.0:
-		items.append(["ESCUDO BLOQUEADO", Ui.DANGER])
+		items.append([tr("SHIELD BLOCKED"), Ui.DANGER])
 	if me.is_too_high():
-		items.append(["ALTO DEMAIS  ·  desça  ·  dano em %.1f" % me.sky_timer, Player.SKY_COLOR])
+		items.append([tr("TOO HIGH  ·  get down  ·  damage in %.1f") % me.sky_timer, Player.SKY_COLOR])
 	if me.zone_out:
-		items.append(["FORA DA ARENA  ·  dano em %.1f" % me.zone_timer, Ui.DANGER])
+		items.append([tr("OUTSIDE THE ARENA  ·  damage in %.1f") % me.zone_timer, Ui.DANGER])
 	if me.is_hidden():
-		items.append(["VISÍVEL" if me.camo_blink() else ("INVISÍVEL  ·  falhando" if me.is_camo_tired() else "INVISÍVEL"), Color(0.75, 0.6, 1.0)])
+		items.append([tr("VISIBLE") if me.camo_blink() else (tr("INVISIBLE  ·  failing") if me.is_camo_tired() else tr("INVISIBLE")), Color(0.75, 0.6, 1.0)])
 	if me.ambush_timer > 0.0:
-		items.append(["EMBOSCADA %.1f" % me.ambush_timer, Color(0.8, 0.55, 1.0)])
+		items.append([tr("AMBUSH %.1f") % me.ambush_timer, Color(0.8, 0.55, 1.0)])
 	if me.beam_charge > 0.0:
-		items.append(["CARREGANDO %.1f" % me.beam_charge, Player.BEAM_COLOR])
+		items.append([tr("CHARGING %.1f") % me.beam_charge, Player.BEAM_COLOR])
 	elif me.beam_timer > 0.0:
-		items.append(["CANHÃO %.1f" % me.beam_timer, Player.BEAM_COLOR])
+		items.append([tr("CANNON %.1f") % me.beam_timer, Player.BEAM_COLOR])
 	if me.hook_state == 3:
-		items.append(["SEGURANDO  ·  clique arremessa", Player.HOOK_COLOR])
+		items.append([tr("HOLDING  ·  click to throw"), Player.HOOK_COLOR])
 	if me.hooked_by:
-		items.append(["PRESO NO GANCHO", Ui.DANGER])
+		items.append([tr("HOOKED"), Ui.DANGER])
 	if me.ride_timer > 0.0:
-		items.append(["FOGUETE %.1f  ·  [%s] saltar" % [me.ride_timer, GameState.key_text("master")], Player.ROCKET_COLOR])
+		items.append([tr("%s %.1f  ·  [%s] jump off") % [_card_tag("foguete"), me.ride_timer, GameState.key_text("master")], Player.ROCKET_COLOR])
 	if is_instance_valid(me.clone):
-		items.append(["CLONE %.1f  ·  [%s] trocar de lugar" % [me.clone.life, GameState.key_text("master")], Player.CLONE_COLOR.lightened(0.3)])
+		items.append([tr("%s %.1f  ·  [%s] swap places") % [_card_tag("clone"), me.clone.life, GameState.key_text("master")], Player.CLONE_COLOR.lightened(0.3)])
 	if me.mech_state == 1:
-		items.append(["MONTANDO O MECHA %.1f" % me.mech_timer, Player.MECH_COLOR.lightened(0.25)])
+		items.append([tr("BOARDING THE MECH %.1f") % me.mech_timer, Player.MECH_COLOR.lightened(0.25)])
 	elif me.mech_state == 2:
-		items.append(["MECHA %.1f  ·  [%s] sair e explodir" % [me.mech_timer, GameState.key_text("master")], Player.MECH_COLOR.lightened(0.25)])
+		items.append([tr("%s %.1f  ·  [%s] exit and explode") % [_card_tag("mecha"), me.mech_timer, GameState.key_text("master")], Player.MECH_COLOR.lightened(0.25)])
 	if me.grapple_state == 2:
-		items.append(["BALANÇANDO  ·  solte [%s] para sair voando" % GameState.key_text("master"), Player.GRAPPLE_COLOR])
+		items.append([tr("SWINGING  ·  release [%s] to fly off") % GameState.key_text("master"), Player.GRAPPLE_COLOR])
 	elif me.grapple_state == 3:
-		items.append(["PENDURADO %.1f  ·  [%s] salta" % [me.grapple_timer, GameState.key_text("jump")], Player.GRAPPLE_COLOR])
+		items.append([tr("HANGING %.1f  ·  [%s] to jump") % [me.grapple_timer, GameState.key_text("jump")], Player.GRAPPLE_COLOR])
 	elif me.grapple_state == 4:
-		items.append(["CHUTE DE VENTOSA", Player.GRAPPLE_COLOR])
+		items.append([tr("SUCTION KICK"), Player.GRAPPLE_COLOR])
 	if me.plat_chain > 0.0:
-		items.append(["PLATAFORMAS %d  ·  %.1f s" % [me.plat_left, me.plat_chain], SkyPlatform.READY_COLOR])
+		items.append([tr("PLATFORMS %d  ·  %.1f s") % [me.plat_left, me.plat_chain], SkyPlatform.READY_COLOR])
 	if me.daze_timer > 0.0:
-		items.append(["TONTO %.1f" % me.daze_timer, Player.SLAP_COLOR])
+		items.append([tr("DIZZY %.1f") % me.daze_timer, Player.SLAP_COLOR])
 	# Efeitos bons com duração (2026-10-11, pedido do usuário: antes não apareciam).
 	if me.bloodlust_timer > 0.0:
-		items.append(["SEDE DE SANGUE +%d%%  %.1f" % [roundi(me.stats["bloodlust"] * 100.0), me.bloodlust_timer], CardDB.CATEGORY_COLORS["Corpo"]])
+		items.append(["%s +%d%%  %.1f" % [_card_tag("sede_de_sangue"), roundi(me.stats["bloodlust"] * 100.0), me.bloodlust_timer], CardDB.CATEGORY_COLORS["Corpo"]])
 	if me.haste_timer > 0.0:
-		items.append(["PASSO LIGEIRO +%d%%  %.1f" % [roundi(me.stats["shield_haste"] * 100.0), me.haste_timer], CardDB.CATEGORY_COLORS["Escudo"]])
+		items.append(["%s +%d%%  %.1f" % [_card_tag("passo_ligeiro"), roundi(me.stats["shield_haste"] * 100.0), me.haste_timer], CardDB.CATEGORY_COLORS["Escudo"]])
 	if me.parkour_timer > 0.0 and me.stats["parkour"] > 0:
-		items.append(["PARKOUR +%d%%  %.1f" % [roundi(Player.PARKOUR_SPEED * me.stats["parkour"] * 100.0), me.parkour_timer], CardDB.CATEGORY_COLORS["Movimento"]])
+		items.append(["%s +%d%%  %.1f" % [_card_tag("parkour"), roundi(Player.PARKOUR_SPEED * me.stats["parkour"] * 100.0), me.parkour_timer], CardDB.CATEGORY_COLORS["Movimento"]])
 	if me.strike_timer > 0.0:
-		items.append(["ARRANCADA +%d%%  %.1f" % [roundi(Player.STRIKE_DAMAGE * 100.0), me.strike_timer], CardDB.CATEGORY_COLORS["Movimento"]])
+		items.append(["%s +%d%%  %.1f" % [_card_tag("arrancada"), roundi(Player.STRIKE_DAMAGE * 100.0), me.strike_timer], CardDB.CATEGORY_COLORS["Movimento"]])
 	if me.feast_stacks > 0:
-		items.append(["FOME %d/%d  +%d%% DE DANO" % [me.feast_stacks, Player.FEAST_MAX, roundi(Player.FEAST_DAMAGE * me.feast_stacks * 100.0)], CardDB.CATEGORY_COLORS["Corpo"]])
+		items.append([tr("HUNGER %d/%d  +%d%% DAMAGE") % [me.feast_stacks, Player.FEAST_MAX, roundi(Player.FEAST_DAMAGE * me.feast_stacks * 100.0)], CardDB.CATEGORY_COLORS["Corpo"]])
 	if me.pressure_timer > 0.0:
-		items.append(["PRESSÃO +%d%%  %.1f" % [roundi(Player.PRESSURE_SPEED * 100.0), me.pressure_timer], CardDB.CATEGORY_COLORS["Movimento"]])
+		items.append(["%s +%d%%  %.1f" % [_card_tag("pressao"), roundi(Player.PRESSURE_SPEED * 100.0), me.pressure_timer], CardDB.CATEGORY_COLORS["Movimento"]])
 	if me.tough_timer > 0.0:
-		items.append(["CASCA DURA %.1f" % me.tough_timer, Player.TOUGH_COLOR])
+		items.append(["%s %.1f" % [_card_tag("casca_dura"), me.tough_timer], Player.TOUGH_COLOR])
 	if me.ice_timer > 0.0:
-		items.append(["CONGELADO %.1f" % me.ice_timer, Player.ICE_COLOR])
+		items.append([tr("FROZEN %.1f") % me.ice_timer, Player.ICE_COLOR])
 	if me.speed_orb_timer > 0.0:
-		items.append(["VELOCIDADE +%d%%  %.1f" % [roundi(Player.SPEED_ORB * 100.0), me.speed_orb_timer], Pickup.COLORS[Pickup.Kind.SPEED]])
+		items.append([tr("SPEED +%d%%  %.1f") % [roundi(Player.SPEED_ORB * 100.0), me.speed_orb_timer], Pickup.COLORS[Pickup.Kind.SPEED]])
 	if me.shrink_timer > 0.0:
-		items.append(["FORMIGA %.1f  ·  [%s] volta" % [me.shrink_timer, GameState.key_text("master")], Color(0.78, 0.64, 1.0)])
+		items.append([tr("%s %.1f  ·  [%s] grow back") % [_card_tag("formiga"), me.shrink_timer, GameState.key_text("master")], Color(0.78, 0.64, 1.0)])
 	if me.air_bonus() > 0.0:
-		items.append(["NO AR +%d%% DE DANO" % roundi(me.air_bonus() * 100.0), Ui.ACCENT])
+		items.append([tr("IN THE AIR +%d%% DAMAGE") % roundi(me.air_bonus() * 100.0), Ui.ACCENT])
 	# Velocidade Letal em degraus de 5% (o selo só é refeito quando o texto muda) e Vulto.
 	var fast := snappedf(me.speed_bonus() * 100.0, 5.0)
 	if fast > 0.0:
-		items.append(["VELOCIDADE +%d%% DE DANO" % roundi(fast), CardDB.CATEGORY_COLORS["Movimento"]])
+		items.append([tr("SPEED +%d%% DAMAGE") % roundi(fast), CardDB.CATEGORY_COLORS["Movimento"]])
 	if me.skin_stacks > 0:
-		items.append(["COURO GROSSO -%d POR GOLPE" % me.skin_stacks, CardDB.CATEGORY_COLORS["Corpo"]])
+		items.append([tr("%s -%d PER HIT") % [_card_tag("couro_grosso"), me.skin_stacks], CardDB.CATEGORY_COLORS["Corpo"]])
 	if me.is_surviving():
-		items.append(["INSTINTO +%d%% DE VELOCIDADE" % roundi(me.stats["survival_speed"] * 100.0), CardDB.CATEGORY_COLORS["Corpo"]])
+		items.append([tr("%s +%d%% SPEED") % [_card_tag("instinto"), roundi(me.stats["survival_speed"] * 100.0)], CardDB.CATEGORY_COLORS["Corpo"]])
 	if me.stats["revenge"] > 0.0 and me.revenge_target != "":
 		var foe := me.get_parent().get_node_or_null(me.revenge_target) as Player
 		if foe and foe.alive:
-			items.append(["VINGANÇA: %s +%d%%" % [foe.player_name, roundi(me.stats["revenge"] * 100.0)], CardDB.CATEGORY_COLORS["Corpo"]])
+			items.append(["%s: %s +%d%%" % [_card_tag("vinganca"), foe.player_name, roundi(me.stats["revenge"] * 100.0)], CardDB.CATEGORY_COLORS["Corpo"]])
 	if me.is_still_aiming():
-		items.append(["SANGUE FRIO +%d%% DE DANO" % roundi(Player.STILL_DAMAGE * me.stats["still_aim"] * 100.0), CardDB.CATEGORY_COLORS["Arma"]])
+		items.append([tr("%s +%d%% DAMAGE") % [_card_tag("sangue_frio"), roundi(Player.STILL_DAMAGE * me.stats["still_aim"] * 100.0)], CardDB.CATEGORY_COLORS["Arma"]])
 	if me.bullet_taken_mult() < 1.0:
-		items.append(["VULTO -%d%% DE DANO" % roundi((1.0 - me.bullet_taken_mult()) * 100.0), CardDB.CATEGORY_COLORS["Movimento"]])
+		items.append([tr("%s -%d%% DAMAGE") % [_card_tag("vulto"), roundi((1.0 - me.bullet_taken_mult()) * 100.0)], CardDB.CATEGORY_COLORS["Movimento"]])
 	if me.realm_threat():
-		items.append(["CORRENTE SOMBRIA  ·  [%s] bloqueia" % GameState.key_text("shield"), KingRealm.MARK_COLOR])
+		items.append([tr("SHADOW CHAIN  ·  [%s] to block") % GameState.key_text("shield"), KingRealm.MARK_COLOR])
 	if me.realm > 0:
 		var foe_name: String = me.realm_partner.player_name if is_instance_valid(me.realm_partner) else ""
 		if me.realm_king:
-			items.append(["DOMÍNIO DO REI +%d%% DE DANO  ·  %.1f" % [roundi(me.realm_bonus() * 100.0), me.realm_timer], KingRealm.MARK_COLOR])
+			items.append([tr("%s +%d%% DAMAGE  ·  %.1f") % [_card_tag("dominio_do_rei"), roundi(me.realm_bonus() * 100.0), me.realm_timer], KingRealm.MARK_COLOR])
 		else:
-			items.append(["NO DOMÍNIO DE %s -%d%% DE DANO  ·  %.1f" % [foe_name.to_upper(), roundi(me.realm_weaken() * 100.0), me.realm_timer], Ui.DANGER])
+			items.append([tr("IN %s'S REALM -%d%% DAMAGE  ·  %.1f") % [foe_name.to_upper(), roundi(me.realm_weaken() * 100.0), me.realm_timer], Ui.DANGER])
 	elif me.realm_bonus_timer > 0.0:
-		items.append(["DOMÍNIO +%d%% DE DANO  %.1f" % [roundi(me.realm_bonus() * 100.0), me.realm_bonus_timer], KingRealm.MARK_COLOR])
+		items.append([tr("REALM +%d%% DAMAGE  %.1f") % [roundi(me.realm_bonus() * 100.0), me.realm_bonus_timer], KingRealm.MARK_COLOR])
 	if me.last_stand_timer > 0.0:
-		items.append(["ÚLTIMO SUSPIRO %.1f: ABATA ALGUÉM" % me.last_stand_timer, Ui.DANGER])
+		items.append([tr("%s %.1f: GET A KILL") % [_card_tag("ultimo_suspiro"), me.last_stand_timer], Ui.DANGER])
 	var key := str(items)
 	if key == _status_key:
 		return
@@ -973,15 +975,20 @@ func _update_status() -> void:
 		status_row.add_child(_status_chip(it[0], it[1], it[2] if it.size() > 2 else null))
 
 
+## Nome da carta em maiúsculas, no idioma do jogo, para os selos.
+func _card_tag(id: String) -> String:
+	return CardDB.card_name(id).to_upper()
+
+
 ## Domínio do Rei: aviso ao entrar e ao vencer (o tempo e o bônus ficam no selo).
 func _on_realm_changed(entered: bool, won: bool) -> void:
 	if entered:
 		if me.realm_king:
-			toast("Domínio do Rei: só vocês dois por %d s" % int(Player.REALM_TIME))
+			toast(tr("%s: just you two for %d s") % [CardDB.card_name("dominio_do_rei"), int(Player.REALM_TIME)])
 		elif is_instance_valid(me.realm_partner):
-			toast("%s te levou para o Domínio do Rei" % me.realm_partner.player_name)
+			toast(tr("%s pulled you into %s") % [me.realm_partner.player_name, CardDB.card_name("dominio_do_rei")])
 	elif won:
-		toast("Você venceu o Domínio" + (": +%d%% de dano por %d s" % [roundi(me.realm_bonus() * 100.0), int(Player.REALM_WIN_TIME)] if me.realm_king else ""))
+		toast(tr("You won the Realm") + (tr(": +%d%% damage for %d s") % [roundi(me.realm_bonus() * 100.0), int(Player.REALM_WIN_TIME)] if me.realm_king else ""))
 
 
 ## Selo de estado: texto em negrito na cor, fundo escuro e um traço da cor à esquerda.
@@ -1024,13 +1031,13 @@ func _status_chip(text: String, color: Color, icon: Texture2D = null) -> Control
 
 func set_score(p_score: Dictionary, round_num: int, block_end: int) -> void:
 	round_score = p_score
-	round_text = "Rodada %d de %d" % [round_num, block_end]
+	round_text = tr("Round %d of %d") % [round_num, block_end]
 	score_label.text = score_text(round_score)
-	score_round.text = "RODADA %d DE %d" % [round_num, block_end]
+	score_round.text = tr("ROUND %d OF %d") % [round_num, block_end]
 	if team_bar:
 		for t in 2:
 			team_scores[t].text = str(_team_score(t))
-		team_round.text = "RODADA %d / %d" % [round_num, block_end]
+		team_round.text = tr("ROUND %d / %d") % [round_num, block_end]
 	_sync_scoreboard()
 
 
@@ -1064,8 +1071,8 @@ func show_scoreboard(on: bool) -> void:
 func score_text(score: Dictionary) -> String:
 	if teams_on:
 		var mine := me.team
-		return "%s %d  x  %d %s" % [GameState.TEAM_NAMES[mine], _team_score(mine, score),
-			_team_score(1 - mine, score), GameState.TEAM_NAMES[1 - mine]]
+		return "%s %d  x  %d %s" % [GameState.team_name(mine), _team_score(mine, score),
+			_team_score(1 - mine, score), GameState.team_name(1 - mine)]
 	if players.size() == 2:
 		var other: Player = players[1] if players[0] == me else players[0]
 		return "%s %d  x  %d %s" % [me.player_name, score[String(me.name)], score[String(other.name)], other.player_name]

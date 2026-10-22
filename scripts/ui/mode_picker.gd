@@ -38,7 +38,7 @@ func _init(p_mode: String, p_lives: int) -> void:
 			lives = GameModes.LIVES_OPTIONS[i]
 			changed.emit(mode, lives))
 	_lives_buttons = tabs.get_children()
-	Ui.option_row(_lives_row, "Vidas", "Quem perde todas sai do rodízio.", tabs, 200, 8)
+	Ui.option_row(_lives_row, tr("Lives"), tr("Lose them all and you are out of the rotation."), tabs, 200, 8)
 	add_child(_lives_row)
 	note = Ui.label("", 13, Ui.MUTED)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -78,14 +78,14 @@ func _card(m: Dictionary) -> Button:
 	col.offset_top = 11
 	col.offset_bottom = -10
 	b.add_child(col)
-	var title := Ui.label(m["name"], 16, Ui.TEXT, true)
+	var title := Ui.label(GameModes.mode_name(m["id"]), 16, Ui.TEXT, true)
 	title.name = "Title"
 	col.add_child(title)
-	var desc := Ui.label(m["desc"], 12, Ui.MUTED)
+	var desc := Ui.label(GameModes.mode_desc(m["id"]), 12, Ui.MUTED)
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(desc)
-	col.add_child(Ui.label(m["players"], 11, Ui.MUTED.darkened(0.2), true))
+	col.add_child(Ui.label(GameModes.players_text(m["id"]), 11, Ui.MUTED.darkened(0.2), true))
 	for c in col.get_children():
 		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return b

@@ -25,7 +25,7 @@ signal chat_received(entry: Dictionary)   # todos: mensagem nova no chat (ver ch
 ## e saem depois de BUILD_WAIT. Vai em bytes crus (send_bytes), não por @rpc: com builds
 ## diferentes as funções @rpc podem não bater (2026-10-11, convidada invisível no 2x2 com
 ## zip provavelmente de outro dia).
-const BUILD := "0.9.0.10"
+const BUILD := "0.9.0.11"
 const BUILD_TAG := "FUROR_BUILD:"
 const BUILD_WRONG := "FUROR_WRONG:"
 const BUILD_WAIT := 5.0
@@ -110,7 +110,7 @@ func _on_packet(id: int, packet: PackedByteArray) -> void:
 		_build_refused = true
 		var theirs := text.trim_prefix(BUILD_WRONG)
 		stop()
-		failed.emit("Sua versão do jogo (%s) é diferente da do anfitrião (%s). Todos precisam baixar o mesmo zip." % [build, theirs])
+		failed.emit(tr("Your game version (%s) is different from the host's (%s). Everyone needs to download the same zip.") % [build, theirs])
 
 
 func _check_build(id: int, their_build: String) -> void:
@@ -397,7 +397,7 @@ func _on_peer_disconnected(id: int) -> void:
 	elif multiplayer.is_server():
 		_broadcast_lobby()
 		if was_in_room:
-			_system_chat("%s saiu da sala" % leaving)
+			_system_chat("%s left the lobby", leaving)   # i18n
 
 
 ## Ordem da sala: host primeiro, convidados pela ordem dos ids (a mesma de start_match).
@@ -407,10 +407,10 @@ func lobby_ids() -> Array:
 	return ids
 
 
-## Nome para mostrar: o escolhido ou "Jogador N" pela vaga.
+## Nome para mostrar: o escolhido ou "Player N" pela vaga (traduzido nesta máquina).
 func display_name(id: int) -> String:
 	var n: String = names.get(id, "")
-	return n if n != "" else "Jogador %d" % (lobby_ids().find(id) + 1)
+	return n if n != "" else tr("Player %d") % (lobby_ids().find(id) + 1)
 
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -430,7 +430,7 @@ func _accept_hello(id: int, nick: String, look: Dictionary) -> void:
 	looks[id] = Player.clean_look(look)
 	_broadcast_lobby()
 	if first:
-		_system_chat("%s entrou na sala" % display_name(id))
+		_system_chat("%s joined the lobby", display_name(id))   # i18n
 
 
 ## Troca de nome na sala: vale na hora para todos (durante a partida os nomes ficam fixos).
@@ -546,8 +546,11 @@ func _accept_chat(id: int, text: String) -> void:
 		_chat.rpc(display_name(id), color_of(id), text, false)
 
 
-func _system_chat(text: String) -> void:
-	_chat.rpc("", Color.WHITE, text, true)
+## Aviso do sistema no chat. Vai pela rede em inglês (o msgid) com o nome à parte, no campo
+## do remetente; cada máquina traduz ao mostrar (ChatBox.entry_text). Quem chama marca a
+## linha com "# i18n" para a ferramenta de tradução achar o texto.
+func _system_chat(text: String, who := "") -> void:
+	_chat.rpc(who, Color.WHITE, text, true)
 
 
 @rpc("authority", "call_local", "reliable")
@@ -565,4 +568,4 @@ static func _clean_chat(text: String) -> String:
 
 func _on_connection_failed() -> void:
 	stop()
-	failed.emit("Não foi possível conectar. Confira o IP e se o host está esperando.")
+	failed.emit(tr("Couldn't connect. Check the IP and whether the host is waiting."))

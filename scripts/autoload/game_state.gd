@@ -53,7 +53,8 @@ var team_mode: bool:
 var from_lobby := false
 var autotest_room_done := false   # autoteste "--sala": já voltou à sala uma vez
 ## Times: nomes e cores (Azul e Vermelho), duas cores por time, uma para cada jogador.
-const TEAM_NAMES := ["Azul", "Vermelho"]
+## Nomes em inglês: mostrar com team_name(), que traduz (ver Lang).
+const TEAM_NAMES := ["Blue", "Red"]
 const TEAM_COLORS := [[Color(0.25, 0.55, 1.0), Color(0.3, 0.85, 0.95)],
 	[Color(1.0, 0.3, 0.25), Color(1.0, 0.62, 0.2)]]
 ## Cada um por si: cor de cada vaga (a mesma na sala, no chat e na partida).
@@ -71,8 +72,9 @@ static func player_color(slot: int, team := -1) -> Color:
 ## áudio criado em _setup_audio: Efeitos são os sons do mundo (tiros, explosões...),
 ## Interface os avisos para você (tique de acerto, sino de abate, dano), Música fica para
 ## quando houver. Geral é o canal Master, que soma todos.
-const AUDIO_BUSES := [["Master", "Geral"], ["Efeitos", "Efeitos"], ["Interface", "Interface"],
-	["Musica", "Música"]]
+## [canal, nome mostrado em inglês] (o canal é id: não traduzir).
+const AUDIO_BUSES := [["Master", "Master"], ["Efeitos", "Effects"], ["Interface", "Interface"],
+	["Musica", "Music"]]
 const DEFAULT_VOLUME := {"Master": 80, "Efeitos": 80, "Interface": 80, "Musica": 70}
 var volumes := DEFAULT_VOLUME.duplicate()
 ## Tela (Configurações > Vídeo). Refeito em 2026-10-06 (o usuário achou confuso: com
@@ -83,7 +85,7 @@ var volumes := DEFAULT_VOLUME.duplicate()
 ## em pixels (o usuário preferiu a HUD menor nas telas grandes), com a opção "Tamanho da
 ## interface" para aumentar. Modos: 0 janela, 1 tela cheia sem borda (Alt+Tab
 ## instantâneo), 2 tela cheia exclusiva.
-const WINDOW_MODES := ["Janela", "Sem borda", "Tela cheia"]
+const WINDOW_MODES := ["Windowed", "Borderless", "Fullscreen"]
 const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1366, 768), Vector2i(1600, 900),
 	Vector2i(1920, 1080), Vector2i(2560, 1440)]
 var window_mode := 0
@@ -107,7 +109,7 @@ var ui_scale := 0
 ## override.cfg (ao lado do .exe; na pasta do projeto rodando pelo editor), que o Godot lê
 ## antes de iniciar. Sem a API escolhida, o Godot volta sozinho para OpenGL (testado no PC
 ## do usuário com Vulkan e com DirectX 12 forçados).
-const GRAPHICS_APIS := [["compat", "Compatibilidade (OpenGL)"], ["vulkan", "Vulkan"], ["d3d12", "DirectX 12"]]
+const GRAPHICS_APIS := [["compat", "Compatibility (OpenGL)"], ["vulkan", "Vulkan"], ["d3d12", "DirectX 12"]]
 ## A que estava gravada quando o jogo abriu (a tela compara para saber se falta reiniciar).
 var api_at_start := "compat"
 ## Qualidade gráfica: 0 baixa, 1 média, 2 alta (ver match.gd, _apply_quality).
@@ -501,14 +503,14 @@ func load_decks() -> void:
 					master = CardDB.MASTER_REPLACED.get(master, master)
 					if not CardDB.is_master(master):
 						master = CardDB.MASTER_DEFAULT   # baralho de antes das cartas mestras
-					decks.append({"name": str(d.get("name", "Baralho")), "cards": _known(d["cards"]), "master": master})
+					decks.append({"name": str(d.get("name", tr("Deck"))), "cards": _known(d["cards"]), "master": master})
 			equipped = int(data.get("equipped", 0))
 	elif FileAccess.file_exists(OLD_DECK_PATH):
 		var old = JSON.parse_string(FileAccess.get_file_as_string(OLD_DECK_PATH))
 		if old is Array:
-			decks.append({"name": "Meu baralho", "cards": _known(old), "master": CardDB.MASTER_DEFAULT})
+			decks.append({"name": tr("My deck"), "cards": _known(old), "master": CardDB.MASTER_DEFAULT})
 	if decks.is_empty():
-		decks.append({"name": "Equilibrado", "cards": CardDB.template_deck(0), "master": CardDB.template_master(0)})
+		decks.append({"name": CardDB.template_name(0), "cards": CardDB.template_deck(0), "master": CardDB.template_master(0)})
 	if equipped < 0 or equipped >= decks.size() or not CardDB.is_valid_deck(decks[equipped]["cards"]):
 		equipped = maxi(0, decks.find_custom(func(d): return CardDB.is_valid_deck(d["cards"])))
 
@@ -609,12 +611,12 @@ func parse_deck_code(text: String) -> Dictionary:
 	return {"name": deck_name if deck_name != "" else new_deck_name(), "master": master, "cards": cards, "missing": missing}
 
 
-## Nome livre do tipo "Baralho 3".
+## Nome livre do tipo "Deck 3".
 func new_deck_name() -> String:
 	var n := decks.size() + 1
-	while decks.any(func(d): return d["name"] == "Baralho %d" % n):
+	while decks.any(func(d): return d["name"] == tr("Deck %d") % n):
 		n += 1
-	return "Baralho %d" % n
+	return tr("Deck %d") % n
 
 
 # ---------------------------------------------------------------- teclas
@@ -625,10 +627,10 @@ func new_deck_name() -> String:
 
 ## Ordem e nomes na tela de controles.
 const ACTIONS := [
-	["move_forward", "Frente"], ["move_back", "Trás"], ["move_left", "Esquerda"], ["move_right", "Direita"],
-	["jump", "Pular"], ["shoot", "Atirar"], ["shield", "Escudo"], ["reload", "Recarregar"],
-	["master", "Carta mestra"], ["dash", "Dash"], ["crouch", "Agachar / deslizar"],
-	["scoreboard", "Placar e cartas (segurar)"], ["chat", "Chat (online)"],
+	["move_forward", "Forward"], ["move_back", "Back"], ["move_left", "Left"], ["move_right", "Right"],
+	["jump", "Jump"], ["shoot", "Shoot"], ["shield", "Shield"], ["reload", "Reload"],
+	["master", "Master card"], ["dash", "Dash"], ["crouch", "Crouch / slide"],
+	["scoreboard", "Scoreboard and cards (hold)"], ["chat", "Chat (online)"],
 ]
 ## Ctrl é as duas coisas: dash ao apertar e agachar/deslizar enquanto segura. Por isso a
 ## mesma tecla nessas duas ações não conta como conflito.
@@ -649,14 +651,14 @@ const DEFAULT_BINDS := {
 	"chat": ["k:%d" % KEY_ENTER, "k:%d" % KEY_KP_ENTER],
 }
 const KEY_NAMES := {
-	KEY_SPACE: "Espaço", KEY_CTRL: "Ctrl", KEY_SHIFT: "Shift", KEY_ALT: "Alt", KEY_TAB: "Tab",
-	KEY_CAPSLOCK: "Caps Lock", KEY_ENTER: "Enter", KEY_KP_ENTER: "Enter (num.)", KEY_BACKSPACE: "Backspace",
-	KEY_UP: "Seta cima", KEY_DOWN: "Seta baixo", KEY_LEFT: "Seta esq.", KEY_RIGHT: "Seta dir.",
+	KEY_SPACE: "Space", KEY_CTRL: "Ctrl", KEY_SHIFT: "Shift", KEY_ALT: "Alt", KEY_TAB: "Tab",
+	KEY_CAPSLOCK: "Caps Lock", KEY_ENTER: "Enter", KEY_KP_ENTER: "Enter (numpad)", KEY_BACKSPACE: "Backspace",
+	KEY_UP: "Up arrow", KEY_DOWN: "Down arrow", KEY_LEFT: "Left arrow", KEY_RIGHT: "Right arrow",
 }
 const MOUSE_NAMES := {
-	MOUSE_BUTTON_LEFT: "Clique esq.", MOUSE_BUTTON_RIGHT: "Clique dir.", MOUSE_BUTTON_MIDDLE: "Botão do meio",
+	MOUSE_BUTTON_LEFT: "Left click", MOUSE_BUTTON_RIGHT: "Right click", MOUSE_BUTTON_MIDDLE: "Middle click",
 	MOUSE_BUTTON_XBUTTON1: "Mouse 4", MOUSE_BUTTON_XBUTTON2: "Mouse 5",
-	MOUSE_BUTTON_WHEEL_UP: "Roda p/ cima", MOUSE_BUTTON_WHEEL_DOWN: "Roda p/ baixo",
+	MOUSE_BUTTON_WHEEL_UP: "Wheel up", MOUSE_BUTTON_WHEEL_DOWN: "Wheel down",
 }
 
 ## ação -> [código, código]
@@ -724,15 +726,15 @@ static func _event(code: String) -> InputEvent:
 	return null
 
 
-## Nome curto da tecla para a tela ("Ctrl", "Clique dir.", "E").
+## Nome curto da tecla para a tela ("Ctrl", "Right click", "E"), traduzido.
 static func code_text(code: String) -> String:
 	if code.begins_with("m:"):
 		var b := int(code.substr(2))
-		return MOUSE_NAMES.get(b, "Mouse %d" % b)
+		return Lang.t(MOUSE_NAMES[b]) if MOUSE_NAMES.has(b) else "Mouse %d" % b
 	if code.begins_with("k:"):
 		var k := int(code.substr(2)) as Key
 		if KEY_NAMES.has(k):
-			return KEY_NAMES[k]
+			return Lang.t(KEY_NAMES[k])
 		# Letra conforme o layout do teclado (a tecla é guardada pela posição física).
 		var label := k
 		if DisplayServer.get_name() != "headless":
@@ -741,11 +743,11 @@ static func code_text(code: String) -> String:
 	return ""
 
 
-## Teclas de uma ação para o HUD: "Ctrl", "E / Clique dir.".
+## Teclas de uma ação para o HUD: "Ctrl", "E / Right click".
 func key_text(action: String, both := false) -> String:
 	var names: Array = binds.get(action, []).filter(func(c): return c != "").map(code_text)
 	if names.is_empty():
-		return "sem tecla"
+		return tr("no key")
 	return " / ".join(names) if both else names[0]
 
 
@@ -766,5 +768,18 @@ func conflicts(action: String, code: String) -> Array:
 func action_label(action: String) -> String:
 	for a in ACTIONS:
 		if a[0] == action:
-			return a[1]
+			return tr(a[1], "action")
 	return action
+
+
+func team_name(team: int) -> String:
+	return tr(TEAM_NAMES[team])
+
+
+## Para a ferramenta de tradução (scenes/dev/i18n.tscn): textos das tabelas acima.
+func i18n_strings() -> Array:
+	var src := "scripts/autoload/game_state.gd"
+	var texts: Array = TEAM_NAMES + WINDOW_MODES \
+		+ AUDIO_BUSES.map(func(b): return b[1]) + GRAPHICS_APIS.map(func(a): return a[1]) \
+		+ KEY_NAMES.values() + MOUSE_NAMES.values()
+	return texts.map(func(t): return [t, "", src]) + ACTIONS.map(func(a): return [a[1], "action", src])

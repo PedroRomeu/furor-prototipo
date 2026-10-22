@@ -19,7 +19,7 @@ extends Node3D
 ## leva dano. Alguns mapas não têm muros nas bordas (OPEN_CHANCE) e alguns têm buracos no
 ## chão (PIT_CHANCE), também repetidos em volta do centro.
 
-const STYLES := ["Pátio", "Ruínas", "Torres", "Fábrica"]
+const STYLES := ["Courtyard", "Ruins", "Towers", "Factory"]   # i18n (nome: MapList.style_name)
 const WALL_HEIGHT := 18.0
 const SPAWN_CLEAR := 6.0
 const RAMP_ANGLE := 30.0
@@ -38,7 +38,7 @@ const DIVIDER_GAP_WIDTH := 5.0
 const RUIN_WALLS := [0.38, 0.3]
 
 var style_name := ""
-var map_name := ""      # estilo e tamanho ("Ruínas grande")
+var map_name := ""      # estilo e tamanho, traduzido ("Large Ruins")
 var density := 1.0      # quantas vezes mais peças que no mapa pequeno (MapList.SIZES)
 var divided := false    # grande: muros do centro até a borda entre os lados (_dividers)
 var half := 35.0
@@ -62,13 +62,13 @@ func build(map_index: int, seed_value: int, player_count := 2) -> void:
 	copies = player_count
 	var style := MapList.style_of(map_index)
 	var size: Dictionary = MapList.SIZES[MapList.size_of(map_index)]
-	style_name = STYLES[style]
+	style_name = MapList.style_name(style)
 	map_name = MapList.map_name(map_index)
 	density = size["density"]
 	divided = size["divided"]
 	half = rng.randf_range(size["half"].x, size["half"].y) + (copies - 2) * 4.0   # mais gente, arena maior
 	palette = ArenaTheme.THEMES[ArenaTheme.pick(seed_value)]
-	theme_name = palette["name"]
+	theme_name = tr(palette["name"])
 	for role in palette["tex"]:
 		_tex_by_color[palette[role]] = palette["tex"][role]
 	_setup_nav()

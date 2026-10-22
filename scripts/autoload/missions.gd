@@ -22,15 +22,15 @@ const REROLLS_PER_DAY := 1
 ## Eventos contados (add): rodadas jogadas e vencidas, abates, assistências, dano causado,
 ## balas refletidas, usos da mestra (Q), partidas terminadas em 1º e diárias cumpridas.
 const TEXTS := {
-	"rounds": "Jogar %d rodadas",
-	"round_wins": "Vencer %d rodadas",
-	"kills": "Fazer %d abates",
-	"assists": "Dar %d assistências",
-	"damage": "Causar %d de dano",
-	"reflects": "Refletir %d balas com o escudo",
-	"master_uses": "Usar a carta mestra %d vezes",
-	"match_wins": "Terminar %d partidas em 1º lugar",
-	"dailies": "Cumprir %d missões diárias",
+	"rounds": "Play %s rounds",
+	"round_wins": "Win %s rounds",
+	"kills": "Get %s kills",
+	"assists": "Get %s assists",
+	"damage": "Deal %s damage",
+	"reflects": "Reflect %s bullets with your shield",
+	"master_uses": "Use your master card %s times",
+	"match_wins": "Finish %s matches in 1st place",
+	"dailies": "Complete %s daily missions",
 }
 
 ## id -> [evento, meta, moedas]
@@ -93,33 +93,39 @@ func info(kind: String, i: int) -> Dictionary:
 	var m: Dictionary = dailies[i] if kind == "d" else weeklies[i]
 	var def: Array = daily_def(m["id"]) if kind == "d" else weekly_def(i, m["id"])
 	var target: int = def[1]
-	return {"text": TEXTS[def[0]].replace("%d", num(target)), "stat": def[0], "target": target,
+	return {"text": tr(TEXTS[def[0]]) % num(target), "stat": def[0], "target": target,
 		"progress": mini(int(m["progress"]), target), "done": int(m["progress"]) >= target,
 		"claimed": m["claimed"], "reward": {"coins": def[2]} if kind == "d" else WEEKLY[i]["reward"]}
 
 
-## Número com ponto nos milhares (10.000), como se escreve em português.
+## Número com separador de milhares do idioma: 10,000 em inglês, 10.000 em português.
 static func num(n: int) -> String:
+	var sep := "." if Lang.current.begins_with("pt") else ","
 	var s := str(absi(n))
 	var out := ""
 	while s.length() > 3:
-		out = "." + s.right(3) + out
+		out = sep + s.right(3) + out
 		s = s.left(s.length() - 3)
 	return ("-" if n < 0 else "") + s + out
 
 
-## Texto curto da recompensa, para a tela.
+## Texto curto da recompensa, para a tela (já traduzido).
 static func reward_text(reward: Dictionary) -> String:
 	if reward.has("coins"):
-		return num(reward["coins"]) + " moedas"
+		return Lang.t("%s coins") % num(reward["coins"])
 	if reward.has("master_pack"):
-		return "Pacote de Mestra"
+		return Collection.pack_name("mestra")
 	var parts := []
 	for r in Collection.RARITY_ORDER:
 		var n: int = reward.get("tokens", {}).get(r, 0)
 		if n > 0:
-			parts.append("%d %s" % [n, Collection.RARITY_FEM_PLURAL[r] if n > 1 else Collection.RARITY_FEM[r]])
-	return "Fichas: " + ", ".join(parts)
+			parts.append("%d %s" % [n, Collection.rarity_fem(r, n > 1)])
+	return Lang.t("Tokens: %s") % ", ".join(parts)
+
+
+## Para a ferramenta de tradução (scenes/dev/i18n.tscn): [texto, contexto, origem].
+static func i18n_strings() -> Array:
+	return TEXTS.values().map(func(t): return [t, "", "scripts/autoload/missions.gd"])
 
 
 ## Segundos até as diárias e as semanais trocarem.

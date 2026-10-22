@@ -24,7 +24,7 @@ const CHECK_TIMEOUT := 10.0
 
 var state := State.IDLE
 var latest := ""        # código de build da release mais nova
-var error := ""         # o que deu errado, para o menu mostrar
+var error := ""         # o que deu errado, em inglês (msgid): o menu mostra tr(error)
 var _url := ""          # link do zip
 var _size := 0          # tamanho do zip em bytes (barra de progresso)
 var _http: HTTPRequest
@@ -68,7 +68,7 @@ func start() -> void:
 		open_page()
 		return
 	if not OS.has_feature("template"):
-		_fail("Só o Furor.exe se atualiza.")
+		_fail("Only Furor.exe can update itself.")   # i18n
 		return
 	_set_state(State.DOWNLOADING)
 	_request(_url, _on_downloaded, 0.0, ZIP_PATH)
@@ -126,7 +126,7 @@ static func newer(a: String, b: String) -> bool:
 func _on_downloaded(result: int, code: int, _body: PackedByteArray) -> void:
 	set_process(false)
 	if result != HTTPRequest.RESULT_SUCCESS or code != 200:
-		_fail("O download falhou.")
+		_fail("The download failed.")   # i18n
 		return
 	_set_state(State.INSTALLING)
 	# Extrair 110 MB trava a tela por alguns segundos: vai numa thread.
@@ -141,7 +141,7 @@ func _extract() -> String:
 	var dir := OS.get_executable_path().get_base_dir()
 	var zip := ZIPReader.new()
 	if zip.open(ProjectSettings.globalize_path(ZIP_PATH)) != OK:
-		return "O arquivo baixado está corrompido."
+		return "The downloaded file is corrupted."   # i18n
 	var found := false
 	for file in zip.get_files():
 		var name := file.get_file()
@@ -154,12 +154,14 @@ func _extract() -> String:
 		var f := FileAccess.open(target, FileAccess.WRITE)
 		if f == null:
 			zip.close()
-			return "Sem permissão para gravar na pasta do jogo."
+			return "No permission to write to the game folder."   # i18n
 		f.store_buffer(bytes)
 		f.close()
 		found = found or name == "Furor.exe"
 	zip.close()
-	return "" if found else "O Furor.exe não está no zip."
+	if not found:
+		return "Furor.exe is not in the zip."   # i18n
+	return ""
 
 
 func _notification(what: int) -> void:
@@ -188,11 +190,11 @@ func _swap() -> void:
 	DirAccess.remove_absolute(old)
 	if DirAccess.rename_absolute(exe, old) != OK:
 		DirAccess.remove_absolute(fresh)
-		_fail("Não deu para trocar o Furor.exe.")
+		_fail("Couldn't replace Furor.exe.")   # i18n
 		return
 	if DirAccess.rename_absolute(fresh, exe) != OK:
 		DirAccess.rename_absolute(old, exe)   # devolve o atual
-		_fail("Não deu para trocar o Furor.exe.")
+		_fail("Couldn't replace Furor.exe.")   # i18n
 		return
 	OS.create_process(exe, OS.get_cmdline_args())
 	get_tree().quit()

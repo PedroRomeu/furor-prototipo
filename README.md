@@ -3,8 +3,8 @@
 First-person shooter with an upgrade card deck, for 2 to 4 players (free-for-all, 2v2 with 4, or Duels),
 inspired by Furor on Roblox. Made with Godot 4.7.2 and GDScript.
 
-The game itself is in Brazilian Portuguese; button and card names below are written as they
-appear in the game, with a translation where it helps.
+The game is in English. Brazilian Portuguese can be chosen in Settings > Profile > Language
+(main menu).
 
 ## Download and play
 
@@ -14,7 +14,7 @@ protected your PC" because the .exe is not signed: click **More info > Run anywa
 Everyone playing together needs the **same version**.
 
 From build 0.9.0.8 on, the game checks GitHub when the main menu opens. If there is a newer
-build, a small box in the bottom right corner offers **Atualizar** (Update): the game
+build, a small box in the bottom right corner offers **Update**: the game
 downloads it, replaces its own `Furor.exe` and reopens. Decks and settings live in
 `%APPDATA%\Godot\app_userdata\`, outside the game folder, so they are kept. If the folder is
 read-only, the box links to the release page instead.
@@ -32,7 +32,7 @@ two keys per action.
 | Key | Action |
 |---|---|
 | WASD / mouse | move / aim |
-| Left click | shoot (one click per shot; hold only with the Metralhadora card) |
+| Left click | shoot (one click per shot; hold only with the Machine Gun card) |
 | E or right click | shield (reflects bullets) |
 | Space | jump (short tap = low jump) |
 | Ctrl | dash: on the ground while moving, a short burst of speed (hold to slide); in the air, a straight dash, once per jump |
@@ -45,7 +45,7 @@ two keys per action.
 | Dead, round still going | a short slow-motion shot turns to whoever killed you, then you watch them in first person (in Teams, your teammate). Click: next living player; E (or right click): switch camera, first person, third person or free (WASD, Space up, Ctrl down) |
 | Esc | pause menu (resume, settings, quit); against bots the game pauses |
 
-**Personalizar** (customize, from the menu or the lobby): pick your character (12) and gun
+**Customize** (from the menu or the lobby): pick your character (12) and gun
 (5 pistols and small guns). The model is shown in the middle; drag to rotate. Cosmetic only;
 in the lobby the others see it right away.
 
@@ -67,8 +67,8 @@ right after a slide keeps the speed, and you can turn in the air without losing 
 An air dash while holding Ctrl lands already sliding. Jumping at a wall while holding W
 climbs the ledge (up to 2.2 m above your feet): crates work as steps to the upper floors.
 
-Settings (main menu and Esc in a match), split into Perfil (profile), Vídeo, Áudio,
-Controles and Créditos: display mode (window, borderless fullscreen, fullscreen), window
+Settings (main menu and Esc in a match), split into Profile, Video, Audio,
+Controls and Credits: language (English or Português (Brasil); main menu only), display mode (window, borderless fullscreen, fullscreen), window
 size (the game always renders at the real window size, so maximizing stays sharp;
 fullscreen uses the monitor resolution), interface size (100%, 125%, 150%), graphics
 quality (Low, Medium, High), graphics API (Compatibility/OpenGL, Vulkan, DirectX 12), FPS
@@ -98,15 +98,15 @@ editor: Project > Export > Windows Desktop > Export Project.
 
 ## Playing with friends
 
-1. One player opens **Jogar > Online > Criar sala** (Play > Online > Create room). The
+1. One player opens **Play > Online > Host lobby**. The
    lobby shows their IP and who has joined.
-2. The others open **Jogar > Online**, type that IP and click **Entrar** (Join).
-3. Each guest clicks **Pronto** (Ready). The host's **Começar** (Start) unlocks once every
-   guest is ready: the match is played with whoever is in the lobby (2 to 4 players, free-for-all). With 4, **Times** (teams, 2v2) can be picked under
-   Formato: the lobby becomes Blue Team and Red Team, the host moves people between teams
-   (or clicks **Sortear times** to shuffle) and it only starts with 2 on each side.
+2. The others open **Play > Online**, type that IP and click **Join**.
+3. Each guest clicks **Ready**. The host's **Start** unlocks once every
+   guest is ready: the match is played with whoever is in the lobby (2 to 4 players, free-for-all). With 4, **Teams** (2v2) can be picked under
+   MATCH: the lobby becomes TEAM BLUE and TEAM RED, the host moves people between teams
+   (or clicks **Shuffle teams**) and it only starts with 2 on each side.
    In the lobby everyone can change their name and look (applied right away for everyone),
-   switch the equipped deck or click **Editar** to edit it without leaving; if the match
+   switch the equipped deck or click **Edit** to edit it without leaving; if the match
    starts while you edit, it opens by itself. The chat sits below the player list and
    carries on into the match (Enter opens it). Each name shows in that player's color.
 4. The first time a lobby is created, Windows asks whether to allow the game through the
@@ -131,13 +131,13 @@ everyone goes back to the menu.
 
 ## Game modes
 
-Picked on mode cards in Treino (practice) and, by the host, in the lobby. The current mode
+Picked on mode cards in Practice and, by the host, in the lobby. The current mode
 shows in a corner during the match.
 
-- **Cada um por si** (free-for-all), 2 to 4 players: last one standing wins the round.
-- **Times** (teams, 2v2), exactly 4 players (practice: you and an allied bot against two bots): the team
+- **Free for all**, 2 to 4 players: last one standing wins the round.
+- **Teams** (2v2), exactly 4 players (practice: you and an allied bot against two bots): the team
   with someone standing wins.
-- **Duelos** (duels), 2 to 4 players: 1v1 in rotation with lives (3, 5 or 7). The first two
+- **Duels**, 2 to 4 players: 1v1 in rotation with lives (3, 5 or 7). The first two
   in the queue fight; the winner stays and the loser loses a life and goes to the back of the
   queue. The loser picks 1 of 3 cards, or 1 of 4 on their last life. Out of lives, you're
   out; the last one with lives wins. Whoever is waiting watches (follow a duelist or free
@@ -147,32 +147,34 @@ shows in a corner during the match.
 
 - Decks of 30 to 50 cards, up to 3 copies each. More copies = more chance of the card
   showing up. With 145 cards there are always some left out.
-- **Baralhos** (decks) screen: create as many named decks as you want, starting from a
-  template (Equilibrado, Atirador, Muralha, Acrobata, Caos, Aleatório or Vazio). The editor
+- **Decks** screen: create as many named decks as you want, starting from a
+  template (Balanced, Marksman, Bulwark, Acrobat, Chaos, Random or Empty). The editor
   has the card collection on the left and your deck on the right. Click a card to add it,
   right click to remove (or click it in the deck list); search, pick a group, or open
-  **Filtros** for archetype (Ricochete, Explosão, Nuke, Espelho, Tanque...: cards that combine
+  **Filters** for archetype (Ricochet, Explosion, Nuke, Mirror, Tank...: cards that combine
   well; a card can be in several), rarity and "only cards in the deck". The master card sits
   in its own slot; click it to choose another. The **equipped** deck is the one used in
   matches.
+- **Languages** (build 0.9.0.11): the game is in English by default; Brazilian Portuguese
+  can be chosen in Settings > Profile > Language. Online, each player sees their own language.
 - **Death cam and spectating** (build 0.9.0.10): when you die, a short slow-motion shot
   turns to whoever killed you, then cuts to their first-person view (in Teams, your
   teammate's). While dead, E switches between first person, third person and free camera;
   click moves to the next living player.
-- **Deck codes** (build 0.9.0.9): in the "⋯" menu of a deck, **Copiar código** copies a
-  text code of the deck (name, master card and cards). A friend clicks **Colar código** on the
-  Baralhos screen and gets a copy of it as a new deck. Cards their version does not have are
+- **Deck codes** (build 0.9.0.9): in the "⋯" menu of a deck, **Copy code** copies a
+  text code of the deck (name, master card and cards). A friend clicks **Paste code** on the
+  Decks screen and gets a copy of it as a new deck. Cards their version does not have are
   left out, with a warning.
 - **Master card**: each deck has one, picked in its own slot in the editor, outside the
-  card count. You start every match with it. New in 0.8.0: **Cartas Instáveis** (Bullets, Q:
-  3 random common cards from your deck for 8 s, shown over your name), **Domínio do Rei**
+  card count. You start every match with it. New in 0.8.0: **Unstable Cards** (Bullets, Q:
+  3 random common cards from your deck for 8 s, shown over your name), **King's Domain**
   (Body; enemies in range wear a small crown with "Q" on your screen. Q on one in your
   sights up to 30 m throws a homing shadow chain at 24 m/s; they escape only by blocking
   with the shield as it arrives or by getting behind a wall (12 s cooldown then). Caught:
   both of you are pulled into a closed room for 10 s, where you gain 4% damage per second
   up to +30%, they lose the same, and you wear a crown that grows with it; win and you keep
   the bonus 6 s more; when time runs out both return where they were, and
-  everyone on the map sees a purple marker with the countdown there), **Arpéu Ventoso**
+  everyone on the map sees a purple marker with the countdown there), **Plunger Grapple**
   (Movement, a plunger on a rope: Q sticks it to any surface up to 30 m and pulls you there;
   hang up to 3 s, Space mid-pull to fling yourself with the momentum, Space while hanging to
   wall jump, Q again for the next plunger; 2 charges of 8 s), **Mecha** (Body: Q builds a
@@ -180,53 +182,53 @@ shows in a corner during the match.
   you keep your gun, get armor of 60 + 60% of max health that takes damage first, ignore
   pushes and pulls, and E fires a missile instead of the shield; bigger, 25% slower, no dash
   or extra jumps; Q again leaves early; on leaving it explodes for 20 to 50 damage, more the
-  less armor is left; Perfurante ignores the armor; 24 s cooldown after you leave) and **Clone**
+  less armor is left; Piercer ignores the armor; 24 s cooldown after you leave) and **Clone**
   (Bullets: Q leaves a clone that walks slowly where you were looking for 8 s and looks like
   you to others, name and health included; every shot of yours also fires from it toward
   your crosshair at half damage; Q again swaps places with it; enemy bullets destroy it with
-  40 damage; 18 s cooldown). New in 0.5.0: **Caos** (Bullets: draws a
+  40 damage; 18 s cooldown). New in 0.5.0: **Chaos** (Bullets: draws a
   random master; an active one is used once and 8 s after its effect ends another comes, a
-  passive one lasts 15 s), **Prisão de Gelo** (Shield, Q: an ice shard that traps the target
+  passive one lasts 15 s), **Ice Prison** (Shield, Q: an ice shard that traps the target
   in a sliding ice block for 3 s; they take no damage, but shots, explosions and bodies push
-  the block), **Mega Tapa** (Body, Q: a short slap that launches far; hitting a wall deals 20
-  more and dazes), **Canhão Arcano** (Weapon, Q: charge 1 s, then a 2.5 s beam through walls
+  the block), **Mega Slap** (Body, Q: a short slap that launches far; hitting a wall deals 20
+  more and dazes), **Arcane Cannon** (Weapon, Q: charge 1 s, then a 2.5 s beam through walls
   that you aim slowly; each touch deals 22 and throws the target out of the beam),
-  **Plataformas Suspensas** (Movement, passive: out of air jumps, jumping makes a platform
+  **Sky Platforms** (Movement, passive: out of air jumps, jumping makes a platform
   under your feet, up to 3 in a row with 2 s to use each next one, then an 8 s cooldown; each one launches whoever steps on it
-  once, green while it can still launch you and purple after; 5 s each), **Chuva de Meteoros** (Bullets, Q: the next
-  3 shots mark the ground; 1.5 s later a meteor falls on each mark), **Foguete** (Weapon, Q:
+  once, green while it can still launch you and purple after; 5 s each), **Meteor Shower** (Bullets, Q: the next
+  3 shots mark the ground; 1.5 s later a meteor falls on each mark), **Rocket Ride** (Weapon, Q:
   ride a slow, hard-to-steer rocket that explodes on impact; Q again to jump off and send it
-  flying fast) and **Gancho** (Body, Q: a hook that pulls the enemy to you and holds them as
-  a human shield; click to throw them: a wall hurts them, another enemy hurts and dazes both). Also: **Espada** (Weapon, Q: a big
+  flying fast) and **Hook** (Body, Q: a hook that pulls the enemy to you and holds them as
+  a human shield; click to throw them: a wall hurts them, another enemy hurts and dazes both). Also: **Sword** (Weapon, Q: a big
   sword for 8 s with a 3-hit combo: slash right, slash left and a lunging thrust; a raised
   shield blocks it; while holding it you move 20% slower, cannot raise your own shield and swing
   slower if your cards slowed your fire rate), **Sniper** (Weapon, Q: a sniper with ONE laser shot
   that goes through every wall and deals 4x damage; right click to aim with the scope),
-  **Bazuca** (Weapon, Q: 6 s of
-  bazooka, 3 rockets), **Perfurante** (Bullets, Q: 3 straight fast shots with +30% damage that go
-  through walls, players, shields and Bastião, and ignore armor), **Bastião** (Shield, Q: a wall that returns bullets for 4 s), **Último Suspiro**
+  **Bazooka** (Weapon, Q: 6 s of
+  bazooka, 3 rockets), **Piercer** (Bullets, Q: 3 straight fast shots with +30% damage that go
+  through walls, players, shields and Bastion, and ignore armor), **Bastion** (Shield, Q: a wall that returns bullets for 4 s), **Last Breath**
   (Body: a fatal hit leaves you at 1 health for 3 s; get a kill in that time and come back
-  with half), **Camuflagem** (Body: stand still 0.6 s to vanish, crouch-walk while hidden;
+  with half), **Camouflage** (Body: stand still 0.6 s to vanish, crouch-walk while hidden;
   showing up after 1 s hidden gives Ambush, 3 s of +40% shot damage and +20% speed, and its
   first shot goes through walls; the shot that reveals you already counts),
-  **Corrente** (Movement, Q: an 8 m upward boost, also in the air; holds 2 charges that come
-  back one at a time, 9 s each), **Bota Foguete**
+  **Updraft** (Movement, Q: an 8 m upward boost, also in the air; holds 2 charges that come
+  back one at a time, 9 s each), **Rocket Boots**
   (Movement: +10% shot damage per second in the air, up to +40%; with no air jumps left,
-  hold jump for a short rocket burst, refilled on landing) and **Formiga** (Movement, Q:
+  hold jump for a short rocket burst, refilled on landing) and **Ant** (Movement, Q:
   6 s at 40% size and +60% speed; Q again to grow back early; growing back knocks away
   and hurts whoever is within 4 m).
 - Shooting: 4 bullets per magazine, 25 damage (4 hits kill), visible bullets that drop
   with distance. Aim a bit higher from afar. Reflected bullets fly straight. A bullet's size
-  grows with its damage, also mid-flight (Bola de Neve, Tabelinha): huge bullets are
+  grows with its damage, also mid-flight (Snowball, Bank Shot): huge bullets are
   possible, and every bounce gives the bullet 2 more seconds of life (up to 12 bounces), so
   a "nuke" shot at the sky can keep growing; shots that fire many bullets at once get less
   extra life per bounce. A bullet that already bounced off a wall can hit its shooter (it
-  still pushes enemies with Propulsão, never you). At most 300 bullets fly at once: when
+  still pushes enemies with Knockback, never you). At most 300 bullets fly at once: when
   full, the oldest bullet of whoever has the most disappears, so your shot always comes out.
 - Above 30 m (the invisible ceiling bullets bounce off) you take growing damage every
   second after a 1 s grace: 10% of max health, then 13%, 16%... Explosions start at the bullet's edge: bigger bullets explode bigger.
 - Shield (E): every card that improves it adds to its cooldown (+1 s for strong effects,
-  +0.5 s for weak ones); Reflexos, Defensor, Passo Ligeiro and Escudo de Papel lower it.
+  +0.5 s for weak ones); Reflexes, Defender, Light Step and Paper Shield lower it.
 - Your character gets a bit bigger with more max health and smaller with less, and the
   camera height follows.
 - At the start, everyone sees 3 different cards from their own deck and keeps 1.
@@ -240,9 +242,9 @@ shows in a corner during the match.
   before each phase.
 - Round: last one standing wins. Only **the losers** pick another card (1 of 3); with more
   than 2 players, everyone who died.
-- **Times** (teams, 2v2; online with 4, or in Treino with 3 bots: you and an allied bot): the team with
+- **Teams** (2v2; online with 4, or in Practice with 3 bots: you and an allied bot): the team with
   someone standing wins, and both losers pick a card. Bullets and explosions pass through
-  your teammate, except when an enemy Gancho holds them: then they lose the outline and your
+  your teammate, except when an enemy Hook holds them: then they lose the outline and your
   shots hit them. Your teammate has a team-colored outline and an arrow over their name,
   visible through walls, with their health under the name; the team score is at the top.
   **Downed:** if you take a fatal hit while your teammate is still standing, you go down
@@ -252,19 +254,19 @@ shows in a corner during the match.
   second fall in the same round and 3 s after that. Downed counts as out for the round.
   When dead you watch your teammate (first person, third person or free camera) until the round ends.
 - Cards never leave the deck: you can pick the same one several times and the effects
-  stack. A few (Adrenalina, Radar, Fênix...) can only be picked once.
+  stack. A few (Adrenaline, Radar, Phoenix...) can only be picked once.
 - Every 5 rounds the game asks: 5 more rounds or finish (online, everyone's vote shows
   live). Most rounds wins. The match ends on a final scoreboard with everyone's cards;
-  online, **Voltar à sala** takes you back to the lobby to play again.
-- Each round rolls a new arena from one of 12 maps: 4 styles (Pátio, Ruínas, Torres and
-  Fábrica) in 3 sizes (small, medium, large), plus one of 6 color ambiences. Medium and
+  online, **Back to lobby** takes you back to the lobby to play again.
+- Each round rolls a new arena from one of 12 maps: 4 styles (Courtyard, Ruins, Towers and
+  Factory) in 3 sizes (Small, Medium, Large), plus one of 6 color ambiences. Medium and
   large maps have proportionally more pieces; large maps add tall dividing walls with
   passages so fights in different corners don't see each other. Each piece repeats rotated
   around the center, once per player (2 to 4 identical sides). Arenas have height:
   platforms with a second floor, floating slabs, jump pads.
-- Online, the host turns maps on and off in the lobby ("Mapas"). Untouched maps follow an
+- Online, the host turns maps on and off in the lobby ("Maps"). Untouched maps follow an
   automatic rule: large maps are off with 2 players in the arena (1v1 and Duels), on with
-  3 or 4. In Treino the bot count decides: 1 bot small only, 2 bots small and medium,
+  3 or 4. In Practice the bot count decides: 1 bot small only, 2 bots small and medium,
   3 bots all sizes.
 - Map items (not every map, one of each per player; a ring on the ground marks where each
   comes back): **pink ">>" orb** (+30% speed for 4 s; 15 s), **green up-arrow orb** floating
@@ -276,33 +278,33 @@ shows in a corner during the match.
   short, so far from the edge it takes several (each one hurts). With the **shield (E) up
   as you hit it**, you lose no health and bounce high. Whoever pushed you in the last 4 s
   gets credit for the damage.
-- Practice: Jogar > Treino, against 1, 2 or 3 bots, on **Fácil**, **Médio** or **Difícil**
+- Practice: Play > Practice, against 1, 2 or 3 bots, on **Easy**, **Medium** or **Hard**
   (easy bots aim and react slower and only block bullets they see coming).
 
 All numbers are provisional, to be tuned by playing.
 
 ## Cards
 
-145 cards in 5 groups: **Arma** (weapon: fire rate, magazine, shotgun, burst, Cano Serrado for
+145 cards in 5 groups: **Weapon** (fire rate, magazine, shotgun, burst, Sawed-Off for
 close range; heavy bullets cut Range, so they vanish past a distance instead of slowing down,
-and Choke and Silenciador give some back; without Range cuts bullets fly as far as ever...), **Balas**
-(bullets: ricochet, homing, explosive, poison, slow, freezing layers that freeze the enemy
-until the next hit breaks the ice (Bala de Gelo, Hipotermia, Estilhaço, Choque Térmico), a
+and Choke and Suppressor give some back; without Range cuts bullets fly as far as ever...), **Bullets**
+(ricochet, homing, explosive, poison, slow, freezing layers that freeze the enemy
+until the next hit breaks the ice (Ice Bullet, Hypothermia, Shatter, Thermal Shock), a
 toxic cloud or a short black hole
-where the bullet lands; Veneno is slow and long (5 s, stacks), Queimadura fast and short
-(Bala Incendiária, Chamas, Brasa, Combustível, Combustão Lenta for a longer but weaker burn, at
+where the bullet lands; Poison is slow and long (5 s, stacks), Burn fast and short
+(Incendiary Bullet, Ring of Fire, Ember, Fuel, Slow Burn for a longer but weaker burn, at
 most 4 s; does not stack); the screen edges turn
-green when poisoned and catch fire when burning, stronger with more damage; and Marca,
-Persistência, Ácido, Corrosão, Contágio, Reação em Cadeia (an affliction that ends makes the
-enemy explode, colored by the affliction, passing it on to those nearby) and Estouro (a shield card that bursts them all at
-once) build around these "aflições" (effects that last on the enemy); Sanguessuga glows
-green when it heals...), **Escudo** (shield: what happens when raising it or reflecting;
-Pancada, Escudo Duplo, Couraça and Fortaleza make a close-range shield build, and Serra,
-Chamas, Geada and Mina add a spinning saw, a ring of fire, a frost wave or a mine), **Corpo**
-(body: health, size, Mosquito for the small build, Fênix, Radar, Blindado against explosions, Peso Pesado against
-knockback, Segunda Pele and Casca Dura...) and **Movimento** (movement: double jump, extra air
-dash, longer dash, Dash Duplo, Esquiva, Atropelar, Arrancada and Pressão to close in, Planador,
-Parkour, Pisão to bounce on
+green when poisoned and catch fire when burning, stronger with more damage; and Mark,
+Persistence, Acid, Corrosion, Contagion, Chain Reaction (an affliction that ends makes the
+enemy explode, colored by the affliction, passing it on to those nearby) and Rupture (a shield card that bursts them all at
+once) build around these afflictions (effects that last on the enemy); Leech glows
+green when it heals...), **Shield** (what happens when raising it or reflecting;
+Bash, Double Shield, Cuirass and Fortress make a close-range shield build, and Buzzsaw,
+Ring of Fire, Frost Wave and Mine add a spinning saw, a ring of fire, a frost wave or a mine), **Body**
+(health, size, Mosquito for the small build, Phoenix, Radar, Armored against explosions, Heavyweight against
+knockback, Second Skin and Hard Shell...) and **Movement** (double jump, extra air
+dash, longer dash, Double Dash, Dodge, Trample, Rush and Pressure to close in, Glider,
+Parkour, Stomp to bounce on
 heads...), for those who prefer mobility over damage. Furor has no public card list; the ideas come from
 two similar games: OVERKILL (Roblox) and ROUNDS (Landfall), where "the loser picks a card"
 comes from.
@@ -314,7 +316,7 @@ needs a new attribute in `BASE_STATS` and the code that uses it.
 
 ## Practice room
 
-In the deck editor, **Testar na sala de teste** opens a fixed holographic room with the deck's
+In the deck editor, **Try it in the test room** opens a fixed holographic room with the deck's
 master card and no picked cards. Nobody dies there (health stops at 1 and refills after 3 s
 without damage).
 
@@ -330,13 +332,13 @@ without damage).
 
 ## Shop (test mode)
 
-**Loja** in the main menu. Everyone starts with a 30-card collection and a free **Master
-Pack** (one random master card). Packs are the main way to get cards: **Básico** (5 cards,
-guarantees a rare), **Avançado** (6, guarantees an epic) and **Supremo** (7, guarantees a
-legendary). **Ofertas** shows an epic, a legendary and a master card that change every 8 hours;
+**Shop** in the main menu. Everyone starts with a 30-card collection and a free **Master
+Pack** (one random master card). Packs are the main way to get cards: **Basic Pack** (5 cards,
+guarantees a rare), **Advanced Pack** (6, guarantees an epic) and **Supreme Pack** (7, guarantees a
+legendary). **CURRENT OFFERS** shows an epic, a legendary and a master card that change every 8 hours;
 lock one to keep it while saving coins. Everything is on one page. Each card goes up to 3
-copies (masters up to 1); extra copies become **fichas** (tokens) of that rarity. Spend them in
-the deck editor: **Criar** turns on crafting mode, showing your tokens, how many copies you own
+copies (masters up to 1); extra copies become **tokens** of that rarity. Spend them in
+the deck editor: **Craft** turns on crafting mode, showing your tokens, how many copies you own
 of each card and its cost; clicking a card crafts one copy after a confirmation (masters are
 crafted from the master card picker).
 
@@ -346,7 +348,7 @@ has every card. All prices and odds may change.
 
 ## Missions
 
-The **Missões** page on the Jogar screen (right column) has 3 daily missions (play rounds,
+The **Missions** page on the Play screen (right column) has 3 daily missions (play rounds,
 win rounds, kills, damage, reflections, assists, using your master card; 50 to 75 coins,
 one reroll per day, new ones at local midnight) and 3 weekly ones with fixed rewards: a
 **Master Pack**, a bundle of tokens (3 common, 3 rare, 2 epic, 1 legendary) and 800 coins
@@ -368,7 +370,7 @@ scoreboard lists what moved.
 | `scripts/match.gd` | Match flow: picks, countdown, round, 5-round blocks, end. |
 | `scripts/spectator.gd` | Camera when dead: slow-motion death shot toward the killer, then watch a living player in first or third person, or fly freely. |
 | `scripts/arena/` | Arena generator, color themes, moving pieces, jump pads, map items, and the practice room (`test_room.gd`). |
-| `scripts/meteor_strike.gd`, `sky_platform.gd` | Chuva de Meteoros meteor, Plataformas Suspensas platform. |
+| `scripts/meteor_strike.gd`, `sky_platform.gd` | Meteor Shower meteor, Sky Platforms platform. |
 | `scripts/ui/` | HUD (`vitals.gd` for the health, master card and ability corner), kill feed, chat, damage feedback, scoreboard, pick screen, menu, settings, customization preview, deck screens and the shared look (`ui_style.gd`). |
 | `scripts/sfx.gd`, `effects.gd`, `aim_arm.gd` | Sounds, visual effects, arm pointing at the aim. |
 | `scripts/dev/checkup.gd` | Performance check-up tool (see below). |

@@ -68,7 +68,7 @@ func open(p_pack_id: String, p_results: Array, p_can_again: bool) -> void:
 		move_child(face, 0)
 		_faces.append(face)
 	_build_pack()
-	_hint = Ui.label("Clique para abrir", 18, Ui.MUTED)
+	_hint = Ui.label(tr("Click to open"), 18, Ui.MUTED)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
 	_hint.offset_top = -110
@@ -85,11 +85,11 @@ func open(p_pack_id: String, p_results: Array, p_can_again: bool) -> void:
 	_buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	_buttons.visible = false
 	add_child(_buttons)
-	_reveal_all = Ui.button("Revelar todas", _reveal_rest, 200)
+	_reveal_all = Ui.button(tr("Reveal all"), _reveal_rest, 200)
 	_buttons.add_child(_reveal_all)
-	_again_button = Ui.button("Abrir outro  ·  %d" % Collection.PACKS[pack_id]["price"], func(): again.emit(), 220)
+	_again_button = Ui.button(tr("Open another  ·  %d") % Collection.PACKS[pack_id]["price"], func(): again.emit(), 220)
 	_buttons.add_child(_again_button)
-	var done := Ui.accent(Ui.button("Continuar", func(): finished.emit(), 180))
+	var done := Ui.accent(Ui.button(tr("Continue"), func(): finished.emit(), 180))
 	done.name = "Done"
 	_buttons.add_child(done)
 	_flash = ColorRect.new()
@@ -150,8 +150,8 @@ func _build_pack() -> void:
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_body.add_child(col)
-	for t in [["FUROR", 40, Color.WHITE], [Collection.PACKS[pack_id]["name"], 18, color.lightened(0.3)],
-			["%d carta%s" % [results.size(), "" if results.size() == 1 else "s"], 14, Ui.MUTED]]:
+	for t in [["FUROR", 40, Color.WHITE], [Collection.pack_name(pack_id), 18, color.lightened(0.3)],
+			[tr_n("%d card", "%d cards", results.size()) % results.size(), 14, Ui.MUTED]]:
 		var l := Ui.label(t[0], t[1], t[2], true)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -215,7 +215,7 @@ func _deal() -> void:
 		t.tween_property(holder, "scale", Vector2.ONE * scale_fit, 0.35).set_delay(i * 0.06)
 	await get_tree().create_timer(0.35 + n * 0.06).timeout
 	_stage = 2
-	_hint.text = "Clique para revelar"
+	_hint.text = tr("Click to reveal")
 	_buttons.visible = true
 	_again_button.visible = false
 	_buttons.get_node("Done").visible = false
@@ -298,10 +298,10 @@ func _badge(r: Dictionary) -> Label:
 	var text := ""
 	var color := Ui.MUTED
 	if r["token"]:
-		text = "+1 ficha %s" % Collection.RARITY_FEM[r["rarity"]]
+		text = tr("+1 %s token") % Collection.rarity_fem(r["rarity"])
 		color = CardDB.RARITIES[r["rarity"]]["color"]
 	elif r["new"]:
-		text = "NOVA"
+		text = tr("NEW")
 		color = Ui.OK
 	else:
 		text = "%d/%d" % [r["copy"], Collection.max_copies(r["id"])]

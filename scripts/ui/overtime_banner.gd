@@ -76,17 +76,17 @@ func _process(delta: float) -> void:
 	var what := ""
 	if not cards_on:
 		target = Overtime.CARDS_AT
-		what = "PRORROGAÇÃO"
+		what = tr("OVERTIME IN")
 	elif not zone_on and t >= Overtime.ZONE_AT - Overtime.WARN:
 		target = Overtime.ZONE_AT
-		what = "A ARENA FECHA"
+		what = tr("ARENA CLOSES IN")
 	var title := ""
 	var big := ""
 	var sub := ""
 	var color := Ui.WARN
 	if target > 0.0:
 		var left := ceili(target - t)
-		title = what + " EM"
+		title = what
 		if left <= Overtime.COUNTDOWN:
 			big = str(left)
 			# Laranja no 10, vermelho no 1.
@@ -98,8 +98,8 @@ func _process(delta: float) -> void:
 		else:
 			title += " %d:%02d" % [left / 60, left % 60]
 			_last_count = -1
-		sub = "uma carta extra do seu baralho a cada %d s" % int(Overtime.CARD_EVERY) if not cards_on \
-			else "o círculo vai encolher até o centro em %d min" % int(Overtime.ZONE_TIME / 60.0)
+		sub = tr("one extra card from your deck every %d s") % int(Overtime.CARD_EVERY) if not cards_on \
+			else tr("the circle will shrink to the center in %d min") % int(Overtime.ZONE_TIME / 60.0)
 	elif _last_count >= 0:
 		# Acabou a contagem: estouro.
 		_last_count = -1
@@ -109,18 +109,18 @@ func _process(delta: float) -> void:
 	if target < 0.0:
 		var r := Overtime.zone_radius(t, half)
 		if zone_on:
-			title = "ARENA FECHADA" if r <= Overtime.ZONE_MIN else "ARENA FECHANDO"
+			title = tr("ARENA CLOSED") if r <= Overtime.ZONE_MIN else tr("ARENA CLOSING")
 			color = Ui.DANGER
-			sub = "raio %d m" % ceili(r)
+			sub = tr("radius %d m") % ceili(r)
 		else:
-			title = "PRORROGAÇÃO"
+			title = tr("OVERTIME")
 		var next := Overtime.next_card_in(t)
-		var cards := "cartas extras %d/%d" % [Overtime.cards_due(t), Overtime.MAX_CARDS]
+		var cards := tr("extra cards %d/%d") % [Overtime.cards_due(t), Overtime.MAX_CARDS]
 		if next >= 0.0:
-			cards += "  ·  próxima em %d" % ceili(next)
+			cards += tr("  ·  next in %d") % ceili(next)
 		sub = cards if sub == "" else sub + "  ·  " + cards
 		if _burst > 0.0:
-			big = "FECHANDO!" if zone_on else "PRORROGAÇÃO!"
+			big = tr("CLOSING!") if zone_on else tr("OVERTIME!")
 			color = Ui.DANGER
 	_show(_title, title, color)
 	_show(_big, big, color)
@@ -128,7 +128,7 @@ func _process(delta: float) -> void:
 	_card.visible = _card_time > 0.0
 	_card.modulate.a = clampf(_card_time * 2.0, 0.0, 1.0)
 	var out := me != null and me.alive and me.zone_out
-	_show(_out, "FORA DA ARENA: VOLTE PARA DENTRO" if out else "", Ui.DANGER)
+	_show(_out, tr("OUTSIDE THE ARENA: GET BACK IN") if out else "", Ui.DANGER)
 	if out:
 		_out.modulate.a = 0.6 + 0.4 * absf(sin(Time.get_ticks_msec() * 0.008))
 

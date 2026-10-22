@@ -137,7 +137,7 @@ func _physics_process(delta: float) -> void:
 		return
 	# Para os outros parece você: o seu nome e a sua vida (para você, "Clone" e a dele).
 	if owner_p == Player.viewer:
-		tag.text = "Clone\n%d" % ceili(health)
+		tag.text = tr("Clone") + "\n%d" % ceili(health)
 	else:
 		tag.text = "%s\n%d" % [owner_p.player_name, ceili(owner_p.health)]
 

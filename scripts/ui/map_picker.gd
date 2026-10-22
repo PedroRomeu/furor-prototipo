@@ -39,13 +39,13 @@ func _init() -> void:
 	frame.add_child(col)
 
 	var head := Ui.hbox(12)
-	head.add_child(Ui.label("Mapas", 26, Ui.TEXT, true))
+	head.add_child(Ui.label(tr("Maps"), 26, Ui.TEXT, true))
 	head.add_child(Ui.spacer())
 	_count = Ui.label("", 15, Ui.MUTED)
 	_count.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(_count)
 	col.add_child(head)
-	var filters := Ui.tabs(["Todos"] + Arena.STYLES, 0, func(i):
+	var filters := Ui.tabs([tr("All")] + range(Arena.STYLES.size()).map(func(s): return MapList.style_name(s)), 0, func(i):
 		_filter = i - 1
 		_refresh())
 	_filter_buttons = filters.get_children()
@@ -64,11 +64,11 @@ func _init() -> void:
 	col.add_child(_note)
 	var row := Ui.hbox(10)
 	_bottom = Ui.hbox(10)
-	_bottom.add_child(Ui.button("Ligar todos", func(): Net.set_all_maps(true), 130))
-	_bottom.add_child(Ui.flat(Ui.button("Voltar ao automático", func(): Net.set_all_maps(false))))
+	_bottom.add_child(Ui.button(tr("Turn all on"), func(): Net.set_all_maps(true), 130))
+	_bottom.add_child(Ui.flat(Ui.button(tr("Back to automatic"), func(): Net.set_all_maps(false))))
 	row.add_child(_bottom)
 	row.add_child(Ui.spacer())
-	row.add_child(Ui.accent(Ui.button("Fechar", close, 120)))
+	row.add_child(Ui.accent(Ui.button(tr("Close"), close, 120)))
 	col.add_child(row)
 
 
@@ -85,11 +85,14 @@ func close() -> void:
 	visible = false
 
 
-## Texto do botão da sala: "Mapas  ·  9 de 12".
+## Texto do botão da sala: "Maps  ·  9 of 12".
 static func summary() -> String:
+	return Lang.t("Maps  ·  %d of %d") % [on_count(), MapList.count()]
+
+
+static func on_count() -> int:
 	var players := Net.arena_players()
-	var on := range(MapList.count()).filter(func(i): return MapList.is_on(Net.maps, i, players)).size()
-	return "Mapas  ·  %d de %d" % [on, MapList.count()]
+	return range(MapList.count()).filter(func(i): return MapList.is_on(Net.maps, i, players)).size()
 
 
 func _refresh() -> void:
@@ -104,18 +107,18 @@ func _refresh() -> void:
 	for s in Arena.STYLES.size():
 		if _filter >= 0 and s != _filter:
 			continue
-		Ui.section(_list, Arena.STYLES[s].to_upper(), null, 4 if _list.get_child_count() == 0 else 18)
+		Ui.section(_list, MapList.style_name(s).to_upper(), null, 4 if _list.get_child_count() == 0 else 18)
 		for z in MapList.SIZES.size():
 			_list.add_child(_row(s * MapList.SIZES.size() + z, players, host))
-	_count.text = summary().trim_prefix("Mapas  ·  ") + " ligados"
+	_count.text = tr("%d of %d on") % [on_count(), MapList.count()]
 	_bottom.visible = host
 	if not host:
-		_note.text = "Só o anfitrião liga e desliga mapas. A cada rodada sai um dos ligados, com um desenho novo."
+		_note.text = tr("Only the host turns maps on and off. Each round picks one of the maps that are on, with a new layout.")
 	else:
-		_note.text = "A cada rodada sai um dos ligados, com um desenho novo. Automático: os grandes ficam desligados com 2 na arena (1x1 e Duelos) e ligados com 3 ou 4."
+		_note.text = tr("Each round picks one of the maps that are on, with a new layout. Automatic: large maps are off with 2 in the arena (1v1 and Duels) and on with 3 or 4.")
 
 
-const SIZE_HINTS := ["Encontros rápidos.", "Mais espaço e mais peças.", "Muros dividem a arena. Melhor com 3 ou 4."]
+const SIZE_HINTS := ["Quick fights.", "More room and more cover.", "Walls split the arena. Best with 3 or 4."]   # i18n
 
 
 ## Um tamanho do estilo: nome, frase curta, "automático" e o interruptor.
@@ -127,12 +130,12 @@ func _row(index: int, players: int, host: bool) -> Control:
 	var texts := Ui.vbox(0)
 	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	line.add_child(texts)
-	texts.add_child(Ui.label(String(MapList.SIZES[z]["name"]).capitalize(), 15, Ui.TEXT if on else Ui.MUTED, on))
-	texts.add_child(Ui.label(SIZE_HINTS[z], 12, Ui.MUTED if on else Ui.MUTED.darkened(0.25)))
+	texts.add_child(Ui.label(MapList.size_name(z).capitalize(), 15, Ui.TEXT if on else Ui.MUTED, on))
+	texts.add_child(Ui.label(tr(SIZE_HINTS[z]), 12, Ui.MUTED if on else Ui.MUTED.darkened(0.25)))
 	if auto:
-		var a := Ui.label("automático", 12, Ui.MUTED.darkened(0.1))
+		var a := Ui.label(tr("automatic"), 12, Ui.MUTED.darkened(0.1))
 		a.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		a.tooltip_text = "O jogo decide pelo número de jogadores até você mudar."
+		a.tooltip_text = tr("The game decides by the number of players until you change it.")
 		a.mouse_filter = Control.MOUSE_FILTER_STOP
 		line.add_child(a)
 	var sw := CheckButton.new()

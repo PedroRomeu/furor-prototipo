@@ -25,19 +25,19 @@ static func make(id: String, width: float, desc_height := 0.0) -> PanelContainer
 	var icon := CardIcon.make(id, width * 0.42, 1, false)
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(icon)
-	var name_label := Ui.label(card["name"], int(maxf(13.0, width * 0.1)), Ui.TEXT, true)
+	var name_label := Ui.label(CardDB.card_name(id), int(maxf(13.0, width * 0.1)), Ui.TEXT, true)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(name_label)
-	var sub := CardDB.rarity_name(id) + ("  ·  mestra" if CardDB.is_master(id) else "")
+	var sub := CardDB.rarity_name(id) + ("  ·  " + Lang.t("master") if CardDB.is_master(id) else "")
 	var rarity := Ui.label(sub, int(maxf(11.0, width * 0.075)), CardDB.rarity_color(id), true)
 	rarity.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	rarity.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(rarity)
 	if desc_height > 0.0:
 		col.add_child(HSeparator.new())
-		col.add_child(Ui.scroll_text(card["desc"], desc_height, 13, Ui.TEXT.darkened(0.15)))
+		col.add_child(Ui.scroll_text(CardDB.card_desc(id), desc_height, 13, Ui.TEXT.darkened(0.15)))
 	return panel
 
 

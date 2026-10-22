@@ -29,16 +29,16 @@ func _ready() -> void:
 	custom_minimum_size.x = 230
 	var col := Ui.vbox(6)
 	add_child(col)
-	col.add_child(Ui.label("DANO", 12, Color(TestRoom.HOLO, 0.9), true))
-	_values["dps"] = _row(col, "DPS (3 s)", 26)
-	_values["best"] = _row(col, "Melhor DPS")
-	_values["ttk"] = _row(col, "100 de vida em")
-	_values["total"] = _row(col, "Dano total")
-	_values["big"] = _row(col, "Maior golpe")
-	_values["hits"] = _row(col, "Tiros / golpes")
-	_values["reach"] = _row(col, "Alcance")
+	col.add_child(Ui.label(tr("DAMAGE"), 12, Color(TestRoom.HOLO, 0.9), true))
+	_values["dps"] = _row(col, tr("DPS (3 s)"), 26)
+	_values["best"] = _row(col, tr("Best DPS"))
+	_values["ttk"] = _row(col, tr("100 health in"))
+	_values["total"] = _row(col, tr("Total damage"))
+	_values["big"] = _row(col, tr("Biggest hit"))
+	_values["hits"] = _row(col, tr("Shots / hits"))
+	_values["reach"] = _row(col, tr("Range"))
 	col.add_child(Ui.gap(2))
-	col.add_child(Ui.label("Z  zerar   ·   B  cartas e mestra", 12, Ui.MUTED))
+	col.add_child(Ui.label(tr("Z  reset   ·   B  cards and master"), 12, Ui.MUTED))
 	reset()
 
 
@@ -92,10 +92,10 @@ func _refresh() -> void:
 	_best_dps = maxf(_best_dps, dps)
 	_values["dps"].text = "%.0f" % dps
 	_values["best"].text = "%.0f" % _best_dps
-	_values["ttk"].text = "%.1f s" % (100.0 / _best_dps) if _best_dps > 0.0 else "-"
+	_values["ttk"].text = Lang.num(100.0 / _best_dps) + " s" if _best_dps > 0.0 else "-"
 	_values["total"].text = "%.0f" % _total
 	_values["big"].text = "%.0f" % _biggest
 	_values["hits"].text = "%d / %d" % [_shots, _hits]
 	if is_instance_valid(player):
 		var reach := player.bullet_reach()
-		_values["reach"].text = "%.0f m" % reach if reach > 0.0 else "sem limite"
+		_values["reach"].text = "%.0f m" % reach if reach > 0.0 else tr("no limit")

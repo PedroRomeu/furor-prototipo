@@ -18,9 +18,10 @@ const TEST_MODE := true
 const TEST_COINS := 999999
 const PATH := "user://colecao.json"
 const RARITY_ORDER := ["comum", "raro", "epico", "lendario", "mitico"]
-## Para concordar com "carta" e "ficha" (CardDB.RARITIES tem o masculino: "Raro").
-const RARITY_FEM := {"comum": "comum", "raro": "rara", "epico": "épica", "lendario": "lendária", "mitico": "mítica"}
-const RARITY_FEM_PLURAL := {"comum": "comuns", "raro": "raras", "epico": "épicas", "lendario": "lendárias", "mitico": "míticas"}
+## Raridade como adjetivo no meio da frase ("fichas raras", "rare tokens"): em inglês, minúsculo;
+## o .po em português concorda com "carta" e "ficha" pelos contextos "feminine" e "feminine
+## plural" (CardDB.RARITIES tem o masculino: "Raro"). Ver rarity_fem.
+const RARITY_ADJ := {"comum": "common", "raro": "rare", "epico": "epic", "lendario": "legendary", "mitico": "mythic"}
 
 ## Deck inicial: 30 cartas, 1 cópia de cada, 6 por grupo, "faz de tudo um pouco":
 ## 14 comuns, 9 raras, 5 épicas, 2 lendárias. A mestra vem do Pacote de mestra.
@@ -36,21 +37,21 @@ const STARTER := [
 ## carta, a garantida. Simulado (só Avançado, com troca de fichas): 50% da coleção em ~26
 ## pacotes, 90% em ~74, todas as mestras em ~230.
 const PACKS := {
-	"basico": {"name": "Pacote Básico", "cards": 5, "price": 100, "color": Color(0.45, 0.65, 1.0),
-		"promise": "1 rara ou melhor",
+	"basico": {"name": "Basic Pack", "cards": 5, "price": 100, "color": Color(0.45, 0.65, 1.0),
+		"promise": "1 rare or better",
 		"odds": {"comum": 0.62, "raro": 0.28, "epico": 0.08, "lendario": 0.017, "mitico": 0.003},
 		"last": {"raro": 0.75, "epico": 0.20, "lendario": 0.04, "mitico": 0.01}},
-	"avancado": {"name": "Pacote Avançado", "cards": 6, "price": 250, "color": Color(0.78, 0.45, 1.0),
-		"promise": "1 épica ou melhor",
+	"avancado": {"name": "Advanced Pack", "cards": 6, "price": 250, "color": Color(0.78, 0.45, 1.0),
+		"promise": "1 epic or better",
 		"odds": {"comum": 0.45, "raro": 0.35, "epico": 0.15, "lendario": 0.04, "mitico": 0.01},
 		"last": {"epico": 0.75, "lendario": 0.20, "mitico": 0.05}},
-	"supremo": {"name": "Pacote Supremo", "cards": 7, "price": 500, "color": Color(1.0, 0.68, 0.15),
-		"promise": "1 lendária ou melhor",
+	"supremo": {"name": "Supreme Pack", "cards": 7, "price": 500, "color": Color(1.0, 0.68, 0.15),
+		"promise": "1 legendary or better",
 		"odds": {"comum": 0.30, "raro": 0.40, "epico": 0.20, "lendario": 0.08, "mitico": 0.02},
 		"last": {"lendario": 0.85, "mitico": 0.15}},
 	# Só o do começo: 1 carta, sempre uma mestra.
-	"mestra": {"name": "Pacote de Mestra", "cards": 1, "price": 0, "color": Color(1.0, 0.32, 0.38),
-		"promise": "1 mestra", "odds": {"mitico": 1.0}, "last": {"mitico": 1.0}},
+	"mestra": {"name": "Master Pack", "cards": 1, "price": 0, "color": Color(1.0, 0.32, 0.38),
+		"promise": "1 master", "odds": {"mitico": 1.0}, "last": {"mitico": 1.0}},
 }
 const SHOP_PACKS := ["basico", "avancado", "supremo"]
 
@@ -92,6 +93,38 @@ func is_full(id: String) -> bool:
 
 static func rarity_of(id: String) -> String:
 	return CardDB.CARDS[id]["rarity"]
+
+
+## Raridade como adjetivo, traduzida: "rare" / "rara" (plural: "rare" / "raras").
+static func rarity_fem(rarity: String, plural := false) -> String:
+	return Lang.t(RARITY_ADJ[rarity], "feminine plural" if plural else "feminine")
+
+
+## "Rare tokens" / "Fichas raras" (texto curto para dicas e rótulos).
+static func tokens_label(rarity: String) -> String:
+	var text := Lang.t("%s tokens") % rarity_fem(rarity, true)
+	return text.left(1).to_upper() + text.substr(1)
+
+
+static func pack_name(pack_id: String) -> String:
+	return Lang.t(PACKS[pack_id]["name"])
+
+
+static func pack_promise(pack_id: String) -> String:
+	return Lang.t(PACKS[pack_id]["promise"])
+
+
+## Para a ferramenta de tradução (scenes/dev/i18n.tscn): [texto, contexto, origem].
+static func i18n_strings() -> Array:
+	var src := "scripts/autoload/collection.gd"
+	var out := []
+	for r in RARITY_ADJ:
+		out.append([RARITY_ADJ[r], "feminine", src])
+		out.append([RARITY_ADJ[r], "feminine plural", src])
+	for p in PACKS:
+		out.append([PACKS[p]["name"], "", src])
+		out.append([PACKS[p]["promise"], "", src])
+	return out
 
 
 ## Todas as cartas da raridade (mítica = mestras), as de hoje e as que entrarem depois.

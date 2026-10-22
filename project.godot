@@ -18,6 +18,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [autoload]
 
+Lang="*res://scripts/autoload/lang.gd"
 CardDB="*res://scripts/autoload/card_db.gd"
 GameState="*res://scripts/autoload/game_state.gd"
 Net="*res://scripts/autoload/net.gd"
@@ -33,6 +34,10 @@ window/size/viewport_height=720
 [gui]
 
 timers/tooltip_delay_sec=0.15
+
+[internationalization]
+
+locale/translations=PackedStringArray("res://locale/pt_BR.po")
 
 [layer_names]
 

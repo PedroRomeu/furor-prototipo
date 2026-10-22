@@ -50,7 +50,7 @@ func _ready() -> void:
 		log_view.scroll_active = false
 		log_view.add_theme_constant_override("outline_size", 5)
 		log_view.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-		input.placeholder_text = "Mensagem para todos  ·  Enter manda, Esc cancela"
+		input.placeholder_text = tr("Message everyone  ·  Enter sends, Esc cancels")
 		input.visible = false
 		_back = Ui.box(Color(Ui.BG, 0.0), 8)
 		_back.set_content_margin_all(8)
@@ -59,7 +59,7 @@ func _ready() -> void:
 			holder.add_theme_stylebox_override("panel", _back)
 		modulate.a = 0.0
 	else:
-		input.placeholder_text = "Mensagem para a sala"
+		input.placeholder_text = tr("Message the lobby")
 		# Enter manda e o cursor fica no campo para a próxima (pedido do usuário, 2026-10-11).
 		input.keep_editing_on_text_submit = true
 		var area := Ui.box(Ui.BG, 8)
@@ -139,13 +139,22 @@ func _on_message(entry: Dictionary) -> void:
 func _append(entry: Dictionary) -> void:
 	if log_view.get_parsed_text() != "":
 		log_view.append_text("\n")
-	var text := _escape(entry["text"])
+	var text := _escape(entry_text(entry))
 	if entry["system"]:
 		log_view.append_text("[color=#%s]%s[/color]" % [Ui.MUTED.to_html(false), text])
 	else:
 		var color: Color = entry["color"]
 		log_view.append_text("[b][color=#%s]%s[/color][/b]  %s" % [
 			color.lightened(0.25).to_html(false), _escape(entry["name"]), text])
+
+
+## Texto da mensagem: o do jogador como veio; o aviso do sistema chega em inglês (o msgid,
+## com o nome em "name", ver Net._system_chat) e é traduzido aqui, ao mostrar.
+static func entry_text(entry: Dictionary) -> String:
+	if not entry["system"]:
+		return entry["text"]
+	var text := Lang.t(entry["text"])
+	return text % entry["name"] if entry["name"] != "" and text.contains("%s") else text
 
 
 ## O texto vem de outra pessoa: "[" vira literal para ninguém mudar cor ou formato no chat.

@@ -31,7 +31,7 @@ const SHOOTER_SPOTS := [Vector3(18, 0, -19), Vector3(18, 6, -27.5)]
 const DEFENSE_SPOT := Vector3(18, 0, -4)
 
 const PALETTE := {
-	"name": "Sala de teste", "void": Color(0.02, 0.04, 0.09),
+	"name": "Test room", "void": Color(0.02, 0.04, 0.09),
 	"sky_top": Color(0.02, 0.035, 0.07), "sky_horizon": Color(0.03, 0.05, 0.1),
 	"fog": Color(0.1, 0.2, 0.35), "fog_density": 0.006,
 	"sun": Color(0.85, 0.92, 1.0), "sun_energy": 0.35,
@@ -65,8 +65,8 @@ void fragment() {
 func build(_map_index: int, _seed_value: int, _player_count := 2) -> void:
 	half = minf(HALF_X, HALF_Z)
 	palette = PALETTE
-	theme_name = PALETTE["name"]
-	map_name = "Sala de teste"
+	theme_name = tr("Test room")
+	map_name = theme_name
 	style_name = map_name
 	_setup_nav()
 	_strips.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -125,12 +125,12 @@ func _room() -> void:
 func _range() -> void:
 	var line_z := 20.0
 	_strip(Vector3(-28, 0, line_z), Vector3(-4, 0, line_z))
-	_sign("LINHA DE TIRO", Vector3(-16, 0.25, line_z + 0.6), 40, true)
+	_sign(tr("FIRING LINE"), Vector3(-16, 0.25, line_z + 0.6), 40, true)
 	for spot: Vector3 in DUMMY_SPOTS:
 		_ring(spot, 0.9)   # a distância está no nome do boneco (match.DUMMY_NAMES)
 	_strip(RAIL[0], RAIL[1])
 	_strip(RAIL[0] + Vector3(0, 0, 0.6), RAIL[1] + Vector3(0, 0, 0.6))
-	_sign("RICOCHETE", Vector3(-HALF_X + 0.05, 5.0, 4.0), 64, false, PI / 2.0)
+	_sign(tr("RICOCHET"), Vector3(-HALF_X + 0.05, 5.0, 4.0), 64, false, PI / 2.0)
 
 
 ## Parkour: degraus de 2, 4 e 6 m, muro de 7 m para escalar, vão de 10 m sobre o vazio e
@@ -141,10 +141,10 @@ func _parkour() -> void:
 		_block(Vector3(7 + 5 * i, h / 2.0, 27 - 5 * i), Vector3(3, h, 3), "block")
 		_sign("%d m" % roundi(h), Vector3(7 + 5 * i, h + 1.2, 27 - 5 * i + 1.6), 40)
 	_block(Vector3(27, 3.5, 23), Vector3(6, 7, 8), "block")
-	_sign("ESCALADA 7 m", Vector3(23.9, 4.0, 23), 48, false, -PI / 2.0)
+	_sign(tr("CLIMB 7 m"), Vector3(23.9, 4.0, 23), 48, false, -PI / 2.0)
 	for x in [8.0, 22.0]:
 		_block(Vector3(x, 1.5, PIT.get_center().y), Vector3(4, 3, 4), "block")
-	_sign("VÃO 10 m", Vector3(15, 5.0, PIT.get_center().y), 56)
+	_sign(tr("GAP 10 m"), Vector3(15, 5.0, PIT.get_center().y), 56)
 	var pad := JumpPad.new()
 	pad.position = Vector3(27, 0, 13)
 	pad.rotation.y = PI / 2.0      # lança para oeste, na direção do vão
@@ -159,14 +159,14 @@ func _parkour() -> void:
 	disc.material_override = _flat(HOLO.darkened(0.35))
 	disc.position.y = 0.04
 	pad.add_child(disc)
-	_sign("PARKOUR", Vector3(16, 9.0, 29.9), 96, false, PI)
+	_sign(tr("PARKOUR"), Vector3(16, 9.0, 29.9), 96, false, PI)
 
 
 ## Defesa: o ponto onde ficar e o mezanino do atirador de cima.
 func _defense() -> void:
 	_block(Vector3(18, 3, -27.5), Vector3(20, 6, 5), "block")
 	_ring(DEFENSE_SPOT, 1.2)
-	_sign("DEFESA", DEFENSE_SPOT + Vector3(0, 0.25, 1.8), 56, true)
+	_sign(tr("DEFENSE"), DEFENSE_SPOT + Vector3(0, 0.25, 1.8), 56, true)
 
 
 # ---------------------------------------------------------------- bonecos

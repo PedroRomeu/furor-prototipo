@@ -39,7 +39,7 @@ func _ready() -> void:
 	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	header.add_child(back)
 	var titles := Ui.vbox(2)
-	titles.add_child(Ui.label("Loja", 32, Ui.TEXT, true))
+	titles.add_child(Ui.label(tr("Shop"), 32, Ui.TEXT, true))
 	progress_label = Ui.label("", 14, Ui.MUTED)
 	titles.add_child(progress_label)
 	header.add_child(titles)
@@ -90,7 +90,7 @@ func _process(delta: float) -> void:
 		return
 	_tick = 1.0
 	if _timer_label and is_instance_valid(_timer_label):
-		_timer_label.text = "Trocam em %s" % _time_text(Collection.seconds_to_rotation())
+		_timer_label.text = tr("Changes in %s") % _time_text(Collection.seconds_to_rotation())
 	var before := Collection.offer_window
 	Collection.refresh_offers()
 	if Collection.offer_window != before:
@@ -113,7 +113,7 @@ func _wallet() -> Control:
 	ws.content_margin_bottom = 8
 	wallet.add_theme_stylebox_override("panel", ws)
 	wallet.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	wallet.tooltip_text = "Cópias além do máximo viram fichas da raridade.\nGaste as fichas no editor de baralho, em \"Criar cartas\"."
+	wallet.tooltip_text = tr("Copies beyond the max turn into tokens of their rarity.\nSpend tokens in the deck editor, under \"Craft cards\".")
 	var col := Ui.vbox(2)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wallet.add_child(col)
@@ -133,12 +133,12 @@ func _test_menu() -> Control:
 	more.flat = false
 	more.custom_minimum_size = Vector2(40, 40)
 	more.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	more.tooltip_text = "Modo de teste"
+	more.tooltip_text = tr("Test mode")
 	var popup := more.get_popup()
-	popup.add_separator("Modo de teste")
-	popup.add_item("Repor moedas", 0)
-	popup.add_item("Repor fichas", 1)
-	popup.add_item("Zerar coleção", 2)
+	popup.add_separator(tr("Test mode"))
+	popup.add_item(tr("Refill coins"), 0)
+	popup.add_item(tr("Refill tokens"), 1)
+	popup.add_item(tr("Reset collection"), 2)
 	popup.id_pressed.connect(_test_action)
 	return more
 
@@ -151,17 +151,17 @@ func _test_action(id: int) -> void:
 
 
 func _update_header() -> void:
-	coins_label.text = "%s moedas" % _thousands(Collection.coins)
+	coins_label.text = tr("%s coins") % _thousands(Collection.coins)
 	for c in tokens_row.get_children():
 		c.queue_free()
-	tokens_row.add_child(Ui.label("Fichas", 12, Ui.MUTED))
+	tokens_row.add_child(Ui.label(tr("Tokens"), 12, Ui.MUTED))
 	for r in Collection.RARITY_ORDER:
 		var l := Ui.label(str(Collection.tokens.get(r, 0)), 12, CardDB.RARITIES[r]["color"], true)
-		l.tooltip_text = "Fichas %s" % Collection.RARITY_FEM_PLURAL[r]
+		l.tooltip_text = Collection.tokens_label(r)
 		l.mouse_filter = Control.MOUSE_FILTER_PASS
 		tokens_row.add_child(l)
 	var p := Collection.progress()
-	progress_label.text = "Coleção: %d de %d cópias (%d%%)" % [p.x, p.y, roundi(100.0 * p.x / maxf(1.0, p.y))]
+	progress_label.text = tr("Collection: %d of %d copies (%d%%)") % [p.x, p.y, roundi(100.0 * p.x / maxf(1.0, p.y))]
 
 
 func _fill() -> void:
@@ -170,19 +170,19 @@ func _fill() -> void:
 	_timer_label = null
 	if Collection.master_packs > 0:
 		body.add_child(_master_banner())
-	var hint := Ui.label("a última carta é a garantida", 12, Ui.MUTED)
-	Ui.section(body, "PACOTES", hint, 8)
+	var hint := Ui.label(tr("the last card is the guaranteed one"), 12, Ui.MUTED)
+	Ui.section(body, tr("PACKS"), hint, 8)
 	var row := Ui.hbox(20)
 	body.add_child(row)
 	for id in Collection.SHOP_PACKS:
 		row.add_child(_pack_tile(id))
-	_timer_label = Ui.label("Trocam em %s" % _time_text(Collection.seconds_to_rotation()), 13, Ui.TEXT, true)
-	Ui.section(body, "OFERTAS DO MOMENTO", _timer_label)
+	_timer_label = Ui.label(tr("Changes in %s") % _time_text(Collection.seconds_to_rotation()), 13, Ui.TEXT, true)
+	Ui.section(body, tr("CURRENT OFFERS"), _timer_label)
 	if Collection.offers.all(func(o): return o["id"] == ""):
-		body.add_child(Ui.label("Você já tem todas as épicas, lendárias e mestras.", 13, Ui.MUTED))
+		body.add_child(Ui.label(tr("You already have every epic, legendary and master card."), 13, Ui.MUTED))
 		body.add_child(Ui.gap(12))
 		return
-	var note := Ui.label("Uma épica, uma lendária e uma mestra. Trave uma para ela não trocar enquanto junta moedas.", 13, Ui.MUTED)
+	var note := Ui.label(tr("One epic, one legendary and one master. Lock one so it doesn't change while you save up coins."), 13, Ui.MUTED)
 	body.add_child(note)
 	var offers := Ui.hbox(28)
 	offers.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -211,9 +211,9 @@ func _master_banner() -> Control:
 	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(texts)
 	var n := Collection.master_packs
-	texts.add_child(Ui.label("Pacote de Mestra" + (" ×%d" % n if n > 1 else ""), 18, Ui.TEXT, true))
-	texts.add_child(Ui.label("Uma carta mestra. Ganhe mais nas missões semanais.", 13, Ui.MUTED))
-	var b := Ui.accent(Ui.button("Abrir", _open.bind("mestra"), 160))
+	texts.add_child(Ui.label(Collection.pack_name("mestra") + (" ×%d" % n if n > 1 else ""), 18, Ui.TEXT, true))
+	texts.add_child(Ui.label(tr("One master card. Earn more in weekly missions."), 13, Ui.MUTED))
+	var b := Ui.accent(Ui.button(tr("Open"), _open.bind("mestra"), 160))
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(b)
 	return panel
@@ -227,7 +227,7 @@ func _pack_tile(id: String) -> Control:
 	var style := Ui.box(Ui.SURFACE, 14, color.darkened(0.2), 2)
 	style.set_content_margin_all(16)
 	panel.add_theme_stylebox_override("panel", style)
-	panel.tooltip_text = _odds_text(pack)
+	panel.tooltip_text = _odds_text(id)
 	var col := Ui.vbox(8)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(col)
@@ -240,7 +240,7 @@ func _pack_tile(id: String) -> Control:
 	art_col.alignment = BoxContainer.ALIGNMENT_CENTER
 	art_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art.add_child(art_col)
-	for t in [["FUROR", 28, Color.WHITE], ["%d cartas" % pack["cards"], 13, color.lightened(0.3)]]:
+	for t in [["FUROR", 28, Color.WHITE], [tr_n("%d card", "%d cards", pack["cards"]) % pack["cards"], 13, color.lightened(0.3)]]:
 		var l := Ui.label(t[0], t[1], t[2], true)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		art_col.add_child(l)
@@ -248,13 +248,13 @@ func _pack_tile(id: String) -> Control:
 	var name_row := Ui.hbox(8)
 	name_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(name_row)
-	name_row.add_child(Ui.label(pack["name"], 20, Ui.TEXT, true))
+	name_row.add_child(Ui.label(Collection.pack_name(id), 20, Ui.TEXT, true))
 	name_row.add_child(Ui.spacer())
-	var promise := Ui.label("Garante %s" % pack["promise"], 13, color.lightened(0.2), true)
+	var promise := Ui.label(tr("Guarantees %s") % Collection.pack_promise(id), 13, color.lightened(0.2), true)
 	promise.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	name_row.add_child(promise)
 	col.add_child(_odds_bar(pack["odds"]))
-	var buy := Ui.accent(Ui.button("Abrir  ·  %s moedas" % _thousands(pack["price"]), _open.bind(id)))
+	var buy := Ui.accent(Ui.button(tr("Open  ·  %s coins") % _thousands(pack["price"]), _open.bind(id)))
 	buy.custom_minimum_size.y = 42
 	buy.disabled = Collection.coins < pack["price"]
 	col.add_child(buy)
@@ -281,13 +281,14 @@ func _odds_bar(odds: Dictionary) -> Control:
 	return bar
 
 
-func _odds_text(pack: Dictionary) -> String:
-	var lines := PackedStringArray(["Chance de cada carta:"])
+func _odds_text(id: String) -> String:
+	var pack: Dictionary = Collection.PACKS[id]
+	var lines := PackedStringArray([tr("Chance for each card:")])
 	for r in Collection.RARITY_ORDER:
 		var chance: float = pack["odds"].get(r, 0.0)
 		if chance > 0.0:
-			lines.append("%s  %s" % [CardDB.RARITIES[r]["name"], _percent(chance)])
-	lines.append("A última carta garante %s." % pack["promise"])
+			lines.append("%s  %s" % [CardDB.rarity_label(r), _percent(chance)])
+	lines.append(tr("The last card guarantees %s.") % Collection.pack_promise(id))
 	return "\n".join(lines)
 
 
@@ -312,7 +313,7 @@ func _offer_tile(slot: int) -> Control:
 		var style := Ui.box(Color.TRANSPARENT, 16, Ui.LINE)
 		style.set_content_margin_all(20)
 		slot_box.add_theme_stylebox_override("panel", style)
-		var empty := Ui.label("Você já tem todas as cartas %s." % Collection.RARITY_FEM_PLURAL[o["rarity"]], 14, Ui.MUTED)
+		var empty := Ui.label(tr("You already have every %s card.") % Collection.rarity_fem(o["rarity"], true), 14, Ui.MUTED)
 		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		empty.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -321,21 +322,21 @@ func _offer_tile(slot: int) -> Control:
 		return col
 	col.add_child(CardFace.make(o["id"], OFFER_WIDTH, 80))
 	var have := Collection.has_card(o["id"])
-	var info := Ui.label("Você tem %d/%d" % [have, Collection.max_copies(o["id"])], 13, Ui.MUTED)
+	var info := Ui.label(tr("You have %d/%d") % [have, Collection.max_copies(o["id"])], 13, Ui.MUTED)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(info)
 	var buttons := Ui.hbox(8)
 	col.add_child(buttons)
-	var lock := Ui.button("Travada" if o["locked"] else "Travar", func():
+	var lock := Ui.button(tr("Locked") if o["locked"] else tr("Lock"), func():
 		Collection.toggle_lock(slot)
 		_fill())
-	lock.tooltip_text = "Travada, esta vaga não troca a cada 8 h"
+	lock.tooltip_text = tr("Locked, this slot doesn't change every 8 h")
 	lock.disabled = o["bought"]
 	if o["locked"]:
 		Ui.accent(lock)
 	buttons.add_child(lock)
 	var price: int = Collection.OFFER_PRICES[o["rarity"]]
-	var buy := Ui.accent(Ui.button("Comprada" if o["bought"] else "Comprar  ·  %s" % _thousands(price), func():
+	var buy := Ui.accent(Ui.button(tr("Bought") if o["bought"] else tr("Buy  ·  %s") % _thousands(price), func():
 		if Collection.buy_offer(slot):
 			Sfx.ui(self, "kill")
 		_fill()))
@@ -358,18 +359,14 @@ func _back() -> void:
 	get_tree().change_scene_to_file.call_deferred("res://scenes/main_menu.tscn")   # adiado: ver deck_editor._back
 
 
+## Milhares com o separador do idioma (1,000 / 1.000).
 static func _thousands(n: int) -> String:
-	var s := str(n)
-	var out := ""
-	while s.length() > 3:
-		out = "." + s.right(3) + out
-		s = s.left(s.length() - 3)
-	return s + out
+	return Missions.num(n)
 
 
 static func _percent(x: float) -> String:
 	var p := x * 100.0
-	return ("%.1f%%" % p).replace(".", ",") if p < 10.0 and absf(p - roundf(p)) > 0.01 else "%d%%" % roundi(p)
+	return Lang.num(p, 1) + "%" if p < 10.0 and absf(p - roundf(p)) > 0.01 else "%d%%" % roundi(p)
 
 
 static func _time_text(sec: int) -> String:

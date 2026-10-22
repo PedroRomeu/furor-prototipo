@@ -199,16 +199,16 @@ const BASE_STATS := {
 ## lista pelo lado da partida. Os 4 primeiros eram os modelos fixos de cada lado.
 ## Miniatura de cada uma em assets/skins/<id>.png (feitas com o próprio modelo).
 const SKINS := [
-	["male-b", "Barbudo"], ["female-c", "Marina"], ["male-e", "Engenheiro"], ["female-a", "Violeta"],
-	["male-a", "Professor"], ["female-b", "Sol"], ["male-c", "Policial"], ["female-d", "Executiva"],
-	["male-d", "Executivo"], ["female-e", "Doutora"], ["male-f", "Ranzinza"], ["female-f", "Mochileira"],
+	["male-b", "Bearded"], ["female-c", "Marina"], ["male-e", "Engineer"], ["female-a", "Violet"],
+	["male-a", "Professor"], ["female-b", "Sol"], ["male-c", "Cop"], ["female-d", "Businesswoman"],
+	["male-d", "Businessman"], ["female-e", "Doctor"], ["male-f", "Grumpy"], ["female-f", "Backpacker"],
 ]
 ## Skins de arma: pistolas e armas pequenas do Blaster Kit da Kenney (CC0), parecidas com a
 ## padrão (pedido do usuário: nada muito diferente). Só aparência; o tiro é o mesmo.
 ## Miniaturas em assets/gun_skins/<id>.png.
 const GUN_SKINS := [
-	["blaster-b", "Padrão"], ["blaster-c", "Compacta"], ["blaster-k", "Dourada"],
-	["blaster-l", "Ametista"], ["blaster-m", "Vespa"],
+	["blaster-b", "Standard"], ["blaster-c", "Compact"], ["blaster-k", "Golden"],
+	["blaster-l", "Amethyst"], ["blaster-m", "Wasp"],
 ]
 const DEFAULT_GUN := "blaster-b"
 static var _gun_fronts := {}
@@ -221,8 +221,14 @@ static func gun_ids() -> Array:
 static func gun_name(id: String) -> String:
 	for s in GUN_SKINS:
 		if s[0] == id:
-			return s[1]
+			return Lang.t(s[1])
 	return ""
+
+
+## Nomes das skins e armas para o extrator de traduções (scripts/dev/i18n_tool.gd).
+static func i18n_strings() -> Array:
+	var src := "scripts/player.gd"
+	return (SKINS + GUN_SKINS).map(func(s): return [s[1], "", src])
 
 
 static func gun_model(id: String) -> String:
@@ -284,7 +290,7 @@ static func skin_ids() -> Array:
 static func skin_name(id: String) -> String:
 	for s in SKINS:
 		if s[0] == id:
-			return s[1]
+			return Lang.t(s[1])
 	return ""
 
 
@@ -2062,7 +2068,7 @@ func _frame_step(delta: float) -> void:
 		tag.no_depth_test = ally or mark_on or (viewer != null and viewer != self and viewer.stats["radar"] > 0 \
 				and global_position.distance_squared_to(viewer.global_position) <= pow(viewer.stats["radar"] * RADAR_RANGE, 2.0))
 		if tag.visible and downed:
-			tag.text = "%s\nCAÍDO" % player_name
+			tag.text = player_name + "\n" + tr("DOWNED")
 		elif tag.visible:
 			# Mecha: a blindagem entre colchetes.
 			tag.text = "%s\n%d" % [player_name, ceili(health)] + (" +%d" % ceili(armor) if armor > 0.0 else "") \

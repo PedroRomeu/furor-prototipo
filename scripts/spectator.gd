@@ -167,8 +167,8 @@ func _on_me_died(_p: Player) -> void:
 	game.hud.set_dead_view(true)
 	game.hud.spectate_aim = false
 	var who := _intro_killer.player_name if _intro_killer else ""
-	game.hud.set_spectating("Abatido por %s" % who if who != "" else "Você caiu",
-		"[%s] pular" % GameState.key_text("shoot"))
+	game.hud.set_spectating(tr("Killed by %s") % who if who != "" else tr("You died"),
+		tr("[%s] skip") % GameState.key_text("shoot"))
 
 
 func _run_intro(delta: float) -> void:
@@ -453,12 +453,12 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _update_hint() -> void:
-	var swap := "[%s] trocar câmera" % GameState.key_text("shield")
+	var swap := tr("[%s] switch camera") % GameState.key_text("shield")
 	if view == View.FREE:
-		game.hud.set_spectating("Câmera livre",
-			"[%s] seguir um jogador   ·   %s   ·   [%s] subir   [%s] descer" % [
+		game.hud.set_spectating(tr("Free camera"),
+			tr("[%s] follow a player   ·   %s   ·   [%s] up   [%s] down") % [
 			GameState.key_text("shoot"), swap, GameState.key_text("jump"), GameState.key_text("crouch")], view)
 	elif target:
 		var more := _candidates().size() > 1
-		game.hud.set_spectating("Assistindo %s   ·   %d de vida" % [target.player_name, ceili(target.health)],
-			("[%s] próximo jogador   ·   " % GameState.key_text("shoot") if more else "") + swap, view)
+		game.hud.set_spectating(tr("Watching %s   ·   %d health") % [target.player_name, ceili(target.health)],
+			(tr("[%s] next player   ·   ") % GameState.key_text("shoot") if more else "") + swap, view)

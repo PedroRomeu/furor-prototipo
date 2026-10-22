@@ -59,16 +59,16 @@ func _make_custom_tooltip(_for_text: String) -> Object:
 	var col := Ui.vbox(4)
 	var top := Ui.hbox(8)
 	col.add_child(top)
-	top.add_child(Ui.label(card["name"], 17, Ui.TEXT, true))
+	top.add_child(Ui.label(CardDB.card_name(card_id), 17, Ui.TEXT, true))
 	top.add_child(Ui.spacer())
 	if copies > 1:
 		top.add_child(Ui.label("x%d" % copies, 15, Ui.WARN, true))
-	var info := "%s  ·  %s" % [card["cat"], CardDB.rarity_name(card_id)]
+	var info := "%s  ·  %s" % [CardDB.category_name(card["cat"]), CardDB.rarity_name(card_id)]
 	if CardDB.is_master(card_id):
-		info += "  ·  mestra" + ("  ·  %s" % GameState.key_text("master") if card.has("cooldown") else "  ·  passiva")
+		info += "  ·  " + tr("master") + ("  ·  %s" % GameState.key_text("master") if card.has("cooldown") else "  ·  " + tr("passive"))
 	col.add_child(Ui.label(info, 13, CardDB.rarity_color(card_id)))
 	# Quebra feita aqui: Label com autowrap dentro de dica fica com a altura errada.
-	col.add_child(Ui.label(_wrap(card["desc"], 40), 14, Ui.MUTED))
+	col.add_child(Ui.label(_wrap(CardDB.card_desc(card_id), 40), 14, Ui.MUTED))
 	return col
 
 

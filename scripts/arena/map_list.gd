@@ -15,9 +15,9 @@ const STYLE_IDS := ["patio", "ruinas", "torres", "fabrica"]   # na ordem de Aren
 ## divided: muros altos do centro até a borda, entre os lados de cada um (Arena._dividers),
 ## para lutas em cantos diferentes não se verem.
 const SIZES := [
-	{"id": "pequeno", "name": "pequeno", "half": Vector2(32, 42), "density": 1.0, "items": 1, "divided": false},
-	{"id": "medio", "name": "médio", "half": Vector2(50, 56), "density": 2.0, "items": 2, "divided": false},
-	{"id": "grande", "name": "grande", "half": Vector2(70, 75), "density": 3.5, "items": 3, "divided": true},
+	{"id": "pequeno", "name": "Small", "half": Vector2(32, 42), "density": 1.0, "items": 1, "divided": false},
+	{"id": "medio", "name": "Medium", "half": Vector2(50, 56), "density": 2.0, "items": 2, "divided": false},
+	{"id": "grande", "name": "Large", "half": Vector2(70, 75), "density": 3.5, "items": 3, "divided": true},
 ]
 const LARGE := 2
 
@@ -38,8 +38,19 @@ static func id(index: int) -> String:
 	return "%s_%s" % [STYLE_IDS[style_of(index)], SIZES[size_of(index)]["id"]]
 
 
+## Nome traduzido do mapa ("Large Ruins" / "Ruínas grande").
 static func map_name(index: int) -> String:
-	return "%s %s" % [Arena.STYLES[style_of(index)], SIZES[size_of(index)]["name"]]
+	return Lang.t("{size} {style}").format({"size": size_name(size_of(index)), "style": style_name(style_of(index))})
+
+
+## Nome traduzido do estilo e do tamanho (SIZES e Arena.STYLES guardam o inglês; em
+## português o tamanho vem minúsculo, "grande", como antes).
+static func style_name(style: int) -> String:
+	return Lang.t(Arena.STYLES[style])
+
+
+static func size_name(z: int) -> String:
+	return Lang.t(SIZES[z]["name"], "size")
 
 
 ## Ligado no automático: tudo, menos os grandes com 2 na arena.
@@ -77,6 +88,11 @@ static func pick(pool: Array, last: int) -> int:
 	if options.is_empty():
 		options = pool
 	return options[randi() % options.size()]
+
+
+## Nomes dos tamanhos para a ferramenta de tradução (scenes/dev/i18n.tscn).
+static func i18n_strings() -> Array:
+	return SIZES.map(func(z): return [z["name"], "size", "scripts/arena/map_list.gd"])
 
 
 static func size_index(size_id: String) -> int:

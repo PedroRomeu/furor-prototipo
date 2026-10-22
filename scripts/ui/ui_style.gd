@@ -232,17 +232,18 @@ static func category_bar(cards: Array, height := 6.0) -> HBoxContainer:
 
 ## "MESTRA  Corrente", na cor do grupo da carta mestra.
 static func master_label(id: String, size := 14) -> Label:
-	var l := label("Mestra: " + CardDB.card_name(id), size, CardDB.CATEGORY_COLORS[CardDB.CARDS[id]["cat"]], true)
+	var l := label(Lang.t("Master: %s") % CardDB.card_name(id), size, CardDB.CATEGORY_COLORS[CardDB.CARDS[id]["cat"]], true)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l
 
 
-## Texto curto do estado do baralho: "42 cartas" ou "Faltam 5 cartas".
+## Texto curto do estado do baralho: "42 cards" ou "Incomplete: 5 missing" (só completo é
+## plural sempre: o mínimo é CardDB.DECK_MIN).
 static func deck_status(cards: Array) -> Array:
 	var n := cards.size()
 	if n < CardDB.DECK_MIN:
-		return ["Incompleto: faltam %d" % (CardDB.DECK_MIN - n), WARN]
-	return ["%d cartas" % n, MUTED]
+		return [Lang.t("Incomplete: %d missing") % (CardDB.DECK_MIN - n), WARN]
+	return [Lang.t("%d cards") % n, MUTED]
 
 
 ## Caixa com fundo que cresce para ocupar o espaço da linha; devolve a coluna de dentro.

@@ -49,6 +49,12 @@ var trail_wait := 0.0
 var _last_health := -1.0
 var _font: Font
 var _bold: Font
+## Textos fixos já traduzidos (a HUD desenha todo quadro: tr() só uma vez).
+var _t_armor := ""
+var _t_mech := ""
+var _t_passive := ""
+var _t_chaos := ""
+var _t_missile := ""
 var _texts: Array = []        # textos do quadro, desenhados no fim: [fonte, pos, texto, tamanho, cor]
 
 
@@ -57,6 +63,11 @@ func _init() -> void:
 	custom_minimum_size = Vector2(ICON_X + DASH_DX + 28.0, 96.0)
 	_font = ThemeDB.fallback_font
 	_bold = Ui.bold()
+	_t_armor = tr("+%d armor")
+	_t_mech = tr("+%d plating")
+	_t_passive = tr("passive")
+	_t_chaos = CardDB.card_name("caos").to_upper()
+	_t_missile = tr("missile")
 	if _atlas == null:
 		_atlas = _build_atlas()
 
@@ -107,11 +118,11 @@ func _draw_health() -> void:
 	_text(_font, Vector2(after, 34), max_text, 14, Color(1, 1, 1, 0.5))
 	after += _width(_font, max_text, 14) + 14
 	if me.armor > 0.0:
-		var armor_text := "+%d colete" % ceili(me.armor)
+		var armor_text := _t_armor % ceili(me.armor)
 		_text(_bold, Vector2(after, 34), armor_text, 14, ARMOR_COLOR)
 		after += _width(_bold, armor_text, 14) + 14
 	if me.mech_state == 2:
-		var mech_text := "+%d blindagem" % ceili(me.mech_armor)
+		var mech_text := _t_mech % ceili(me.mech_armor)
 		_text(_bold, Vector2(after, 34), mech_text, 14, Player.MECH_COLOR.lightened(0.25))
 
 	# Barra: fundo, rastro do dano, vida e marcas a cada 25.
@@ -200,13 +211,13 @@ func _draw_master_top() -> void:
 		_blit(R_FRAME, rect, Color(0, 0, 0, 0.45), left, true)
 		var secs := str(ceili(wait.x))
 		_text(_bold, rect.get_center() + Vector2(-_width(_bold, secs, 24) / 2.0, 9), secs, 24, Color.WHITE)
-	var key := GameState.key_text("master") if has_cd else "passiva"
+	var key := GameState.key_text("master") if has_cd else _t_passive
 	var lit := ready and has_cd
 	_chip(Vector2(rect.get_center().x, rect.end.y - 10), key,
 		Ui.ACCENT if lit else Color(0.08, 0.09, 0.11, 0.95), Color(0.1, 0.07, 0.04) if lit else Color(1, 1, 1, 0.7))
 	if me.chaos:
 		# Caos: selo no topo da moldura e, na passiva sorteada, a barra do tempo que falta.
-		_chip(Vector2(rect.get_center().x, rect.position.y - 9), "CAOS", CHAOS_COLOR, Color(0.1, 0.07, 0.04))
+		_chip(Vector2(rect.get_center().x, rect.position.y - 9), _t_chaos, CHAOS_COLOR, Color(0.1, 0.07, 0.04))
 		if me.chaos_timer > 0.0:
 			var bar := Rect2(rect.position.x + 10, rect.end.y - 16, (rect.size.x - 20) * clampf(me.chaos_timer / Player.CHAOS_PASSIVE_TIME, 0, 1), 3)
 			_rect(bar, CHAOS_COLOR)
@@ -246,7 +257,7 @@ func _draw_missile() -> void:
 	if me.mech_state == 2 and charge < 1.0:
 		var secs := "%.1f" % me.mech_missile_cd
 		_text(_bold, Vector2(ICON_X - _width(_bold, secs, 12) / 2.0, ICON_Y + 5), secs, 12, Color.WHITE)
-	_text(_bold, Vector2(ICON_X - _width(_bold, "míssil", 11) / 2.0, ICON_Y - 16), "míssil", 11, Player.MISSILE_COLOR)
+	_text(_bold, Vector2(ICON_X - _width(_bold, _t_missile, 11) / 2.0, ICON_Y - 16), _t_missile, 11, Player.MISSILE_COLOR)
 	_key(Vector2(ICON_X, ICON_Y + 26), GameState.key_text("shield"), charge >= 1.0)
 
 

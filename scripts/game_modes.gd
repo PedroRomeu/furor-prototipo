@@ -11,12 +11,12 @@ extends RefCounted
 ##   vidas, está fora; vence quem sobrar. Os outros assistem.
 
 const MODES := [
-	{"id": "ffa", "name": "Cada um por si", "desc": "Último de pé vence a rodada. Quem morre escolhe carta.",
-		"players": "2 a 4 jogadores", "min": 2, "max": 4},
-	{"id": "teams", "name": "Times", "desc": "Dois times de 2 (2x2). Vence o time com alguém de pé; o time que perde escolhe carta.",
-		"players": "4 jogadores", "min": 4, "max": 4},
-	{"id": "duels", "name": "Duelos", "desc": "1x1 em rodízio. O vencedor fica, quem perde perde uma vida e ganha carta.",
-		"players": "2 a 4 jogadores", "min": 2, "max": 4},
+	{"id": "ffa", "name": "Free for all", "desc": "Last one standing wins the round. Whoever dies picks a card.",
+		"players": "2 to 4 players", "min": 2, "max": 4},
+	{"id": "teams", "name": "Teams", "desc": "Two teams of 2 (2v2). The team with someone standing wins; the losing team picks cards.",
+		"players": "4 players", "min": 4, "max": 4},
+	{"id": "duels", "name": "Duels", "desc": "1v1 in rotation. The winner stays; the loser loses a life and gets a card.",
+		"players": "2 to 4 players", "min": 2, "max": 4},
 ]
 const LIVES_OPTIONS := [3, 5, 7]
 const DEFAULT_LIVES := 3
@@ -34,18 +34,36 @@ static func ids() -> Array:
 	return MODES.map(func(m): return m["id"])
 
 
+## Textos do modo já traduzidos (MODES guarda o inglês).
 static func mode_name(id: String) -> String:
-	return info(id)["name"]
+	return Lang.t(info(id)["name"])
+
+
+static func mode_desc(id: String) -> String:
+	return Lang.t(info(id)["desc"])
+
+
+static func players_text(id: String) -> String:
+	return Lang.t(info(id)["players"])
 
 
 ## "" se dá para jogar com essa quantidade de jogadores; senão, o motivo.
 static func blocked_reason(id: String, players: int) -> String:
 	var m := info(id)
 	if players < m["min"] or players > m["max"]:
-		return "Precisa de %s" % m["players"]
+		return Lang.t("Needs %s") % Lang.t(m["players"])
 	return ""
 
 
-## Texto curto do modo com as opções ("Duelos · 3 vidas").
+## Texto curto do modo com as opções ("Duels · 3 lives").
 static func label(id: String, lives: int) -> String:
-	return "%s  ·  %d vidas" % [mode_name(id), lives] if id == "duels" else mode_name(id)
+	return Lang.t("%s  ·  %d lives") % [mode_name(id), lives] if id == "duels" else mode_name(id)
+
+
+## Textos de MODES para a ferramenta de tradução (scenes/dev/i18n.tscn).
+static func i18n_strings() -> Array:
+	var out := []
+	for m in MODES:
+		for key in ["name", "desc", "players"]:
+			out.append([m[key], "", "scripts/game_modes.gd"])
+	return out

@@ -1,0 +1,4849 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: pt_BR\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: scripts/arena/arena.gd:22
+msgid "Courtyard"
+msgstr "Pátio"
+
+#: scripts/arena/arena.gd:22
+msgid "Ruins"
+msgstr "Ruínas"
+
+#: scripts/arena/arena.gd:22
+msgid "Towers"
+msgstr "Torres"
+
+#: scripts/arena/arena.gd:22
+msgid "Factory"
+msgstr "Fábrica"
+
+#: scripts/arena/arena_theme.gd:17
+msgid "Concrete"
+msgstr "Concreto"
+
+#: scripts/arena/arena_theme.gd:24
+msgid "Desert"
+msgstr "Deserto"
+
+#: scripts/arena/arena_theme.gd:31
+msgid "Snow"
+msgstr "Neve"
+
+#: scripts/arena/arena_theme.gd:38
+msgid "Woods"
+msgstr "Bosque"
+
+#: scripts/arena/arena_theme.gd:45
+msgid "Warehouse"
+msgstr "Galpão"
+
+#: scripts/arena/arena_theme.gd:52
+msgid "Dusk"
+msgstr "Crepúsculo"
+
+#: scripts/arena/map_list.gd:43
+msgid "{size} {style}"
+msgstr "{style} {size}"
+
+#: scripts/arena/map_list.gd
+msgctxt "size"
+msgid "Small"
+msgstr "pequeno"
+
+#: scripts/arena/map_list.gd
+msgctxt "size"
+msgid "Medium"
+msgstr "médio"
+
+#: scripts/arena/map_list.gd
+msgctxt "size"
+msgid "Large"
+msgstr "grande"
+
+#: scripts/arena/test_room.gd:68
+#: scripts/match.gd:1197
+#: scripts/ui/hud.gd:235
+msgid "Test room"
+msgstr "Sala de teste"
+
+#: scripts/arena/test_room.gd:128
+msgid "FIRING LINE"
+msgstr "LINHA DE TIRO"
+
+#: scripts/arena/test_room.gd:133
+msgid "RICOCHET"
+msgstr "RICOCHETE"
+
+#: scripts/arena/test_room.gd:144
+msgid "CLIMB 7 m"
+msgstr "ESCALADA 7 m"
+
+#: scripts/arena/test_room.gd:147
+msgid "GAP 10 m"
+msgstr "VÃO 10 m"
+
+#: scripts/arena/test_room.gd:162
+msgid "PARKOUR"
+msgstr "PARKOUR"
+
+#: scripts/arena/test_room.gd:169
+msgid "DEFENSE"
+msgstr "DEFESA"
+
+#: scripts/autoload/card_db.gd:886
+msgid "No limit per match."
+msgstr "Sem limite na partida."
+
+#: scripts/autoload/card_db.gd:888
+msgid "Only once per match."
+msgstr "Só 1 vez na partida."
+
+#: scripts/autoload/card_db.gd:889
+msgid "Up to %d times per match."
+msgstr "Até %d vezes na partida."
+
+#: scripts/autoload/card_db.gd:894
+msgid "%d per match"
+msgstr "%d por partida"
+
+#: scripts/autoload/collection.gd:105
+msgid "%s tokens"
+msgstr "Fichas %s"
+
+#: scripts/autoload/collection.gd
+msgctxt "feminine"
+msgid "common"
+msgstr "comum"
+
+#: scripts/autoload/collection.gd
+msgctxt "feminine plural"
+msgid "common"
+msgstr "comuns"
+
+#: scripts/autoload/collection.gd
+msgctxt "feminine"
+msgid "rare"
+msgstr "rara"
+
+#: scripts/autoload/collection.gd
+msgctxt "feminine plural"
+msgid "rare"
+msgstr "raras"
+
+#: scripts/autoload/collection.gd
+msgctxt "feminine"
+msgid "epic"
+msgstr "épica"
+
+#: scripts/autoload/collection.gd
+msgctxt "feminine plural"
+msgid "epic"
+msgstr "épicas"
+
+#: scripts/autoload/collection.gd
+msgctxt "feminine"
+msgid "legendary"
+msgstr "lendária"
+
+#: scripts/autoload/collection.gd
+msgctxt "feminine plural"
+msgid "legendary"
+msgstr "lendárias"
+
+#: scripts/autoload/collection.gd
+msgctxt "feminine"
+msgid "mythic"
+msgstr "mítica"
+
+#: scripts/autoload/collection.gd
+msgctxt "feminine plural"
+msgid "mythic"
+msgstr "míticas"
+
+#: scripts/autoload/collection.gd
+msgid "Basic Pack"
+msgstr "Pacote Básico"
+
+#: scripts/autoload/collection.gd
+msgid "1 rare or better"
+msgstr "1 rara ou melhor"
+
+#: scripts/autoload/collection.gd
+msgid "Advanced Pack"
+msgstr "Pacote Avançado"
+
+#: scripts/autoload/collection.gd
+msgid "1 epic or better"
+msgstr "1 épica ou melhor"
+
+#: scripts/autoload/collection.gd
+msgid "Supreme Pack"
+msgstr "Pacote Supremo"
+
+#: scripts/autoload/collection.gd
+msgid "1 legendary or better"
+msgstr "1 lendária ou melhor"
+
+#: scripts/autoload/collection.gd
+msgid "Master Pack"
+msgstr "Pacote de Mestra"
+
+#: scripts/autoload/collection.gd
+msgid "1 master"
+msgstr "1 mestra"
+
+#: scripts/autoload/game_state.gd:506
+#: scripts/ui/main_menu.gd:504
+#: scripts/ui/main_menu.gd:732
+msgid "Deck"
+msgstr "Baralho"
+
+#: scripts/autoload/game_state.gd:511
+msgid "My deck"
+msgstr "Meu baralho"
+
+#: scripts/autoload/game_state.gd:617
+#: scripts/autoload/game_state.gd:619
+msgid "Deck %d"
+msgstr "Baralho %d"
+
+#: scripts/autoload/game_state.gd:750
+msgid "no key"
+msgstr "sem tecla"
+
+#: scripts/autoload/missions.gd:115
+#: scripts/ui/shop.gd:154
+msgid "%s coins"
+msgstr "%s moedas"
+
+#: scripts/autoload/missions.gd:123
+msgid "Tokens: %s"
+msgstr "Fichas: %s"
+
+#: scripts/autoload/missions.gd
+msgid "Play %s rounds"
+msgstr "Jogar %s rodadas"
+
+#: scripts/autoload/missions.gd
+msgid "Win %s rounds"
+msgstr "Vencer %s rodadas"
+
+#: scripts/autoload/missions.gd
+msgid "Get %s kills"
+msgstr "Fazer %s abates"
+
+#: scripts/autoload/missions.gd
+msgid "Get %s assists"
+msgstr "Dar %s assistências"
+
+#: scripts/autoload/missions.gd
+msgid "Deal %s damage"
+msgstr "Causar %s de dano"
+
+#: scripts/autoload/missions.gd
+msgid "Reflect %s bullets with your shield"
+msgstr "Refletir %s balas com o escudo"
+
+#: scripts/autoload/missions.gd
+msgid "Use your master card %s times"
+msgstr "Usar a carta mestra %s vezes"
+
+#: scripts/autoload/missions.gd
+msgid "Finish %s matches in 1st place"
+msgstr "Terminar %s partidas em 1º lugar"
+
+#: scripts/autoload/missions.gd
+msgid "Complete %s daily missions"
+msgstr "Cumprir %s missões diárias"
+
+#: scripts/autoload/net.gd:113
+msgid "Your game version (%s) is different from the host's (%s). Everyone needs to download the same zip."
+msgstr "Sua versão do jogo (%s) é diferente da do anfitrião (%s). Todos precisam baixar o mesmo zip."
+
+#: scripts/autoload/net.gd:400
+msgid "%s left the lobby"
+msgstr "%s saiu da sala"
+
+#: scripts/autoload/net.gd:413
+msgid "Player %d"
+msgstr "Jogador %d"
+
+#: scripts/autoload/net.gd:433
+msgid "%s joined the lobby"
+msgstr "%s entrou na sala"
+
+#: scripts/autoload/net.gd:571
+msgid "Couldn't connect. Check the IP and whether the host is waiting."
+msgstr "Não foi possível conectar. Confira o IP e se o host está esperando."
+
+#: scripts/autoload/updater.gd:71
+msgid "Only Furor.exe can update itself."
+msgstr "Só o Furor.exe se atualiza."
+
+#: scripts/autoload/updater.gd:129
+msgid "The download failed."
+msgstr "O download falhou."
+
+#: scripts/autoload/updater.gd:144
+msgid "The downloaded file is corrupted."
+msgstr "O arquivo baixado está corrompido."
+
+#: scripts/autoload/updater.gd:157
+msgid "No permission to write to the game folder."
+msgstr "Sem permissão para gravar na pasta do jogo."
+
+#: scripts/autoload/updater.gd:163
+msgid "Furor.exe is not in the zip."
+msgstr "O Furor.exe não está no zip."
+
+#: scripts/autoload/updater.gd:193
+#: scripts/autoload/updater.gd:197
+msgid "Couldn't replace Furor.exe."
+msgstr "Não deu para trocar o Furor.exe."
+
+#: scripts/bot_brain.gd
+msgctxt "difficulty"
+msgid "Easy"
+msgstr "Fácil"
+
+#: scripts/bot_brain.gd
+msgctxt "difficulty"
+msgid "Medium"
+msgstr "Médio"
+
+#: scripts/bot_brain.gd
+msgctxt "difficulty"
+msgid "Hard"
+msgstr "Difícil"
+
+#: scripts/game_modes.gd:54
+msgid "Needs %s"
+msgstr "Precisa de %s"
+
+#: scripts/game_modes.gd:60
+msgid "%s  ·  %d lives"
+msgstr "%s  ·  %d vidas"
+
+#: scripts/game_modes.gd
+msgid "Free for all"
+msgstr "Cada um por si"
+
+#: scripts/game_modes.gd
+msgid "Last one standing wins the round. Whoever dies picks a card."
+msgstr "Último de pé vence a rodada. Quem morre escolhe carta."
+
+#: scripts/game_modes.gd
+#: scripts/game_modes.gd
+msgid "2 to 4 players"
+msgstr "2 a 4 jogadores"
+
+#: scripts/game_modes.gd
+msgid "Teams"
+msgstr "Times"
+
+#: scripts/game_modes.gd
+msgid "Two teams of 2 (2v2). The team with someone standing wins; the losing team picks cards."
+msgstr "Dois times de 2 (2x2). Vence o time com alguém de pé; o time que perde escolhe carta."
+
+#: scripts/game_modes.gd
+msgid "4 players"
+msgstr "4 jogadores"
+
+#: scripts/game_modes.gd
+msgid "Duels"
+msgstr "Duelos"
+
+#: scripts/game_modes.gd
+msgid "1v1 in rotation. The winner stays; the loser loses a life and gets a card."
+msgstr "1x1 em rodízio. O vencedor fica, quem perde perde uma vida e ganha carta."
+
+#: scripts/match.gd:47
+msgid "Dummy 8 m"
+msgstr "Boneco 8 m"
+
+#: scripts/match.gd:47
+msgid "Dummy 20 m"
+msgstr "Boneco 20 m"
+
+#: scripts/match.gd:47
+msgid "Dummy 40 m"
+msgstr "Boneco 40 m"
+
+#: scripts/match.gd:47
+msgid "Moving target"
+msgstr "Alvo móvel"
+
+#: scripts/match.gd:54
+msgid "Shooter 15 m"
+msgstr "Atirador 15 m"
+
+#: scripts/match.gd:54
+msgid "Mezzanine shooter"
+msgstr "Atirador do mezanino"
+
+#: scripts/match.gd:121
+#: scripts/match.gd:134
+#: scripts/match.gd:173
+msgid "You"
+msgstr "Você"
+
+#: scripts/match.gd:123
+msgid "Bot"
+msgstr "Bot"
+
+#: scripts/match.gd:123
+#: scripts/match.gd:127
+msgid "Bot %d"
+msgstr "Bot %d"
+
+#: scripts/match.gd:127
+msgid "Ally"
+msgstr "Aliado"
+
+#: scripts/match.gd:145
+msgid "Phoenix: %s is back!"
+msgstr "Fênix: %s voltou!"
+
+#: scripts/match.gd:145
+msgid "Phoenix: you're back!"
+msgstr "Fênix: você voltou!"
+
+#: scripts/match.gd:163
+msgid "Waiting for the other players..."
+msgstr "Esperando os outros jogadores..."
+
+#: scripts/match.gd:165
+msgid "Start of the match"
+msgstr "Começo da partida"
+
+#: scripts/match.gd:553
+msgid "You're down! Your teammate can revive you"
+msgstr "Você caiu! Seu parceiro pode te reviver"
+
+#: scripts/match.gd:555
+msgid "%s is down: stay close for %d s to revive"
+msgstr "%s caiu: fique perto dele por %d s para reviver"
+
+#: scripts/match.gd:561
+msgid "You were revived!"
+msgstr "Você foi revivido!"
+
+#: scripts/match.gd:563
+msgid "%s is back in the fight"
+msgstr "%s voltou à luta"
+
+#: scripts/match.gd:580
+msgid "Your teammate %s is out"
+msgstr "Seu parceiro %s caiu"
+
+#: scripts/match.gd:641
+msgid "Last life: one extra card to choose from"
+msgstr "Última vida: uma carta a mais para escolher"
+
+#: scripts/match.gd:642
+msgid "You lost the duel"
+msgstr "Você perdeu o duelo"
+
+#: scripts/match.gd:665
+msgid "Both went down: duel replayed"
+msgstr "Os dois caíram: duelo repetido"
+
+#: scripts/match.gd:667
+msgid "%s won the duel\n%s is out"
+msgstr "%s venceu o duelo\n%s está fora"
+
+#: scripts/match.gd:670
+msgid "%s won the duel\n%s loses a life (%d left)"
+msgid_plural "%s won the duel\n%s loses a life (%d left)"
+msgstr[0] "%s venceu o duelo\n%s perde uma vida (%d restante)"
+msgstr[1] "%s venceu o duelo\n%s perde uma vida (%d restantes)"
+
+#: scripts/match.gd:696
+msgid "Mission complete: %s"
+msgstr "Missão cumprida: %s"
+
+#: scripts/match.gd:763
+msgid "Your team lost the round"
+msgstr "Seu time perdeu a rodada"
+
+#: scripts/match.gd:763
+msgid "You lost the round"
+msgstr "Você perdeu a rodada"
+
+#: scripts/match.gd:812
+msgid "Waiting for the others..."
+msgstr "Esperando os outros..."
+
+#: scripts/match.gd:840
+msgid "%s picked: %s"
+msgstr "%s escolheu: %s"
+
+#: scripts/match.gd:867
+#: scripts/match.gd:1195
+msgid "Round %d"
+msgstr "Rodada %d"
+
+#: scripts/match.gd:870
+msgid "Duel %d: %s vs %s"
+msgstr "Duelo %d: %s x %s"
+
+#: scripts/match.gd:872
+msgid "You're watching this duel"
+msgstr "Você assiste este duelo"
+
+#: scripts/match.gd:897
+msgid "Perfect bounce: no damage!"
+msgstr "Quique perfeito: sem dano!"
+
+#: scripts/match.gd:900
+msgid "Void: -%d. Shield (%s) right before you hit = high bounce, no damage"
+msgstr "Vazio: -%d. Escudo (%s) na hora de bater = quique alto sem dano"
+
+#: scripts/match.gd:909
+msgid "You're out. Waiting for the round to end..."
+msgstr "Você caiu. Esperando a rodada acabar..."
+
+#: scripts/match.gd:927
+#: scripts/match.gd:940
+msgid "Nobody left: no point this round"
+msgstr "Ninguém sobrou: rodada sem ponto"
+
+#: scripts/match.gd:929
+msgid "Your team won the round!"
+msgstr "Seu time venceu a rodada!"
+
+#: scripts/match.gd:931
+msgid "Team %s won the round"
+msgstr "Time %s venceu a rodada"
+
+#: scripts/match.gd:936
+msgid "You won the round!"
+msgstr "Você venceu a rodada!"
+
+#: scripts/match.gd:938
+msgid "%s won the round"
+msgstr "%s venceu a rodada"
+
+#: scripts/match.gd:974
+msgid "DRAW"
+msgstr "EMPATE"
+
+#: scripts/match.gd:974
+#: scripts/match.gd:1010
+msgid "VICTORY"
+msgstr "VITÓRIA"
+
+#: scripts/match.gd:974
+msgid "DEFEAT"
+msgstr "DERROTA"
+
+#: scripts/match.gd:987
+msgid "%d round  ·  %s"
+msgid_plural "%d rounds  ·  %s"
+msgstr[0] "%d rodada  ·  %s"
+msgstr[1] "%d rodadas  ·  %s"
+
+#: scripts/match.gd:995
+msgid "Back to lobby"
+msgstr "Voltar à sala"
+
+#: scripts/match.gd:995
+#: scripts/match.gd:997
+msgid "Back to menu"
+msgstr "Voltar ao menu"
+
+#: scripts/match.gd:997
+msgid "Play again"
+msgstr "Jogar de novo"
+
+#: scripts/match.gd:1009
+msgid "#%d %s"
+msgstr "%dº %s"
+
+#: scripts/match.gd:1010
+msgid "%s WINS"
+msgstr "%s VENCEU"
+
+#: scripts/match.gd:1103
+msgid "Lost connection to a player"
+msgstr "A conexão com um jogador caiu"
+
+#: scripts/match.gd:1195
+msgid "Card draft"
+msgstr "Escolha de cartas"
+
+#: scripts/match.gd:1199
+msgid "Duels  ·  duel %d  ·  your lives: %d"
+msgstr "Duelos  ·  duelo %d  ·  suas vidas: %d"
+
+#: scripts/match.gd:1201
+msgid "  ·  Teams, team %s"
+msgstr "  ·  Times, time %s"
+
+#: scripts/match.gd:1203
+msgid " (practice)"
+msgstr " (treino)"
+
+#: scripts/match.gd:1205
+msgid "  ·  %d players"
+msgstr "  ·  %d jogadores"
+
+#: scripts/match.gd:1207
+msgid "  ·  Practice vs %d bot"
+msgid_plural "  ·  Practice vs %d bots"
+msgstr[0] "  ·  Treino contra %d bot"
+msgstr[1] "  ·  Treino contra %d bots"
+
+#: scripts/player.gd:2071
+msgid "DOWNED"
+msgstr "CAÍDO"
+
+#: scripts/player.gd
+msgid "Bearded"
+msgstr "Barbudo"
+
+#: scripts/player.gd
+msgid "Marina"
+msgstr "Marina"
+
+#: scripts/player.gd
+msgid "Engineer"
+msgstr "Engenheiro"
+
+#: scripts/player.gd
+msgid "Violet"
+msgstr "Violeta"
+
+#: scripts/player.gd
+msgid "Professor"
+msgstr "Professor"
+
+#: scripts/player.gd
+msgid "Sol"
+msgstr "Sol"
+
+#: scripts/player.gd
+msgid "Cop"
+msgstr "Policial"
+
+#: scripts/player.gd
+msgid "Businesswoman"
+msgstr "Executiva"
+
+#: scripts/player.gd
+msgid "Businessman"
+msgstr "Executivo"
+
+#: scripts/player.gd
+msgid "Doctor"
+msgstr "Doutora"
+
+#: scripts/player.gd
+msgid "Grumpy"
+msgstr "Ranzinza"
+
+#: scripts/player.gd
+msgid "Backpacker"
+msgstr "Mochileira"
+
+#: scripts/player.gd
+msgid "Standard"
+msgstr "Padrão"
+
+#: scripts/player.gd
+msgid "Compact"
+msgstr "Compacta"
+
+#: scripts/player.gd
+msgid "Golden"
+msgstr "Dourada"
+
+#: scripts/player.gd
+msgid "Amethyst"
+msgstr "Ametista"
+
+#: scripts/player.gd
+msgid "Wasp"
+msgstr "Vespa"
+
+#: scripts/shadow_clone.gd:140
+msgid "Clone"
+msgstr "Clone"
+
+#: scripts/spectator.gd:170
+msgid "Killed by %s"
+msgstr "Abatido por %s"
+
+#: scripts/spectator.gd:170
+msgid "You died"
+msgstr "Você caiu"
+
+#: scripts/spectator.gd:171
+msgid "[%s] skip"
+msgstr "[%s] pular"
+
+#: scripts/spectator.gd:456
+msgid "[%s] switch camera"
+msgstr "[%s] trocar câmera"
+
+#: scripts/spectator.gd:458
+msgid "Free camera"
+msgstr "Câmera livre"
+
+#: scripts/spectator.gd:459
+msgid "[%s] follow a player   ·   %s   ·   [%s] up   [%s] down"
+msgstr "[%s] seguir um jogador   ·   %s   ·   [%s] subir   [%s] descer"
+
+#: scripts/spectator.gd:463
+msgid "Watching %s   ·   %d health"
+msgstr "Assistindo %s   ·   %d de vida"
+
+#: scripts/spectator.gd:464
+msgid "[%s] next player   ·   "
+msgstr "[%s] próximo jogador   ·   "
+
+#: scripts/ui/card_face.gd:33
+#: scripts/ui/card_icon.gd:68
+msgid "master"
+msgstr "mestra"
+
+#: scripts/ui/card_icon.gd:68
+#: scripts/ui/deck_editor.gd:578
+#: scripts/ui/vitals.gd:68
+msgid "passive"
+msgstr "passiva"
+
+#: scripts/ui/chat_box.gd:53
+msgid "Message everyone  ·  Enter sends, Esc cancels"
+msgstr "Mensagem para todos  ·  Enter manda, Esc cancela"
+
+#: scripts/ui/chat_box.gd:62
+msgid "Message the lobby"
+msgstr "Mensagem para a sala"
+
+#: scripts/ui/deck_editor.gd:102
+msgid "‹  Decks"
+msgstr "‹  Baralhos"
+
+#: scripts/ui/deck_editor.gd:105
+#: scripts/ui/practice_cards.gd:101
+msgid "Search cards"
+msgstr "Buscar carta"
+
+#: scripts/ui/deck_editor.gd:119
+#: scripts/ui/deck_editor.gd:687
+#: scripts/ui/practice_cards.gd:106
+msgctxt "cards"
+msgid "All"
+msgstr "Todas"
+
+#: scripts/ui/deck_editor.gd:130
+#: scripts/ui/deck_editor.gd:448
+msgid "Filters"
+msgstr "Filtros"
+
+#: scripts/ui/deck_editor.gd:136
+msgid "Craft"
+msgstr "Criar"
+
+#: scripts/ui/deck_editor.gd:140
+msgid "Craft cards with tokens (extra copies turn into tokens of their rarity)"
+msgstr "Criar cartas com as fichas (cópias a mais viram fichas da raridade)"
+
+#: scripts/ui/deck_editor.gd:146
+msgid "Glossary: what each card term means"
+msgstr "Glossário: o que cada termo das cartas quer dizer"
+
+#: scripts/ui/deck_editor.gd:167
+msgid "No cards match these filters."
+msgstr "Nenhuma carta com esses filtros."
+
+#: scripts/ui/deck_editor.gd:185
+msgid "ARCHETYPE"
+msgstr "ARQUÉTIPO"
+
+#: scripts/ui/deck_editor.gd:202
+msgid "RARITY"
+msgstr "RARIDADE"
+
+#: scripts/ui/deck_editor.gd:219
+msgid "Only cards in the deck"
+msgstr "Só cartas do baralho"
+
+#: scripts/ui/deck_editor.gd:223
+msgid "Only owned"
+msgstr "Só da coleção"
+
+#: scripts/ui/deck_editor.gd:224
+msgid "Cards you already have in your collection (Shop)"
+msgstr "Cartas que você já tem na coleção (Loja)"
+
+#: scripts/ui/deck_editor.gd:228
+msgid "Clear filters"
+msgstr "Limpar filtros"
+
+#: scripts/ui/deck_editor.gd:268
+msgid "CARD GLOSSARY"
+msgstr "GLOSSÁRIO DAS CARTAS"
+
+#: scripts/ui/deck_editor.gd:305
+msgid "Archetypes: %s"
+msgstr "Arquétipos: %s"
+
+#: scripts/ui/deck_editor.gd:388
+#: scripts/ui/deck_editor.gd:772
+msgid "complete"
+msgstr "completa"
+
+#: scripts/ui/deck_editor.gd:388
+#: scripts/ui/deck_editor.gd:773
+msgid "%d token"
+msgid_plural "%d tokens"
+msgstr[0] "%d ficha"
+msgstr[1] "%d fichas"
+
+#: scripts/ui/deck_editor.gd:389
+msgid "You already have every copy."
+msgstr "Você já tem todas as cópias."
+
+#: scripts/ui/deck_editor.gd:390
+msgid "Click: craft a copy for %d %s tokens (you have %d)"
+msgstr "Clique: criar uma cópia por %d fichas %s (você tem %d)"
+
+#: scripts/ui/deck_editor.gd:401
+msgid "In collection: %d/%d\n\nClick: add a copy   ·   Right click: remove"
+msgstr "Na coleção: %d/%d\n\nClique: põe uma cópia   ·   Botão direito: tira"
+
+#: scripts/ui/deck_editor.gd:448
+msgid "Filters  %d"
+msgstr "Filtros  %d"
+
+#: scripts/ui/deck_editor.gd:482
+msgid "Click to rename"
+msgstr "Clique para mudar o nome"
+
+#: scripts/ui/deck_editor.gd:489
+#: scripts/ui/deck_list.gd:149
+msgid "More options"
+msgstr "Mais opções"
+
+#: scripts/ui/deck_editor.gd:490
+msgid "Fill with random cards"
+msgstr "Completar com cartas aleatórias"
+
+#: scripts/ui/deck_editor.gd:491
+msgid "Remove all cards"
+msgstr "Tirar todas as cartas"
+
+#: scripts/ui/deck_editor.gd:509
+msgid "MASTER CARD"
+msgstr "CARTA MESTRA"
+
+#: scripts/ui/deck_editor.gd:512
+#: scripts/ui/practice_cards.gd:216
+msgid "Click to change"
+msgstr "Clique para trocar"
+
+#: scripts/ui/deck_editor.gd:521
+msgid "CARDS"
+msgstr "CARTAS"
+
+#: scripts/ui/deck_editor.gd:529
+msgid "Click the cards on the left to build your deck."
+msgstr "Clique nas cartas à esquerda para montar o baralho."
+
+#: scripts/ui/deck_editor.gd:534
+msgid "Try it in the test room"
+msgstr "Testar na sala de teste"
+
+#: scripts/ui/deck_editor.gd:538
+msgid "Leave the online lobby to use the test room"
+msgstr "Saia da sala online para usar a sala de teste"
+
+#: scripts/ui/deck_editor.gd:540
+msgid "Target dummies, parkour and defense, with this deck's master"
+msgstr "Bonecos de alvo, parkour e defesa, com a mestra deste baralho"
+
+#: scripts/ui/deck_editor.gd:568
+msgid "Change  ›"
+msgstr "Trocar  ›"
+
+#: scripts/ui/deck_editor.gd:577
+msgid "%s  ·  %s, cooldown %d s"
+msgstr "%s  ·  %s, recarga %d s"
+
+#: scripts/ui/deck_editor.gd:611
+msgid "Click to remove a copy"
+msgstr "Clique para tirar uma cópia"
+
+#: scripts/ui/deck_editor.gd:678
+msgid "Master card"
+msgstr "Carta mestra"
+
+#: scripts/ui/deck_editor.gd:679
+msgid "One per deck. You start every match with it."
+msgstr "Uma por baralho. Você começa toda partida com ela."
+
+#: scripts/ui/deck_editor.gd:681
+#: scripts/ui/deck_list.gd:266
+#: scripts/ui/map_picker.gd:71
+msgid "Close"
+msgstr "Fechar"
+
+#: scripts/ui/deck_editor.gd:777
+#: scripts/ui/practice_cards.gd:183
+msgid "Equipped"
+msgstr "Equipada"
+
+#: scripts/ui/deck_editor.gd:842
+msgid "Unnamed"
+msgstr "Sem nome"
+
+#: scripts/ui/deck_editor.gd:852
+msgid "%d to go"
+msgstr "Faltam %d"
+
+#: scripts/ui/deck_editor.gd:855
+msgid "Deck full"
+msgstr "Baralho cheio"
+
+#: scripts/ui/deck_editor.gd:855
+msgid "Ready to play"
+msgstr "Pronto para jogar"
+
+#: scripts/ui/deck_editor.gd:913
+msgid "TOKENS"
+msgstr "FICHAS"
+
+#: scripts/ui/deck_editor.gd:916
+msgid "%s: %d per card"
+msgstr "%s: %d por carta"
+
+#: scripts/ui/deck_editor.gd:922
+msgid "Click a card to craft a copy. Masters: in the master card slot."
+msgstr "Clique numa carta para criar uma cópia. Mestras: na vaga da carta mestra."
+
+#: scripts/ui/deck_editor.gd:963
+msgid "Craft card"
+msgstr "Criar carta"
+
+#: scripts/ui/deck_editor.gd:969
+msgid "Costs %d %s tokens. You have %d."
+msgstr "Custa %d fichas %s. Você tem %d."
+
+#: scripts/ui/deck_editor.gd:970
+msgid "You'll have %d/%d of this card."
+msgstr "Você fica com %d/%d desta carta."
+
+#: scripts/ui/deck_editor.gd:973
+msgid "Costs %d %s tokens. You have %d: %d short."
+msgstr "Custa %d fichas %s. Você tem %d: faltam %d."
+
+#: scripts/ui/deck_editor.gd:974
+msgid "Copies beyond the max turn into tokens, in Shop packs."
+msgstr "Cópias além do máximo viram fichas, nos pacotes da Loja."
+
+#: scripts/ui/deck_editor.gd:983
+#: scripts/ui/deck_list.gd:227
+#: scripts/ui/pause_menu.gd:208
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: scripts/ui/deck_editor.gd:984
+msgid "Craft  ·  %d tokens"
+msgstr "Criar  ·  %d fichas"
+
+#: scripts/ui/deck_list.gd:33
+msgid "‹  Lobby"
+msgstr "‹  Sala"
+
+#: scripts/ui/deck_list.gd:39
+#: scripts/ui/main_menu.gd:173
+msgid "Decks"
+msgstr "Baralhos"
+
+#: scripts/ui/deck_list.gd:43
+msgid "Your equipped deck is the one you take into matches."
+msgstr "O baralho equipado é o que você leva para as partidas."
+
+#: scripts/ui/deck_list.gd:46
+msgid "You're still in the lobby. If the host starts, the match opens on its own."
+msgstr "Você continua na sala. Se o anfitrião começar, a partida abre sozinha."
+
+#: scripts/ui/deck_list.gd:50
+#: scripts/ui/deck_list.gd:272
+msgid "Paste code"
+msgstr "Colar código"
+
+#: scripts/ui/deck_list.gd:53
+msgid "Create a deck from a code a friend sent you"
+msgstr "Criar um baralho a partir do código que um amigo mandou"
+
+#: scripts/ui/deck_list.gd:55
+msgid "+  New deck"
+msgstr "+  Novo baralho"
+
+#: scripts/ui/deck_list.gd:82
+msgid "%d deck"
+msgid_plural "%d decks"
+msgstr[0] "%d baralho"
+msgstr[1] "%d baralhos"
+
+#: scripts/ui/deck_list.gd:106
+#: scripts/ui/ui_style.gd:235
+msgid "Master: %s"
+msgstr "Mestra: %s"
+
+#: scripts/ui/deck_list.gd:133
+msgid "✓  Equipped"
+msgstr "✓  Equipado"
+
+#: scripts/ui/deck_list.gd:137
+msgid "Equip"
+msgstr "Equipar"
+
+#: scripts/ui/deck_list.gd:140
+msgid "Needs at least %d cards"
+msgstr "Precisa de pelo menos %d cartas"
+
+#: scripts/ui/deck_list.gd:143
+#: scripts/ui/main_menu.gd:639
+#: scripts/ui/main_menu.gd:729
+msgid "Edit"
+msgstr "Editar"
+
+#: scripts/ui/deck_list.gd:152
+msgid "Copy code"
+msgstr "Copiar código"
+
+#: scripts/ui/deck_list.gd:153
+msgid "Duplicate"
+msgstr "Duplicar"
+
+#: scripts/ui/deck_list.gd:154
+#: scripts/ui/deck_list.gd:242
+msgid "Delete"
+msgstr "Apagar"
+
+#: scripts/ui/deck_list.gd:174
+msgid "No cards"
+msgstr "Sem cartas"
+
+#: scripts/ui/deck_list.gd:184
+msgid "%s (copy)"
+msgstr "%s (cópia)"
+
+#: scripts/ui/deck_list.gd:238
+msgid "Delete deck"
+msgstr "Apagar baralho"
+
+#: scripts/ui/deck_list.gd:239
+msgid "Delete \"%s\"? This can't be undone."
+msgstr "Apagar \"%s\"? Não dá para desfazer."
+
+#: scripts/ui/deck_list.gd:257
+msgid "Deck code"
+msgstr "Código do baralho"
+
+#: scripts/ui/deck_list.gd:258
+msgid "Copied. Send it to a friend: they open Decks, click \"Paste code\" and get a copy of \"%s\"."
+msgstr "Copiado. Mande para um amigo: ele abre Baralhos, clica em \"Colar código\" e ganha uma cópia de \"%s\"."
+
+#: scripts/ui/deck_list.gd:266
+msgid "Copy again"
+msgstr "Copiar de novo"
+
+#: scripts/ui/deck_list.gd:274
+msgid "Paste the code here (it starts with %s)"
+msgstr "Cole aqui o código (começa com %s)"
+
+#: scripts/ui/deck_list.gd:280
+msgid "Add deck"
+msgstr "Adicionar baralho"
+
+#: scripts/ui/deck_list.gd:287
+msgid "Invalid code."
+msgstr "Código inválido."
+
+#: scripts/ui/deck_list.gd:290
+msgid "%s  ·  master %s  ·  %d cards"
+msgstr "%s  ·  mestra %s  ·  %d cartas"
+
+#: scripts/ui/deck_list.gd:293
+msgid "Left out (not in this version or over the limit): %s."
+msgstr "Ficaram de fora (não existem nesta versão ou passaram do limite): %s."
+
+#: scripts/ui/deck_list.gd:296
+msgid "It has fewer than %d cards: fill it in the editor before equipping."
+msgstr "Ficou com menos de %d cartas: complete no editor antes de equipar."
+
+#: scripts/ui/deck_list.gd:321
+msgid "New deck"
+msgstr "Novo baralho"
+
+#: scripts/ui/deck_list.gd:322
+msgid "NAME"
+msgstr "NOME"
+
+#: scripts/ui/deck_list.gd:329
+msgid "START WITH"
+msgstr "COMEÇAR COM"
+
+#: scripts/ui/deck_list.gd:337
+msgid "You can change everything later in the editor."
+msgstr "Dá para trocar tudo depois no editor."
+
+#: scripts/ui/deck_list.gd:339
+msgid "Create and edit"
+msgstr "Criar e editar"
+
+#: scripts/ui/draft_screen.gd:28
+msgid "Pick a card for your match deck"
+msgstr "Escolha uma carta para o seu baralho da partida"
+
+#: scripts/ui/draft_screen.gd:35
+msgid "1, 2 or 3"
+msgstr "1, 2 ou 3"
+
+#: scripts/ui/draft_screen.gd:35
+msgid "1 to %d"
+msgstr "1 a %d"
+
+#: scripts/ui/draft_screen.gd:36
+msgid "Click a card or press %s"
+msgstr "Clique numa carta ou aperte %s"
+
+#: scripts/ui/draft_screen.gd:57
+msgid "END OF BLOCK  ·  ROUND %d"
+msgstr "FIM DO BLOCO  ·  RODADA %d"
+
+#: scripts/ui/draft_screen.gd:64
+msgid "Play %d more rounds or end the match?"
+msgstr "Jogar mais %d rodadas ou terminar a partida?"
+
+#: scripts/ui/draft_screen.gd:71
+msgid "%d more rounds"
+msgstr "Mais %d rodadas"
+
+#: scripts/ui/draft_screen.gd:71
+#: scripts/ui/draft_screen.gd:130
+msgid "End"
+msgstr "Terminar"
+
+#: scripts/ui/draft_screen.gd:87
+msgid "VOTES"
+msgstr "VOTOS"
+
+#: scripts/ui/draft_screen.gd:89
+msgid "Only continues if everyone wants to"
+msgstr "Só continua se todos quiserem"
+
+#: scripts/ui/draft_screen.gd:124
+msgid "voting..."
+msgstr "votando..."
+
+#: scripts/ui/draft_screen.gd:127
+#: scripts/ui/pack_opening.gd:92
+#: scripts/ui/pause_menu.gd:131
+msgid "Continue"
+msgstr "Continuar"
+
+#: scripts/ui/draft_screen.gd:225
+msgid "you have x%d"
+msgstr "você tem x%d"
+
+#: scripts/ui/draft_screen.gd:226
+msgid "Taking it again stacks the effect"
+msgstr "Pegar de novo soma o efeito"
+
+#: scripts/ui/hud.gd:221
+msgid "[%s] scoreboard and cards"
+msgstr "[%s] placar e cartas"
+
+#: scripts/ui/hud.gd:288
+msgid "Next: %s"
+msgstr "Próximos: %s"
+
+#: scripts/ui/hud.gd:469
+msgid "Reviving %s..."
+msgstr "Revivendo %s..."
+
+#: scripts/ui/hud.gd:476
+msgid "DOWN   %d s\n%s"
+msgstr "CAÍDO   %d s\n%s"
+
+#: scripts/ui/hud.gd:477
+msgid "Reviving..."
+msgstr "Revivendo..."
+
+#: scripts/ui/hud.gd:477
+msgid "Your teammate revives you by staying close for %d s"
+msgstr "Seu parceiro revive você ficando perto por %d s"
+
+#: scripts/ui/hud.gd:519
+msgid "1st person"
+msgstr "1ª pessoa"
+
+#: scripts/ui/hud.gd:519
+msgid "3rd person"
+msgstr "3ª pessoa"
+
+#: scripts/ui/hud.gd:519
+msgid "Free"
+msgstr "Livre"
+
+#: scripts/ui/hud.gd:825
+msgid "RELOADING"
+msgstr "RECARREGANDO"
+
+#: scripts/ui/hud.gd:831
+msgid "PIERCING %d"
+msgstr "PERFURANTES %d"
+
+#: scripts/ui/hud.gd:833
+msgid "METEORS %d  %.0f s"
+msgstr "METEOROS %d  %.0f s"
+
+#: scripts/ui/hud.gd:871
+msgid "PROTECTED %.1f  ·  attacking ends it"
+msgstr "PROTEGIDO %.1f  ·  atacar encerra"
+
+#: scripts/ui/hud.gd:873
+msgid "SLOWED"
+msgstr "LENTO"
+
+#: scripts/ui/hud.gd:875
+msgid "POISONED"
+msgstr "ENVENENADO"
+
+#: scripts/ui/hud.gd:878
+msgid "FROZEN"
+msgstr "CONGELADO"
+
+#: scripts/ui/hud.gd:882
+msgid "SHIELD BLOCKED"
+msgstr "ESCUDO BLOQUEADO"
+
+#: scripts/ui/hud.gd:884
+msgid "TOO HIGH  ·  get down  ·  damage in %.1f"
+msgstr "ALTO DEMAIS  ·  desça  ·  dano em %.1f"
+
+#: scripts/ui/hud.gd:886
+msgid "OUTSIDE THE ARENA  ·  damage in %.1f"
+msgstr "FORA DA ARENA  ·  dano em %.1f"
+
+#: scripts/ui/hud.gd:888
+msgid "VISIBLE"
+msgstr "VISÍVEL"
+
+#: scripts/ui/hud.gd:888
+msgid "INVISIBLE  ·  failing"
+msgstr "INVISÍVEL  ·  falhando"
+
+#: scripts/ui/hud.gd:888
+msgid "INVISIBLE"
+msgstr "INVISÍVEL"
+
+#: scripts/ui/hud.gd:890
+msgid "AMBUSH %.1f"
+msgstr "EMBOSCADA %.1f"
+
+#: scripts/ui/hud.gd:892
+msgid "CHARGING %.1f"
+msgstr "CARREGANDO %.1f"
+
+#: scripts/ui/hud.gd:894
+msgid "CANNON %.1f"
+msgstr "CANHÃO %.1f"
+
+#: scripts/ui/hud.gd:896
+msgid "HOLDING  ·  click to throw"
+msgstr "SEGURANDO  ·  clique arremessa"
+
+#: scripts/ui/hud.gd:898
+msgid "HOOKED"
+msgstr "PRESO NO GANCHO"
+
+#: scripts/ui/hud.gd:900
+msgid "%s %.1f  ·  [%s] jump off"
+msgstr "%s %.1f  ·  [%s] saltar"
+
+#: scripts/ui/hud.gd:902
+msgid "%s %.1f  ·  [%s] swap places"
+msgstr "%s %.1f  ·  [%s] trocar de lugar"
+
+#: scripts/ui/hud.gd:904
+msgid "BOARDING THE MECH %.1f"
+msgstr "MONTANDO O MECHA %.1f"
+
+#: scripts/ui/hud.gd:906
+msgid "%s %.1f  ·  [%s] exit and explode"
+msgstr "%s %.1f  ·  [%s] sair e explodir"
+
+#: scripts/ui/hud.gd:908
+msgid "SWINGING  ·  release [%s] to fly off"
+msgstr "BALANÇANDO  ·  solte [%s] para sair voando"
+
+#: scripts/ui/hud.gd:910
+msgid "HANGING %.1f  ·  [%s] to jump"
+msgstr "PENDURADO %.1f  ·  [%s] salta"
+
+#: scripts/ui/hud.gd:912
+msgid "SUCTION KICK"
+msgstr "CHUTE DE VENTOSA"
+
+#: scripts/ui/hud.gd:914
+msgid "PLATFORMS %d  ·  %.1f s"
+msgstr "PLATAFORMAS %d  ·  %.1f s"
+
+#: scripts/ui/hud.gd:916
+msgid "DIZZY %.1f"
+msgstr "TONTO %.1f"
+
+#: scripts/ui/hud.gd:927
+msgid "HUNGER %d/%d  +%d%% DAMAGE"
+msgstr "FOME %d/%d  +%d%% DE DANO"
+
+#: scripts/ui/hud.gd:933
+msgid "FROZEN %.1f"
+msgstr "CONGELADO %.1f"
+
+#: scripts/ui/hud.gd:935
+msgid "SPEED +%d%%  %.1f"
+msgstr "VELOCIDADE +%d%%  %.1f"
+
+#: scripts/ui/hud.gd:937
+msgid "%s %.1f  ·  [%s] grow back"
+msgstr "%s %.1f  ·  [%s] volta"
+
+#: scripts/ui/hud.gd:939
+msgid "IN THE AIR +%d%% DAMAGE"
+msgstr "NO AR +%d%% DE DANO"
+
+#: scripts/ui/hud.gd:943
+msgid "SPEED +%d%% DAMAGE"
+msgstr "VELOCIDADE +%d%% DE DANO"
+
+#: scripts/ui/hud.gd:945
+msgid "%s -%d PER HIT"
+msgstr "%s -%d POR GOLPE"
+
+#: scripts/ui/hud.gd:947
+msgid "%s +%d%% SPEED"
+msgstr "%s +%d%% DE VELOCIDADE"
+
+#: scripts/ui/hud.gd:953
+msgid "%s +%d%% DAMAGE"
+msgstr "%s +%d%% DE DANO"
+
+#: scripts/ui/hud.gd:955
+msgid "%s -%d%% DAMAGE"
+msgstr "%s -%d%% DE DANO"
+
+#: scripts/ui/hud.gd:957
+msgid "SHADOW CHAIN  ·  [%s] to block"
+msgstr "CORRENTE SOMBRIA  ·  [%s] bloqueia"
+
+#: scripts/ui/hud.gd:961
+msgid "%s +%d%% DAMAGE  ·  %.1f"
+msgstr "%s +%d%% DE DANO  ·  %.1f"
+
+#: scripts/ui/hud.gd:963
+msgid "IN %s'S REALM -%d%% DAMAGE  ·  %.1f"
+msgstr "NO DOMÍNIO DE %s -%d%% DE DANO  ·  %.1f"
+
+#: scripts/ui/hud.gd:965
+msgid "REALM +%d%% DAMAGE  %.1f"
+msgstr "DOMÍNIO +%d%% DE DANO  %.1f"
+
+#: scripts/ui/hud.gd:967
+msgid "%s %.1f: GET A KILL"
+msgstr "%s %.1f: ABATA ALGUÉM"
+
+#: scripts/ui/hud.gd:987
+msgid "%s: just you two for %d s"
+msgstr "%s: só vocês dois por %d s"
+
+#: scripts/ui/hud.gd:989
+msgid "%s pulled you into %s"
+msgstr "%s te levou para o %s"
+
+#: scripts/ui/hud.gd:991
+msgid "You won the Realm"
+msgstr "Você venceu o Domínio"
+
+#: scripts/ui/hud.gd:991
+msgid ": +%d%% damage for %d s"
+msgstr ": +%d%% de dano por %d s"
+
+#: scripts/ui/hud.gd:1034
+msgid "Round %d of %d"
+msgstr "Rodada %d de %d"
+
+#: scripts/ui/hud.gd:1036
+msgid "ROUND %d OF %d"
+msgstr "RODADA %d DE %d"
+
+#: scripts/ui/hud.gd:1040
+msgid "ROUND %d / %d"
+msgstr "RODADA %d / %d"
+
+#: scripts/ui/main_menu.gd:33
+msgid "Aims and reacts slowly; barely uses the shield."
+msgstr "Mira e reage devagar; quase não usa o escudo."
+
+#: scripts/ui/main_menu.gd:34
+msgid "Reacts like a person; only blocks what it sees coming."
+msgstr "Reage como gente; só defende o que vê chegar."
+
+#: scripts/ui/main_menu.gd:34
+msgid "Fast reflexes: the usual bot."
+msgstr "Reflexos rápidos: o bot de sempre."
+
+#: scripts/ui/main_menu.gd:111
+#: scripts/ui/main_menu.gd:1287
+msgid "Lost connection to the lobby."
+msgstr "A conexão com a sala caiu."
+
+#: scripts/ui/main_menu.gd:161
+msgid "A shooter with a deck of upgrades. Free for all."
+msgstr "Tiro com baralho de melhorias. Cada um por si."
+
+#: scripts/ui/main_menu.gd:169
+msgid "PLAY"
+msgstr "JOGAR"
+
+#: scripts/ui/main_menu.gd:174
+#: scripts/ui/shop.gd:42
+msgid "Shop"
+msgstr "Loja"
+
+#: scripts/ui/main_menu.gd:175
+#: scripts/ui/main_menu.gd:717
+#: scripts/ui/main_menu.gd:767
+msgid "Customize"
+msgstr "Personalizar"
+
+#: scripts/ui/main_menu.gd:176
+#: scripts/ui/main_menu.gd:886
+#: scripts/ui/pause_menu.gd:135
+#: scripts/ui/pause_menu.gd:174
+msgid "Settings"
+msgstr "Configurações"
+
+#: scripts/ui/main_menu.gd:177
+msgid "Quit"
+msgstr "Sair"
+
+#: scripts/ui/main_menu.gd:211
+msgid "Afflictions: slow, long Poison and fast, short Burn, with a green or burning screen."
+msgstr "Aflições: Veneno lento e longo, Queimadura rápida e curta, tela verde ou em chamas."
+
+#: scripts/ui/main_menu.gd:212
+msgid "Freeze: layers of ice until the enemy freezes, and the next hit breaks the ice (Ice Bullet, Shatter, Thermal Shock)."
+msgstr "Congelamento: camadas de gelo até congelar o inimigo, e o próximo golpe quebra o gelo (Bala de Gelo, Estilhaço, Choque Térmico)."
+
+#: scripts/ui/main_menu.gd:213
+msgid "Stronger Ice Prison: a shard that shatters and a block that stores the damage."
+msgstr "Prisão de Gelo mais forte: caco que estilhaça e bloco que guarda o dano."
+
+#: scripts/ui/main_menu.gd:214
+msgid "Shotgun build: Sawed-Off, Rush, Pressure, Choke and Suppressor; heavy bullets lose Range, not speed."
+msgstr "Build de escopeta: Cano Serrado, Arrancada, Pressão, Choke e Silenciador; balas pesadas perdem Alcance, não velocidade."
+
+#: scripts/ui/main_menu.gd:215
+msgid "Damage as a single sum: bonuses add up instead of multiplying."
+msgstr "Dano em soma única: os bônus somam em vez de multiplicar."
+
+#: scripts/ui/main_menu.gd:216
+msgid "King's Domain, Plunger Grapple, Echo and Camouflage reworked."
+msgstr "Domínio do Rei, Arpéu Ventoso, Eco e Camuflagem refeitos."
+
+#: scripts/ui/main_menu.gd:217
+msgid "Overtime starts earlier in the first rounds, and a clock at the top of the screen."
+msgstr "Prorrogação mais cedo nas primeiras rodadas e relógio no topo da tela."
+
+#: scripts/ui/main_menu.gd:218
+msgid "21 new common cards (141 in total)."
+msgstr "21 cartas comuns novas (141 no total)."
+
+#: scripts/ui/main_menu.gd:248
+#: scripts/ui/main_menu.gd:765
+#: scripts/ui/main_menu.gd:897
+#: scripts/ui/pause_menu.gd:172
+msgid "< Back"
+msgstr "< Voltar"
+
+#: scripts/ui/main_menu.gd:249
+msgid "Play"
+msgstr "Jogar"
+
+#: scripts/ui/main_menu.gd:311
+msgid "Practice"
+msgstr "Treino"
+
+#: scripts/ui/main_menu.gd:311
+msgid "Online"
+msgstr "Online"
+
+#: scripts/ui/main_menu.gd:350
+msgid "MODE"
+msgstr "MODO"
+
+#: scripts/ui/main_menu.gd:359
+msgid "OPPONENTS"
+msgstr "ADVERSÁRIOS"
+
+#: scripts/ui/main_menu.gd:379
+msgid "Bots"
+msgstr "Bots"
+
+#: scripts/ui/main_menu.gd:384
+msgid "Difficulty"
+msgstr "Dificuldade"
+
+#: scripts/ui/main_menu.gd:385
+msgid "Start practice"
+msgstr "Começar treino"
+
+#: scripts/ui/main_menu.gd:393
+msgid "HOST A LOBBY"
+msgstr "CRIAR SALA"
+
+#: scripts/ui/main_menu.gd:395
+msgid "You are the host: you pick the mode and maps and start when everyone is ready. Your IP shows up in the lobby to give to your friends. Up to 4 players."
+msgstr "Você é o anfitrião: escolhe o modo e os mapas e começa quando todos estiverem prontos. Seu IP aparece na sala para passar aos amigos. Até 4 jogadores."
+
+#: scripts/ui/main_menu.gd:398
+msgid "Host lobby"
+msgstr "Criar sala"
+
+#: scripts/ui/main_menu.gd:399
+msgid "JOIN A LOBBY"
+msgstr "ENTRAR NUMA SALA"
+
+#: scripts/ui/main_menu.gd:402
+msgid "e.g. 192.168.0.10"
+msgstr "ex.: 192.168.0.10"
+
+#: scripts/ui/main_menu.gd:408
+#: scripts/ui/main_menu.gd:1293
+msgid "Join"
+msgstr "Entrar"
+
+#: scripts/ui/main_menu.gd:410
+msgid "Host IP"
+msgstr "IP do anfitrião"
+
+#: scripts/ui/main_menu.gd:410
+msgid "Whoever hosted the lobby sees the IP on their screen."
+msgstr "Quem criou a sala vê o IP na tela dela."
+
+#: scripts/ui/main_menu.gd:478
+#: scripts/ui/main_menu.gd:965
+msgid "Version %s"
+msgstr "Versão %s"
+
+#: scripts/ui/main_menu.gd:501
+msgid "What's new"
+msgstr "Novidades"
+
+#: scripts/ui/main_menu.gd:503
+msgid "Missions"
+msgstr "Missões"
+
+#: scripts/ui/main_menu.gd:511
+msgid "Only online matches count."
+msgstr "Contam só nas partidas online."
+
+#: scripts/ui/main_menu.gd:514
+msgid "DAILY"
+msgstr "DIÁRIAS"
+
+#: scripts/ui/main_menu.gd:518
+msgid "WEEKLY"
+msgstr "SEMANAIS"
+
+#: scripts/ui/main_menu.gd:527
+msgid "new in %s"
+msgstr "trocam em %s"
+
+#: scripts/ui/main_menu.gd:565
+msgid "Claimed"
+msgstr "Resgatada"
+
+#: scripts/ui/main_menu.gd:567
+msgid "Claim"
+msgstr "Resgatar"
+
+#: scripts/ui/main_menu.gd:572
+msgid "Swap"
+msgstr "Trocar"
+
+#: scripts/ui/main_menu.gd:575
+msgid "Swaps this mission for another. One swap per day, only on a mission with no progress."
+msgstr "Troca esta missão por outra. Uma troca por dia, só em missão sem progresso."
+
+#: scripts/ui/main_menu.gd:635
+msgid "DECK"
+msgstr "BARALHO"
+
+#: scripts/ui/main_menu.gd:667
+msgid "‹  Leave lobby"
+msgstr "‹  Sair da sala"
+
+#: scripts/ui/main_menu.gd:668
+msgid "Lobby"
+msgstr "Sala"
+
+#: scripts/ui/main_menu.gd:676
+msgid "Shuffle teams"
+msgstr "Sortear times"
+
+#: scripts/ui/main_menu.gd:679
+msgid "CHAT"
+msgstr "CHAT"
+
+#: scripts/ui/main_menu.gd:695
+msgid "YOU"
+msgstr "VOCÊ"
+
+#: scripts/ui/main_menu.gd:697
+msgid "How others will see you"
+msgstr "Como os outros vão te ver"
+
+#: scripts/ui/main_menu.gd:709
+#: scripts/ui/settings_panel.gd:135
+msgid "Name"
+msgstr "Nome"
+
+#: scripts/ui/main_menu.gd:709
+msgid "How others see you."
+msgstr "Como os outros te veem."
+
+#: scripts/ui/main_menu.gd:720
+msgid "Look"
+msgstr "Visual"
+
+#: scripts/ui/main_menu.gd:732
+msgid "The equipped one goes into the match."
+msgstr "O equipado vai para a partida."
+
+#: scripts/ui/main_menu.gd:734
+msgid "MATCH"
+msgstr "PARTIDA"
+
+#: scripts/ui/main_menu.gd:739
+#: scripts/ui/main_menu.gd:1131
+msgid "Choose"
+msgstr "Escolher"
+
+#: scripts/ui/main_menu.gd:741
+#: scripts/ui/map_picker.gd:42
+msgid "Maps"
+msgstr "Mapas"
+
+#: scripts/ui/main_menu.gd:753
+msgid "Start"
+msgstr "Começar"
+
+#: scripts/ui/main_menu.gd:768
+msgid "Looks only: changes nothing in the game."
+msgstr "Só aparência: não muda nada no jogo."
+
+#: scripts/ui/main_menu.gd:785
+msgid "Drag to rotate"
+msgstr "Arraste para girar"
+
+#: scripts/ui/main_menu.gd:792
+msgid "Character"
+msgstr "Personagem"
+
+#: scripts/ui/main_menu.gd:792
+#: scripts/autoload/card_db.gd
+msgid "Weapon"
+msgstr "Arma"
+
+#: scripts/ui/main_menu.gd:886
+msgid "Saved automatically."
+msgstr "Salvas sozinhas."
+
+#: scripts/ui/main_menu.gd:928
+msgid "EQUIPPED DECK"
+msgstr "BARALHO EQUIPADO"
+
+#: scripts/ui/main_menu.gd:957
+msgid "NEW VERSION"
+msgstr "NOVA VERSÃO"
+
+#: scripts/ui/main_menu.gd:978
+msgid "Downloading version %s... %d%%"
+msgstr "Baixando a versão %s... %d%%"
+
+#: scripts/ui/main_menu.gd:986
+msgid "Version %s is available."
+msgstr "A versão %s está disponível."
+
+#: scripts/ui/main_menu.gd:987
+msgid "Update"
+msgstr "Atualizar"
+
+#: scripts/ui/main_menu.gd:988
+msgid "View on site"
+msgstr "Ver no site"
+
+#: scripts/ui/main_menu.gd:990
+msgid "Installing. The game will reopen by itself."
+msgstr "Instalando. O jogo vai reabrir sozinho."
+
+#: scripts/ui/main_menu.gd:992
+msgid "Download it from the site; your decks stay."
+msgstr "Baixe pelo site; seus baralhos ficam."
+
+#: scripts/ui/main_menu.gd:994
+msgid "Open site"
+msgstr "Abrir o site"
+
+#: scripts/ui/main_menu.gd:995
+msgid "Try again"
+msgstr "Tentar de novo"
+
+#: scripts/ui/main_menu.gd:1026
+msgid "Type your name"
+msgstr "Digite seu nome"
+
+#: scripts/ui/main_menu.gd:1060
+msgid "Teams in practice uses 3 bots: you and an ally against two."
+msgstr "Times no treino é com 3 bots: você e um aliado contra dois."
+
+#: scripts/ui/main_menu.gd:1061
+msgid "You and an allied bot against two bots."
+msgstr "Você e um bot aliado contra dois bots."
+
+#: scripts/ui/main_menu.gd:1066
+msgid "%d bot"
+msgid_plural "%d bots"
+msgstr[0] "%d bot"
+msgstr[1] "%d bots"
+
+#: scripts/ui/main_menu.gd:1067
+msgid "Small maps only."
+msgstr "Só mapas pequenos."
+
+#: scripts/ui/main_menu.gd:1067
+msgid "Small and medium maps."
+msgstr "Mapas pequenos e médios."
+
+#: scripts/ui/main_menu.gd:1067
+msgid "Maps of every size."
+msgstr "Mapas de todos os tamanhos."
+
+#: scripts/ui/main_menu.gd:1078
+msgid "Couldn't open port %d (error %d). Is another program already using it?"
+msgstr "Não deu para abrir a porta %d (erro %d). Outro programa já está usando?"
+
+#: scripts/ui/main_menu.gd:1089
+msgid "Type the IP of whoever hosted the lobby."
+msgstr "Digite o IP de quem criou a sala."
+
+#: scripts/ui/main_menu.gd:1094
+msgid "Couldn't connect (error %d)."
+msgstr "Não deu para conectar (erro %d)."
+
+#: scripts/ui/main_menu.gd:1099
+msgid "Connecting..."
+msgstr "Conectando..."
+
+#: scripts/ui/main_menu.gd:1122
+msgid "PLAYERS"
+msgstr "JOGADORES"
+
+#: scripts/ui/main_menu.gd:1131
+msgid "View"
+msgstr "Ver"
+
+#: scripts/ui/main_menu.gd:1132
+msgid "%d of %d on. Each round picks one of them."
+msgstr "%d de %d ligados. A cada rodada sai um deles."
+
+#: scripts/ui/main_menu.gd:1135
+msgid "Only the host picks the mode."
+msgstr "Só o anfitrião escolhe o modo."
+
+#: scripts/ui/main_menu.gd:1139
+msgid "Each team needs 2 players (switch or shuffle beside them)."
+msgstr "Os times precisam de 2 cada (troque ou sorteie ao lado)."
+
+#: scripts/ui/main_menu.gd:1144
+msgid "Lobby  ·  %d of %d"
+msgstr "Sala  ·  %d de %d"
+
+#: scripts/ui/main_menu.gd:1147
+msgid "Your IP: %s  ·  port %d\nFriends open Play > Online and type this IP."
+msgstr "Seu IP: %s  ·  porta %d\nOs amigos abrem Jogar > Online e digitam esse IP."
+
+#: scripts/ui/main_menu.gd:1148
+msgid "not found"
+msgstr "não encontrado"
+
+#: scripts/ui/main_menu.gd:1154
+msgid "Waiting for players..."
+msgstr "Esperando jogadores..."
+
+#: scripts/ui/main_menu.gd:1156
+msgid "Waiting for 4 players (%d/4)"
+msgstr "Esperando 4 jogadores (%d/4)"
+
+#: scripts/ui/main_menu.gd:1158
+msgid "Change the mode to start"
+msgstr "Ajuste o modo para começar"
+
+#: scripts/ui/main_menu.gd:1160
+msgid "Waiting for everyone to be ready (%d/%d)"
+msgstr "Esperando todos ficarem prontos (%d/%d)"
+
+#: scripts/ui/main_menu.gd:1162
+msgid "Start  ·  %s"
+msgstr "Começar  ·  %s"
+
+#: scripts/ui/main_menu.gd:1169
+msgid "You are ready. The host starts when everyone is (%s)."
+msgstr "Você está pronto. O anfitrião começa quando todos estiverem (%s)."
+
+#: scripts/ui/main_menu.gd:1171
+msgid "Connected. Click Ready when you can start (%s)."
+msgstr "Conectado. Clique em Pronto quando puder começar (%s)."
+
+#: scripts/ui/main_menu.gd:1174
+msgid "Cancel ready"
+msgstr "Cancelar pronto"
+
+#: scripts/ui/main_menu.gd:1174
+msgid "Ready"
+msgstr "Pronto"
+
+#: scripts/ui/main_menu.gd:1190
+#: scripts/ui/scoreboard.gd:214
+msgid "TEAM %s"
+msgstr "TIME %s"
+
+#: scripts/ui/main_menu.gd:1216
+msgid "host"
+msgstr "anfitrião"
+
+#: scripts/ui/main_menu.gd:1218
+msgid "you"
+msgstr "você"
+
+#: scripts/ui/main_menu.gd:1221
+msgid "ready"
+msgstr "pronto"
+
+#: scripts/ui/main_menu.gd:1221
+msgid "not ready"
+msgstr "não está pronto"
+
+#: scripts/ui/main_menu.gd:1226
+msgid "Move to %s"
+msgstr "Mudar para %s"
+
+#: scripts/ui/main_menu.gd:1240
+msgid "Open slot"
+msgstr "Vaga livre"
+
+#: scripts/ui/map_picker.gd:48
+msgid "All"
+msgstr "Todos"
+
+#: scripts/ui/map_picker.gd:67
+msgid "Turn all on"
+msgstr "Ligar todos"
+
+#: scripts/ui/map_picker.gd:68
+msgid "Back to automatic"
+msgstr "Voltar ao automático"
+
+#: scripts/ui/map_picker.gd:90
+msgid "Maps  ·  %d of %d"
+msgstr "Mapas  ·  %d de %d"
+
+#: scripts/ui/map_picker.gd:113
+msgid "%d of %d on"
+msgstr "%d de %d ligados"
+
+#: scripts/ui/map_picker.gd:116
+msgid "Only the host turns maps on and off. Each round picks one of the maps that are on, with a new layout."
+msgstr "Só o anfitrião liga e desliga mapas. A cada rodada sai um dos ligados, com um desenho novo."
+
+#: scripts/ui/map_picker.gd:118
+msgid "Each round picks one of the maps that are on, with a new layout. Automatic: large maps are off with 2 in the arena (1v1 and Duels) and on with 3 or 4."
+msgstr "A cada rodada sai um dos ligados, com um desenho novo. Automático: os grandes ficam desligados com 2 na arena (1x1 e Duelos) e ligados com 3 ou 4."
+
+#: scripts/ui/map_picker.gd:121
+msgid "Quick fights."
+msgstr "Encontros rápidos."
+
+#: scripts/ui/map_picker.gd:121
+msgid "More room and more cover."
+msgstr "Mais espaço e mais peças."
+
+#: scripts/ui/map_picker.gd:121
+msgid "Walls split the arena. Best with 3 or 4."
+msgstr "Muros dividem a arena. Melhor com 3 ou 4."
+
+#: scripts/ui/map_picker.gd:136
+msgid "automatic"
+msgstr "automático"
+
+#: scripts/ui/map_picker.gd:138
+msgid "The game decides by the number of players until you change it."
+msgstr "O jogo decide pelo número de jogadores até você mudar."
+
+#: scripts/ui/mode_picker.gd:41
+msgid "Lives"
+msgstr "Vidas"
+
+#: scripts/ui/mode_picker.gd:41
+msgid "Lose them all and you are out of the rotation."
+msgstr "Quem perde todas sai do rodízio."
+
+#: scripts/ui/overtime_banner.gd:79
+msgid "OVERTIME IN"
+msgstr "PRORROGAÇÃO EM"
+
+#: scripts/ui/overtime_banner.gd:82
+msgid "ARENA CLOSES IN"
+msgstr "A ARENA FECHA EM"
+
+#: scripts/ui/overtime_banner.gd:101
+msgid "one extra card from your deck every %d s"
+msgstr "uma carta extra do seu baralho a cada %d s"
+
+#: scripts/ui/overtime_banner.gd:102
+msgid "the circle will shrink to the center in %d min"
+msgstr "o círculo vai encolher até o centro em %d min"
+
+#: scripts/ui/overtime_banner.gd:112
+msgid "ARENA CLOSED"
+msgstr "ARENA FECHADA"
+
+#: scripts/ui/overtime_banner.gd:112
+msgid "ARENA CLOSING"
+msgstr "ARENA FECHANDO"
+
+#: scripts/ui/overtime_banner.gd:114
+msgid "radius %d m"
+msgstr "raio %d m"
+
+#: scripts/ui/overtime_banner.gd:116
+msgid "OVERTIME"
+msgstr "PRORROGAÇÃO"
+
+#: scripts/ui/overtime_banner.gd:118
+msgid "extra cards %d/%d"
+msgstr "cartas extras %d/%d"
+
+#: scripts/ui/overtime_banner.gd:120
+msgid "  ·  next in %d"
+msgstr "  ·  próxima em %d"
+
+#: scripts/ui/overtime_banner.gd:123
+msgid "CLOSING!"
+msgstr "FECHANDO!"
+
+#: scripts/ui/overtime_banner.gd:123
+msgid "OVERTIME!"
+msgstr "PRORROGAÇÃO!"
+
+#: scripts/ui/overtime_banner.gd:131
+msgid "OUTSIDE THE ARENA: GET BACK IN"
+msgstr "FORA DA ARENA: VOLTE PARA DENTRO"
+
+#: scripts/ui/pack_opening.gd:71
+msgid "Click to open"
+msgstr "Clique para abrir"
+
+#: scripts/ui/pack_opening.gd:88
+msgid "Reveal all"
+msgstr "Revelar todas"
+
+#: scripts/ui/pack_opening.gd:90
+msgid "Open another  ·  %d"
+msgstr "Abrir outro  ·  %d"
+
+#: scripts/ui/pack_opening.gd:154
+#: scripts/ui/shop.gd:243
+msgid "%d card"
+msgid_plural "%d cards"
+msgstr[0] "%d carta"
+msgstr[1] "%d cartas"
+
+#: scripts/ui/pack_opening.gd:218
+msgid "Click to reveal"
+msgstr "Clique para revelar"
+
+#: scripts/ui/pack_opening.gd:301
+msgid "+1 %s token"
+msgstr "+1 ficha %s"
+
+#: scripts/ui/pack_opening.gd:304
+msgid "NEW"
+msgstr "NOVA"
+
+#: scripts/ui/pause_menu.gd:56
+msgid "MENU"
+msgstr "MENU"
+
+#: scripts/ui/pause_menu.gd:56
+msgid "PAUSED"
+msgstr "PAUSA"
+
+#: scripts/ui/pause_menu.gd:125
+msgid "ONLINE  ·  THE MATCH GOES ON"
+msgstr "ONLINE  ·  A PARTIDA CONTINUA"
+
+#: scripts/ui/pause_menu.gd:140
+msgid "Back to editor"
+msgstr "Voltar ao editor"
+
+#: scripts/ui/pause_menu.gd:142
+msgid "Quit to menu"
+msgstr "Sair para o menu"
+
+#: scripts/ui/pause_menu.gd:143
+msgid "Quit game"
+msgstr "Sair do jogo"
+
+#: scripts/ui/pause_menu.gd:146
+#: scripts/ui/scoreboard.gd:62
+msgid "SCOREBOARD"
+msgstr "PLACAR"
+
+#: scripts/ui/pause_menu.gd:154
+msgid "Esc  back to the game"
+msgstr "Esc  voltar ao jogo"
+
+#: scripts/ui/pause_menu.gd:175
+msgid "Saved automatically and applied right away."
+msgstr "Salvas sozinhas e valem na hora."
+
+#: scripts/ui/pause_menu.gd:223
+msgid "Progress in this match will be lost."
+msgstr "O progresso desta partida será perdido."
+
+#: scripts/ui/pause_menu.gd:225
+msgid "The match ends for everyone in the lobby."
+msgstr "A partida acaba para todos na sala."
+
+#: scripts/ui/pause_menu.gd:226
+msgid "Quit to menu?"
+msgstr "Sair para o menu?"
+
+#: scripts/ui/pause_menu.gd:226
+msgid "Leave match"
+msgstr "Sair da partida"
+
+#: scripts/ui/pause_menu.gd:232
+msgid "The game will close and progress in this match will be lost."
+msgstr "O jogo vai fechar e o progresso desta partida será perdido."
+
+#: scripts/ui/pause_menu.gd:234
+msgid "The game will close and the match ends for everyone in the lobby."
+msgstr "O jogo vai fechar e a partida acaba para todos na sala."
+
+#: scripts/ui/pause_menu.gd:235
+msgid "Quit game?"
+msgstr "Sair do jogo?"
+
+#: scripts/ui/pause_menu.gd:235
+msgid "Close the game"
+msgstr "Fechar o jogo"
+
+#: scripts/ui/practice_cards.gd:98
+msgid "Room cards"
+msgstr "Cartas da sala"
+
+#: scripts/ui/practice_cards.gd:213
+msgid "MASTER"
+msgstr "MESTRA"
+
+#: scripts/ui/practice_cards.gd:224
+msgid "Master without cooldown"
+msgstr "Mestra sem recarga"
+
+#: scripts/ui/practice_cards.gd:227
+msgid "SHOOTERS"
+msgstr "ATIRADORES"
+
+#: scripts/ui/practice_cards.gd:228
+msgctxt "shooters"
+msgid "Off"
+msgstr "Desligado"
+
+#: scripts/ui/practice_cards.gd:228
+msgctxt "shooters"
+msgid "Slow"
+msgstr "Lento"
+
+#: scripts/ui/practice_cards.gd:228
+msgctxt "shooters"
+msgid "Normal"
+msgstr "Normal"
+
+#: scripts/ui/practice_cards.gd:228
+msgctxt "shooters"
+msgid "Burst"
+msgstr "Rajada"
+
+#: scripts/ui/practice_cards.gd:232
+msgid "ACTIVE CARDS"
+msgstr "CARTAS VALENDO"
+
+#: scripts/ui/practice_cards.gd:244
+msgid "Take the whole deck"
+msgstr "Pegar o baralho todo"
+
+#: scripts/ui/practice_cards.gd:245
+msgid "Remove all"
+msgstr "Tirar todas"
+
+#: scripts/ui/practice_cards.gd:248
+msgid "Back to the room"
+msgstr "Voltar à sala"
+
+#: scripts/ui/practice_cards.gd:255
+msgid "Click a master to equip it   ·   B or Esc: back to the cards"
+msgstr "Clique numa mestra para equipar   ·   B ou Esc: voltar às cartas"
+
+#: scripts/ui/practice_cards.gd:255
+msgid "Click: add one   ·   Right click: remove   ·   Hover to read   ·   B or Esc: back"
+msgstr "Clique: põe uma   ·   Botão direito: tira   ·   Passe o mouse para ler   ·   B ou Esc: voltar"
+
+#: scripts/ui/practice_cards.gd:269
+msgid "No master"
+msgstr "Sem mestra"
+
+#: scripts/ui/practice_cards.gd:273
+msgid "Back ›"
+msgstr "Voltar ›"
+
+#: scripts/ui/practice_cards.gd:273
+msgid "Change ›"
+msgstr "Trocar ›"
+
+#: scripts/ui/practice_cards.gd:285
+msgid "None: just the base weapon."
+msgstr "Nenhuma: só a arma base."
+
+#: scripts/ui/practice_cards.gd:293
+msgid "Click to remove one"
+msgstr "Clique para tirar uma"
+
+#: scripts/ui/practice_panel.gd:32
+msgid "DAMAGE"
+msgstr "DANO"
+
+#: scripts/ui/practice_panel.gd:33
+msgid "DPS (3 s)"
+msgstr "DPS (3 s)"
+
+#: scripts/ui/practice_panel.gd:34
+msgid "Best DPS"
+msgstr "Melhor DPS"
+
+#: scripts/ui/practice_panel.gd:35
+msgid "100 health in"
+msgstr "100 de vida em"
+
+#: scripts/ui/practice_panel.gd:36
+msgid "Total damage"
+msgstr "Dano total"
+
+#: scripts/ui/practice_panel.gd:37
+msgid "Biggest hit"
+msgstr "Maior golpe"
+
+#: scripts/ui/practice_panel.gd:38
+msgid "Shots / hits"
+msgstr "Tiros / golpes"
+
+#: scripts/ui/practice_panel.gd:39
+#: scripts/autoload/card_db.gd
+msgid "Range"
+msgstr "Alcance"
+
+#: scripts/ui/practice_panel.gd:41
+msgid "Z  reset   ·   B  cards and master"
+msgstr "Z  zerar   ·   B  cartas e mestra"
+
+#: scripts/ui/practice_panel.gd:101
+msgid "no limit"
+msgstr "sem limite"
+
+#: scripts/ui/scoreboard.gd:8
+msgid "ROUNDS"
+msgstr "RODADAS"
+
+#: scripts/ui/scoreboard.gd:8
+msgid "KILLS"
+msgstr "ABATES"
+
+#: scripts/ui/scoreboard.gd:8
+msgid "ASSISTS"
+msgstr "ASSIST."
+
+#: scripts/ui/scoreboard.gd:8
+msgid "DEATHS"
+msgstr "MORTES"
+
+#: scripts/ui/scoreboard.gd:65
+msgid "MATCH OVER"
+msgstr "FIM DA PARTIDA"
+
+#: scripts/ui/scoreboard.gd:81
+#: scripts/ui/settings_panel.gd:133
+msgid "PLAYER"
+msgstr "JOGADOR"
+
+#: scripts/ui/scoreboard.gd:84
+msgid "LIVES"
+msgstr "VIDAS"
+
+#: scripts/ui/scoreboard.gd:97
+#: scripts/ui/scoreboard.gd:102
+msgid "Hover over a card to see its effect."
+msgstr "Passe o mouse numa carta para ver o efeito."
+
+#: scripts/ui/scoreboard.gd:122
+msgid "MISSIONS"
+msgstr "MISSÕES"
+
+#: scripts/ui/scoreboard.gd:146
+msgid "Completed"
+msgstr "Cumprida"
+
+#: scripts/ui/scoreboard.gd:216
+msgid "your team"
+msgstr "seu time"
+
+#: scripts/ui/scoreboard.gd:218
+msgid "%d round"
+msgid_plural "%d rounds"
+msgstr[0] "%d rodada"
+msgstr[1] "%d rodadas"
+
+#: scripts/ui/scoreboard.gd:276
+msgid "eliminated"
+msgstr "eliminado"
+
+#: scripts/ui/scoreboard.gd:277
+msgid "in queue"
+msgstr "na fila"
+
+#: scripts/ui/scoreboard.gd:278
+msgid "out this round"
+msgstr "fora da rodada"
+
+#: scripts/ui/scoreboard.gd:347
+msgid "No cards yet"
+msgstr "Nenhuma carta ainda"
+
+#: scripts/ui/settings_panel.gd:11
+msgid "Low"
+msgstr "Baixa"
+
+#: scripts/ui/settings_panel.gd:11
+msgid "Medium"
+msgstr "Média"
+
+#: scripts/ui/settings_panel.gd:11
+msgid "High"
+msgstr "Alta"
+
+#: scripts/ui/settings_panel.gd:13
+msgid "No shadows, glow or fog. For modest PCs."
+msgstr "Sem sombras, brilho nem névoa. Para PCs modestos."
+
+#: scripts/ui/settings_panel.gd:14
+msgid "Simple shadows, no glow or fog."
+msgstr "Sombras simples, sem brilho nem névoa."
+
+#: scripts/ui/settings_panel.gd:15
+msgid "Detailed shadows, glow and fog. Heavy on integrated graphics."
+msgstr "Sombras detalhadas, brilho e névoa. Pesada em placa integrada."
+
+#: scripts/ui/settings_panel.gd:18
+msgid "Can be moved, resized and maximized."
+msgstr "Dá para mover, redimensionar e maximizar."
+
+#: scripts/ui/settings_panel.gd:19
+msgid "Whole screen, no border. Instant Alt+Tab."
+msgstr "Tela toda, sem borda. Alt+Tab instantâneo."
+
+#: scripts/ui/settings_panel.gd:20
+msgid "Exclusive fullscreen. Alt+Tab is slow."
+msgstr "Tela cheia exclusiva. O Alt+Tab demora."
+
+#: scripts/ui/settings_panel.gd:56
+#: scripts/ui/settings_panel.gd:132
+msgid "Profile"
+msgstr "Perfil"
+
+#: scripts/ui/settings_panel.gd:57
+#: scripts/ui/settings_panel.gd:144
+msgid "Video"
+msgstr "Vídeo"
+
+#: scripts/ui/settings_panel.gd:57
+#: scripts/ui/settings_panel.gd:245
+msgid "Audio"
+msgstr "Áudio"
+
+#: scripts/ui/settings_panel.gd:58
+#: scripts/ui/settings_panel.gd:327
+msgid "Controls"
+msgstr "Controles"
+
+#: scripts/ui/settings_panel.gd:58
+#: scripts/ui/settings_panel.gd:265
+msgid "Credits"
+msgstr "Créditos"
+
+#: scripts/ui/settings_panel.gd:135
+msgid "How others see you online. You can also change it in the lobby."
+msgstr "Como os outros te veem online. Também dá para mudar na sala."
+
+#: scripts/ui/settings_panel.gd:139
+msgid "Language"
+msgstr "Idioma"
+
+#: scripts/ui/settings_panel.gd:139
+msgid "Menus, cards and match texts."
+msgstr "Menus, cartas e textos da partida."
+
+#: scripts/ui/settings_panel.gd:148
+msgid "DISPLAY"
+msgstr "TELA"
+
+#: scripts/ui/settings_panel.gd:149
+msgid "Display mode"
+msgstr "Modo de exibição"
+
+#: scripts/ui/settings_panel.gd:161
+msgid "Resolution"
+msgstr "Resolução"
+
+#: scripts/ui/settings_panel.gd:163
+msgid "Interface size"
+msgstr "Tamanho da interface"
+
+#: scripts/ui/settings_panel.gd:163
+msgid "Menus and HUD. Increase it on large screens."
+msgstr "Menus e HUD. Aumente em telas grandes."
+
+#: scripts/ui/settings_panel.gd:167
+msgid "GRAPHICS"
+msgstr "GRÁFICOS"
+
+#: scripts/ui/settings_panel.gd:168
+msgid "Quality"
+msgstr "Qualidade"
+
+#: scripts/ui/settings_panel.gd:172
+msgid "On prevents screen tearing. Off, the FPS doesn't lock at 30."
+msgstr "Ligado evita imagem rasgada. Desligado, o FPS não trava em 30."
+
+#: scripts/ui/settings_panel.gd:175
+msgid "Show FPS"
+msgstr "Mostrar FPS"
+
+#: scripts/ui/settings_panel.gd:175
+msgid "Frame counter in the corner during a match."
+msgstr "Contador de quadros no canto da partida."
+
+#: scripts/ui/settings_panel.gd:195
+msgid "Monitor's  (%d x %d)"
+msgstr "Do monitor  (%d x %d)"
+
+#: scripts/ui/settings_panel.gd:201
+msgid "Window size on launch. When maximized, the game follows."
+msgstr "Tamanho da janela ao abrir. Maximizada, o jogo acompanha."
+
+#: scripts/ui/settings_panel.gd:203
+msgid "Sharp and heavier. A lower one makes the game lighter."
+msgstr "Nítida e mais pesada. Uma menor deixa o jogo mais leve."
+
+#: scripts/ui/settings_panel.gd:205
+msgid "Lighter: the game is drawn smaller and stretched to the monitor."
+msgstr "Mais leve: o jogo é desenhado menor e esticado até o monitor."
+
+#: scripts/ui/settings_panel.gd:213
+msgid "  (recommended)"
+msgstr "  (recomendada)"
+
+#: scripts/ui/settings_panel.gd:216
+msgid "Restart now"
+msgstr "Reiniciar agora"
+
+#: scripts/ui/settings_panel.gd:219
+msgid "Graphics API"
+msgstr "API gráfica"
+
+#: scripts/ui/settings_panel.gd:224
+msgid "In use: %s."
+msgstr "Em uso: %s."
+
+#: scripts/ui/settings_panel.gd:229
+msgid "The choice applies after restarting."
+msgstr "A escolha vale ao reiniciar."
+
+#: scripts/ui/settings_panel.gd:232
+msgid "This PC doesn't have %s; fell back to OpenGL."
+msgstr "Este PC não tem %s; voltou para OpenGL."
+
+#: scripts/ui/settings_panel.gd:235
+msgid "Vulkan and DirectX 12 are heavier on integrated graphics."
+msgstr "Vulkan e DirectX 12 pesam mais em placa integrada."
+
+#: scripts/ui/settings_panel.gd:246
+msgid "VOLUME"
+msgstr "VOLUME"
+
+#: scripts/ui/settings_panel.gd:251
+msgid "Everything the game plays."
+msgstr "Tudo o que o jogo toca."
+
+#: scripts/ui/settings_panel.gd:253
+msgid "Shots, explosions and footsteps in the world."
+msgstr "Tiros, explosões e passos do mundo."
+
+#: scripts/ui/settings_panel.gd:255
+msgid "Hits, kills and damage taken."
+msgstr "Acerto, abate e dano recebido."
+
+#: scripts/ui/settings_panel.gd:257
+msgid "There's no music in the game yet."
+msgstr "Ainda não há música no jogo."
+
+#: scripts/ui/settings_panel.gd:260
+msgid "Release the slider to hear a sample."
+msgstr "Solte a barra para ouvir um exemplo."
+
+#: scripts/ui/settings_panel.gd:266
+msgid "ASSETS"
+msgstr "RECURSOS"
+
+#: scripts/ui/settings_panel.gd:267
+msgid "Models and sounds by Kenney (kenney.nl), CC0.\n\nCard icons from game-icons.net, by Lorc, Delapouite, Caro Asercion, Faithtoken, Felbrigg, HeavenlyDog, John Colburn, Lucas, Sbed and Skoll (CC BY 3.0)."
+msgstr "Modelos e sons de Kenney (kenney.nl), CC0.\n\nÍcones das cartas de game-icons.net, por Lorc, Delapouite, Caro Asercion, Faithtoken, Felbrigg, HeavenlyDog, John Colburn, Lucas, Sbed e Skoll (CC BY 3.0)."
+
+#: scripts/ui/settings_panel.gd:312
+msgid "Muted"
+msgstr "Mudo"
+
+#: scripts/ui/settings_panel.gd:328
+msgid "MOUSE"
+msgstr "MOUSE"
+
+#: scripts/ui/settings_panel.gd:329
+msgid "Sensitivity"
+msgstr "Sensibilidade"
+
+#: scripts/ui/settings_panel.gd:330
+msgid "Restore defaults"
+msgstr "Restaurar padrão"
+
+#: scripts/ui/settings_panel.gd:336
+msgid "KEYS"
+msgstr "TECLAS"
+
+#: scripts/ui/settings_panel.gd:383
+msgid "Press a key..."
+msgstr "Aperte uma tecla..."
+
+#: scripts/ui/settings_panel.gd:389
+msgid "%s is on %s and on %s."
+msgstr "%s está em %s e em %s."
+
+#: scripts/ui/settings_panel.gd:392
+msgid "Press the key or mouse button for %s. Esc cancels."
+msgstr "Aperte a tecla ou botão do mouse para %s. Esc cancela."
+
+#: scripts/ui/settings_panel.gd:395
+msgid "Repeated key:"
+msgstr "Tecla repetida:"
+
+#: scripts/ui/settings_panel.gd:398
+msgid "Click a key to change it; right click clears it. Aim and Esc are fixed."
+msgstr "Clique numa tecla para trocar; botão direito apaga. Mirar e Esc são fixos."
+
+#: scripts/ui/shop.gd:93
+#: scripts/ui/shop.gd:179
+msgid "Changes in %s"
+msgstr "Trocam em %s"
+
+#: scripts/ui/shop.gd:116
+msgid "Copies beyond the max turn into tokens of their rarity.\nSpend tokens in the deck editor, under \"Craft cards\"."
+msgstr "Cópias além do máximo viram fichas da raridade.\nGaste as fichas no editor de baralho, em \"Criar cartas\"."
+
+#: scripts/ui/shop.gd:136
+#: scripts/ui/shop.gd:138
+msgid "Test mode"
+msgstr "Modo de teste"
+
+#: scripts/ui/shop.gd:139
+msgid "Refill coins"
+msgstr "Repor moedas"
+
+#: scripts/ui/shop.gd:140
+msgid "Refill tokens"
+msgstr "Repor fichas"
+
+#: scripts/ui/shop.gd:141
+msgid "Reset collection"
+msgstr "Zerar coleção"
+
+#: scripts/ui/shop.gd:157
+msgid "Tokens"
+msgstr "Fichas"
+
+#: scripts/ui/shop.gd:164
+msgid "Collection: %d of %d copies (%d%%)"
+msgstr "Coleção: %d de %d cópias (%d%%)"
+
+#: scripts/ui/shop.gd:173
+msgid "the last card is the guaranteed one"
+msgstr "a última carta é a garantida"
+
+#: scripts/ui/shop.gd:174
+msgid "PACKS"
+msgstr "PACOTES"
+
+#: scripts/ui/shop.gd:180
+msgid "CURRENT OFFERS"
+msgstr "OFERTAS DO MOMENTO"
+
+#: scripts/ui/shop.gd:182
+msgid "You already have every epic, legendary and master card."
+msgstr "Você já tem todas as épicas, lendárias e mestras."
+
+#: scripts/ui/shop.gd:185
+msgid "One epic, one legendary and one master. Lock one so it doesn't change while you save up coins."
+msgstr "Uma épica, uma lendária e uma mestra. Trave uma para ela não trocar enquanto junta moedas."
+
+#: scripts/ui/shop.gd:215
+msgid "One master card. Earn more in weekly missions."
+msgstr "Uma carta mestra. Ganhe mais nas missões semanais."
+
+#: scripts/ui/shop.gd:216
+msgid "Open"
+msgstr "Abrir"
+
+#: scripts/ui/shop.gd:253
+msgid "Guarantees %s"
+msgstr "Garante %s"
+
+#: scripts/ui/shop.gd:257
+msgid "Open  ·  %s coins"
+msgstr "Abrir  ·  %s moedas"
+
+#: scripts/ui/shop.gd:286
+msgid "Chance for each card:"
+msgstr "Chance de cada carta:"
+
+#: scripts/ui/shop.gd:291
+msgid "The last card guarantees %s."
+msgstr "A última carta garante %s."
+
+#: scripts/ui/shop.gd:316
+msgid "You already have every %s card."
+msgstr "Você já tem todas as cartas %s."
+
+#: scripts/ui/shop.gd:325
+msgid "You have %d/%d"
+msgstr "Você tem %d/%d"
+
+#: scripts/ui/shop.gd:330
+msgid "Locked"
+msgstr "Travada"
+
+#: scripts/ui/shop.gd:330
+msgid "Lock"
+msgstr "Travar"
+
+#: scripts/ui/shop.gd:333
+msgid "Locked, this slot doesn't change every 8 h"
+msgstr "Travada, esta vaga não troca a cada 8 h"
+
+#: scripts/ui/shop.gd:339
+msgid "Bought"
+msgstr "Comprada"
+
+#: scripts/ui/shop.gd:339
+msgid "Buy  ·  %s"
+msgstr "Comprar  ·  %s"
+
+#: scripts/ui/ui_style.gd:245
+msgid "Incomplete: %d missing"
+msgstr "Incompleto: faltam %d"
+
+#: scripts/ui/ui_style.gd:246
+msgid "%d cards"
+msgstr "%d cartas"
+
+#: scripts/ui/vitals.gd:66
+msgid "+%d armor"
+msgstr "+%d colete"
+
+#: scripts/ui/vitals.gd:67
+msgid "+%d plating"
+msgstr "+%d blindagem"
+
+#: scripts/ui/vitals.gd:70
+msgid "missile"
+msgstr "míssil"
+
+#: scripts/autoload/card_db.gd calibre_pesado
+msgctxt "card"
+msgid "Heavy Caliber"
+msgstr "Calibre Pesado"
+
+#: scripts/autoload/card_db.gd calibre_pesado
+msgctxt "card"
+msgid "Damage +20%. Fire rate -10%. Reload +0.2 s."
+msgstr "Dano +20%. Cadência -10%. Recarregar +0,2 s."
+
+#: scripts/autoload/card_db.gd gatilho_leve
+msgctxt "card"
+msgid "Hair Trigger"
+msgstr "Gatilho Leve"
+
+#: scripts/autoload/card_db.gd gatilho_leve
+msgctxt "card"
+msgid "Fire rate +40%. Damage -5%."
+msgstr "Cadência +40%. Dano -5%."
+
+#: scripts/autoload/card_db.gd pente_estendido
+msgctxt "card"
+msgid "Extended Mag"
+msgstr "Pente Estendido"
+
+#: scripts/autoload/card_db.gd pente_estendido
+msgctxt "card"
+msgid "Magazine +4. Reload time +15%."
+msgstr "Pente +4. Tempo para recarregar +15%."
+
+#: scripts/autoload/card_db.gd maos_rapidas
+msgctxt "card"
+msgid "Quick Hands"
+msgstr "Mãos Rápidas"
+
+#: scripts/autoload/card_db.gd maos_rapidas
+msgctxt "card"
+msgid "Reload -0.25 s."
+msgstr "Recarregar -0,25 s."
+
+#: scripts/autoload/card_db.gd polvora_extra
+msgctxt "card"
+msgid "Extra Powder"
+msgstr "Pólvora Extra"
+
+#: scripts/autoload/card_db.gd polvora_extra
+msgctxt "card"
+msgid "Bullet speed +30%. Bullet size -10%. Each shot pushes you back a little; more copies push harder each time."
+msgstr "Velocidade da bala +30%. Tamanho da bala -10%. Cada tiro te empurra um pouco para trás; mais cópias empurram cada vez mais."
+
+#: scripts/autoload/card_db.gd cano_duplo
+msgctxt "card"
+msgid "Double Barrel"
+msgstr "Cano Duplo"
+
+#: scripts/autoload/card_db.gd cano_duplo
+msgctxt "card"
+msgid "+1 bullet per shot. Magazine +1. Damage -20%."
+msgstr "+1 bala por tiro. Pente +1. Dano -20%."
+
+#: scripts/autoload/card_db.gd cano_serrado
+msgctxt "card"
+msgid "Sawed-Off"
+msgstr "Cano Serrado"
+
+#: scripts/autoload/card_db.gd cano_serrado
+msgctxt "card"
+msgid "Your bullets deal +60% damage up to 5 m; the bonus drops to zero at 12 m, and from 15 m on the damage is -30%. Up close, bullets hit even when passing slightly beside the enemy. Spread 50% wider. Range -70%."
+msgstr "Suas balas causam +60% de dano a até 5 m; o bônus cai até zero aos 12 m, e a partir de 15 m o dano é -30%. De pertinho, as balas acertam mesmo passando um pouco ao lado do inimigo. Leque 50% mais aberto. Alcance -70%."
+
+#: scripts/autoload/card_db.gd escopeta
+msgctxt "card"
+msgid "Shotgun"
+msgstr "Escopeta"
+
+#: scripts/autoload/card_db.gd escopeta
+msgctxt "card"
+msgid "+3 bullets per shot (4 in total), in a spread, and each bullet uses 1 from the magazine (with the magazine almost empty, only the ones left come out). Magazine +4. Damage -25%."
+msgstr "+3 balas por tiro (4 no total), em leque, e cada bala gasta 1 do pente (com o pente quase vazio, saem só as que houver). Pente +4. Dano -25%."
+
+#: scripts/autoload/card_db.gd rajada
+msgctxt "card"
+msgid "Burst"
+msgstr "Rajada"
+
+#: scripts/autoload/card_db.gd rajada
+msgctxt "card"
+msgid "Each click fires a burst of 3 shots in a row, each using 1 bullet from the magazine. Damage -10%."
+msgstr "Cada clique dispara uma rajada de 3 tiros seguidos, cada um gastando 1 bala do pente. Dano -10%."
+
+#: scripts/autoload/card_db.gd combinar
+msgctxt "card"
+msgid "Merge"
+msgstr "Combinar"
+
+#: scripts/autoload/card_db.gd combinar
+msgctxt "card"
+msgid "Damage +40%. Magazine -2."
+msgstr "Dano +40%. Pente -2."
+
+#: scripts/autoload/card_db.gd transbordar
+msgctxt "card"
+msgid "Overflow"
+msgstr "Transbordar"
+
+#: scripts/autoload/card_db.gd transbordar
+msgctxt "card"
+msgid "Magazine +9. Damage -30%. Reload +0.8 s."
+msgstr "Pente +9. Dano -30%. Recarregar +0,8 s."
+
+#: scripts/autoload/card_db.gd bala_gigante
+msgctxt "card"
+msgid "Giant Bullet"
+msgstr "Bala Gigante"
+
+#: scripts/autoload/card_db.gd bala_gigante
+msgctxt "card"
+msgid "Bullet size x2. Damage +20%. Range -30%, bullet drop +20% and bullet speed -10%."
+msgstr "Tamanho da bala x2. Dano +20%. Alcance -30%, queda da bala +20% e velocidade da bala -10%."
+
+#: scripts/autoload/card_db.gd bala_de_canhao
+msgctxt "card"
+msgid "Cannonball"
+msgstr "Bala de Canhão"
+
+#: scripts/autoload/card_db.gd bala_de_canhao
+msgctxt "card"
+msgid "Damage +40%. Bullet size x2. Range -40%. Fire rate -20%. Reload +0.3 s."
+msgstr "Dano +40%. Tamanho da bala x2. Alcance -40%. Cadência -20%. Recarregar +0,3 s."
+
+#: scripts/autoload/card_db.gd imprudente
+msgctxt "card"
+msgid "Reckless"
+msgstr "Imprudente"
+
+#: scripts/autoload/card_db.gd imprudente
+msgctxt "card"
+msgid "Fire rate +70%. Reload time +50%. Health -20%."
+msgstr "Cadência +70%. Tempo para recarregar +50%. Vida -20%."
+
+#: scripts/autoload/card_db.gd metralhadora
+msgctxt "card"
+msgid "Machine Gun"
+msgstr "Metralhadora"
+
+#: scripts/autoload/card_db.gd metralhadora
+msgctxt "card"
+msgid "Automatic: hold to fire. Fire rate x3. Magazine +10. Damage -40%. Reload +0.3 s."
+msgstr "Automática: segure para atirar. Cadência x3. Pente +10. Dano -40%. Recarregar +0,3 s."
+
+#: scripts/autoload/card_db.gd canhao_de_vidro
+msgctxt "card"
+msgid "Glass Cannon"
+msgstr "Canhão de Vidro"
+
+#: scripts/autoload/card_db.gd canhao_de_vidro
+msgctxt "card"
+msgid "Damage +75%. Health -50%."
+msgstr "Dano +75%. Vida -50%."
+
+#: scripts/autoload/card_db.gd olho_de_aguia
+msgctxt "card"
+msgid "Eagle Eye"
+msgstr "Olho de Águia"
+
+#: scripts/autoload/card_db.gd olho_de_aguia
+msgctxt "card"
+msgid "Bullet speed +50% and bullet drop -50%. Damage +25%. Bullet size -15%. Magazine -1. Fire rate -30%. Reload +0.2 s."
+msgstr "Velocidade da bala +50% e queda da bala -50%. Dano +25%. Tamanho da bala -15%. Pente -1. Cadência -30%. Recarregar +0,2 s."
+
+#: scripts/autoload/card_db.gd morteiro
+msgctxt "card"
+msgid "Mortar"
+msgstr "Morteiro"
+
+#: scripts/autoload/card_db.gd morteiro
+msgctxt "card"
+msgid "Bullets fly in a high arc (bullet drop x3.5) and explode (4 m radius). Damage +30%. Bullet speed -40%."
+msgstr "Balas em arco alto (queda da bala x3,5) que explodem (raio de 4 m). Dano +30%. Velocidade da bala -40%."
+
+#: scripts/autoload/card_db.gd recarga_perfeita
+msgctxt "card"
+msgid "Perfect Reload"
+msgstr "Recarga Perfeita"
+
+#: scripts/autoload/card_db.gd recarga_perfeita
+msgctxt "card"
+msgid "While you reload, a golden band appears on the crosshair ring: press reload again inside it to finish instantly, and the next magazine deals +15% damage. Outside the band, reloading is delayed by 0.4 s. One attempt at a time."
+msgstr "Enquanto você recarrega, aparece uma faixa dourada no anel da mira: aperte recarregar de novo nela para terminar na hora, e o pente seguinte causa +15% de dano. Fora da faixa, recarregar atrasa 0,4 s. Uma tentativa por vez."
+
+#: scripts/autoload/card_db.gd ultima_bala
+msgctxt "card"
+msgid "Last Bullet"
+msgstr "Última Bala"
+
+#: scripts/autoload/card_db.gd ultima_bala
+msgctxt "card"
+msgid "The last bullet in the magazine deals x2 damage (multiplies). More copies: x2.5 and x3."
+msgstr "A última bala do pente causa dano x2 (multiplica). Mais cópias: x2,5 e x3."
+
+#: scripts/autoload/card_db.gd sortudo
+msgctxt "card"
+msgid "Lucky"
+msgstr "Sortudo"
+
+#: scripts/autoload/card_db.gd sortudo
+msgctxt "card"
+msgid "Each bullet has a 20% chance to be critical: x2 damage (multiplies)."
+msgstr "Cada bala tem 20% de chance de ser crítica: dano x2 (multiplica)."
+
+#: scripts/autoload/card_db.gd reciclagem
+msgctxt "card"
+msgid "Recycling"
+msgstr "Reciclagem"
+
+#: scripts/autoload/card_db.gd reciclagem
+msgctxt "card"
+msgid "Each bullet that hits an enemy returns 1 bullet to the magazine per copy: 1, 2 or 3."
+msgstr "Cada bala que acerta um inimigo devolve 1 bala ao pente por cópia: 1, 2 ou 3."
+
+#: scripts/autoload/card_db.gd cinto_municao
+msgctxt "card"
+msgid "Ammo Belt"
+msgstr "Cinto de Munição"
+
+#: scripts/autoload/card_db.gd cinto_municao
+msgctxt "card"
+msgid "Magazine +50%. Reload +0.4 s."
+msgstr "Pente +50%. Recarregar +0,4 s."
+
+#: scripts/autoload/card_db.gd cartucheira
+msgctxt "card"
+msgid "Bandolier"
+msgstr "Cartucheira"
+
+#: scripts/autoload/card_db.gd cartucheira
+msgctxt "card"
+msgid "Each bullet has a 10% chance not to come out of the magazine. Range -10%."
+msgstr "Cada bala tem 10% de chance de não sair do pente. Alcance -10%."
+
+#: scripts/autoload/card_db.gd choke
+msgctxt "card"
+msgid "Choke"
+msgstr "Choke"
+
+#: scripts/autoload/card_db.gd choke
+msgctxt "card"
+msgid "Range +25%. Spread 20% tighter."
+msgstr "Alcance +25%. Leque 20% mais fechado."
+
+#: scripts/autoload/card_db.gd silenciador
+msgctxt "card"
+msgid "Suppressor"
+msgstr "Silenciador"
+
+#: scripts/autoload/card_db.gd silenciador
+msgctxt "card"
+msgid "Range +60%. Bullet speed +20%. Bullet size -15%."
+msgstr "Alcance +60%. Velocidade da bala +20%. Tamanho da bala -15%."
+
+#: scripts/autoload/card_db.gd nucleo_de_aco
+msgctxt "card"
+msgid "Steel Core"
+msgstr "Núcleo de Aço"
+
+#: scripts/autoload/card_db.gd nucleo_de_aco
+msgctxt "card"
+msgid "20% of your hits' damage that would go to the enemy's armor goes straight to health (40% and 60% with 2 and 3 copies). Bullet size +15%. Damage +10%. Reload +0.2 s."
+msgstr "20% do dano dos seus acertos que iria para o colete do inimigo vai direto na vida (40% e 60% com 2 e 3 cópias). Tamanho da bala +15%. Dano +10%. Recarregar +0,2 s."
+
+#: scripts/autoload/card_db.gd sangue_frio
+msgctxt "card"
+msgid "Cold Blood"
+msgstr "Sangue Frio"
+
+#: scripts/autoload/card_db.gd sangue_frio
+msgctxt "card"
+msgid "Standing still or crouching on the ground: damage +25% and bullet speed +30%. With 2 copies, +50% and +60%."
+msgstr "Parado ou agachado no chão: dano +25% e velocidade da bala +30%. Com 2 cópias, +50% e +60%."
+
+#: scripts/autoload/card_db.gd ricochete
+msgctxt "card"
+msgid "Ricochet"
+msgstr "Ricochete"
+
+#: scripts/autoload/card_db.gd ricochete
+msgctxt "card"
+msgid "Bullets bounce off walls one more time."
+msgstr "As balas quicam uma vez a mais nas paredes."
+
+#: scripts/autoload/card_db.gd bola_borracha
+msgctxt "card"
+msgid "Rubber Ball"
+msgstr "Bola de Borracha"
+
+#: scripts/autoload/card_db.gd bola_borracha
+msgctxt "card"
+msgid "Bullets bounce off walls two more times. Damage -20%."
+msgstr "As balas quicam duas vezes a mais nas paredes. Dano -20%."
+
+#: scripts/autoload/card_db.gd teleguiada
+msgctxt "card"
+msgid "Homing"
+msgstr "Teleguiada"
+
+#: scripts/autoload/card_db.gd teleguiada
+msgctxt "card"
+msgid "Some bullets (35%) that pass near an enemy curve toward them and turn green. More copies: more bullets seek (never all, at most 70%) and from a bit farther away. Damage -20%. Reload +0.25 s."
+msgstr "Algumas balas (35%) que passam perto do inimigo curvam na direção dele e ficam verdes. Mais cópias: mais balas procuram (nunca todas, no máximo 70%) e de um pouco mais longe. Dano -20%. Recarregar +0,25 s."
+
+#: scripts/autoload/card_db.gd fantasma
+msgctxt "card"
+msgid "Ghost Bullet"
+msgstr "Bala Fantasma"
+
+#: scripts/autoload/card_db.gd fantasma
+msgctxt "card"
+msgid "Each bullet goes through the first wall it hits (with 2 copies, the first two). Damage -15%."
+msgstr "Cada bala atravessa a primeira parede em que bater (com 2 cópias, as duas primeiras). Dano -15%."
+
+#: scripts/autoload/card_db.gd explosiva
+msgctxt "card"
+msgid "Explosive"
+msgstr "Explosiva"
+
+#: scripts/autoload/card_db.gd explosiva
+msgctxt "card"
+msgid "Bullets explode on impact (3 m radius). Damage -15%."
+msgstr "As balas explodem ao bater (raio de 3 m). Dano -15%."
+
+#: scripts/autoload/card_db.gd veneno
+msgctxt "card"
+msgid "Poison"
+msgstr "Veneno"
+
+#: scripts/autoload/card_db.gd veneno
+msgctxt "card"
+msgid "Hitting applies Poison: an extra 60% of the damage (only 40% of the part above 40), dealt over 5 s. Magazine -1."
+msgstr "Acertar aplica Veneno: mais 60% do dano (da parte acima de 40, só 40%), tirado ao longo de 5 s. Pente -1."
+
+#: scripts/autoload/card_db.gd incendiaria
+msgctxt "card"
+msgid "Incendiary Bullet"
+msgstr "Bala Incendiária"
+
+#: scripts/autoload/card_db.gd incendiaria
+msgctxt "card"
+msgid "Hitting applies Burn: 50% of the bullet's damage per second (only 35% of the part above 40), for 1 s. More copies: +50% per second. Fire rate -10%."
+msgstr "Acertar aplica Queimadura: 50% do dano da bala por segundo (da parte acima de 40, só 35%), por 1 s. Mais cópias: +50% por segundo. Cadência -10%."
+
+#: scripts/autoload/card_db.gd brasa
+msgctxt "card"
+msgid "Ember"
+msgstr "Brasa"
+
+#: scripts/autoload/card_db.gd brasa
+msgctxt "card"
+msgid "Each hit on someone already burning from your fire increases that Burn by +25%, up to double. It goes back to normal when the burn ends. Reload +0.2 s."
+msgstr "Cada acerto em quem já queima com seu fogo aumenta essa Queimadura em +25%, até o dobro. Volta ao normal quando a queimadura acaba. Recarregar +0,2 s."
+
+#: scripts/autoload/card_db.gd combustivel
+msgctxt "card"
+msgid "Fuel"
+msgstr "Combustível"
+
+#: scripts/autoload/card_db.gd combustivel
+msgctxt "card"
+msgid "Your Burn deals 40% more to targets that also have another affliction: Poison, Freeze, Slow, Blind, Dizzy or Shield locked. Damage -5%."
+msgstr "Sua Queimadura tira 40% mais em quem também está com outra aflição: Veneno, Congelamento, Lentidão, Cegueira, Tontura ou Escudo bloqueado. Dano -5%."
+
+#: scripts/autoload/card_db.gd combustao_lenta
+msgctxt "card"
+msgid "Slow Burn"
+msgstr "Combustão Lenta"
+
+#: scripts/autoload/card_db.gd combustao_lenta
+msgctxt "card"
+msgid "Your Burn lasts +0.5 s, but deals 10% less per second. Burn lasts at most 4 s."
+msgstr "Sua Queimadura dura +0,5 s, mas tira 10% menos por segundo. A Queimadura dura no máximo 4 s."
+
+#: scripts/autoload/card_db.gd congelante
+msgctxt "card"
+msgid "Lethargic Bullet"
+msgstr "Bala Letárgica"
+
+#: scripts/autoload/card_db.gd congelante
+msgctxt "card"
+msgid "Hitting applies Slow: the target moves 35% slower for 1.5 s."
+msgstr "Acertar aplica Lentidão: o alvo anda 35% mais devagar por 1,5 s."
+
+#: scripts/autoload/card_db.gd bala_de_gelo
+msgctxt "card"
+msgid "Ice Bullet"
+msgstr "Bala de Gelo"
+
+#: scripts/autoload/card_db.gd bala_de_gelo
+msgctxt "card"
+msgid "Hitting applies 1 frost stack (2 with 2 copies). Damage -10%."
+msgstr "Acertar põe 1 camada de Congelamento (2 com 2 cópias). Dano -10%."
+
+#: scripts/autoload/card_db.gd hipotermia
+msgctxt "card"
+msgid "Hypothermia"
+msgstr "Hipotermia"
+
+#: scripts/autoload/card_db.gd hipotermia
+msgctxt "card"
+msgid "Hitting someone with Slow applies +1 frost stack. Those you freeze stay frozen for 0.8 s instead of 0.5. Reload +0.2 s."
+msgstr "Acertar quem está com Lentidão põe +1 camada de Congelamento. Quem você congela fica congelado 0,8 s em vez de 0,5. Recarregar +0,2 s."
+
+#: scripts/autoload/card_db.gd estilhaco
+msgctxt "card"
+msgid "Shatter"
+msgstr "Estilhaço"
+
+#: scripts/autoload/card_db.gd estilhaco
+msgctxt "card"
+msgid "Breaking someone's ice also hits enemies within 4 m of them: half the blow and 2 frost stacks. Fire rate -10%."
+msgstr "Quebrar o gelo de alguém acerta também os inimigos a até 4 m dele: metade do golpe e 2 camadas de Congelamento. Cadência -10%."
+
+#: scripts/autoload/card_db.gd choque_termico
+msgctxt "card"
+msgid "Thermal Shock"
+msgstr "Choque Térmico"
+
+#: scripts/autoload/card_db.gd choque_termico
+msgctxt "card"
+msgid "When the ice of someone you froze ends (broken or melted), they take +10 damage and a Burn of 10 per second for 1.5 s. Damage -5%."
+msgstr "Quando o gelo de quem você congelou acaba (quebrado ou derretido), ele leva +10 de dano e Queimadura de 10 por segundo por 1,5 s. Dano -5%."
+
+#: scripts/autoload/card_db.gd propulsao
+msgctxt "card"
+msgid "Knockback"
+msgstr "Propulsão"
+
+#: scripts/autoload/card_db.gd propulsao
+msgctxt "card"
+msgid "Bullets push whoever gets hit. Reload +0.25 s."
+msgstr "As balas empurram quem levar o tiro. Recarregar +0,25 s."
+
+#: scripts/autoload/card_db.gd quique_certeiro
+msgctxt "card"
+msgid "Smart Bounce"
+msgstr "Quique Certeiro"
+
+#: scripts/autoload/card_db.gd quique_certeiro
+msgctxt "card"
+msgid "+1 bounce. On bouncing, the bullet may turn a little toward the enemy and start seeking them like Homing (35% chance). Copies of Homing make this stronger. Damage -20%."
+msgstr "+1 quique. Ao quicar, a bala pode virar um pouco para o inimigo e passar a procurá-lo como a Teleguiada (35% de chance). Cópias de Teleguiada deixam isso mais forte. Dano -20%."
+
+#: scripts/autoload/card_db.gd atordoante
+msgctxt "card"
+msgid "Stunner"
+msgstr "Atordoante"
+
+#: scripts/autoload/card_db.gd atordoante
+msgctxt "card"
+msgid "Hitting an enemy locks their shield for 1.5 s. After that, they can't be stunned again for 3 s. Fire rate -20%."
+msgstr "Acertar o inimigo bloqueia o escudo dele por 1,5 s. Depois disso, ele fica 3 s sem poder ser atordoado de novo. Cadência -20%."
+
+#: scripts/autoload/card_db.gd sanguessuga
+msgctxt "card"
+msgid "Leech"
+msgstr "Sanguessuga"
+
+#: scripts/autoload/card_db.gd sanguessuga
+msgctxt "card"
+msgid "Recover 25% of the damage you deal. Damage -10%."
+msgstr "Recupera 25% do dano que causar. Dano -10%."
+
+#: scripts/autoload/card_db.gd marca
+msgctxt "card"
+msgid "Mark"
+msgstr "Marca"
+
+#: scripts/autoload/card_db.gd marca
+msgctxt "card"
+msgid "Dealing damage marks the enemy for 3 s: you see them through walls and they take +15% of your damage. Only marks again 5 s later. Your Poison and your Burn also mark."
+msgstr "Causar dano marca o inimigo por 3 s: você o vê através das paredes e ele leva +15% do seu dano. Só marca de novo 5 s depois. Seu Veneno e sua Queimadura também marcam."
+
+#: scripts/autoload/card_db.gd persistencia
+msgctxt "card"
+msgid "Persistence"
+msgstr "Persistência"
+
+#: scripts/autoload/card_db.gd persistencia
+msgctxt "card"
+msgid "Your Poison and your Burn last 30% longer (and deal more in total). Damage -5%."
+msgstr "Seu Veneno e sua Queimadura duram 30% mais (e tiram mais no total). Dano -5%."
+
+#: scripts/autoload/card_db.gd acido
+msgctxt "card"
+msgid "Acid"
+msgstr "Ácido"
+
+#: scripts/autoload/card_db.gd acido
+msgctxt "card"
+msgid "While suffering your Poison or your Burn, the enemy heals 50% less."
+msgstr "Enquanto sofre seu Veneno ou sua Queimadura, o inimigo cura 50% menos."
+
+#: scripts/autoload/card_db.gd corrosao
+msgctxt "card"
+msgid "Corrosion"
+msgstr "Corrosão"
+
+#: scripts/autoload/card_db.gd corrosao
+msgctxt "card"
+msgid "Your Poison and your Burn ignore armor: they go straight to health."
+msgstr "Seu Veneno e sua Queimadura ignoram o colete: tiram direto da vida."
+
+#: scripts/autoload/card_db.gd contagio
+msgctxt "card"
+msgid "Contagion"
+msgstr "Contágio"
+
+#: scripts/autoload/card_db.gd contagio
+msgctxt "card"
+msgid "Your Poison jumps, at half strength, to enemies within 4 m of whoever is poisoned; with no one nearby, it goes back to the poisoned target itself. Each one catches it at most every 4 s, and poison that jumped doesn't jump again. Only works with Poison or Toxic Cloud. Magazine -1."
+msgstr "Seu Veneno pula, com metade da força, para inimigos a até 4 m de quem está envenenado; sem ninguém perto, volta para o próprio envenenado. Cada um pega isso no máximo a cada 4 s e o veneno que pulou não pula de novo. Só vale com Veneno ou Nuvem Tóxica. Pente -1."
+
+#: scripts/autoload/card_db.gd reacao_em_cadeia
+msgctxt "card"
+msgid "Chain Reaction"
+msgstr "Reação em Cadeia"
+
+#: scripts/autoload/card_db.gd reacao_em_cadeia
+msgctxt "card"
+msgid "When one of your afflictions ends on an enemy, they explode: they take half your bullet damage (at least 5, up to 25) and deal the same to other enemies within 4 m, who catch the affliction that ended. Each one explodes at most every 3 s. With 2 copies, 80% of bullet damage (up to 40) and 5 m. Reload +0.3 s."
+msgstr "Quando uma aflição sua termina num inimigo, ele explode: toma metade do dano da sua bala (no mínimo 5, até 25) e causa o mesmo a outros inimigos a até 4 m, que pegam de novo a aflição que terminou. Cada um explode no máximo a cada 3 s. Com 2 cópias, 80% do dano da bala (até 40) e 5 m. Recarregar +0,3 s."
+
+#: scripts/autoload/card_db.gd dose_extra
+msgctxt "card"
+msgid "Extra Dose"
+msgstr "Dose Extra"
+
+#: scripts/autoload/card_db.gd dose_extra
+msgctxt "card"
+msgid "Hitting and applying an affliction the enemy didn't have yet returns 1 bullet to the magazine. Reload +0.3 s."
+msgstr "Acertar e aplicar uma aflição que o inimigo ainda não tinha devolve 1 bala ao pente. Recarregar +0,3 s."
+
+#: scripts/autoload/card_db.gd raspao
+msgctxt "card"
+msgid "Graze"
+msgstr "Raspão"
+
+#: scripts/autoload/card_db.gd raspao
+msgctxt "card"
+msgid "A bullet that passes within 1 m of an enemy without hitting applies your afflictions to them, with no damage. At most once every 0.25 s on each enemy. Fire rate -10%."
+msgstr "A bala que passa a até 1 m de um inimigo sem acertar aplica nele as suas aflições, sem dano. No máximo uma vez a cada 0,25 s em cada inimigo. Cadência -10%."
+
+#: scripts/autoload/card_db.gd executor
+msgctxt "card"
+msgid "Executioner"
+msgstr "Executor"
+
+#: scripts/autoload/card_db.gd executor
+msgctxt "card"
+msgid "+40% damage to targets below 40% health. Fire rate -10%."
+msgstr "+40% de dano em quem está abaixo de 40% da vida. Cadência -10%."
+
+#: scripts/autoload/card_db.gd bumerangue
+msgctxt "card"
+msgid "Boomerang"
+msgstr "Bumerangue"
+
+#: scripts/autoload/card_db.gd bumerangue
+msgctxt "card"
+msgid "After half a second, or 3 m before the end of Range, bullets turn around and come back to you, hitting again along the way. Range doesn't apply on the way back."
+msgstr "Depois de meio segundo, ou 3 m antes do fim do Alcance, as balas dão meia-volta e voltam para você, acertando de novo no caminho. Na volta o Alcance não vale."
+
+#: scripts/autoload/card_db.gd tabelinha
+msgctxt "card"
+msgid "Bank Shot"
+msgstr "Tabelinha"
+
+#: scripts/autoload/card_db.gd tabelinha
+msgctxt "card"
+msgid "Each bounce adds +30% of the starting damage to the bullet. Gives no bounces: pair it with Ricochet or other bounce cards."
+msgstr "Cada quique soma +30% do dano de saída à bala. Não dá quiques: junte com Ricochete ou outras cartas de quique."
+
+#: scripts/autoload/card_db.gd detonacao
+msgctxt "card"
+msgid "Detonation"
+msgstr "Detonação"
+
+#: scripts/autoload/card_db.gd detonacao
+msgctxt "card"
+msgid "Bullets stick where they hit and explode 0.6 s later (3.5 m radius). Reload +0.25 s."
+msgstr "As balas grudam onde batem e explodem 0,6 s depois (raio de 3,5 m). Recarregar +0,25 s."
+
+#: scripts/autoload/card_db.gd fragmentacao
+msgctxt "card"
+msgid "Fragmentation"
+msgstr "Fragmentação"
+
+#: scripts/autoload/card_db.gd fragmentacao
+msgctxt "card"
+msgid "On hitting a wall, the bullet splits into 4 shards with 40% of the damage."
+msgstr "Ao bater na parede, a bala se parte em 4 estilhaços com 40% do dano."
+
+#: scripts/autoload/card_db.gd bola_de_neve
+msgctxt "card"
+msgid "Snowball"
+msgstr "Bola de Neve"
+
+#: scripts/autoload/card_db.gd bola_de_neve
+msgctxt "card"
+msgid "The bullet grows with flight time and gains up to +100% damage over 5 s. Without bounces or another way to last longer, it vanishes before reaching the maximum."
+msgstr "A bala cresce com o tempo de voo e ganha até +100% de dano em 5 s. Sem quiques ou outro jeito de durar mais, ela some antes do máximo."
+
+#: scripts/autoload/card_db.gd troca_troca
+msgctxt "card"
+msgid "Switcheroo"
+msgstr "Troca-Troca"
+
+#: scripts/autoload/card_db.gd troca_troca
+msgctxt "card"
+msgid "Hitting an enemy marks you both: 0.6 s later, you swap places. The same person can only be swapped again 2 s later. Damage -15%."
+msgstr "Acertar o inimigo marca vocês dois: 0,6 s depois, trocam de lugar. A mesma pessoa só é trocada de novo 2 s depois. Dano -15%."
+
+#: scripts/autoload/card_db.gd flash
+msgctxt "card"
+msgid "Flash"
+msgstr "Flash"
+
+#: scripts/autoload/card_db.gd flash
+msgctxt "card"
+msgid "Hitting an enemy turns their screen white for 0.9 s. After that, they can't be blinded again for 2 s."
+msgstr "Acertar o inimigo deixa a tela dele branca por 0,9 s. Depois disso, ele fica 2 s sem poder ser cegado de novo."
+
+#: scripts/autoload/card_db.gd preguicosa
+msgctxt "card"
+msgid "Lazy Bullet"
+msgstr "Bala Preguiçosa"
+
+#: scripts/autoload/card_db.gd preguicosa
+msgctxt "card"
+msgid "Bullets start slow and accelerate up to 2.5x normal speed. Damage +25%."
+msgstr "As balas saem devagar e aceleram até 2,5x a velocidade normal. Dano +25%."
+
+#: scripts/autoload/card_db.gd dinamite
+msgctxt "card"
+msgid "Dynamite"
+msgstr "Dinamite"
+
+#: scripts/autoload/card_db.gd dinamite
+msgctxt "card"
+msgid "Your explosions get 1 m bigger and deal +30% damage. Without explosions, it does nothing."
+msgstr "Suas explosões ficam 1 m maiores e causam +30% de dano. Sem explosão, não faz nada."
+
+#: scripts/autoload/card_db.gd carga_concentrada
+msgctxt "card"
+msgid "Shaped Charge"
+msgstr "Carga Concentrada"
+
+#: scripts/autoload/card_db.gd carga_concentrada
+msgctxt "card"
+msgid "Your explosions deal +60% damage, but get 1 m smaller. Without explosions, it does nothing."
+msgstr "Suas explosões causam +60% de dano, mas ficam 1 m menores. Sem explosão, não faz nada."
+
+#: scripts/autoload/card_db.gd nuvem_toxica
+msgctxt "card"
+msgid "Toxic Cloud"
+msgstr "Nuvem Tóxica"
+
+#: scripts/autoload/card_db.gd nuvem_toxica
+msgctxt "card"
+msgid "Where the bullet hits, a cloud stays (2.5 m, 3 s) that applies Poison to anyone inside: 30% of the bullet's damage per second inside (only 20% of the part above 40), dealt over 5 s. Your clouds don't stack on the same target. More copies: +0.75 m and +1 s. Fire rate -20%."
+msgstr "Onde a bala bate fica uma nuvem (2,5 m, 3 s) que aplica Veneno em quem estiver dentro: 30% do dano da bala por segundo dentro (da parte acima de 40, só 20%), tirado ao longo de 5 s. Nuvens suas não somam no mesmo alvo. Mais cópias: +0,75 m e +1 s. Cadência -20%."
+
+#: scripts/autoload/card_db.gd buraco_negro
+msgctxt "card"
+msgid "Black Hole"
+msgstr "Buraco Negro"
+
+#: scripts/autoload/card_db.gd buraco_negro
+msgctxt "card"
+msgid "Where the bullet hits, a black hole appears for 0.6 s and pulls enemies within 5 m to its center. With 2 copies it pulls harder and from 6 m. Damage -10%."
+msgstr "Onde a bala bate surge por 0,6 s um buraco negro que puxa os inimigos a até 5 m para o centro. Com 2 cópias puxa mais forte e de 6 m. Dano -10%."
+
+#: scripts/autoload/card_db.gd escudo_firme
+msgctxt "card"
+msgid "Steady Shield"
+msgstr "Escudo Firme"
+
+#: scripts/autoload/card_db.gd escudo_firme
+msgctxt "card"
+msgid "The shield lasts +0.15 s. Shield cooldown +0.5 s."
+msgstr "O escudo dura +0,15 s. Recarga do escudo +0,5 s."
+
+#: scripts/autoload/card_db.gd reflexos
+msgctxt "card"
+msgid "Reflexes"
+msgstr "Reflexos"
+
+#: scripts/autoload/card_db.gd reflexos
+msgctxt "card"
+msgid "Shield cooldown -0.5 s."
+msgstr "Recarga do escudo -0,5 s."
+
+#: scripts/autoload/card_db.gd defensor
+msgctxt "card"
+msgid "Defender"
+msgstr "Defensor"
+
+#: scripts/autoload/card_db.gd defensor
+msgctxt "card"
+msgid "Health +15%. Shield cooldown -0.25 s."
+msgstr "Vida +15%. Recarga do escudo -0,25 s."
+
+#: scripts/autoload/card_db.gd passo_ligeiro
+msgctxt "card"
+msgid "Light Step"
+msgstr "Passo Ligeiro"
+
+#: scripts/autoload/card_db.gd passo_ligeiro
+msgctxt "card"
+msgid "Raising the shield gives +25% movement speed for 1.5 s. Shield cooldown -0.3 s."
+msgstr "Levantar o escudo dá +25% de velocidade de movimento por 1,5 s. Recarga do escudo -0,3 s."
+
+#: scripts/autoload/card_db.gd escudo_de_papel
+msgctxt "card"
+msgid "Paper Shield"
+msgstr "Escudo de Papel"
+
+#: scripts/autoload/card_db.gd escudo_de_papel
+msgctxt "card"
+msgid "Shield cooldown -1 s. Health -20%."
+msgstr "Recarga do escudo -1 s. Vida -20%."
+
+#: scripts/autoload/card_db.gd espelho_cortante
+msgctxt "card"
+msgid "Razor Mirror"
+msgstr "Espelho Cortante"
+
+#: scripts/autoload/card_db.gd espelho_cortante
+msgctxt "card"
+msgid "Reflected bullets deal +75% damage. Shield cooldown +0.5 s."
+msgstr "Balas refletidas causam +75% de dano. Recarga do escudo +0,5 s."
+
+#: scripts/autoload/card_db.gd adrenalina
+msgctxt "card"
+msgid "Adrenaline"
+msgstr "Adrenalina"
+
+#: scripts/autoload/card_db.gd adrenalina
+msgctxt "card"
+msgid "Reflecting a bullet halves the remaining shield cooldown, once per shield raise. Shield cooldown +1 s."
+msgstr "Refletir uma bala corta pela metade o que falta da recarga do escudo, uma vez por escudo levantado. Recarga do escudo +1 s."
+
+#: scripts/autoload/card_db.gd espelho_duplo
+msgctxt "card"
+msgid "Double Mirror"
+msgstr "Espelho Duplo"
+
+#: scripts/autoload/card_db.gd espelho_duplo
+msgctxt "card"
+msgid "Each reflected bullet comes back with one more. Shield cooldown +1 s."
+msgstr "Cada bala refletida volta acompanhada de mais uma. Recarga do escudo +1 s."
+
+#: scripts/autoload/card_db.gd espelho_perseguidor
+msgctxt "card"
+msgid "Seeking Mirror"
+msgstr "Espelho Perseguidor"
+
+#: scripts/autoload/card_db.gd espelho_perseguidor
+msgctxt "card"
+msgid "Reflected bullets chase the shooter. Shield cooldown +1 s."
+msgstr "Balas refletidas perseguem quem atirou. Recarga do escudo +1 s."
+
+#: scripts/autoload/card_db.gd recarga_tatica
+msgctxt "card"
+msgid "Tactical Reload"
+msgstr "Recarga Tática"
+
+#: scripts/autoload/card_db.gd recarga_tatica
+msgctxt "card"
+msgid "Raising the shield refills the magazine. Shield cooldown +1 s."
+msgstr "Levantar o escudo enche o pente. Recarga do escudo +1 s."
+
+#: scripts/autoload/card_db.gd investida
+msgctxt "card"
+msgid "Charge"
+msgstr "Investida"
+
+#: scripts/autoload/card_db.gd investida
+msgctxt "card"
+msgid "Raising the shield launches you forward. Shield cooldown +0.5 s."
+msgstr "Levantar o escudo te lança para frente. Recarga do escudo +0,5 s."
+
+#: scripts/autoload/card_db.gd onda_de_choque
+msgctxt "card"
+msgid "Shockwave"
+msgstr "Onda de Choque"
+
+#: scripts/autoload/card_db.gd onda_de_choque
+msgctxt "card"
+msgid "The shield pushes enemies within 8 m and deals 8 damage. Shield cooldown +1 s."
+msgstr "O escudo empurra o inimigo a até 8 m e causa 8 de dano. Recarga do escudo +1 s."
+
+#: scripts/autoload/card_db.gd restauracao
+msgctxt "card"
+msgid "Restoration"
+msgstr "Restauração"
+
+#: scripts/autoload/card_db.gd restauracao
+msgctxt "card"
+msgid "Raising the shield heals 10 health. Shield cooldown +0.5 s."
+msgstr "Levantar o escudo cura 10 de vida. Recarga do escudo +0,5 s."
+
+#: scripts/autoload/card_db.gd nova
+msgctxt "card"
+msgid "Nova"
+msgstr "Nova"
+
+#: scripts/autoload/card_db.gd nova
+msgctxt "card"
+msgid "The shield fires 6 bullets around you (half damage). Shield cooldown +1 s."
+msgstr "O escudo dispara 6 balas em volta de você (meio dano). Recarga do escudo +1 s."
+
+#: scripts/autoload/card_db.gd teleporte
+msgctxt "card"
+msgid "Teleport"
+msgstr "Teleporte"
+
+#: scripts/autoload/card_db.gd teleporte
+msgctxt "card"
+msgid "Raising the shield teleports you 7 m where you look, through walls. Shield cooldown +0.5 s."
+msgstr "Levantar o escudo te teleporta 7 m para onde você olha, atravessando paredes. Recarga do escudo +0,5 s."
+
+#: scripts/autoload/card_db.gd chuva_de_bombas
+msgctxt "card"
+msgid "Bomb Rain"
+msgstr "Chuva de Bombas"
+
+#: scripts/autoload/card_db.gd chuva_de_bombas
+msgctxt "card"
+msgid "The shield lobs 5 bombs in an arc around you. Shield cooldown +1 s."
+msgstr "O escudo lança 5 bombas em arco à sua volta. Recarga do escudo +1 s."
+
+#: scripts/autoload/card_db.gd eco
+msgctxt "card"
+msgid "Echo"
+msgstr "Eco"
+
+#: scripts/autoload/card_db.gd eco
+msgctxt "card"
+msgid "The shield raises itself again 0.5 s later, with the effects of your other Shield cards, one more time per copy. Shield cooldown +1 s."
+msgstr "O escudo se levanta de novo sozinho 0,5 s depois, com os efeitos das suas outras cartas de Escudo, uma vez a mais por cópia. Recarga do escudo +1 s."
+
+#: scripts/autoload/card_db.gd ultima_defesa
+msgctxt "card"
+msgid "Final Guard"
+msgstr "Última Defesa"
+
+#: scripts/autoload/card_db.gd ultima_defesa
+msgctxt "card"
+msgid "When the magazine empties, the shield raises itself (if it is ready). Shield cooldown +0.5 s."
+msgstr "Quando o pente esvazia, o escudo levanta sozinho (se estiver pronto). Recarga do escudo +0,5 s."
+
+#: scripts/autoload/card_db.gd pancada
+msgctxt "card"
+msgid "Bash"
+msgstr "Pancada"
+
+#: scripts/autoload/card_db.gd pancada
+msgctxt "card"
+msgid "With the shield up, anyone right against you takes 20 damage and is pushed. Shield cooldown +1 s."
+msgstr "Com o escudo de pé, quem estiver colado em você leva 20 de dano e é empurrado. Recarga do escudo +1 s."
+
+#: scripts/autoload/card_db.gd escudo_duplo
+msgctxt "card"
+msgid "Double Shield"
+msgstr "Escudo Duplo"
+
+#: scripts/autoload/card_db.gd escudo_duplo
+msgctxt "card"
+msgid "You can raise the shield one more time half a second later, with all effects again. Shield cooldown +1 s and, on top of the total, +30%."
+msgstr "Dá para levantar o escudo mais uma vez meio segundo depois, com todos os efeitos de novo. Recarga do escudo +1 s e, sobre o total, +30%."
+
+#: scripts/autoload/card_db.gd couraca
+msgctxt "card"
+msgid "Cuirass"
+msgstr "Couraça"
+
+#: scripts/autoload/card_db.gd couraca
+msgctxt "card"
+msgid "Raising the shield gives 10 armor. Armor absorbs damage before health and goes up to 50, together with armor from the map. Shield cooldown +0.5 s."
+msgstr "Levantar o escudo dá 10 de colete. O colete absorve dano antes da vida e vai até 50, junto com o do mapa. Recarga do escudo +0,5 s."
+
+#: scripts/autoload/card_db.gd fortaleza
+msgctxt "card"
+msgid "Fortress"
+msgstr "Fortaleza"
+
+#: scripts/autoload/card_db.gd fortaleza
+msgctxt "card"
+msgid "+30 health and the shield lasts +0.1 s. Shield cooldown +0.5 s."
+msgstr "+30 de vida e o escudo dura +0,1 s. Recarga do escudo +0,5 s."
+
+#: scripts/autoload/card_db.gd espelho_gigante
+msgctxt "card"
+msgid "Giant Mirror"
+msgstr "Espelho Gigante"
+
+#: scripts/autoload/card_db.gd espelho_gigante
+msgctxt "card"
+msgid "The shield catches bullets 50% farther from you. Shield cooldown +0.5 s."
+msgstr "O escudo pega balas 50% mais longe de você. Recarga do escudo +0,5 s."
+
+#: scripts/autoload/card_db.gd serra
+msgctxt "card"
+msgid "Buzzsaw"
+msgstr "Serra"
+
+#: scripts/autoload/card_db.gd serra
+msgctxt "card"
+msgid "The shield spins a saw around you for 2 s: 18 damage per second to anyone nearby. 2.5 m radius, +1 m per copy. Shield cooldown +1 s."
+msgstr "O escudo faz uma serra girar em volta de você por 2 s: 18 de dano por segundo em quem estiver perto. Raio de 2,5 m, +1 m por cópia. Recarga do escudo +1 s."
+
+#: scripts/autoload/card_db.gd chamas
+msgctxt "card"
+msgid "Ring of Fire"
+msgstr "Chamas"
+
+#: scripts/autoload/card_db.gd chamas
+msgctxt "card"
+msgid "The shield lights a ring of fire around you for 3 s that follows you: anyone inside gets Burn (9 per second), which continues 1 s after leaving. 4 m radius, +1 m per copy. Shield cooldown +1 s."
+msgstr "O escudo acende um círculo de fogo em volta de você por 3 s, que te acompanha: quem estiver dentro ganha Queimadura (9 por segundo), que continua 1 s depois de sair. Raio de 4 m, +1 m por cópia. Recarga do escudo +1 s."
+
+#: scripts/autoload/card_db.gd geada
+msgctxt "card"
+msgid "Frost Wave"
+msgstr "Geada"
+
+#: scripts/autoload/card_db.gd geada
+msgctxt "card"
+msgid "The shield releases a 5 m ice wave: 6 damage, 45% Slow for 2 s and 2 frost stacks. More copies: +1.5 m and +0.5 s. Shield cooldown +1 s."
+msgstr "O escudo solta uma onda de gelo de 5 m: 6 de dano, Lentidão de 45% por 2 s e 2 camadas de Congelamento. Mais cópias: +1,5 m e +0,5 s. Recarga do escudo +1 s."
+
+#: scripts/autoload/card_db.gd estouro
+msgctxt "card"
+msgid "Rupture"
+msgstr "Estouro"
+
+#: scripts/autoload/card_db.gd estouro
+msgctxt "card"
+msgid "Raising the shield bursts your Poison and your Burn on enemies within 30 m: they take what was left all at once, x1.5 (x2 with both together), and lose those effects. Your frost stacks also burst: 6 damage each. Up to 60 per target. Shield cooldown +2 s."
+msgstr "Levantar o escudo estoura seu Veneno e sua Queimadura nos inimigos a até 30 m: eles tomam de uma vez o que faltava, x1,5 (x2 com os dois juntos), e perdem esses efeitos. Suas camadas de Congelamento também estouram: 6 de dano cada. Até 60 por alvo. Recarga do escudo +2 s."
+
+#: scripts/autoload/card_db.gd mina
+msgctxt "card"
+msgid "Mine"
+msgstr "Mina"
+
+#: scripts/autoload/card_db.gd mina
+msgctxt "card"
+msgid "The shield drops a bomb on the ground that blinks and explodes 1 s later: 30 damage (half at the edge), 4 m radius. More copies: +15 damage and +0.5 m. Shield cooldown +1 s."
+msgstr "O escudo larga uma bomba no chão que pisca e explode 1 s depois: 30 de dano (metade na borda), raio de 4 m. Mais cópias: +15 de dano e +0,5 m. Recarga do escudo +1 s."
+
+#: scripts/autoload/card_db.gd vigor
+msgctxt "card"
+msgid "Vigor"
+msgstr "Vigor"
+
+#: scripts/autoload/card_db.gd vigor
+msgctxt "card"
+msgid "+25 max health."
+msgstr "+25 de vida máxima."
+
+#: scripts/autoload/card_db.gd fragil
+msgctxt "card"
+msgid "Fragile"
+msgstr "Frágil"
+
+#: scripts/autoload/card_db.gd fragil
+msgctxt "card"
+msgid "Damage +30%. Health -30%."
+msgstr "Dano +30%. Vida -30%."
+
+#: scripts/autoload/card_db.gd tanque
+msgctxt "card"
+msgid "Tank"
+msgstr "Tanque"
+
+#: scripts/autoload/card_db.gd tanque
+msgctxt "card"
+msgid "Health +60%. Movement speed -10%."
+msgstr "Vida +60%. Velocidade de movimento -10%."
+
+#: scripts/autoload/card_db.gd sede_de_sangue
+msgctxt "card"
+msgid "Bloodlust"
+msgstr "Sede de Sangue"
+
+#: scripts/autoload/card_db.gd sede_de_sangue
+msgctxt "card"
+msgid "Dealing damage gives +30% movement speed for 3 s."
+msgstr "Causar dano dá +30% de velocidade de movimento por 3 s."
+
+#: scripts/autoload/card_db.gd furia
+msgctxt "card"
+msgid "Fury"
+msgstr "Fúria"
+
+#: scripts/autoload/card_db.gd furia
+msgctxt "card"
+msgid "+50% damage while below 35% health."
+msgstr "+50% de dano enquanto estiver abaixo de 35% da vida."
+
+#: scripts/autoload/card_db.gd fenix
+msgctxt "card"
+msgid "Phoenix"
+msgstr "Fênix"
+
+#: scripts/autoload/card_db.gd fenix
+msgctxt "card"
+msgid "When you die, come back once with half health. Health -20%."
+msgstr "Ao morrer, volta uma vez com metade da vida. Vida -20%."
+
+#: scripts/autoload/card_db.gd regeneracao
+msgctxt "card"
+msgid "Regeneration"
+msgstr "Regeneração"
+
+#: scripts/autoload/card_db.gd regeneracao
+msgctxt "card"
+msgid "Recover 5 health per second after 5 s without taking damage and without attacking (shot or Sword)."
+msgstr "Recupera 5 de vida por segundo depois de 5 s sem levar dano e sem atacar (tiro ou Espada)."
+
+#: scripts/autoload/card_db.gd peso_pesado
+msgctxt "card"
+msgid "Heavyweight"
+msgstr "Peso Pesado"
+
+#: scripts/autoload/card_db.gd peso_pesado
+msgctxt "card"
+msgid "Pushes move you 60% less: explosions, Knockback, Shockwave, Mega Slap, Arcane Cannon and Black Hole. Movement speed -10%."
+msgstr "Empurrões te movem 60% menos: explosões, Propulsão, Onda de Choque, Mega Tapa, Canhão Arcano e Buraco Negro. Velocidade de movimento -10%."
+
+#: scripts/autoload/card_db.gd segunda_pele
+msgctxt "card"
+msgid "Second Skin"
+msgstr "Segunda Pele"
+
+#: scripts/autoload/card_db.gd segunda_pele
+msgctxt "card"
+msgid "Every 5 s without taking damage, gain 15 armor, up to 30 (copies: more armor each time and up to 50)."
+msgstr "A cada 5 s sem levar dano, ganha 15 de colete, até 30 (cópias: mais colete por vez e até 50)."
+
+#: scripts/autoload/card_db.gd casca_dura
+msgctxt "card"
+msgid "Hard Shell"
+msgstr "Casca Dura"
+
+#: scripts/autoload/card_db.gd casca_dura
+msgctxt "card"
+msgid "After taking a hit of 30 damage or more, you take 50% less damage for 1 s."
+msgstr "Depois de levar um golpe de 30 de dano ou mais, você leva 50% menos dano por 1 s."
+
+#: scripts/autoload/card_db.gd blindado
+msgctxt "card"
+msgid "Armored"
+msgstr "Blindado"
+
+#: scripts/autoload/card_db.gd blindado
+msgctxt "card"
+msgid "You take 40% less damage from explosions and areas (mines, saws, meteors). Doesn't apply to afflictions, such as poison and burn. Copies add up to 70%."
+msgstr "Você leva 40% menos dano de explosões e de áreas (minas, serras, meteoros). Não vale contra aflições, como veneno e queimadura. Cópias somam até 70%."
+
+#: scripts/autoload/card_db.gd radar
+msgctxt "card"
+msgid "Radar"
+msgstr "Radar"
+
+#: scripts/autoload/card_db.gd radar
+msgctxt "card"
+msgid "You see the name and health of enemies up to 30 m away through walls. Each copy adds +30 m."
+msgstr "Você vê o nome e a vida dos inimigos a até 30 m através das paredes. Cada cópia soma +30 m."
+
+#: scripts/autoload/card_db.gd nanico
+msgctxt "card"
+msgid "Shorty"
+msgstr "Nanico"
+
+#: scripts/autoload/card_db.gd nanico
+msgctxt "card"
+msgid "Body 30% smaller, harder to hit. Health -20%. Damage -10%."
+msgstr "Corpo 30% menor, mais difícil de acertar. Vida -20%. Dano -10%."
+
+#: scripts/autoload/card_db.gd gigantao
+msgctxt "card"
+msgid "Giant"
+msgstr "Gigantão"
+
+#: scripts/autoload/card_db.gd gigantao
+msgctxt "card"
+msgid "Body 40% bigger. Health +80%. Movement speed -15%."
+msgstr "Corpo 40% maior. Vida +80%. Velocidade de movimento -15%."
+
+#: scripts/autoload/card_db.gd couro_grosso
+msgctxt "card"
+msgid "Thick Hide"
+msgstr "Couro Grosso"
+
+#: scripts/autoload/card_db.gd couro_grosso
+msgctxt "card"
+msgid "Each hit you take adds 1 reduction to the following ones (the first lands in full), up to 5 less damage per hit (8 with 2 copies; never below 1). 1.5 s without being hit resets it. Poison, burn and saw don't count."
+msgstr "Cada golpe que você leva soma 1 de redução nos seguintes (o primeiro entra cheio), até 5 de dano a menos por golpe (8 com 2 cópias; nunca abaixo de 1). 1,5 s sem levar golpe zera. Veneno, queimadura e serra não contam."
+
+#: scripts/autoload/card_db.gd banquete
+msgctxt "card"
+msgid "Feast"
+msgstr "Banquete"
+
+#: scripts/autoload/card_db.gd banquete
+msgctxt "card"
+msgid "Getting a kill heals all your health and gives 1 Hunger stack: +8% damage and +5% max health per stack, up to 3. The stacks carry over from one round to the next; dying resets them."
+msgstr "Fazer um abate cura toda a sua vida e dá 1 acúmulo de Fome: +8% de dano e +5% de vida máxima por acúmulo, até 3. Os acúmulos passam de uma rodada para outra; morrer zera."
+
+#: scripts/autoload/card_db.gd tenacidade
+msgctxt "card"
+msgid "Tenacity"
+msgstr "Tenacidade"
+
+#: scripts/autoload/card_db.gd tenacidade
+msgctxt "card"
+msgid "Every affliction lasts 35% less on you: slow, dizzy, blind, poison, burn and freeze (60% with 2 copies)."
+msgstr "Toda aflição dura 35% menos em você: lentidão, tontura, cegueira, veneno, queimadura e congelamento (60% com 2 cópias)."
+
+#: scripts/autoload/card_db.gd metabolismo
+msgctxt "card"
+msgid "Metabolism"
+msgstr "Metabolismo"
+
+#: scripts/autoload/card_db.gd metabolismo
+msgctxt "card"
+msgid "All healing you receive is 40% greater."
+msgstr "Toda cura que você recebe é 40% maior."
+
+#: scripts/autoload/card_db.gd instinto
+msgctxt "card"
+msgid "Survival Instinct"
+msgstr "Instinto de Sobrevivência"
+
+#: scripts/autoload/card_db.gd instinto
+msgctxt "card"
+msgid "Below 35% health, +25% speed."
+msgstr "Abaixo de 35% da vida, +25% de velocidade."
+
+#: scripts/autoload/card_db.gd vinganca
+msgctxt "card"
+msgid "Revenge"
+msgstr "Vingança"
+
+#: scripts/autoload/card_db.gd vinganca
+msgctxt "card"
+msgid "Your shots deal +25% damage to whoever killed you in the previous round."
+msgstr "Seus tiros causam +25% de dano em quem te matou na rodada anterior."
+
+#: scripts/autoload/card_db.gd leveza
+msgctxt "card"
+msgid "Lightweight"
+msgstr "Leveza"
+
+#: scripts/autoload/card_db.gd leveza
+msgctxt "card"
+msgid "Movement speed +15%. Health -15%."
+msgstr "Velocidade de movimento +15%. Vida -15%."
+
+#: scripts/autoload/card_db.gd mosquito
+msgctxt "card"
+msgid "Mosquito"
+msgstr "Mosquito"
+
+#: scripts/autoload/card_db.gd mosquito
+msgctxt "card"
+msgid "The smaller your body, the faster you shoot and the more health you steal: for every 10% below normal size, Fire rate +8% and lifesteal +2% (at most 55% below). Health -20%."
+msgstr "Quanto menor o seu corpo, mais rápido você atira e mais vida rouba: para cada 10% abaixo do tamanho normal, Cadência +8% e roubo de vida +2% (no máximo 55% abaixo). Vida -20%."
+
+#: scripts/autoload/card_db.gd pulo_duplo
+msgctxt "card"
+msgid "Double Jump"
+msgstr "Pulo Duplo"
+
+#: scripts/autoload/card_db.gd pulo_duplo
+msgctxt "card"
+msgid "+1 air jump."
+msgstr "+1 pulo no ar."
+
+#: scripts/autoload/card_db.gd impulso
+msgctxt "card"
+msgid "Impulse"
+msgstr "Impulso"
+
+#: scripts/autoload/card_db.gd impulso
+msgctxt "card"
+msgid "+1 air dash before touching the ground."
+msgstr "+1 dash no ar antes de tocar o chão."
+
+#: scripts/autoload/card_db.gd escalador
+msgctxt "card"
+msgid "Climber"
+msgstr "Escalador"
+
+#: scripts/autoload/card_db.gd escalador
+msgctxt "card"
+msgid "+2 wall jumps before touching the ground (2 without the card)."
+msgstr "+2 pulos na parede antes de tocar o chão (sem a carta são 2)."
+
+#: scripts/autoload/card_db.gd deslize_turbo
+msgctxt "card"
+msgid "Turbo Slide"
+msgstr "Deslize Turbo"
+
+#: scripts/autoload/card_db.gd deslize_turbo
+msgctxt "card"
+msgid "The slide (holding Ctrl after the dash) gives 70% more boost."
+msgstr "O deslize (segurar Ctrl depois do dash) dá 70% mais impulso."
+
+#: scripts/autoload/card_db.gd pena
+msgctxt "card"
+msgid "Feather"
+msgstr "Pena"
+
+#: scripts/autoload/card_db.gd pena
+msgctxt "card"
+msgid "Jump 15% higher and fall 35% slower."
+msgstr "Pula 15% mais alto e desce 35% mais devagar."
+
+#: scripts/autoload/card_db.gd botas_leves
+msgctxt "card"
+msgid "Light Boots"
+msgstr "Botas Leves"
+
+#: scripts/autoload/card_db.gd botas_leves
+msgctxt "card"
+msgid "+8% speed."
+msgstr "+8% de velocidade."
+
+#: scripts/autoload/card_db.gd cacador
+msgctxt "card"
+msgid "Hunter"
+msgstr "Caçador"
+
+#: scripts/autoload/card_db.gd cacador
+msgctxt "card"
+msgid "For 2 s after hitting an enemy, +20% speed when moving toward them. Poison, burn and saw don't count."
+msgstr "Por 2 s depois de acertar um inimigo, +20% de velocidade andando na direção dele. Veneno, queimadura e serra não contam."
+
+#: scripts/autoload/card_db.gd pulo_foguete
+msgctxt "card"
+msgid "Rocket Jump"
+msgstr "Pulo-Foguete"
+
+#: scripts/autoload/card_db.gd pulo_foguete
+msgctxt "card"
+msgid "Bullets explode (2 m radius). Your explosions launch you away from them without hurting you, adding to the speed you already had: 2 times before touching the ground, the 2nd one weaker. Enemies caught are pushed."
+msgstr "As balas explodem (raio de 2 m). Suas explosões te lançam para longe delas sem te ferir, somando à velocidade que você já tinha: 2 vezes antes de tocar o chão, a 2a mais fraca. Inimigos pegos são empurrados."
+
+#: scripts/autoload/card_db.gd meteoro
+msgctxt "card"
+msgid "Ground Slam"
+msgstr "Meteoro"
+
+#: scripts/autoload/card_db.gd meteoro
+msgctxt "card"
+msgid "Crouching in the air (Ctrl) slams you down instead of dashing; Shift still dashes. The higher you are, the stronger: 20 to 40 damage within 2.5 m and half that up to 5 m; from 4 m up, dizzy. You bounce upward. Cooldown 3 s."
+msgstr "Agachar no ar (Ctrl) despenca em vez de dar dash; o Shift segue no dash. Quanto mais alto, mais forte: 20 a 40 de dano a até 2,5 m e metade até 5 m; de 4 m para cima, tontura. Você quica para cima. Recarga de 3 s."
+
+#: scripts/autoload/card_db.gd folego
+msgctxt "card"
+msgid "Second Wind"
+msgstr "Fôlego"
+
+#: scripts/autoload/card_db.gd folego
+msgctxt "card"
+msgid "Dash cooldown -40%."
+msgstr "Recarga do dash -40%."
+
+#: scripts/autoload/card_db.gd dash_longo
+msgctxt "card"
+msgid "Long Dash"
+msgstr "Dash Longo"
+
+#: scripts/autoload/card_db.gd dash_longo
+msgctxt "card"
+msgid "The dash goes 40% farther."
+msgstr "O dash vai 40% mais longe."
+
+#: scripts/autoload/card_db.gd esquiva
+msgctxt "card"
+msgid "Dodge"
+msgstr "Esquiva"
+
+#: scripts/autoload/card_db.gd esquiva
+msgctxt "card"
+msgid "During the dash, bullets pass through you. Dash cooldown +0.3 s."
+msgstr "Durante o dash as balas te atravessam. Recarga do dash +0,3 s."
+
+#: scripts/autoload/card_db.gd atropelar
+msgctxt "card"
+msgid "Trample"
+msgstr "Atropelar"
+
+#: scripts/autoload/card_db.gd atropelar
+msgctxt "card"
+msgid "Passing through an enemy with a dash deals 15 damage and pushes them."
+msgstr "Passar por um inimigo no dash causa 15 de dano e o empurra."
+
+#: scripts/autoload/card_db.gd saque_rapido
+msgctxt "card"
+msgid "Quick Draw"
+msgstr "Saque Rápido"
+
+#: scripts/autoload/card_db.gd saque_rapido
+msgctxt "card"
+msgid "Each dash puts 2 bullets in the magazine."
+msgstr "Cada dash põe 2 balas no pente."
+
+#: scripts/autoload/card_db.gd cacada
+msgctxt "card"
+msgid "Hunt"
+msgstr "Caçada"
+
+#: scripts/autoload/card_db.gd cacada
+msgctxt "card"
+msgid "Hitting an enemy recharges the dash instantly and gives back an air dash. Poison, burn and saw don't count."
+msgstr "Acertar o inimigo recarrega o dash na hora e devolve um dash no ar. Veneno, queimadura e serra não contam."
+
+#: scripts/autoload/card_db.gd planador
+msgctxt "card"
+msgid "Glider"
+msgstr "Planador"
+
+#: scripts/autoload/card_db.gd planador
+msgctxt "card"
+msgid "Hold Space while falling to glide slowly. After gliding, until you touch the ground, you change direction in the air without losing speed."
+msgstr "Segure Espaço caindo para planar devagar. Depois de planar, até tocar o chão, você muda de direção no ar sem perder velocidade."
+
+#: scripts/autoload/card_db.gd embalo
+msgctxt "card"
+msgid "Momentum"
+msgstr "Embalo"
+
+#: scripts/autoload/card_db.gd embalo
+msgctxt "card"
+msgid "Air control 2x greater (turn without losing speed) and +5% speed."
+msgstr "Controle no ar 2x maior (curva sem perder velocidade) e +5% de velocidade."
+
+#: scripts/autoload/card_db.gd molas
+msgctxt "card"
+msgid "Springs"
+msgstr "Molas"
+
+#: scripts/autoload/card_db.gd molas
+msgctxt "card"
+msgid "Jump 20% higher."
+msgstr "Pula 20% mais alto."
+
+#: scripts/autoload/card_db.gd parkour
+msgctxt "card"
+msgid "Parkour"
+msgstr "Parkour"
+
+#: scripts/autoload/card_db.gd parkour
+msgctxt "card"
+msgid "Jumping off a wall gives you back an air dash and +20% movement speed for 1 s."
+msgstr "Pular de uma parede te devolve um dash no ar e dá +20% de velocidade de movimento por 1 s."
+
+#: scripts/autoload/card_db.gd dash_duplo
+msgctxt "card"
+msgid "Double Dash"
+msgstr "Dash Duplo"
+
+#: scripts/autoload/card_db.gd dash_duplo
+msgctxt "card"
+msgid "Each of your dashes chains another one on its own right after, toward where you are pressing (curving midway). Dash effects repeat, and in the air the extra one doesn't use up a dash. With 2 copies it's 3 dashes. Dash cooldown +0.3 s."
+msgstr "Cada dash seu emenda outro sozinho logo depois, para onde você estiver apertando (curva no meio). Os efeitos de dash se repetem e no ar o extra não gasta dash. Com 2 cópias são 3 dashes. Recarga do dash +0,3 s."
+
+#: scripts/autoload/card_db.gd pisao
+msgctxt "card"
+msgid "Stomp"
+msgstr "Pisão"
+
+#: scripts/autoload/card_db.gd pisao
+msgctxt "card"
+msgid "Landing on an enemy's head (jumping or dashing through the air) deals 20 damage and bounces you up, restoring your dash and air jumps. Falling almost onto the head, the air pulls you gently to it (more with more copies). +10 damage per copy."
+msgstr "Cair na cabeça de um inimigo (pulando ou no dash pelo ar) causa 20 de dano e te quica para cima, devolvendo o dash e os pulos no ar. Caindo quase na cabeça, o ar te puxa de leve até ela (mais com mais cópias). +10 de dano por cópia."
+
+#: scripts/autoload/card_db.gd velocidade_letal
+msgctxt "card"
+msgid "Lethal Speed"
+msgstr "Velocidade Letal"
+
+#: scripts/autoload/card_db.gd velocidade_letal
+msgctxt "card"
+msgid "Your shots deal +2% damage per m/s above 9 m/s (walking speed), up to +30% while dashing. With 2 copies, double: +4% per m/s, up to +60%."
+msgstr "Seus tiros causam +2% de dano por m/s acima de 9 m/s (a velocidade de andar), até +30% no dash. Com 2 cópias, o dobro: +4% por m/s, até +60%."
+
+#: scripts/autoload/card_db.gd vulto
+msgctxt "card"
+msgid "Blur"
+msgstr "Vulto"
+
+#: scripts/autoload/card_db.gd vulto
+msgctxt "card"
+msgid "Above 12 m/s you take 20% less bullet damage (35% with 2 copies)."
+msgstr "Acima de 12 m/s você leva 20% menos dano de balas (35% com 2 cópias)."
+
+#: scripts/autoload/card_db.gd recarga_embalo
+msgctxt "card"
+msgid "Running Reload"
+msgstr "Recarga no Embalo"
+
+#: scripts/autoload/card_db.gd recarga_embalo
+msgctxt "card"
+msgid "In the air or sliding, reloading is 40% faster."
+msgstr "No ar ou deslizando, recarregar fica 40% mais rápido."
+
+#: scripts/autoload/card_db.gd arrancada
+msgctxt "card"
+msgid "Rush"
+msgstr "Arrancada"
+
+#: scripts/autoload/card_db.gd arrancada
+msgctxt "card"
+msgid "Dashing toward an enemy in sight (within 20 m) makes your next shot, within 1 s, deal +30% damage. Dash cooldown +0.3 s."
+msgstr "Dar o dash na direção de um inimigo à vista (a até 20 m) faz o próximo tiro, em até 1 s, causar +30% de dano. Recarga do dash +0,3 s."
+
+#: scripts/autoload/card_db.gd pressao
+msgctxt "card"
+msgid "Pressure"
+msgstr "Pressão"
+
+#: scripts/autoload/card_db.gd pressao
+msgctxt "card"
+msgid "Hitting an enemy within 6 m gives +25% movement speed for 1.5 s and advances the dash cooldown by 1 s (the shotgun spread counts once). Health -10%."
+msgstr "Acertar um inimigo a até 6 m dá +25% de velocidade de movimento por 1,5 s e adianta a recarga do dash em 1 s (o leque da escopeta conta uma vez). Vida -10%."
+
+#: scripts/autoload/card_db.gd bote
+msgctxt "card"
+msgid "Pounce"
+msgstr "Bote"
+
+#: scripts/autoload/card_db.gd bote
+msgctxt "card"
+msgid "Dashing almost toward an enemy in sight (within 10 m) makes the dash curve on its own toward them, up to 35 degrees."
+msgstr "Dar o dash quase na direção de um inimigo à vista (a até 10 m) faz o dash curvar sozinho até ele, até 35 graus."
+
+#: scripts/autoload/card_db.gd bazuca
+msgctxt "card"
+msgid "Bazooka"
+msgstr "Bazuca"
+
+#: scripts/autoload/card_db.gd bazuca
+msgctxt "card"
+msgid "Q: swaps your weapon for a bazooka for 6 s. 3 straight rockets with double damage that explode (4 m). Cooldown 18 s."
+msgstr "Q: troca a arma por uma bazuca por 6 s. 3 foguetes retos, com o dobro do dano, que explodem (4 m). Recarga de 18 s."
+
+#: scripts/autoload/card_db.gd espada
+msgctxt "card"
+msgid "Sword"
+msgstr "Espada"
+
+#: scripts/autoload/card_db.gd espada
+msgctxt "card"
+msgid "Q: swaps your weapon for a sword for 8 s. Click attacks in a 3-hit combo: a slash to the right, a slash to the left and a thrust that launches you forward. Reach of 3.2 m; slashes deal the weapon's damage, the thrust 1.6x. Strikes follow your Fire rate: if it is slower than the base weapon's, the strikes are spaced further apart. A raised shield blocks, and whoever blocks leaves you dizzy for 0.6 s (no strikes and slowed). With the sword in hand, you move 25% slower and can't use the shield. Cooldown 24 s."
+msgstr "Q: troca a arma por uma espada por 8 s. Clique ataca num combo de 3: corte para a direita, corte para a esquerda e uma estocada que te lança à frente. Alcance de 3,2 m; cortes com o dano da arma, estocada com 1,6x. Os golpes seguem a sua Cadência: se ela estiver mais lenta que a da arma base, os golpes ficam mais espaçados. Escudo levantado bloqueia, e quem bloqueia te deixa tonto por 0,6 s (sem golpear e lento). Com a espada na mão, você anda 25% mais devagar e não usa o escudo. Recarga de 24 s."
+
+#: scripts/autoload/card_db.gd sniper
+msgctxt "card"
+msgid "Sniper"
+msgstr "Sniper"
+
+#: scripts/autoload/card_db.gd sniper
+msgctxt "card"
+msgid "Q: swaps your weapon for a sniper with ONE shot, for up to 8 s. The shot is a laser: straight, almost instant, goes through every wall and deals 4x damage (100 at base). Right click aims with zoom. Cooldown 18 s."
+msgstr "Q: troca a arma por uma sniper com UM tiro, por até 8 s. O tiro é um laser: reto, quase instantâneo, atravessa todas as paredes e causa 4x o dano (100 na base). Botão direito mira com zoom. Recarga de 18 s."
+
+#: scripts/autoload/card_db.gd canhao_arcano
+msgctxt "card"
+msgid "Arcane Cannon"
+msgstr "Canhão Arcano"
+
+#: scripts/autoload/card_db.gd canhao_arcano
+msgctxt "card"
+msgid "Q: charges for 1 s (moving slowly) and fires a 40 m beam for 2.5 s that goes through walls. You stay in place, on the ground or floating in the air, and aim slowly. Each touch deals 22 damage and throws the target out of the beam (the same target once every 0.6 s). A raised shield blocks the damage. Getting slapped, freezing or dying cuts the beam. Cooldown 24 s."
+msgstr "Q: carrega por 1 s (andando devagar) e solta um raio de 40 m por 2,5 s, que atravessa paredes. Parado, no chão ou flutuando no ar, você mira devagar. Cada toque causa 22 de dano e arremessa o alvo para fora do raio (o mesmo alvo a cada 0,6 s). Escudo levantado bloqueia o dano. Levar tapa, congelar ou morrer corta o raio. Recarga de 24 s."
+
+#: scripts/autoload/card_db.gd chuva_de_meteoros
+msgctxt "card"
+msgid "Meteor Shower"
+msgstr "Chuva de Meteoros"
+
+#: scripts/autoload/card_db.gd chuva_de_meteoros
+msgctxt "card"
+msgid "Q: your next 3 shots (within 8 s) mark the ground where they land. 1.5 s later a meteor falls on each mark: 30 + half the shot's damage at the center (up to 55), half that at the 4 m edge, and it knocks back. Everyone sees the mark. Cooldown 16 s."
+msgstr "Q: os próximos 3 tiros (em até 8 s) marcam o chão onde batem. 1,5 s depois cai um meteoro em cada marca: 30 + metade do dano do tiro no centro (até 55), metade disso na borda de 4 m, e empurra. A marca aparece para todos. Recarga de 16 s."
+
+#: scripts/autoload/card_db.gd foguete
+msgctxt "card"
+msgid "Rocket Ride"
+msgstr "Foguete"
+
+#: scripts/autoload/card_db.gd foguete
+msgctxt "card"
+msgid "Q: ride a rocket that always flies forward (10 m/s) and turns very slowly, for up to 5 s. Q again: you jump off and the rocket keeps going straight, speeds up a lot and explodes on first contact. While you ride it, it explodes if it hits a wall, touches an enemy or time runs out (you are launched upward, no damage). Explosion of 70 at the center, up to 7 m. Cooldown 18 s."
+msgstr "Q: monta num foguete que voa sempre para a frente (10 m/s) e vira bem devagar, por até 5 s. Q de novo: você salta e o foguete segue reto, acelera muito e explode no primeiro contato. Montado, ele explode se bater numa parede, encostar num inimigo ou o tempo acabar (você é lançado para cima, sem dano). Explosão de 70 no centro, até 7 m. Recarga de 18 s."
+
+#: scripts/autoload/card_db.gd perfurante
+msgctxt "card"
+msgid "Piercer"
+msgstr "Perfurante"
+
+#: scripts/autoload/card_db.gd perfurante
+msgctxt "card"
+msgid "Q: your next 3 shots fly straight, with no drop, 3x faster, with +30% damage and passing through everything: walls, players (each one is hit once), the shield and the Bastion, which can't reflect them. The damage ignores armor and goes straight to health. Cooldown 20 s."
+msgstr "Q: os próximos 3 tiros vão retos, sem queda, 3x mais rápidos, com +30% de dano e atravessando tudo: paredes, jogadores (cada um leva uma vez), o escudo e o Bastião, que não os devolvem. O dano ignora o colete e vai direto na vida. Recarga de 20 s."
+
+#: scripts/autoload/card_db.gd bastiao
+msgctxt "card"
+msgid "Bastion"
+msgstr "Bastião"
+
+#: scripts/autoload/card_db.gd bastiao
+msgctxt "card"
+msgid "Q: raises an energy wall in front of you for 4 s that reflects enemy bullets. Yours pass through. Cooldown 14 s."
+msgstr "Q: ergue à sua frente uma parede de energia por 4 s que devolve as balas inimigas. As suas passam. Recarga de 14 s."
+
+#: scripts/autoload/card_db.gd prisao_gelo
+msgctxt "card"
+msgid "Ice Prison"
+msgstr "Prisão de Gelo"
+
+#: scripts/autoload/card_db.gd prisao_gelo
+msgctxt "card"
+msgid "Your hits apply 1 frost stack. Q: fires an ice shard (straight, up to 40 m). Whoever is hit is trapped in an ice block for 3 s: they can't act and don't lose health, but the block stores half the damage it takes (up to 50) and releases it all when it thaws, along with breaking the ice (+20). The block slides: shots, explosions and bumps push it. Over the void it bounces, and the damage comes when the ice melts. If the shard hits the scenery, it shatters: 2 stacks on anyone within 3 m. The shield reflects the shard. Cooldown 12 s."
+msgstr "Seus acertos põem 1 camada de Congelamento. Q: dispara um caco de gelo (reto, até 40 m). Quem for atingido fica preso num bloco de gelo por 3 s: não age e não perde vida, mas o bloco guarda metade do dano que leva (até 50) e solta tudo no degelo, com a quebra do gelo (+20). O bloco desliza: tiros, explosões e encontrões o empurram. No vazio ele quica, e o dano vem quando o gelo derrete. Se o caco bater no cenário, estilhaça: 2 camadas em quem estiver a até 3 m. O escudo devolve o caco. Recarga de 12 s."
+
+#: scripts/autoload/card_db.gd mega_tapa
+msgctxt "card"
+msgid "Mega Slap"
+msgstr "Mega Tapa"
+
+#: scripts/autoload/card_db.gd mega_tapa
+msgctxt "card"
+msgid "Q: raises your hand and, 0.6 s later, slaps forward (4.5 m), dealing 10 damage and throwing the target far and upward, with no air control until they land. If the thrown player hits a wall in flight, they take 20 more and are dizzy for 0.6 s (slowed and unable to shoot). A raised shield blocks. Cooldown 8 s."
+msgstr "Q: ergue a mão e, 0,6 s depois, dá um tapa à frente (4,5 m) que causa 10 de dano e arremessa longe e para cima, sem controle no ar até cair. Se o arremessado bater numa parede no voo, leva mais 20 e fica tonto por 0,6 s (lento e sem atirar). Escudo levantado bloqueia. Recarga de 8 s."
+
+#: scripts/autoload/card_db.gd gancho
+msgctxt "card"
+msgid "Hook"
+msgstr "Gancho"
+
+#: scripts/autoload/card_db.gd gancho
+msgctxt "card"
+msgid "Q: throws a hook (up to 20 m) that pulls the enemy right in front of you and holds them for up to 3 s: you move at 70% and can't shoot; they can't act. They serve as a human shield (in Teams, their own team hits them too). Click or Q throws them where you aim: hitting a wall deals 22; hitting another enemy deals 22 to both and leaves both dizzy. Taking 30 damage while holding lets go. A raised shield blocks the hook. Cooldown 16 s (6 s if you miss)."
+msgstr "Q: lança um gancho (até 20 m) que puxa o inimigo até a sua frente e o segura por até 3 s: você anda a 70% e não atira; ele não age. Ele serve de escudo humano (nos Times, o time dele também o acerta). Clique ou Q arremessa na mira: bater numa parede dá 22; bater em outro inimigo dá 22 nos dois e deixa os dois tontos. Levar 30 de dano segurando solta. Escudo levantado bloqueia o gancho. Recarga de 16 s (6 s se errar)."
+
+#: scripts/autoload/card_db.gd dominio_do_rei
+msgctxt "card"
+msgid "King's Domain"
+msgstr "Domínio do Rei"
+
+#: scripts/autoload/card_db.gd dominio_do_rei
+msgctxt "card"
+msgid "Enemies in range (up to 30 m, in sight) get a crown with \"Q\" on your screen; the one in your crosshair lights up. Q on them: casts a shadow chain that chases them (24 m/s). They only escape by raising the shield when it arrives or by hiding behind a wall: then the cooldown is 12 s. With no one in your crosshair, Q isn't spent. Caught: you are both pulled for 0.8 s and taken to a closed room for 10 s, where no one else can enter. Inside, every second you gain +4% damage and they lose 4%, up to +30% and -30%. Whoever wins returns right away; if you win, you keep the bonus for 6 more s. When time runs out, you both return to where you were, and those left on the map see where and when you reappear. Cooldown 35 s."
+msgstr "Inimigos ao alcance (até 30 m, à vista) ganham uma coroa com \"Q\" na sua tela; a do que está na sua mira fica acesa. Q nele: lança uma corrente sombria que o persegue (24 m/s). Ele só escapa levantando o escudo quando ela chega ou se escondendo atrás de uma parede: aí a recarga é de 12 s. Sem ninguém na mira, o Q não gasta. Pegou: vocês dois são puxados por 0,8 s e levados para uma sala fechada por 10 s, onde ninguém mais entra. Lá dentro, a cada segundo você ganha +4% de dano e ele perde 4%, até +30% e -30%. Quem vencer volta na hora; se você vencer, fica com o bônus por mais 6 s. No fim do tempo, os dois voltam para onde estavam, e quem ficou no mapa vê onde e quando vocês reaparecem. Recarga de 35 s."
+
+#: scripts/autoload/card_db.gd mecha
+msgctxt "card"
+msgid "Mecha"
+msgstr "Mecha"
+
+#: scripts/autoload/card_db.gd mecha
+msgctxt "card"
+msgid "Q: builds a mecha around you, piece by piece, in 1.2 s (meanwhile you move slowly and can't shoot). Inside, for 8 s: plating of 60 + 60% of your max health that takes damage before anything else, immune to pushes and pulls, you keep shooting with your weapon, and E launches a missile (1 every 2.5 s; 20 + 40% of bullet damage, up to 45, in 3.5 m) instead of the shield. Bigger, 25% slower, no dash or extra jumps. Q again exits early. On exit, it explodes (5 m): 20 damage with full plating, up to 50 with it depleted. Piercer ignores the plating. Cooldown 24 s, counted after you exit."
+msgstr "Q: monta um mecha em volta de você, peça por peça, em 1,2 s (nesse tempo você anda devagar e não atira). Dentro, por 8 s: blindagem de 60 + 60% da vida máxima que leva o dano antes de tudo, imune a empurrões e puxões, segue atirando com a sua arma, e E lança um míssil (1 a cada 2,5 s; 20 + 40% do dano da bala, até 45, em 3,5 m) no lugar do escudo. Maior, 25% mais lento, sem dash nem pulos extras. Q de novo sai antes. Ao sair, ele explode (5 m): 20 de dano com a blindagem cheia, até 50 com ela zerada. A Perfurante ignora a blindagem. Recarga de 24 s, contada depois de sair."
+
+#: scripts/autoload/card_db.gd ultimo_suspiro
+msgctxt "card"
+msgid "Last Breath"
+msgstr "Último Suspiro"
+
+#: scripts/autoload/card_db.gd ultimo_suspiro
+msgctxt "card"
+msgid "Once per round, the killing blow leaves you at 1 health and unable to die for 3 s. Take someone down in that time to come back with half your health."
+msgstr "Uma vez por rodada, o golpe fatal te deixa com 1 de vida e sem morrer por 3 s. Abata alguém nesse tempo e volte com metade da vida."
+
+#: scripts/autoload/card_db.gd camuflagem
+msgctxt "card"
+msgid "Camouflage"
+msgstr "Camuflagem"
+
+#: scripts/autoload/card_db.gd camuflagem
+msgctxt "card"
+msgid "Stand still for 0.6 s and you vanish. While invisible, you can crouch-walk without showing up; shooting, running, jumping, dash, shield or taking damage reveal you. After 1 s invisible, reappearing grants Ambush: 3 s with +40% shot damage and +20% speed (at most every 6 s), and the first shot goes through walls. The shot that reveals you already counts. After 8 s in a row invisible, the camouflage fails: you flicker visible for 0.4 s every 2 s until you reappear."
+msgstr "Parado por 0,6 s, você some. Invisível, dá para andar agachado sem aparecer; atirar, correr, pular, dash, escudo ou levar dano te revelam. Depois de 1 s invisível, aparecer dá Emboscada: 3 s com +40% de dano nos tiros e +20% de velocidade (no máximo a cada 6 s), e o primeiro tiro atravessa paredes. O tiro que te revela já conta. Depois de 8 s seguidos invisível, a camuflagem falha: você pisca visível por 0,4 s a cada 2 s até aparecer."
+
+#: scripts/autoload/card_db.gd bota_foguete
+msgctxt "card"
+msgid "Rocket Boots"
+msgstr "Bota Foguete"
+
+#: scripts/autoload/card_db.gd bota_foguete
+msgctxt "card"
+msgid "Each second in the air gives +10% shot damage, up to +40%; touching the ground resets it. With no air jumps left, press and hold jump for a short jet (0.7 s) that brakes your fall and pushes you up. The jet recharges when you touch the ground."
+msgstr "Cada segundo no ar dá +10% de dano nos tiros, até +40%; tocar o chão zera. Sem pulos no ar sobrando, aperte e segure pular para um jato curto (0,7 s) que freia a queda e te empurra para cima. O jato volta ao tocar o chão."
+
+#: scripts/autoload/card_db.gd plataformas_suspensas
+msgctxt "card"
+msgid "Sky Platforms"
+msgstr "Plataformas Suspensas"
+
+#: scripts/autoload/card_db.gd plataformas_suspensas
+msgctxt "card"
+msgid "With no air jumps left, jumping creates a platform under your feet. You can make up to 3 in a row, with 2 s to use each next one; using the 3rd, missing the deadline or touching the ground starts an 8 s cooldown. The platform is a launcher: it launches upward whoever steps on it, once per player (green: still launches you; purple: already launched you). Lasts 5 s; any player can step on it, and bullets pass through."
+msgstr "Sem pulos no ar sobrando, pular cria uma plataforma sob os seus pés. Dá para fazer até 3 seguidas, com 2 s para usar cada próxima; ao usar a 3ª, passar o prazo ou tocar o chão, recarga de 8 s. A plataforma é um propulsor: lança para cima quem pisa nela, uma vez por jogador (verde: ainda te lança; roxa: já te lançou). Dura 5 s; qualquer jogador pode pisar, e as balas atravessam."
+
+#: scripts/autoload/card_db.gd formiga
+msgctxt "card"
+msgid "Ant"
+msgstr "Formiga"
+
+#: scripts/autoload/card_db.gd formiga
+msgctxt "card"
+msgid "Q: for 6 s you shrink to 40% of your size (harder to hit) and move 60% faster. Q again returns early. When you return to size, an impact pushes anyone within 4 m and deals 15 damage. Cooldown 16 s."
+msgstr "Q: por 6 s você fica com 40% do tamanho (mais difícil de acertar) e 60% mais rápido. Q de novo volta antes. Ao voltar ao tamanho, um impacto empurra quem estiver a até 4 m e causa 15 de dano. Recarga de 16 s."
+
+#: scripts/autoload/card_db.gd caos
+msgctxt "card"
+msgid "Chaos"
+msgstr "Caos"
+
+#: scripts/autoload/card_db.gd caos
+msgctxt "card"
+msgid "You get a random master card. Active: use it once; 8 s after its effect ends, another one comes. Passive: lasts 15 s and swaps. Never repeats the previous one; each round starts with a new draw."
+msgstr "Você recebe uma mestra sorteada. Ativa: use uma vez; 8 s depois do efeito acabar, vem outra. Passiva: dura 15 s e troca. Nunca repete a anterior; cada rodada começa com um sorteio novo."
+
+#: scripts/autoload/card_db.gd clone
+msgctxt "card"
+msgid "Clone"
+msgstr "Clone"
+
+#: scripts/autoload/card_db.gd clone
+msgctxt "card"
+msgid "Q: leaves a clone of you that walks slowly toward where you were looking, for 8 s. To others it looks just like you (name and health). Each of your shots also comes out of it, toward your crosshair, with half the damage: crossfire. Q again: you swap places with it, and it vanishes. Enemy bullets destroy it after 40 damage. Cooldown 18 s."
+msgstr "Q: deixa um clone seu que anda devagar para onde você olhava, por 8 s. Para os outros ele é igual a você (nome e vida). Cada tiro seu também sai dele, na direção da sua mira, com metade do dano: fogo cruzado. Q de novo: você troca de lugar com ele, e ele some. Balas inimigas o destroem com 40 de dano. Recarga de 18 s."
+
+#: scripts/autoload/card_db.gd cartas_instaveis
+msgctxt "card"
+msgid "Unstable Cards"
+msgstr "Cartas Instáveis"
+
+#: scripts/autoload/card_db.gd cartas_instaveis
+msgctxt "card"
+msgid "Q: gain 3 random common cards from your deck for 8 s (respecting the per-match limit; Phoenix is excluded). Health follows max health as a percentage. The cards appear above your name for others. Cooldown 22 s."
+msgstr "Q: ganha 3 cartas comuns sorteadas do seu baralho por 8 s (respeitando o limite por partida; a Fênix não sai). A vida acompanha a vida máxima em porcentagem. As cartas aparecem em cima do seu nome para os outros. Recarga de 22 s."
+
+#: scripts/autoload/card_db.gd arpeu_ventoso
+msgctxt "card"
+msgid "Plunger Grapple"
+msgstr "Arpéu Ventoso"
+
+#: scripts/autoload/card_db.gd arpeu_ventoso
+msgctxt "card"
+msgid "Hold Q: fires a suction cup (up to 35 m). Stuck to the scenery: you swing from it, with half gravity, without losing momentum, and the movement keys steer the swing; the rope keeps shortening. Release Q to fly off with the momentum (+15% and one air jump); Space also releases, with an upward boost. Reaching the wall while still holding, you hang for up to 2 s (jump leaps off it). Stuck to an enemy: you are pulled to them and land a 20-damage kick that pushes them (a raised shield blocks). Dash cancels it. Missed: the charge returns in 1 s. Stores 3 uses: each comes back in 6 s, one at a time."
+msgstr "Segure Q: lança uma ventosa (até 35 m). Grudou no cenário: você balança preso a ela, com a gravidade pela metade, sem perder o embalo, e as teclas guiam o balanço; a corda vai encurtando. Solte Q para sair voando com o embalo (+15% e um pulo no ar); Espaço também solta, com um impulso para cima. Chegando à parede ainda segurando, fica pendurado até 2 s (pular salta dela). Grudou num inimigo: você é puxado até ele e dá um chute de 20 de dano que o empurra (escudo levantado bloqueia). Dash corta. Errou, a carga volta em 1 s. Guarda 3 usos: cada um volta em 6 s, um de cada vez."
+
+#: scripts/autoload/card_db.gd corrente
+msgctxt "card"
+msgid "Updraft"
+msgstr "Corrente"
+
+#: scripts/autoload/card_db.gd corrente
+msgctxt "card"
+msgid "Q: straight upward boost of about 8 m. Also works in the air. Stores 2 uses: each comes back in 9 s, one at a time."
+msgstr "Q: impulso reto para cima, de uns 8 m. Funciona também no ar. Guarda 2 usos: cada um volta em 9 s, um de cada vez."
+
+#: scripts/autoload/card_db.gd
+msgid "Common"
+msgstr "Comum"
+
+#: scripts/autoload/card_db.gd
+msgid "Rare"
+msgstr "Raro"
+
+#: scripts/autoload/card_db.gd
+msgid "Epic"
+msgstr "Épico"
+
+#: scripts/autoload/card_db.gd
+msgid "Legendary"
+msgstr "Lendário"
+
+#: scripts/autoload/card_db.gd
+msgid "Mythic"
+msgstr "Mítico"
+
+#: scripts/autoload/card_db.gd
+msgid "Bullets"
+msgstr "Balas"
+
+#: scripts/autoload/card_db.gd
+msgid "Shield"
+msgstr "Escudo"
+
+#: scripts/autoload/card_db.gd
+msgid "Body"
+msgstr "Corpo"
+
+#: scripts/autoload/card_db.gd
+msgid "Movement"
+msgstr "Movimento"
+
+#: scripts/autoload/card_db.gd
+msgid "Ricochet"
+msgstr "Ricochete"
+
+#: scripts/autoload/card_db.gd
+msgid "Bullets that bounce off walls or come back."
+msgstr "Balas que quicam nas paredes ou voltam."
+
+#: scripts/autoload/card_db.gd
+msgid "Explosion"
+msgstr "Explosão"
+
+#: scripts/autoload/card_db.gd
+msgid "Area damage."
+msgstr "Dano em área."
+
+#: scripts/autoload/card_db.gd
+msgid "Nuke"
+msgstr "Nuke"
+
+#: scripts/autoload/card_db.gd
+msgid "Few huge bullets, each with lots of damage."
+msgstr "Poucas balas enormes, cada uma com muito dano."
+
+#: scripts/autoload/card_db.gd
+msgid "Bullet Storm"
+msgstr "Chuva de balas"
+
+#: scripts/autoload/card_db.gd
+msgid "Lots of bullets, big magazine, high fire rate and fast reload."
+msgstr "Muitas balas, pente grande, cadência alta e recarregar rápido."
+
+#: scripts/autoload/card_db.gd
+#: scripts/autoload/card_db.gd
+msgid "Marksman"
+msgstr "Atirador"
+
+#: scripts/autoload/card_db.gd
+msgid "Hitting from far away and behind walls."
+msgstr "Acertar de longe e por trás das paredes."
+
+#: scripts/autoload/card_db.gd
+msgid "Control"
+msgstr "Controle"
+
+#: scripts/autoload/card_db.gd
+msgid "Hinder the enemy: slowed, blinded, poisoned, pushed."
+msgstr "Atrapalhar o inimigo: lento, cego, envenenado, empurrado."
+
+#: scripts/autoload/card_db.gd
+#: scripts/autoload/card_db.gd
+msgid "Poison"
+msgstr "Veneno"
+
+#: scripts/autoload/card_db.gd
+msgid "Apply and spread Poison, which stacks with every hit."
+msgstr "Aplicar e espalhar Veneno, que empilha a cada acerto."
+
+#: scripts/autoload/card_db.gd
+#: scripts/autoload/card_db.gd
+msgid "Burn"
+msgstr "Queimadura"
+
+#: scripts/autoload/card_db.gd
+msgid "Apply Burn, which deals a lot per second and doesn't stack."
+msgstr "Aplicar Queimadura, que tira muito por segundo e não empilha."
+
+#: scripts/autoload/card_db.gd
+#: scripts/autoload/card_db.gd
+msgid "Freeze"
+msgstr "Congelamento"
+
+#: scripts/autoload/card_db.gd
+msgid "Apply frost stacks until the target freezes, then break the ice."
+msgstr "Pôr camadas de gelo até congelar e quebrar o gelo."
+
+#: scripts/autoload/card_db.gd
+#: scripts/autoload/card_db.gd
+msgid "Affliction"
+msgstr "Aflição"
+
+#: scripts/autoload/card_db.gd
+msgid "Improve every effect that stays on the enemy: last longer, mark, burst, prevent healing."
+msgstr "Melhorar todo efeito que fica no inimigo: durar mais, marcar, estourar, impedir a cura."
+
+#: scripts/autoload/card_db.gd
+msgid "Mirror"
+msgstr "Espelho"
+
+#: scripts/autoload/card_db.gd
+msgid "Reflect enemy bullets with the shield."
+msgstr "Refletir as balas do inimigo com o escudo."
+
+#: scripts/autoload/card_db.gd
+msgid "Offensive Shield"
+msgstr "Escudo de ataque"
+
+#: scripts/autoload/card_db.gd
+msgid "The shield as a weapon, up close."
+msgstr "O escudo como arma, de perto."
+
+#: scripts/autoload/card_db.gd
+msgid "Close Quarters"
+msgstr "Corpo a corpo"
+
+#: scripts/autoload/card_db.gd
+msgid "Get right up to the enemy and hit."
+msgstr "Encostar no inimigo e bater."
+
+#: scripts/autoload/card_db.gd
+msgid "Tank"
+msgstr "Tanque"
+
+#: scripts/autoload/card_db.gd
+msgid "Health, healing and armor."
+msgstr "Vida, cura e colete."
+
+#: scripts/autoload/card_db.gd
+msgid "Aerial"
+msgstr "Aéreo"
+
+#: scripts/autoload/card_db.gd
+msgid "Stay up high: jumps, walls, gliding."
+msgstr "Ficar no alto: pulos, parede, planar."
+
+#: scripts/autoload/card_db.gd
+msgid "Dash"
+msgstr "Dash"
+
+#: scripts/autoload/card_db.gd
+msgid "Dash more often, farther and with effects."
+msgstr "Dash mais vezes, mais longe e com efeito."
+
+#: scripts/autoload/card_db.gd
+msgid "All or Nothing"
+msgstr "Tudo ou nada"
+
+#: scripts/autoload/card_db.gd
+msgid "Trade health for power."
+msgstr "Troca vida por poder."
+
+#: scripts/autoload/card_db.gd
+msgid "Mosquito"
+msgstr "Mosquito"
+
+#: scripts/autoload/card_db.gd
+msgid "Small body and low health: fire rate, poison and healing to make up for it."
+msgstr "Corpo pequeno e pouca vida: cadência, veneno e cura para compensar."
+
+#: scripts/autoload/card_db.gd
+msgid "Damage"
+msgstr "Dano"
+
+#: scripts/autoload/card_db.gd
+msgid "How much health each bullet takes away (25 on the base weapon). Every Damage bonus adds into a single one, including momentary ones (Fury, Executioner, Cold Blood...): +45% and +30% = +75%. A card that multiplies damage says so, like Lucky's critical and Last Bullet."
+msgstr "Quanto cada bala tira de vida (25 na arma base). Todo bônus de Dano soma num só, inclusive os de momento (Fúria, Executor, Sangue Frio...): +45% e +30% = +75%. Carta que multiplica o dano diz isso nela, como o crítico do Sortudo e a Última Bala."
+
+#: scripts/autoload/card_db.gd
+msgid "Fire rate"
+msgstr "Cadência"
+
+#: scripts/autoload/card_db.gd
+msgid "How many shots per second. Fire rate +40% = 40% more shots in the same time; Fire rate x3 = triple."
+msgstr "Quantos tiros por segundo. Cadência +40% = 40% mais tiros no mesmo tempo; Cadência x3 = o triplo."
+
+#: scripts/autoload/card_db.gd
+msgid "Bullet speed"
+msgstr "Velocidade da bala"
+
+#: scripts/autoload/card_db.gd
+msgid "How fast the bullet flies to the target. Faster arrives sooner and is easier to land from far away."
+msgstr "Quão rápido a bala voa até o alvo. Mais veloz chega antes e é mais fácil de acertar de longe."
+
+#: scripts/autoload/card_db.gd
+msgid "Bullet drop"
+msgstr "Queda da bala"
+
+#: scripts/autoload/card_db.gd
+msgid "How much the bullet falls during flight. -50% falls half as much; x2 falls twice as much."
+msgstr "Quanto a bala cai durante o voo. -50% cai metade; x2 cai o dobro."
+
+#: scripts/autoload/card_db.gd
+msgid "How far the bullet goes: it vanishes once it is farther than this, in a straight line, from where the shot came out (bounces count while they stay inside; the Boomerang bullet turns 3 m before the end and comes back). Without Range losses on your cards there is no limit. Losses multiply and stop at 12 m; gains apply to what is left."
+msgstr "Até onde a bala vai: ela some ao ficar mais longe que isso, em linha reta, de onde o tiro saiu (quiques valem enquanto estiverem dentro; a bala do Bumerangue vira 3 m antes do fim e volta). Sem perda de Alcance nas cartas não há limite. As perdas multiplicam e param em 12 m; os ganhos valem sobre o que sobrou."
+
+#: scripts/autoload/card_db.gd
+msgid "Bullet size"
+msgstr "Tamanho da bala"
+
+#: scripts/autoload/card_db.gd
+msgid "The size of the bullet: bigger is easier to land. It also grows a little with damage. Losses stop at 60% of normal."
+msgstr "O tamanho da bala: maior é mais fácil de acertar. Ela também cresce um pouco com o dano. As perdas param em 60% do normal."
+
+#: scripts/autoload/card_db.gd
+msgid "Magazine"
+msgstr "Pente"
+
+#: scripts/autoload/card_db.gd
+msgid "How many shots you fire before you need to reload."
+msgstr "Quantos tiros você dá antes de precisar recarregar."
+
+#: scripts/autoload/card_db.gd
+msgid "Reload"
+msgstr "Recarregar"
+
+#: scripts/autoload/card_db.gd
+msgid "The time to fill the magazine again (reload key or empty magazine)."
+msgstr "O tempo para encher o pente de novo (tecla de recarregar ou pente vazio)."
+
+#: scripts/autoload/card_db.gd
+msgid "Cooldown"
+msgstr "Recarga"
+
+#: scripts/autoload/card_db.gd
+msgid "The wait before you can use the shield, the dash or the master card again."
+msgstr "A espera para usar de novo o escudo, o dash ou a carta mestra."
+
+#: scripts/autoload/card_db.gd
+msgid "Movement speed"
+msgstr "Velocidade de movimento"
+
+#: scripts/autoload/card_db.gd
+msgid "How fast you walk and run."
+msgstr "Quão rápido você anda e corre."
+
+#: scripts/autoload/card_db.gd
+msgid "Health"
+msgstr "Vida"
+
+#: scripts/autoload/card_db.gd
+msgid "Max health. Your body grows a little with it."
+msgstr "A vida máxima. O corpo cresce um pouco com ela."
+
+#: scripts/autoload/card_db.gd
+msgid "An effect that stays on the enemy for a while: Poison, Burn, Freeze, Slow, Blind, Dizzy and Shield locked. Tenacity shortens all of them; Armored reduces none."
+msgstr "Efeito que fica no inimigo por um tempo: Veneno, Queimadura, Congelamento, Lentidão, Cegueira, Tontura e Escudo bloqueado. A Tenacidade encurta todas; o Blindado não reduz nenhuma."
+
+#: scripts/autoload/card_db.gd
+msgid "Slow, long damage: 5 s. Stacks: each hit adds a new poison. Of the bullet damage above 40, it yields only 2/3."
+msgstr "Dano lento e longo: 5 s. Empilha: cada acerto soma um veneno novo. Da parte do dano da bala acima de 40, rende só 2/3."
+
+#: scripts/autoload/card_db.gd
+msgid "Fast, short damage: a lot per second, for a short time. Doesn't stack: a new hit refreshes the time and the strongest one counts. Of the bullet damage above 40, it yields only 70%."
+msgstr "Dano rápido e curto: muito por segundo, por pouco tempo. Não empilha: um acerto novo renova o tempo e vale a mais forte. Da parte do dano da bala acima de 40, rende só 70%."
+
+#: scripts/autoload/card_db.gd
+msgid "Frost stacks, up to 5: each one makes the target's fire rate and reload 6% slower. At the 5th, they freeze for 0.5 s (can't act, but take damage) and the stacks reset; then they can't freeze again for 3 s. After 2 s without a new stack, they lose one per second."
+msgstr "Camadas de gelo, até 5: cada uma deixa a cadência e o recarregar do alvo 6% mais lentos. Na 5ª ele congela por 0,5 s (não age, mas leva dano) e as camadas zeram; depois fica 3 s sem congelar de novo. 2 s sem camada nova, perde uma por segundo."
+
+#: scripts/autoload/card_db.gd
+msgid "Breaking the ice"
+msgstr "Quebrar o gelo"
+
+#: scripts/autoload/card_db.gd
+msgid "The first hit on someone frozen deals +20 and ends the ice. Poison and burn don't break it."
+msgstr "O primeiro golpe em quem está congelado causa +20 e acaba com o gelo. Veneno e queimadura não quebram."
+
+#: scripts/autoload/card_db.gd
+msgid "Once-per-hit effects"
+msgstr "Efeito fixo por acerto"
+
+#: scripts/autoload/card_db.gd
+msgid "Frost stacks, Ember heat-up and Pressure apply at most once every 0.25 s from each shooter on each target: several bullets from the same shot (shotgun) count once."
+msgstr "Camada de gelo, aquecimento da Brasa e Pressão valem no máximo uma vez a cada 0,25 s de cada atirador em cada alvo: várias balas do mesmo tiro (escopeta) contam uma vez."
+
+#: scripts/autoload/card_db.gd
+msgid "Slow"
+msgstr "Lentidão"
+
+#: scripts/autoload/card_db.gd
+msgid "The target moves slower. Doesn't stack: the strongest one counts."
+msgstr "O alvo anda mais devagar. Não empilha: vale a mais forte."
+
+#: scripts/autoload/card_db.gd
+msgid "How cards add up"
+msgstr "Como as cartas somam"
+
+#: scripts/autoload/card_db.gd
+msgid "Upgrades to the same attribute add up (+20% and +20% = +40%). Downgrades multiply and have a limit: in general, no attribute drops below 35% of normal."
+msgstr "Melhorias do mesmo atributo somam (+20% e +20% = +40%). Pioras multiplicam e têm limite: em geral, nenhum atributo cai abaixo de 35% do normal."
+
+#: scripts/autoload/card_db.gd
+msgid "Balanced"
+msgstr "Equilibrado"
+
+#: scripts/autoload/card_db.gd
+msgid "a bit of every group"
+msgstr "um pouco de cada grupo"
+
+#: scripts/autoload/card_db.gd
+msgid "weapon and bullets"
+msgstr "arma e balas"
+
+#: scripts/autoload/card_db.gd
+msgid "Bulwark"
+msgstr "Muralha"
+
+#: scripts/autoload/card_db.gd
+msgid "close-range shield: defend, close in and hit"
+msgstr "escudo de perto: defende, encosta e bate"
+
+#: scripts/autoload/card_db.gd
+msgid "Acrobat"
+msgstr "Acrobata"
+
+#: scripts/autoload/card_db.gd
+msgid "movement and mobility"
+msgstr "movimento e mobilidade"
+
+#: scripts/autoload/card_db.gd
+msgid "Chaos"
+msgstr "Caos"
+
+#: scripts/autoload/card_db.gd
+msgid "only the craziest cards"
+msgstr "só as cartas mais malucas"
+
+#: scripts/autoload/card_db.gd
+msgid "Random"
+msgstr "Aleatório"
+
+#: scripts/autoload/card_db.gd
+msgid "randomly drawn"
+msgstr "sorteado"
+
+#: scripts/autoload/card_db.gd
+msgid "Empty"
+msgstr "Vazio"
+
+#: scripts/autoload/card_db.gd
+msgid "you choose everything"
+msgstr "você escolhe tudo"
+
+#: scripts/autoload/game_state.gd
+msgid "Blue"
+msgstr "Azul"
+
+#: scripts/autoload/game_state.gd
+msgid "Red"
+msgstr "Vermelho"
+
+#: scripts/autoload/game_state.gd
+msgid "Windowed"
+msgstr "Janela"
+
+#: scripts/autoload/game_state.gd
+msgid "Borderless"
+msgstr "Sem borda"
+
+#: scripts/autoload/game_state.gd
+msgid "Fullscreen"
+msgstr "Tela cheia"
+
+#: scripts/autoload/game_state.gd
+msgid "Master"
+msgstr "Geral"
+
+#: scripts/autoload/game_state.gd
+msgid "Effects"
+msgstr "Efeitos"
+
+#: scripts/autoload/game_state.gd
+msgid "Interface"
+msgstr "Interface"
+
+#: scripts/autoload/game_state.gd
+msgid "Music"
+msgstr "Música"
+
+#: scripts/autoload/game_state.gd
+msgid "Compatibility (OpenGL)"
+msgstr "Compatibilidade (OpenGL)"
+
+#: scripts/autoload/game_state.gd
+msgid "Vulkan"
+msgstr ""
+
+#: scripts/autoload/game_state.gd
+msgid "DirectX 12"
+msgstr ""
+
+#: scripts/autoload/game_state.gd
+msgid "Space"
+msgstr "Espaço"
+
+#: scripts/autoload/game_state.gd
+msgid "Ctrl"
+msgstr ""
+
+#: scripts/autoload/game_state.gd
+msgid "Shift"
+msgstr ""
+
+#: scripts/autoload/game_state.gd
+msgid "Alt"
+msgstr ""
+
+#: scripts/autoload/game_state.gd
+msgid "Tab"
+msgstr ""
+
+#: scripts/autoload/game_state.gd
+msgid "Caps Lock"
+msgstr ""
+
+#: scripts/autoload/game_state.gd
+msgid "Enter"
+msgstr ""
+
+#: scripts/autoload/game_state.gd
+msgid "Enter (numpad)"
+msgstr "Enter (num.)"
+
+#: scripts/autoload/game_state.gd
+msgid "Backspace"
+msgstr ""
+
+#: scripts/autoload/game_state.gd
+msgid "Up arrow"
+msgstr "Seta cima"
+
+#: scripts/autoload/game_state.gd
+msgid "Down arrow"
+msgstr "Seta baixo"
+
+#: scripts/autoload/game_state.gd
+msgid "Left arrow"
+msgstr "Seta esq."
+
+#: scripts/autoload/game_state.gd
+msgid "Right arrow"
+msgstr "Seta dir."
+
+#: scripts/autoload/game_state.gd
+msgid "Left click"
+msgstr "Clique esq."
+
+#: scripts/autoload/game_state.gd
+msgid "Right click"
+msgstr "Clique dir."
+
+#: scripts/autoload/game_state.gd
+msgid "Middle click"
+msgstr "Botão do meio"
+
+#: scripts/autoload/game_state.gd
+msgid "Mouse 4"
+msgstr ""
+
+#: scripts/autoload/game_state.gd
+msgid "Mouse 5"
+msgstr ""
+
+#: scripts/autoload/game_state.gd
+msgid "Wheel up"
+msgstr "Roda p/ cima"
+
+#: scripts/autoload/game_state.gd
+msgid "Wheel down"
+msgstr "Roda p/ baixo"
+
+#: scripts/autoload/game_state.gd
+msgctxt "action"
+msgid "Forward"
+msgstr "Frente"
+
+#: scripts/autoload/game_state.gd
+msgctxt "action"
+msgid "Back"
+msgstr "Trás"
+
+#: scripts/autoload/game_state.gd
+msgctxt "action"
+msgid "Left"
+msgstr "Esquerda"
+
+#: scripts/autoload/game_state.gd
+msgctxt "action"
+msgid "Right"
+msgstr "Direita"
+
+#: scripts/autoload/game_state.gd
+msgctxt "action"
+msgid "Jump"
+msgstr "Pular"
+
+#: scripts/autoload/game_state.gd
+msgctxt "action"
+msgid "Shoot"
+msgstr "Atirar"
+
+#: scripts/autoload/game_state.gd
+msgctxt "action"
+msgid "Shield"
+msgstr "Escudo"
+
+#: scripts/autoload/game_state.gd
+msgctxt "action"
+msgid "Reload"
+msgstr "Recarregar"
+
+#: scripts/autoload/game_state.gd
+msgctxt "action"
+msgid "Master card"
+msgstr "Carta mestra"
+
+#: scripts/autoload/game_state.gd
+msgctxt "action"
+msgid "Dash"
+msgstr "Dash"
+
+#: scripts/autoload/game_state.gd
+msgctxt "action"
+msgid "Crouch / slide"
+msgstr "Agachar / deslizar"
+
+#: scripts/autoload/game_state.gd
+msgctxt "action"
+msgid "Scoreboard and cards (hold)"
+msgstr "Placar e cartas (segurar)"
+
+#: scripts/autoload/game_state.gd
+msgctxt "action"
+msgid "Chat (online)"
+msgstr "Chat (online)"

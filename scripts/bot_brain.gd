@@ -11,7 +11,16 @@ extends Node
 ## (cone de 120 graus) e vista há "seen" segundos (Difícil vê até nas costas e atrás da
 ## parede, na hora); void: chance de acertar o escudo no vazio; master_wait: espera a mais
 ## depois da recarga da carta mestra.
-const LEVEL_NAMES := ["Fácil", "Médio", "Difícil"]
+const LEVEL_NAMES := ["Easy", "Medium", "Hard"]   # use level_names() para mostrar
+
+
+## Nomes das dificuldades já traduzidos (contexto "difficulty": "Medium" da qualidade é "Média").
+static func level_names() -> Array:
+	return LEVEL_NAMES.map(func(n): return Lang.t(n, "difficulty"))
+
+
+static func i18n_strings() -> Array:
+	return LEVEL_NAMES.map(func(n): return [n, "difficulty", "scripts/bot_brain.gd"])
 const LEVELS := [
 	{"aim": 1.4, "turn": 3.5, "lead": 0.3, "react": 0.6, "click": [0.25, 0.33], "shield": 0.15,
 		"front": true, "seen": 0.35, "void": 0.15, "master_wait": 3.0, "perfect": 0.2},

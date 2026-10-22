@@ -53,7 +53,7 @@ func _ready() -> void:
 
 ## info: rodada e adversários; score: placar em texto.
 func open(info: String, score: String) -> void:
-	_title.text = "MENU" if online else "PAUSA"
+	_title.text = tr("MENU") if online else tr("PAUSED")
 	_subtitle.text = info
 	_score.text = score
 	_status.visible = online
@@ -122,28 +122,28 @@ func _main_panel() -> Control:
 	_subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(_subtitle)
 	col.add_child(Ui.gap(12))
-	_status = Ui.label("ONLINE  ·  A PARTIDA CONTINUA", 13, Ui.WARN, true)
+	_status = Ui.label(tr("ONLINE  ·  THE MATCH GOES ON"), 13, Ui.WARN, true)
 	col.add_child(_status)
 	col.add_child(Ui.gap(36))
 
 	var menu := Ui.vbox(10)
 	col.add_child(menu)
-	var resume := Ui.accent(_menu_button("Continuar", _resume))
+	var resume := Ui.accent(_menu_button(tr("Continue"), _resume))
 	resume.custom_minimum_size.y = 56
 	resume.add_theme_font_size_override("font_size", 20)
 	menu.add_child(resume)
-	menu.add_child(_menu_button("Configurações", func():
+	menu.add_child(_menu_button(tr("Settings"), func():
 		_main.visible = false
 		_settings_page.visible = true))
 	menu.add_child(Ui.gap(14))
 	if practice:
-		menu.add_child(_menu_button("Voltar ao editor", func(): leave_requested.emit()))
+		menu.add_child(_menu_button(tr("Back to editor"), func(): leave_requested.emit()))
 	else:
-		menu.add_child(_menu_button("Sair para o menu", _ask_leave))
-	menu.add_child(_menu_button("Sair do jogo", _ask_quit))
+		menu.add_child(_menu_button(tr("Quit to menu"), _ask_leave))
+	menu.add_child(_menu_button(tr("Quit game"), _ask_quit))
 
 	col.add_child(Ui.grow())
-	_score_title = Ui.label("PLACAR", 12, Ui.MUTED, true)
+	_score_title = Ui.label(tr("SCOREBOARD"), 12, Ui.MUTED, true)
 	_score_title.visible = not practice
 	col.add_child(_score_title)
 	col.add_child(Ui.gap(4))
@@ -151,7 +151,7 @@ func _main_panel() -> Control:
 	_score.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(_score)
 	col.add_child(Ui.gap(20))
-	col.add_child(Ui.label("Esc  voltar ao jogo", 13, Ui.MUTED))
+	col.add_child(Ui.label(tr("Esc  back to the game"), 13, Ui.MUTED))
 	return panel
 
 
@@ -169,10 +169,10 @@ func _settings_screen() -> Control:
 	bg.add_child(root)
 	var header := Ui.hbox(16)
 	root.add_child(header)
-	header.add_child(Ui.flat(Ui.button("< Voltar", _show_main)))
+	header.add_child(Ui.flat(Ui.button(tr("< Back"), _show_main)))
 	var titles := Ui.vbox(2)
-	titles.add_child(Ui.label("Configurações", 32, Ui.TEXT, true))
-	titles.add_child(Ui.label("Salvas sozinhas e valem na hora.", 15, Ui.MUTED))
+	titles.add_child(Ui.label(tr("Settings"), 32, Ui.TEXT, true))
+	titles.add_child(Ui.label(tr("Saved automatically and applied right away."), 15, Ui.MUTED))
 	header.add_child(titles)
 	_settings = SettingsPanel.new()
 	_settings.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -205,7 +205,7 @@ func _confirm_box() -> Control:
 	var row := Ui.hbox(10)
 	row.alignment = BoxContainer.ALIGNMENT_END
 	col.add_child(row)
-	row.add_child(Ui.flat(Ui.button("Cancelar", func(): _confirm.visible = false, 120)))
+	row.add_child(Ui.flat(Ui.button(tr("Cancel"), func(): _confirm.visible = false, 120)))
 	_confirm_ok = _danger(Ui.button("", func(): _confirm_action.call(), 160))
 	row.add_child(_confirm_ok)
 	return shade
@@ -220,19 +220,19 @@ func _ask(title: String, text: String, ok_text: String, action: Callable) -> voi
 
 
 func _ask_leave() -> void:
-	var text := "O progresso desta partida será perdido."
+	var text := tr("Progress in this match will be lost.")
 	if online:
-		text = "A partida acaba para todos na sala."
-	_ask("Sair para o menu?", text, "Sair da partida", func():
+		text = tr("The match ends for everyone in the lobby.")
+	_ask(tr("Quit to menu?"), text, tr("Leave match"), func():
 		close()
 		leave_requested.emit())
 
 
 func _ask_quit() -> void:
-	var text := "O jogo vai fechar e o progresso desta partida será perdido."
+	var text := tr("The game will close and progress in this match will be lost.")
 	if online:
-		text = "O jogo vai fechar e a partida acaba para todos na sala."
-	_ask("Sair do jogo?", text, "Fechar o jogo", func():
+		text = tr("The game will close and the match ends for everyone in the lobby.")
+	_ask(tr("Quit game?"), text, tr("Close the game"), func():
 		close()
 		quit_requested.emit())
 

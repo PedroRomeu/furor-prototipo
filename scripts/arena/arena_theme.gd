@@ -14,42 +14,42 @@ extends RefCounted
 ## salto), void (o vazio lá embaixo). Texturas: grid, tiles, bricks, planks, concrete, plates.
 
 const THEMES := [
-	{"name": "Concreto",
+	{"name": "Concrete",   # i18n
 		"floor": Color(0.44, 0.44, 0.43), "wall": Color(0.64, 0.63, 0.61), "cover": Color(0.55, 0.55, 0.54),
 		"moving": Color(0.6, 0.52, 0.46), "accent": Color(0.62, 0.59, 0.50), "void": Color(0.14, 0.14, 0.15),
 		"tex": {"floor": "concrete", "wall": "concrete", "cover": "grid", "moving": "plates"},
 		"sky_top": Color(0.42, 0.48, 0.56), "sky_horizon": Color(0.72, 0.74, 0.76),
 		"fog": Color(0.7, 0.72, 0.74), "fog_density": 0.003,
 		"sun": Color(1.0, 0.98, 0.94), "sun_energy": 0.46, "ambient": Color(0.82, 0.83, 0.86), "ambient_energy": 0.51},
-	{"name": "Deserto",
+	{"name": "Desert",   # i18n
 		"floor": Color(0.56, 0.51, 0.43), "wall": Color(0.72, 0.65, 0.54), "cover": Color(0.6, 0.53, 0.44),
 		"moving": Color(0.6, 0.48, 0.4), "accent": Color(0.66, 0.61, 0.48), "void": Color(0.2, 0.17, 0.14),
 		"tex": {"floor": "tiles", "wall": "bricks", "cover": "bricks", "moving": "plates"},
 		"sky_top": Color(0.5, 0.58, 0.66), "sky_horizon": Color(0.84, 0.78, 0.68),
 		"fog": Color(0.82, 0.76, 0.66), "fog_density": 0.004,
 		"sun": Color(1.0, 0.94, 0.84), "sun_energy": 0.50, "ambient": Color(0.88, 0.84, 0.78), "ambient_energy": 0.47},
-	{"name": "Neve",
+	{"name": "Snow",   # i18n
 		"floor": Color(0.53, 0.55, 0.58), "wall": Color(0.48, 0.5, 0.53), "cover": Color(0.58, 0.6, 0.63),
 		"moving": Color(0.58, 0.54, 0.52), "accent": Color(0.53, 0.59, 0.64), "void": Color(0.16, 0.18, 0.21),
 		"tex": {"floor": "concrete", "wall": "bricks", "cover": "planks", "moving": "plates"},
 		"sky_top": Color(0.62, 0.67, 0.72), "sky_horizon": Color(0.86, 0.88, 0.9),
 		"fog": Color(0.82, 0.84, 0.86), "fog_density": 0.004,
 		"sun": Color(0.94, 0.96, 1.0), "sun_energy": 0.40, "ambient": Color(0.86, 0.89, 0.94), "ambient_energy": 0.51},
-	{"name": "Bosque",
+	{"name": "Woods",   # i18n
 		"floor": Color(0.42, 0.45, 0.38), "wall": Color(0.5, 0.45, 0.38), "cover": Color(0.46, 0.41, 0.34),
 		"moving": Color(0.55, 0.46, 0.38), "accent": Color(0.56, 0.59, 0.48), "void": Color(0.12, 0.13, 0.11),
 		"tex": {"floor": "tiles", "wall": "planks", "cover": "planks", "moving": "plates"},
 		"sky_top": Color(0.46, 0.53, 0.56), "sky_horizon": Color(0.7, 0.74, 0.7),
 		"fog": Color(0.64, 0.69, 0.64), "fog_density": 0.005,
 		"sun": Color(1.0, 0.96, 0.88), "sun_energy": 0.50, "ambient": Color(0.78, 0.82, 0.76), "ambient_energy": 0.55},
-	{"name": "Galpão",
+	{"name": "Warehouse",   # i18n
 		"floor": Color(0.38, 0.38, 0.39), "wall": Color(0.5, 0.5, 0.5), "cover": Color(0.56, 0.52, 0.45),
 		"moving": Color(0.58, 0.47, 0.4), "accent": Color(0.58, 0.54, 0.45), "void": Color(0.1, 0.1, 0.11),
 		"tex": {"floor": "plates", "wall": "plates", "cover": "grid", "moving": "plates"},
 		"sky_top": Color(0.34, 0.37, 0.42), "sky_horizon": Color(0.6, 0.6, 0.6),
 		"fog": Color(0.56, 0.56, 0.57), "fog_density": 0.004,
 		"sun": Color(1.0, 0.93, 0.82), "sun_energy": 0.43, "ambient": Color(0.78, 0.78, 0.8), "ambient_energy": 0.55},
-	{"name": "Crepúsculo",
+	{"name": "Dusk",   # i18n
 		"floor": Color(0.42, 0.42, 0.46), "wall": Color(0.52, 0.51, 0.55), "cover": Color(0.47, 0.46, 0.5),
 		"moving": Color(0.56, 0.48, 0.46), "accent": Color(0.56, 0.54, 0.59), "void": Color(0.1, 0.1, 0.13),
 		"tex": {"floor": "tiles", "wall": "concrete", "cover": "grid", "moving": "plates"},

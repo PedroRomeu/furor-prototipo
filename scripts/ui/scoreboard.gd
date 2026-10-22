@@ -5,7 +5,7 @@ extends Control
 ## o mouse mostra o efeito). Ordem: mais rodadas, depois mais abates. Nos Duelos, uma coluna a
 ## mais com as vidas em corações, e a ordem começa por quem tem mais vidas.
 
-const STATS := ["RODADAS", "ABATES", "ASSIST.", "MORTES"]
+const STATS := ["ROUNDS", "KILLS", "ASSISTS", "DEATHS"]   # i18n
 const STAT_WIDTH := 76.0
 const ICON_SIZE := 34.0
 const HEART_SIZE := 14.0
@@ -59,10 +59,10 @@ func _ready() -> void:
 	var header := Ui.hbox(12)
 	col.add_child(header)
 	if result_text == "":
-		header.add_child(Ui.label("PLACAR", 15, Ui.TEXT, true))
+		header.add_child(Ui.label(tr("SCOREBOARD"), 15, Ui.TEXT, true))
 	else:
 		var result := Ui.vbox(0)
-		result.add_child(Ui.label("FIM DA PARTIDA", 12, Ui.MUTED, true))
+		result.add_child(Ui.label(tr("MATCH OVER"), 12, Ui.MUTED, true))
 		result.add_child(Ui.label(result_text, 34, result_color, true))
 		header.add_child(result)
 	header.add_child(Ui.spacer())
@@ -78,14 +78,14 @@ func _ready() -> void:
 	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pad.add_child(titles)
 	col.add_child(pad)
-	var who := Ui.label("JOGADOR", 12, Ui.MUTED, true)
+	var who := Ui.label(tr("PLAYER"), 12, Ui.MUTED, true)
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	titles.add_child(_indent(who))
-	_lives_title = _cell("VIDAS", 12, Ui.MUTED, true)
+	_lives_title = _cell(tr("LIVES"), 12, Ui.MUTED, true)
 	_lives_title.visible = false
 	titles.add_child(_lives_title)
 	for t in STATS:
-		titles.add_child(_cell(t, 12, Ui.MUTED, true))
+		titles.add_child(_cell(tr(t), 12, Ui.MUTED, true))
 	col.add_child(HSeparator.new())
 	_rows = Ui.vbox(6)
 	_rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -94,12 +94,12 @@ func _ready() -> void:
 		col.add_child(HSeparator.new())
 		col.add_child(_missions_block())
 	if buttons.is_empty():
-		col.add_child(Ui.label("Passe o mouse numa carta para ver o efeito.", 13, Ui.MUTED))
+		col.add_child(Ui.label(tr("Hover over a card to see its effect."), 13, Ui.MUTED))
 	else:
 		col.add_child(HSeparator.new())
 		var foot := Ui.hbox(10)
 		col.add_child(foot)
-		foot.add_child(Ui.label("Passe o mouse numa carta para ver o efeito.", 13, Ui.MUTED))
+		foot.add_child(Ui.label(tr("Hover over a card to see its effect."), 13, Ui.MUTED))
 		foot.add_child(Ui.spacer())
 		var first := true
 		for text in buttons:
@@ -119,7 +119,7 @@ func _ready() -> void:
 func _missions_block() -> Control:
 	var col := Ui.vbox(8)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_child(Ui.label("MISSÕES", 12, Ui.MUTED, true))
+	col.add_child(Ui.label(tr("MISSIONS"), 12, Ui.MUTED, true))
 	var flow := HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 8)
 	flow.add_theme_constant_override("v_separation", 8)
@@ -143,7 +143,7 @@ func _missions_block() -> Control:
 		text.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		top.add_child(text)
 		var gain: int = m["progress"] - m["before"]
-		top.add_child(Ui.label("Cumprida" if m["done"] else "+" + Missions.num(gain), 13, Ui.OK if m["done"] else Ui.ACCENT, true))
+		top.add_child(Ui.label(tr("Completed") if m["done"] else "+" + Missions.num(gain), 13, Ui.OK if m["done"] else Ui.ACCENT, true))
 		box.add_child(top)
 		var bottom := Ui.hbox(8)
 		bottom.add_child(Ui.progress_bar(m["progress"], m["target"], 4.0))
@@ -211,11 +211,11 @@ func _team_header(team: int, rounds: int) -> Control:
 	strip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	line.add_child(strip)
-	line.add_child(Ui.label("TIME %s" % String(GameState.TEAM_NAMES[team]).to_upper(), 14, color.lightened(0.35), true))
+	line.add_child(Ui.label(tr("TEAM %s") % GameState.team_name(team).to_upper(), 14, color.lightened(0.35), true))
 	if team == me.team:
-		line.add_child(Ui.label("seu time", 13, Ui.MUTED))
+		line.add_child(Ui.label(tr("your team"), 13, Ui.MUTED))
 	line.add_child(Ui.spacer())
-	line.add_child(Ui.label("%d rodada%s" % [rounds, "" if rounds == 1 else "s"], 14, Ui.TEXT, true))
+	line.add_child(Ui.label(tr_n("%d round", "%d rounds", rounds) % rounds, 14, Ui.TEXT, true))
 	for c in line.get_children():
 		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return line
@@ -273,9 +273,9 @@ func _row(p: Player) -> Control:
 func _status(p: Player) -> String:
 	if total_lives > 0:
 		if lives.get(String(p.name), 0) <= 0:
-			return "eliminado"
-		return "" if String(p.name) in duel_pair else "na fila"
-	return "" if p.alive else "fora da rodada"
+			return tr("eliminated")
+		return "" if String(p.name) in duel_pair else tr("in queue")
+	return "" if p.alive else tr("out this round")
 
 
 func _lives_width() -> float:
@@ -344,7 +344,7 @@ func _card_flow(p: Player) -> Control:
 		icon.modulate.a = 0.5
 		flow.add_child(icon)
 	if ids.is_empty():
-		flow.add_child(Ui.label("Nenhuma carta ainda", 14, Ui.MUTED))
+		flow.add_child(Ui.label(tr("No cards yet"), 14, Ui.MUTED))
 	return flow
 
 

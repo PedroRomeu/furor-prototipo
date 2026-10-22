@@ -25,15 +25,15 @@ func _ready() -> void:
 ## title: o que aconteceu ("Você perdeu a rodada"); a linha de baixo pede a escolha.
 func choose(options: Array, title: String, owned: Array) -> String:
 	var col := _open()
-	col.add_child(_heading(title, "Escolha uma carta para o seu baralho da partida"))
+	col.add_child(_heading(title, tr("Pick a card for your match deck")))
 	var row := Ui.hbox(18)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.add_child(row)
 	_cards.clear()
 	for i in options.size():
 		row.add_child(_card(options[i], i, owned.count(options[i])))
-	var keys := "1, 2 ou 3" if options.size() == 3 else "1 a %d" % options.size()
-	var hint := Ui.label("Clique numa carta ou aperte %s" % keys, 14, Ui.MUTED)
+	var keys := tr("1, 2 or 3") if options.size() == 3 else tr("1 to %d") % options.size()
+	var hint := Ui.label(tr("Click a card or press %s") % keys, 14, Ui.MUTED)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(hint)
 	var index: int = await _wait(options.size())
@@ -54,21 +54,21 @@ func vote(round_num: int, extra: int, score_text: String, voters: Array, online:
 	var inner := Ui.vbox(18)
 	panel.add_child(inner)
 
-	var top := Ui.label("FIM DO BLOCO  ·  RODADA %d" % round_num, 13, Ui.ACCENT, true)
+	var top := Ui.label(tr("END OF BLOCK  ·  ROUND %d") % round_num, 13, Ui.ACCENT, true)
 	top.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	inner.add_child(top)
 	var score := Ui.label(score_text, 26, Ui.TEXT, true)
 	score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	score.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	inner.add_child(score)
-	var ask := Ui.label("Jogar mais %d rodadas ou terminar a partida?" % extra, 15, Ui.MUTED)
+	var ask := Ui.label(tr("Play %d more rounds or end the match?") % extra, 15, Ui.MUTED)
 	ask.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	inner.add_child(ask)
 
 	var buttons := Ui.hbox(12)
 	inner.add_child(buttons)
 	_vote_buttons.clear()
-	var labels := ["Mais %d rodadas" % extra, "Terminar"]
+	var labels := [tr("%d more rounds") % extra, tr("End")]
 	for i in 2:
 		var b := Ui.button("%s   %d" % [labels[i], i + 1], func(): picked.emit(i))
 		b.custom_minimum_size.y = 50
@@ -84,9 +84,9 @@ func vote(round_num: int, extra: int, score_text: String, voters: Array, online:
 		inner.add_child(HSeparator.new())
 		var head := Ui.hbox(8)
 		inner.add_child(head)
-		head.add_child(Ui.label("VOTOS", 12, Ui.MUTED, true))
+		head.add_child(Ui.label(tr("VOTES"), 12, Ui.MUTED, true))
 		head.add_child(Ui.spacer())
-		head.add_child(Ui.label("Só continua se todos quiserem", 12, Ui.MUTED))
+		head.add_child(Ui.label(tr("Only continues if everyone wants to"), 12, Ui.MUTED))
 		var list := Ui.vbox(6)
 		inner.add_child(list)
 		for p in voters:
@@ -121,13 +121,13 @@ func set_votes(votes: Dictionary) -> void:
 	for n in _vote_rows:
 		var state: Label = _vote_rows[n][0]
 		if not votes.has(n):
-			state.text = "votando..."
+			state.text = tr("voting...")
 			state.add_theme_color_override("font_color", Ui.MUTED)
 		elif votes[n]:
-			state.text = "Continuar"
+			state.text = tr("Continue")
 			state.add_theme_color_override("font_color", Ui.OK)
 		else:
-			state.text = "Terminar"
+			state.text = tr("End")
 			state.add_theme_color_override("font_color", Ui.DANGER)
 
 
@@ -207,7 +207,7 @@ func _card(id: String, index: int, owned: int) -> Control:
 	var icon := CardIcon.make(id, 76, 1, false)
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(icon)
-	var name_label := Ui.label(card["name"], 21, Ui.TEXT, true)
+	var name_label := Ui.label(CardDB.card_name(id), 21, Ui.TEXT, true)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -216,18 +216,18 @@ func _card(id: String, index: int, owned: int) -> Control:
 	tags.alignment = BoxContainer.ALIGNMENT_CENTER
 	tags.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(tags)
-	for t in [[card["cat"], color.lerp(Color.WHITE, 0.15)], ["·", Ui.LINE.lightened(0.3)],
+	for t in [[CardDB.category_name(card["cat"]), color.lerp(Color.WHITE, 0.15)], ["·", Ui.LINE.lightened(0.3)],
 			[CardDB.rarity_name(id), CardDB.rarity_color(id)]]:
 		var l := Ui.label(t[0], 13, t[1], true)
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		tags.add_child(l)
 	if owned > 0:
-		var have := _chip("você tem x%d" % owned, color, Ui.BG)
-		have.tooltip_text = "Pegar de novo soma o efeito"
+		var have := _chip(tr("you have x%d") % owned, color, Ui.BG)
+		have.tooltip_text = tr("Taking it again stacks the effect")
 		have.mouse_filter = Control.MOUSE_FILTER_PASS
 		tags.add_child(have)
 	col.add_child(HSeparator.new())
-	var desc := Ui.scroll_text(card["desc"], DESC_HEIGHT, 14, Ui.TEXT.darkened(0.15))
+	var desc := Ui.scroll_text(CardDB.card_desc(id), DESC_HEIGHT, 14, Ui.TEXT.darkened(0.15))
 	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(desc)
 	return panel

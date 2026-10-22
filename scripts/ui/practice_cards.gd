@@ -11,7 +11,8 @@ signal applied(cards: Array)   # as cartas mudaram: a partida recalcula o jogado
 signal closed
 
 const NO_LIMIT_CAP := 10
-const GROUPS := ["Todas", "Arma", "Balas", "Escudo", "Corpo", "Movimento"]
+## Ids dos grupos ("" = todas); o nome mostrado vem de CardDB.category_name.
+const GROUPS := ["", "Arma", "Balas", "Escudo", "Corpo", "Movimento"]
 
 var cards: Array = []          # mestra primeiro, depois as cartas pegas
 var deck: Array = []           # o baralho aberto no editor (para "Pegar o baralho todo")
@@ -94,15 +95,16 @@ func _build_collection() -> Control:
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var head := Ui.hbox(12)
 	col.add_child(head)
-	head.add_child(Ui.label("Cartas da sala", 24, Ui.TEXT, true))
+	head.add_child(Ui.label(tr("Room cards"), 24, Ui.TEXT, true))
 	head.add_child(Ui.spacer())
 	_search_edit = LineEdit.new()
-	_search_edit.placeholder_text = "Buscar carta"
+	_search_edit.placeholder_text = tr("Search cards")
 	_search_edit.custom_minimum_size = Vector2(220, 38)
 	_search_edit.text_changed.connect(func(t): _search = t.strip_edges().to_lower(); _fill())
 	head.add_child(_search_edit)
 	var colors := [Ui.ACCENT] + CardDB.CATEGORY_COLORS.values()
-	_tabs = Ui.tabs(GROUPS, 0, func(i): _group = i; _fill(), colors)
+	var labels := [tr("All", "cards")] + GROUPS.slice(1).map(CardDB.category_name)
+	_tabs = Ui.tabs(labels, 0, func(i): _group = i; _fill(), colors)
 	col.add_child(_tabs)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -130,7 +132,7 @@ func _fill() -> void:
 		var card: Dictionary = CardDB.CARDS[id]
 		if _group > 0 and card["cat"] != GROUPS[_group]:
 			continue
-		if _search != "" and not card["name"].to_lower().contains(_search):
+		if _search != "" and not CardDB.card_name(id).to_lower().contains(_search):
 			continue
 		var tile := _tile(id)
 		_grid.add_child(tile)
@@ -143,7 +145,7 @@ func _tile(id: String) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	panel.tooltip_text = CardIcon._wrap(card["desc"], 52)
+	panel.tooltip_text = CardIcon._wrap(CardDB.card_desc(id), 52)
 	panel.gui_input.connect(_on_tile_input.bind(id))
 	var row := Ui.hbox(10)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -153,7 +155,7 @@ func _tile(id: String) -> PanelContainer:
 	names.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(names)
-	var title := Ui.label(card["name"], 15, Ui.TEXT, true)
+	var title := Ui.label(CardDB.card_name(id), 15, Ui.TEXT, true)
 	title.clip_text = true
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -178,7 +180,7 @@ func _style_tiles() -> void:
 		var lit := n > 0
 		panel.add_theme_stylebox_override("panel", CardFrame.style(CardDB.CARDS[id]["cat"], "lit" if lit else "dim", _picking_master, 10))
 		var count: Label = panel.find_child("Count", true, false)
-		count.text = ("x%d" % n if n > 0 else "") if not _picking_master else ("Equipada" if lit else "")
+		count.text = ("x%d" % n if n > 0 else "") if not _picking_master else (tr("Equipped") if lit else "")
 
 
 func _on_tile_input(event: InputEvent, id: String) -> void:
@@ -208,10 +210,10 @@ func _build_side() -> Control:
 	panel.add_theme_stylebox_override("panel", style)
 	var col := Ui.vbox(12)
 	panel.add_child(col)
-	col.add_child(Ui.label("MESTRA", 12, Ui.MUTED, true))
+	col.add_child(Ui.label(tr("MASTER"), 12, Ui.MUTED, true))
 	_master_slot = PanelContainer.new()
 	_master_slot.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	_master_slot.tooltip_text = "Clique para trocar"
+	_master_slot.tooltip_text = tr("Click to change")
 	_master_slot.gui_input.connect(func(event: InputEvent):
 		var mb := event as InputEventMouseButton
 		if mb and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
@@ -219,15 +221,15 @@ func _build_side() -> Control:
 			_refresh())
 	col.add_child(_master_slot)
 	_nocd = CheckButton.new()
-	_nocd.text = "Mestra sem recarga"
+	_nocd.text = tr("Master without cooldown")
 	_nocd.toggled.connect(func(on): no_cooldown = on)
 	col.add_child(_nocd)
-	col.add_child(Ui.label("ATIRADORES", 12, Ui.MUTED, true))
-	col.add_child(Ui.tabs(["Desligado", "Lento", "Normal", "Rajada"], shooter_mode, func(i): shooter_mode = i))
+	col.add_child(Ui.label(tr("SHOOTERS"), 12, Ui.MUTED, true))
+	col.add_child(Ui.tabs([tr("Off", "shooters"), tr("Slow", "shooters"), tr("Normal", "shooters"), tr("Burst", "shooters")], shooter_mode, func(i): shooter_mode = i))
 	col.add_child(Ui.gap(4))
 	var head := Ui.hbox(8)
 	col.add_child(head)
-	head.add_child(Ui.label("CARTAS VALENDO", 12, Ui.MUTED, true))
+	head.add_child(Ui.label(tr("ACTIVE CARDS"), 12, Ui.MUTED, true))
 	head.add_child(Ui.spacer())
 	_count_label = Ui.label("", 12, Ui.MUTED, true)
 	head.add_child(_count_label)
@@ -239,18 +241,18 @@ func _build_side() -> Control:
 	_list = Ui.vbox(2)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_list)
-	col.add_child(Ui.button("Pegar o baralho todo", _take_deck))
-	col.add_child(Ui.button("Tirar todas", func():
+	col.add_child(Ui.button(tr("Take the whole deck"), _take_deck))
+	col.add_child(Ui.button(tr("Remove all"), func():
 		cards = cards.filter(CardDB.is_master)
 		_apply()))
-	col.add_child(Ui.accent(Ui.button("Voltar à sala", close)))
+	col.add_child(Ui.accent(Ui.button(tr("Back to the room"), close)))
 	return panel
 
 
 func _refresh() -> void:
 	_nocd.set_pressed_no_signal(no_cooldown)
 	_tabs.visible = not _picking_master
-	_hint.text = "Clique numa mestra para equipar   ·   B ou Esc: voltar às cartas" if _picking_master 		else "Clique: põe uma   ·   Botão direito: tira   ·   Passe o mouse para ler   ·   B ou Esc: voltar"
+	_hint.text = tr("Click a master to equip it   ·   B or Esc: back to the cards") if _picking_master 		else tr("Click: add one   ·   Right click: remove   ·   Hover to read   ·   B or Esc: back")
 	_search_edit.visible = not _picking_master
 	_fill()
 	# Mestra
@@ -264,11 +266,11 @@ func _refresh() -> void:
 	_master_slot.add_child(row)
 	if master != "":
 		row.add_child(CardIcon.make(master, 38, 1, false))
-	var name_label := Ui.label(CardDB.card_name(master) if master != "" else "Sem mestra", 16, Ui.TEXT, true)
+	var name_label := Ui.label(CardDB.card_name(master) if master != "" else tr("No master"), 16, Ui.TEXT, true)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(name_label)
-	var hint := Ui.label("Voltar ›" if _picking_master else "Trocar ›", 13, Ui.MUTED)
+	var hint := Ui.label(tr("Back ›") if _picking_master else tr("Change ›"), 13, Ui.MUTED)
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(hint)
 	# Lista das cartas valendo (na ordem da coleção), clique tira uma.
@@ -280,7 +282,7 @@ func _refresh() -> void:
 		if taken.has(id):
 			_list.add_child(_list_row(id, taken.count(id)))
 	if taken.is_empty():
-		var empty := Ui.label("Nenhuma: só a arma base.", 14, Ui.MUTED)
+		var empty := Ui.label(tr("None: just the base weapon."), 14, Ui.MUTED)
 		_list.add_child(empty)
 
 
@@ -288,7 +290,7 @@ func _list_row(id: String, n: int) -> Control:
 	var b := Button.new()
 	b.flat = true
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.tooltip_text = "Clique para tirar uma"
+	b.tooltip_text = tr("Click to remove one")
 	b.custom_minimum_size.y = 34
 	b.pressed.connect(_remove.bind(id))
 	var row := Ui.hbox(8)

@@ -8,16 +8,16 @@ extends HBoxContainer
 ## Controles e Créditos. Usado no menu principal e no de pausa; a última categoria aberta
 ## volta aberta. Tudo é salvo na hora pelo GameState.
 
-const QUALITY_NAMES := ["Baixa", "Média", "Alta"]
+const QUALITY_NAMES := ["Low", "Medium", "High"]   # i18n
 const QUALITY_HINTS := [
-	"Sem sombras, brilho nem névoa. Para PCs modestos.",
-	"Sombras simples, sem brilho nem névoa.",
-	"Sombras detalhadas, brilho e névoa. Pesada em placa integrada.",
+	"No shadows, glow or fog. For modest PCs.",   # i18n
+	"Simple shadows, no glow or fog.",   # i18n
+	"Detailed shadows, glow and fog. Heavy on integrated graphics.",   # i18n
 ]
 const MODE_HINTS := [
-	"Dá para mover, redimensionar e maximizar.",
-	"Tela toda, sem borda. Alt+Tab instantâneo.",
-	"Tela cheia exclusiva. O Alt+Tab demora.",
+	"Can be moved, resized and maximized.",   # i18n
+	"Whole screen, no border. Instant Alt+Tab.",   # i18n
+	"Exclusive fullscreen. Alt+Tab is slow.",   # i18n
 ]
 const CONTROL_WIDTH := 330.0   # coluna dos controles, à direita de cada linha
 const CONTENT_MAX := 940.0     # largura máxima do painel (em tela larga não espalha)
@@ -51,29 +51,29 @@ func _init(nick_field: Control = null) -> void:
 		holder.custom_minimum_size.x = minf(room, CONTENT_MAX)
 		holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL if room <= CONTENT_MAX else Control.SIZE_SHRINK_BEGIN)
 	var group := ButtonGroup.new()
-	var pages: Array = []
+	var pages: Array = []   # [id, título, página]
 	if nick_field:
-		pages.append(["Perfil", _profile_page(nick_field)])
-	pages.append_array([["Vídeo", _video_page()], ["Áudio", _audio_page()],
-		["Controles", _controls_page()], ["Créditos", _credits_page()]])
+		pages.append(["profile", tr("Profile"), _profile_page(nick_field)])
+	pages.append_array([["video", tr("Video"), _video_page()], ["audio", tr("Audio"), _audio_page()],
+		["controls", tr("Controls"), _controls_page()], ["credits", tr("Credits"), _credits_page()]])
 	for entry in pages:
-		var title: String = entry[0]
-		var b := Ui.nav_button(title, group)
-		b.pressed.connect(_open.bind(title))
+		var id: String = entry[0]
+		var b := Ui.nav_button(entry[1], group)
+		b.pressed.connect(_open.bind(id))
 		nav.add_child(b)
-		var page := _scrolled(entry[1])
+		var page := _scrolled(entry[2])
 		page.visible = false
 		holder.add_child(page)
-		_tabs[title] = [b, page]
+		_tabs[id] = [b, page]
 	_open(_last_tab if _tabs.has(_last_tab) else String(pages[0][0]))
 
 
-func _open(title: String) -> void:
+func _open(id: String) -> void:
 	stop_rebind()
-	_last_tab = title
+	_last_tab = id
 	for t in _tabs:
-		_tabs[t][0].set_pressed_no_signal(t == title)
-		_tabs[t][1].visible = t == title
+		_tabs[t][0].set_pressed_no_signal(t == id)
+		_tabs[t][1].visible = t == id
 
 
 ## Página rolável, com margem.
@@ -129,21 +129,25 @@ func _switch(on: bool, action: Callable) -> Control:
 # ---------------------------------------------------------------- páginas
 
 func _profile_page(nick_field: Control) -> Control:
-	var col := _page("Perfil")
-	_section(col, "JOGADOR")
+	var col := _page(tr("Profile"))
+	_section(col, tr("PLAYER"))
 	nick_field.custom_minimum_size.y = 38
-	_row(col, "Nome", "Como os outros te veem online. Também dá para mudar na sala.", nick_field)
+	_row(col, tr("Name"), tr("How others see you online. You can also change it in the lobby."), nick_field)
+	# Idioma (2026-10-22): só no menu principal, que se refaz inteiro ao trocar.
+	var pick := _dropdown(Lang.names(), Lang.codes().find(Lang.current))
+	pick.item_selected.connect(func(i): Lang.set_language(Lang.codes()[i]))
+	_row(col, tr("Language"), tr("Menus, cards and match texts."), pick)
 	return col
 
 
 func _video_page() -> Control:
-	var col := _page("Vídeo")
+	var col := _page(tr("Video"))
 	# As funções anônimas copiam as variáveis ao nascer: os rótulos criados depois vão num
 	# dicionário, que é compartilhado.
 	var refs := {}
-	_section(col, "TELA")
-	refs["mode_hint"] = _row(col, "Modo de exibição", MODE_HINTS[GameState.window_mode],
-		Ui.tabs(GameState.WINDOW_MODES, GameState.window_mode, func(i):
+	_section(col, tr("DISPLAY"))
+	refs["mode_hint"] = _row(col, tr("Display mode"), tr(MODE_HINTS[GameState.window_mode]),
+		Ui.tabs(GameState.WINDOW_MODES.map(tr), GameState.window_mode, func(i):
 			GameState.set_window_mode(i)
 			_refresh_video(i, refs)))
 	refs["res_pick"] = _dropdown([], -1)
@@ -154,28 +158,28 @@ func _video_page() -> Control:
 		else:
 			GameState.set_fullscreen_res(options[i])
 		_refresh_video(GameState.window_mode, refs))
-	refs["res_hint"] = _row(col, "Resolução", "", refs["res_pick"])
+	refs["res_hint"] = _row(col, tr("Resolution"), "", refs["res_pick"])
 	_refresh_video(GameState.window_mode, refs)
-	_row(col, "Tamanho da interface", "Menus e HUD. Aumente em telas grandes.",
+	_row(col, tr("Interface size"), tr("Menus and HUD. Increase it on large screens."),
 		Ui.tabs(GameState.UI_SCALES.map(func(f): return "%d%%" % roundi(f * 100.0)), GameState.ui_scale,
 			GameState.set_ui_scale))
 
-	_section(col, "GRÁFICOS")
-	refs["quality_hint"] = _row(col, "Qualidade", QUALITY_HINTS[GameState.quality],
-		Ui.tabs(QUALITY_NAMES, GameState.quality, func(i):
+	_section(col, tr("GRAPHICS"))
+	refs["quality_hint"] = _row(col, tr("Quality"), tr(QUALITY_HINTS[GameState.quality]),
+		Ui.tabs(QUALITY_NAMES.map(tr), GameState.quality, func(i):
 			GameState.set_quality(i)
-			refs["quality_hint"].text = QUALITY_HINTS[i]))
-	_row(col, "VSync", "Ligado evita imagem rasgada. Desligado, o FPS não trava em 30.",
+			refs["quality_hint"].text = tr(QUALITY_HINTS[i])))
+	_row(col, "VSync", tr("On prevents screen tearing. Off, the FPS doesn't lock at 30."),
 		_switch(GameState.vsync, GameState.set_vsync))
 	_api_row(col)
-	_row(col, "Mostrar FPS", "Contador de quadros no canto da partida.", _switch(GameState.show_fps, GameState.set_show_fps))
+	_row(col, tr("Show FPS"), tr("Frame counter in the corner during a match."), _switch(GameState.show_fps, GameState.set_show_fps))
 	return col
 
 
 ## Resolução: na janela, o tamanho dela; na tela cheia, a do monitor (padrão) ou uma menor,
 ## mais leve, esticada até o monitor. A lista muda com o modo.
 func _refresh_video(mode: int, refs: Dictionary) -> void:
-	refs["mode_hint"].text = MODE_HINTS[mode]
+	refs["mode_hint"].text = tr(MODE_HINTS[mode])
 	var pick: OptionButton = refs["res_pick"]
 	pick.clear()
 	var options: Array
@@ -188,17 +192,17 @@ func _refresh_video(mode: int, refs: Dictionary) -> void:
 		chosen = GameState.fullscreen_res
 	var screen := DisplayServer.screen_get_size()
 	for r: Vector2i in options:
-		pick.add_item("Do monitor  (%d x %d)" % [screen.x, screen.y] if r == Vector2i.ZERO else "%d x %d" % [r.x, r.y])
+		pick.add_item(tr("Monitor's  (%d x %d)") % [screen.x, screen.y] if r == Vector2i.ZERO else "%d x %d" % [r.x, r.y])
 	pick.select(maxi(0, options.find(chosen)))
 	refs["res_options"] = options
 	var hint: Label = refs["res_hint"]
 	hint.visible = true
 	if mode == 0:
-		hint.text = "Tamanho da janela ao abrir. Maximizada, o jogo acompanha."
+		hint.text = tr("Window size on launch. When maximized, the game follows.")
 	elif chosen == Vector2i.ZERO:
-		hint.text = "Nítida e mais pesada. Uma menor deixa o jogo mais leve."
+		hint.text = tr("Sharp and heavier. A lower one makes the game lighter.")
 	else:
-		hint.text = "Mais leve: o jogo é desenhado menor e esticado até o monitor."
+		hint.text = tr("Lighter: the game is drawn smaller and stretched to the monitor.")
 
 
 ## API gráfica: lista suspensa; a frase diz a que está em uso e se falta reiniciar (no menu
@@ -206,29 +210,29 @@ func _refresh_video(mode: int, refs: Dictionary) -> void:
 func _api_row(col: VBoxContainer) -> void:
 	var box := Ui.vbox(8)
 	var ids: Array = GameState.GRAPHICS_APIS.map(func(a): return a[0])
-	var pick := _dropdown(GameState.GRAPHICS_APIS.map(func(a): return a[1] + ("  (recomendada)" if a[0] == "compat" else "")),
+	var pick := _dropdown(GameState.GRAPHICS_APIS.map(func(a): return tr(a[1]) + (tr("  (recommended)") if a[0] == "compat" else "")),
 		ids.find(GameState.chosen_graphics_api()))
 	box.add_child(pick)
-	var restart := Ui.accent(Ui.button("Reiniciar agora", GameState.restart_game))
+	var restart := Ui.accent(Ui.button(tr("Restart now"), GameState.restart_game))
 	restart.custom_minimum_size.y = 36
 	box.add_child(restart)
-	var refs := {"hint": _row(col, "API gráfica", "", box)}
+	var refs := {"hint": _row(col, tr("Graphics API"), "", box)}
 	var refresh := func():
 		var hint: Label = refs["hint"]
 		hint.visible = true
 		var chosen := GameState.chosen_graphics_api()
-		var now := "Em uso: %s." % GameState.current_graphics_api()
+		var now := tr("In use: %s.") % GameState.current_graphics_api()
 		var pending := chosen != GameState.api_at_start
 		var fell_back := not pending and chosen != "compat" \
 			and RenderingServer.get_current_rendering_driver_name().begins_with("opengl3")
 		if pending:
-			hint.text = now + " A escolha vale ao reiniciar."
+			hint.text = now + " " + tr("The choice applies after restarting.")
 			hint.add_theme_color_override("font_color", Ui.WARN)
 		elif fell_back:
-			hint.text = now + " Este PC não tem %s; voltou para OpenGL." % GameState.GRAPHICS_APIS[ids.find(chosen)][1]
+			hint.text = now + " " + tr("This PC doesn't have %s; fell back to OpenGL.") % tr(GameState.GRAPHICS_APIS[ids.find(chosen)][1])
 			hint.add_theme_color_override("font_color", Ui.WARN)
 		else:
-			hint.text = now + " Vulkan e DirectX 12 pesam mais em placa integrada."
+			hint.text = now + " " + tr("Vulkan and DirectX 12 are heavier on integrated graphics.")
 			hint.add_theme_color_override("font_color", Ui.MUTED)
 		restart.visible = in_main_menu and pending
 	pick.item_selected.connect(func(i):
@@ -238,30 +242,29 @@ func _api_row(col: VBoxContainer) -> void:
 
 
 func _audio_page() -> Control:
-	var col := _page("Áudio")
-	_section(col, "VOLUME")
+	var col := _page(tr("Audio"))
+	_section(col, tr("VOLUME"))
 	for b in GameState.AUDIO_BUSES:
 		var hint := ""
 		match b[0]:
 			"Master":
-				hint = "Tudo o que o jogo toca."
+				hint = tr("Everything the game plays.")
 			"Efeitos":
-				hint = "Tiros, explosões e passos do mundo."
+				hint = tr("Shots, explosions and footsteps in the world.")
 			"Interface":
-				hint = "Acerto, abate e dano recebido."
+				hint = tr("Hits, kills and damage taken.")
 			"Musica":
-				hint = "Ainda não há música no jogo."
-		_row(col, b[1], hint, _volume_slider(b[0]))
+				hint = tr("There's no music in the game yet.")
+		_row(col, tr(b[1]), hint, _volume_slider(b[0]))
 	col.add_child(Ui.gap(10))
-	col.add_child(Ui.label("Solte a barra para ouvir um exemplo.", 13, Ui.MUTED))
+	col.add_child(Ui.label(tr("Release the slider to hear a sample."), 13, Ui.MUTED))
 	return col
 
 
 func _credits_page() -> Control:
-	var col := _page("Créditos")
-	_section(col, "RECURSOS")
-	var text := Ui.label("Modelos e sons de Kenney (kenney.nl), CC0.\n\nÍcones das cartas de game-icons.net, "
-		+ "por Lorc, Delapouite, Caro Asercion, Faithtoken, Felbrigg, HeavenlyDog, John Colburn, Lucas, Sbed e Skoll (CC BY 3.0).", 15, Ui.TEXT)
+	var col := _page(tr("Credits"))
+	_section(col, tr("ASSETS"))
+	var text := Ui.label(tr("Models and sounds by Kenney (kenney.nl), CC0.\n\nCard icons from game-icons.net, by Lorc, Delapouite, Caro Asercion, Faithtoken, Felbrigg, HeavenlyDog, John Colburn, Lucas, Sbed and Skoll (CC BY 3.0)."), 15, Ui.TEXT)
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(Ui.gap(14))
 	col.add_child(text)
@@ -306,7 +309,7 @@ func _volume_slider(bus: String) -> Control:
 	slider.value = GameState.volumes[bus]
 	var value := Ui.label("", 15, Ui.TEXT)
 	var show := func(v: float):
-		value.text = "Mudo" if v <= 0.0 else "%d%%" % int(v)
+		value.text = tr("Muted") if v <= 0.0 else "%d%%" % int(v)
 		value.add_theme_color_override("font_color", Ui.MUTED if v <= 0.0 else Ui.TEXT)
 	show.call(slider.value)
 	slider.value_changed.connect(func(v):
@@ -321,16 +324,16 @@ func _volume_slider(bus: String) -> Control:
 ## Controles: sensibilidade e uma linha por ação, com duas vagas de tecla. Clicar numa vaga
 ## e apertar a tecla (ou botão do mouse) nova; Esc cancela; botão direito esvazia a vaga.
 func _controls_page() -> Control:
-	var col := _page("Controles")
-	_section(col, "MOUSE")
-	_row(col, "Sensibilidade", "", _sens_slider())
-	var reset := Ui.flat(Ui.button("Restaurar padrão", func():
+	var col := _page(tr("Controls"))
+	_section(col, tr("MOUSE"))
+	_row(col, tr("Sensitivity"), "", _sens_slider())
+	var reset := Ui.flat(Ui.button(tr("Restore defaults"), func():
 		stop_rebind()
 		GameState.reset_binds()
 		_refresh_binds()))
 	reset.custom_minimum_size.y = 30
 	reset.add_theme_font_size_override("font_size", 13)
-	_section(col, "TECLAS", reset)
+	_section(col, tr("KEYS"), reset)
 	bind_hint = Ui.label("", 13, Ui.MUTED)
 	bind_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(Ui.gap(8))
@@ -351,7 +354,7 @@ func _controls_page() -> Control:
 					_refresh_binds())
 			keys.add_child(b)
 			bind_buttons[[a[0], slot]] = b
-		_row(col, a[1], "", keys)
+		_row(col, GameState.action_label(a[0]), "", keys)
 	_refresh_binds()
 	return col
 
@@ -377,22 +380,22 @@ func _refresh_binds() -> void:
 		var b: Button = bind_buttons[key]
 		var clash := GameState.conflicts(action, code)
 		if action == rebind_action and key[1] == rebind_slot:
-			b.text = "Aperte uma tecla..."
+			b.text = tr("Press a key...")
 			b.add_theme_color_override("font_color", Ui.ACCENT)
 		else:
 			b.text = GameState.code_text(code) if code != "" else "-"
 			b.add_theme_color_override("font_color", Ui.WARN if not clash.is_empty() else (Ui.TEXT if code != "" else Ui.MUTED))
 		if not clash.is_empty() and action < clash[0]:
-			warnings.append("%s está em %s e em %s." % [GameState.code_text(code), GameState.action_label(action),
+			warnings.append(tr("%s is on %s and on %s.") % [GameState.code_text(code), GameState.action_label(action),
 				", ".join(clash.map(GameState.action_label))])
 	if rebind_action != "":
-		bind_hint.text = "Aperte a tecla ou botão do mouse para %s. Esc cancela." % GameState.action_label(rebind_action)
+		bind_hint.text = tr("Press the key or mouse button for %s. Esc cancels.") % GameState.action_label(rebind_action)
 		bind_hint.add_theme_color_override("font_color", Ui.ACCENT)
 	elif not warnings.is_empty():
-		bind_hint.text = "Tecla repetida: " + " ".join(warnings)
+		bind_hint.text = tr("Repeated key:") + " " + " ".join(warnings)
 		bind_hint.add_theme_color_override("font_color", Ui.WARN)
 	else:
-		bind_hint.text = "Clique numa tecla para trocar; botão direito apaga. Mirar e Esc são fixos."
+		bind_hint.text = tr("Click a key to change it; right click clears it. Aim and Esc are fixed.")
 		bind_hint.add_theme_color_override("font_color", Ui.MUTED)
 
 
