@@ -441,6 +441,8 @@ func _ready() -> void:
 	_set_color(c)
 	if sound:
 		Sfx.at(get_parent(), "shot", global_position)
+		shooter.attack_tick += 1   # coice da arma de quem assiste em primeira pessoa (Spectator)
+		shooter.last_swing = -1
 
 
 ## Muda o dano e o tamanho junto (DAMAGE_SIZE_EXP).

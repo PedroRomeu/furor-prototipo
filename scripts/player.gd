@@ -1392,6 +1392,8 @@ var shield_mesh: MeshInstance3D
 var shield_mat: StandardMaterial3D
 var tag: Label3D
 var recoil := 0.0
+var attack_tick := 0     # sobe a cada disparo ou golpe, em todas as máquinas (espectador em 1a pessoa)
+var last_swing := -1     # golpe da espada do último ataque (-1: foi tiro)
 var sway := Vector2.ZERO
 var bob_time := 0.0
 var shake := 0.0
@@ -5316,8 +5318,7 @@ func _make_sword() -> Node3D:
 ## Primeira pessoa: espada em repouso, inclinada para cima e para a esquerda.
 func _rest_sword() -> void:
 	if sword_pivot:
-		sword_pivot.rotation = Vector3(0.9, -0.35, -0.35)
-		sword_pivot.position = SWORD_VIEW_POS
+		rest_sword_pose(sword_pivot)
 
 
 ## Um golpe do combo: decide os acertos (máquina dona), anima e avisa as outras máquinas.
@@ -5447,23 +5448,35 @@ func _show_swing(step: int) -> void:
 		swing_anim = 0.4
 		anim.play("attack-melee-right", 0.05)
 		anim.speed_scale = 1.4 if step == 2 else 1.0
+	attack_tick += 1
+	last_swing = step
 	if sword_pivot and is_human:
-		var t := create_tween()
-		match step:
-			0:   # da esquerda para a direita, lâmina deitada
-				sword_pivot.rotation = Vector3(0.1, 1.1, -1.4)
-				t.tween_property(sword_pivot, "rotation", Vector3(0.1, -1.2, -1.4), 0.16) \
-					.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-			1:   # da direita para a esquerda
-				sword_pivot.rotation = Vector3(0.1, -1.2, 1.4)
-				t.tween_property(sword_pivot, "rotation", Vector3(0.1, 1.1, 1.4), 0.16) \
-					.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-			2:   # estocada: aponta para a mira e avança
-				sword_pivot.rotation = Vector3(0.05, 0.05, 0.0)
-				sword_pivot.position = SWORD_VIEW_POS + Vector3(0.0, 0.0, 0.1)
-				t.tween_property(sword_pivot, "position", SWORD_VIEW_POS + Vector3(-0.08, 0.04, -0.3), 0.1)
-		t.tween_interval(0.12)
-		t.tween_callback(_rest_sword)
+		swing_sword(sword_pivot, step)
+
+
+## Golpe na espada de primeira pessoa (a própria e a do espectador em primeira pessoa).
+static func swing_sword(pivot: Node3D, step: int) -> void:
+	var t := pivot.create_tween()
+	match step:
+		0:   # da esquerda para a direita, lâmina deitada
+			pivot.rotation = Vector3(0.1, 1.1, -1.4)
+			t.tween_property(pivot, "rotation", Vector3(0.1, -1.2, -1.4), 0.16) \
+				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		1:   # da direita para a esquerda
+			pivot.rotation = Vector3(0.1, -1.2, 1.4)
+			t.tween_property(pivot, "rotation", Vector3(0.1, 1.1, 1.4), 0.16) \
+				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		2:   # estocada: aponta para a mira e avança
+			pivot.rotation = Vector3(0.05, 0.05, 0.0)
+			pivot.position = SWORD_VIEW_POS + Vector3(0.0, 0.0, 0.1)
+			t.tween_property(pivot, "position", SWORD_VIEW_POS + Vector3(-0.08, 0.04, -0.3), 0.1)
+	t.tween_interval(0.12)
+	t.tween_callback(rest_sword_pose.bind(pivot))
+
+
+static func rest_sword_pose(pivot: Node3D) -> void:
+	pivot.rotation = Vector3(0.9, -0.35, -0.35)
+	pivot.position = SWORD_VIEW_POS
 
 
 ## Sniper: um tiro que é um laser. Mira no que está sob a mira (atravessando o cenário: o

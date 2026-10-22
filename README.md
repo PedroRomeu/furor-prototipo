@@ -42,7 +42,7 @@ two keys per action.
 | Q | master card ability (see the master cards below) |
 | Tab (hold) | scoreboard: rounds, kills, assists and deaths, and everyone's cards (hover an icon to see its effect) |
 | Enter | chat (online): Enter sends, Esc cancels |
-| Dead, round still going | click: watch the next living player; E (or right click): free camera (WASD, Space up, Ctrl down) |
+| Dead, round still going | a short slow-motion shot turns to whoever killed you, then you watch them in first person (in Teams, your teammate). Click: next living player; E (or right click): switch camera, first person, third person or free (WASD, Space up, Ctrl down) |
 | Esc | pause menu (resume, settings, quit); against bots the game pauses |
 
 **Personalizar** (customize, from the menu or the lobby): pick your character (12) and gun
@@ -155,6 +155,10 @@ shows in a corner during the match.
   well; a card can be in several), rarity and "only cards in the deck". The master card sits
   in its own slot; click it to choose another. The **equipped** deck is the one used in
   matches.
+- **Death cam and spectating** (build 0.9.0.10): when you die, a short slow-motion shot
+  turns to whoever killed you, then cuts to their first-person view (in Teams, your
+  teammate's). While dead, E switches between first person, third person and free camera;
+  click moves to the next living player.
 - **Deck codes** (build 0.9.0.9): in the "⋯" menu of a deck, **Copiar código** copies a
   text code of the deck (name, master card and cards). A friend clicks **Colar código** on the
   Baralhos screen and gets a copy of it as a new deck. Cards their version does not have are
@@ -246,7 +250,7 @@ shows in a corner during the match.
   teammate revives you by staying inside the circle around you for 3 s (they can shoot
   meanwhile); you get up with 30% health. You have 10 s to be revived, then 6 s on the
   second fall in the same round and 3 s after that. Downed counts as out for the round.
-  When dead you watch your teammate (or use the free camera) until the round ends.
+  When dead you watch your teammate (first person, third person or free camera) until the round ends.
 - Cards never leave the deck: you can pick the same one several times and the effects
   stack. A few (Adrenalina, Radar, Fênix...) can only be picked once.
 - Every 5 rounds the game asks: 5 more rounds or finish (online, everyone's vote shows
@@ -362,7 +366,7 @@ scoreboard lists what moved.
 | `scripts/bullet.gd` | Projectile: reflection, ricochet, explosion, poison etc. |
 | `scripts/bot_brain.gd` | Bot AI. `LEVELS` at the top holds the Easy, Medium and Hard numbers. |
 | `scripts/match.gd` | Match flow: picks, countdown, round, 5-round blocks, end. |
-| `scripts/spectator.gd` | Camera when dead: follow a living player or fly freely. |
+| `scripts/spectator.gd` | Camera when dead: slow-motion death shot toward the killer, then watch a living player in first or third person, or fly freely. |
 | `scripts/arena/` | Arena generator, color themes, moving pieces, jump pads, map items, and the practice room (`test_room.gd`). |
 | `scripts/meteor_strike.gd`, `sky_platform.gd` | Chuva de Meteoros meteor, Plataformas Suspensas platform. |
 | `scripts/ui/` | HUD (`vitals.gd` for the health, master card and ability corner), kill feed, chat, damage feedback, scoreboard, pick screen, menu, settings, customization preview, deck screens and the shared look (`ui_style.gd`). |

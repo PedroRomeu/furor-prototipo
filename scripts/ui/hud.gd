@@ -27,6 +27,23 @@ var team_round: Label
 var chips: Array = []                   # [Player, cartão, barra de vida ou null]
 var spectate_label: Label
 var spectate_hint: Label
+var spectate_modes: HBoxContainer   # 1a pessoa / 3a pessoa / livre, com a atual acesa
+var spectate_view := -1
+var spectate_aim := false           # assistindo em primeira pessoa: a mira volta
+var death_fx: ColorRect             # morte em câmera lenta (Spectator): tela fria e bordas escuras
+## Sem ler a tela (cópia da tela inteira pesa na Intel HD): um véu cinza-azulado por cima,
+## mais forte nas bordas, e o preto do corte. Uma chamada de desenho.
+const DEATH_FX_SHADER := """
+shader_type canvas_item;
+uniform float amount = 0.0;
+uniform float black = 0.0;
+void fragment() {
+	float edge = smoothstep(0.3, 0.78, length(UV - vec2(0.5)));
+	vec3 tint = mix(vec3(0.42, 0.45, 0.52), vec3(0.03, 0.02, 0.05), edge);
+	float a = amount * (0.3 + 0.55 * edge);
+	COLOR = vec4(mix(tint, vec3(0.0), black), max(a, black));
+}
+"""
 var dead_view := false
 var downed_view := false
 var scope: ColorRect      # luneta da Sniper: tela escura com um círculo e a cruz fina
@@ -124,6 +141,15 @@ func _ready() -> void:
 	scope.material = scope_mat
 	scope.visible = false
 	add_child(scope)
+	death_fx = ColorRect.new()
+	death_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	death_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var death_mat := ShaderMaterial.new()
+	death_mat.shader = Shader.new()
+	death_mat.shader.code = DEATH_FX_SHADER
+	death_fx.material = death_mat
+	death_fx.visible = false
+	add_child(death_fx)
 	crosshair = Control.new()
 	_place(crosshair, Rect2(0.5, 0.5, 0, 0))
 	crosshair.draw.connect(_draw_crosshair)
@@ -148,9 +174,10 @@ func _ready() -> void:
 	card_timers = CardTimers.new()
 	_corner(card_timers, false, Vector2(28, 162))
 	add_child(card_timers)
-	spectate_label = _label("", 20, Rect2(0.25, 0.835, 0.5, 0.045))
+	spectate_label = _label("", 20, Rect2(0.25, 0.79, 0.5, 0.045))
 	spectate_label.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
-	spectate_hint = _label("", 15, Rect2(0.15, 0.88, 0.7, 0.035))
+	_build_spectate_modes()
+	spectate_hint = _label("", 15, Rect2(0.15, 0.895, 0.7, 0.035))
 	spectate_hint.modulate.a = 0.8
 	down_label = _label("", 26, Rect2(0.2, 0.56, 0.6, 0.1))
 	down_label.add_theme_color_override("font_color", Color(1.0, 0.75, 0.7))
@@ -453,9 +480,57 @@ func _update_downed() -> void:
 
 
 ## Morto assistindo: quem a câmera segue (ou "Câmera livre") e as teclas ("" esconde).
-func set_spectating(text: String, hint := "") -> void:
-	spectate_label.text = text
-	spectate_hint.text = hint
+## view: modo aceso na fileira (Spectator.View; -1 esconde a fileira).
+func set_spectating(text: String, hint := "", view := -1) -> void:
+	if spectate_label.text != text:
+		spectate_label.text = text
+	if spectate_hint.text != hint:
+		spectate_hint.text = hint
+	if view == spectate_view:
+		return
+	spectate_view = view
+	spectate_modes.visible = view >= 0
+	for k in spectate_modes.get_child_count():
+		var chip: PanelContainer = spectate_modes.get_child(k)
+		var on := k == view
+		chip.add_theme_stylebox_override("panel", _mode_style(on))
+		var l: Label = chip.get_child(0)
+		l.add_theme_color_override("font_color", Color(0.08, 0.08, 0.1) if on else Ui.MUTED)
+
+
+## amount: véu da morte em câmera lenta (0 a 1); black: preto do corte para a outra câmera.
+func set_death_fx(amount: float, black: float) -> void:
+	var on := amount > 0.0 or black > 0.0
+	death_fx.visible = on
+	if on:
+		var mat: ShaderMaterial = death_fx.material
+		mat.set_shader_parameter("amount", amount)
+		mat.set_shader_parameter("black", black)
+
+
+## Fileira dos modos de câmera de quem está morto, embaixo do nome de quem se assiste.
+func _build_spectate_modes() -> void:
+	spectate_modes = HBoxContainer.new()
+	_place(spectate_modes, Rect2(0, 0.845, 1, 0.04))
+	spectate_modes.alignment = BoxContainer.ALIGNMENT_CENTER
+	spectate_modes.add_theme_constant_override("separation", 6)
+	spectate_modes.visible = false
+	add_child(spectate_modes)
+	for title in ["1ª pessoa", "3ª pessoa", "Livre"]:
+		var chip := PanelContainer.new()
+		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chip.add_theme_stylebox_override("panel", _mode_style(false))
+		var l := _ui_label(title, 14, Ui.MUTED, true)
+		l.add_theme_constant_override("outline_size", 0)
+		chip.add_child(l)
+		spectate_modes.add_child(chip)
+
+
+func _mode_style(on: bool) -> StyleBoxFlat:
+	var s := Ui.box(Color(0.85, 0.9, 1.0, 0.92) if on else Color(0, 0, 0, 0.45), 6)
+	s.content_margin_top = 3
+	s.content_margin_bottom = 3
+	return s
 
 
 func _on_me_damaged(amount: float, from: Player) -> void:
@@ -701,7 +776,7 @@ func _frame_step(delta: float) -> void:
 	scope.visible = me.scoping
 	if scope.visible:
 		(scope.material as ShaderMaterial).set_shader_parameter("screen", scope.size)
-	crosshair.visible = not me.scoping and not dead_view and me.ice_timer <= 0.0
+	crosshair.visible = spectate_aim if dead_view else (not me.scoping and me.ice_timer <= 0.0)
 	_update_ammo()
 	shield_tint.visible = me.alive and me.is_shielding()
 	_update_downed()
@@ -974,6 +1049,7 @@ func _sync_scoreboard() -> void:
 func show_scoreboard(on: bool) -> void:
 	for l in [center_label, toast_box, score_box, spectate_label, overtime]:
 		l.self_modulate.a = 0.0 if on else 1.0   # o placar já mostra isso; texto solto atrapalha
+	spectate_modes.modulate.a = 0.0 if on else 1.0   # self_modulate não passa para os filhos
 	if team_bar:
 		team_bar.visible = not on
 	if on:
