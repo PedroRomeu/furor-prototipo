@@ -155,6 +155,9 @@ shows in a corner during the match.
   well; a card can be in several), rarity and "only cards in the deck". The master card sits
   in its own slot; click it to choose another. The **equipped** deck is the one used in
   matches.
+- **Smoother explosions** (build 0.9.0.13): on weaker graphics cards, an explosion after a quiet
+  moment (Bazooka, Mecha missiles, Missile Rain) froze the game for about a tenth of a second.
+  Fixed.
 - **Master cards reworked** (build 0.9.0.12): most master cards got stronger and clearer, fixed
   master damage now grows with your bullet damage, a new master card **Missile Rain**, and
   Meteor Shower and Ant are turned off for now (details in the master card list below).
