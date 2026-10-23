@@ -155,6 +155,9 @@ shows in a corner during the match.
   well; a card can be in several), rarity and "only cards in the deck". The master card sits
   in its own slot; click it to choose another. The **equipped** deck is the one used in
   matches.
+- **Master cards reworked** (build 0.9.0.12): most master cards got stronger and clearer, fixed
+  master damage now grows with your bullet damage, a new master card **Missile Rain**, and
+  Meteor Shower and Ant are turned off for now (details in the master card list below).
 - **Languages** (build 0.9.0.11): the game is in English by default; Brazilian Portuguese
   can be chosen in Settings > Profile > Language. Online, each player sees their own language.
 - **Death cam and spectating** (build 0.9.0.10): when you die, a short slow-motion shot
@@ -166,57 +169,43 @@ shows in a corner during the match.
   Decks screen and gets a copy of it as a new deck. Cards their version does not have are
   left out, with a warning.
 - **Master card**: each deck has one, picked in its own slot in the editor, outside the
-  card count. You start every match with it. New in 0.8.0: **Unstable Cards** (Bullets, Q:
-  3 random common cards from your deck for 8 s, shown over your name), **King's Domain**
-  (Body; enemies in range wear a small crown with "Q" on your screen. Q on one in your
-  sights up to 30 m throws a homing shadow chain at 24 m/s; they escape only by blocking
-  with the shield as it arrives or by getting behind a wall (12 s cooldown then). Caught:
-  both of you are pulled into a closed room for 10 s, where you gain 4% damage per second
-  up to +30%, they lose the same, and you wear a crown that grows with it; win and you keep
-  the bonus 6 s more; when time runs out both return where they were, and
-  everyone on the map sees a purple marker with the countdown there), **Plunger Grapple**
-  (Movement, a plunger on a rope: Q sticks it to any surface up to 30 m and pulls you there;
-  hang up to 3 s, Space mid-pull to fling yourself with the momentum, Space while hanging to
-  wall jump, Q again for the next plunger; 2 charges of 8 s), **Mecha** (Body: Q builds a
-  mech around you piece by piece in 1.2 s, slow and unable to shoot meanwhile; inside for 8 s
-  you keep your gun, get armor of 60 + 60% of max health that takes damage first, ignore
-  pushes and pulls, and E fires a missile instead of the shield; bigger, 25% slower, no dash
-  or extra jumps; Q again leaves early; on leaving it explodes for 20 to 50 damage, more the
-  less armor is left; Piercer ignores the armor; 24 s cooldown after you leave) and **Clone**
-  (Bullets: Q leaves a clone that walks slowly where you were looking for 8 s and looks like
-  you to others, name and health included; every shot of yours also fires from it toward
-  your crosshair at half damage; Q again swaps places with it; enemy bullets destroy it with
-  40 damage; 18 s cooldown). New in 0.5.0: **Chaos** (Bullets: draws a
-  random master; an active one is used once and 8 s after its effect ends another comes, a
-  passive one lasts 15 s), **Ice Prison** (Shield, Q: an ice shard that traps the target
-  in a sliding ice block for 3 s; they take no damage, but shots, explosions and bodies push
-  the block), **Mega Slap** (Body, Q: a short slap that launches far; hitting a wall deals 20
-  more and dazes), **Arcane Cannon** (Weapon, Q: charge 1 s, then a 2.5 s beam through walls
-  that you aim slowly; each touch deals 22 and throws the target out of the beam),
-  **Sky Platforms** (Movement, passive: out of air jumps, jumping makes a platform
-  under your feet, up to 3 in a row with 2 s to use each next one, then an 8 s cooldown; each one launches whoever steps on it
-  once, green while it can still launch you and purple after; 5 s each), **Meteor Shower** (Bullets, Q: the next
-  3 shots mark the ground; 1.5 s later a meteor falls on each mark), **Rocket Ride** (Weapon, Q:
-  ride a slow, hard-to-steer rocket that explodes on impact; Q again to jump off and send it
-  flying fast) and **Hook** (Body, Q: a hook that pulls the enemy to you and holds them as
-  a human shield; click to throw them: a wall hurts them, another enemy hurts and dazes both). Also: **Sword** (Weapon, Q: a big
-  sword for 8 s with a 3-hit combo: slash right, slash left and a lunging thrust; a raised
-  shield blocks it; while holding it you move 20% slower, cannot raise your own shield and swing
-  slower if your cards slowed your fire rate), **Sniper** (Weapon, Q: a sniper with ONE laser shot
-  that goes through every wall and deals 4x damage; right click to aim with the scope),
-  **Bazooka** (Weapon, Q: 6 s of
-  bazooka, 3 rockets), **Piercer** (Bullets, Q: 3 straight fast shots with +30% damage that go
-  through walls, players, shields and Bastion, and ignore armor), **Bastion** (Shield, Q: a wall that returns bullets for 4 s), **Last Breath**
-  (Body: a fatal hit leaves you at 1 health for 3 s; get a kill in that time and come back
-  with half), **Camouflage** (Body: stand still 0.6 s to vanish, crouch-walk while hidden;
-  showing up after 1 s hidden gives Ambush, 3 s of +40% shot damage and +20% speed, and its
-  first shot goes through walls; the shot that reveals you already counts),
-  **Updraft** (Movement, Q: an 8 m upward boost, also in the air; holds 2 charges that come
-  back one at a time, 9 s each), **Rocket Boots**
-  (Movement: +10% shot damage per second in the air, up to +40%; with no air jumps left,
-  hold jump for a short rocket burst, refilled on landing) and **Ant** (Movement, Q:
-  6 s at 40% size and +60% speed; Q again to grow back early; growing back knocks away
-  and hurts whoever is within 4 m).
+  card count. You start every match with it (Q for the active ones). Fixed damage on master
+  cards grows with your bullet damage (build 0.9.0.12). Meteor Shower and Ant are turned off
+  for now; decks that used them switch to Updraft.
+  - **Weapon:** **Bazooka** (6 s, 3 rockets with double damage; extra bullets per shot make
+    each rocket stronger, Fire rate shortens the gap, the blast grows with Bullet size up to
+    7 m and launches you without hurting you), **Sword** (8 s, a 3-hit combo: slash right,
+    slash left and a lunging thrust; a raised shield parries it), **Sniper** (one laser shot
+    through every wall with 4x damage; right click to scope), **Arcane Cannon** (charge 1 s,
+    then a 2.5 s beam through walls; each touch deals 22, applies your bullets' afflictions and
+    throws the target out of the beam), **Missile Rain** (new in 0.9.0.12: a radio marks a
+    spot and a direction; a 5 m circle stretches that way into an oval over 12 s, and every
+    2 s a warned salvo hits everyone inside, you included but not your teammate; shields don't
+    stop it; Q again calls one big missile inside the area) and **Rocket Ride** (ride a slow,
+    hard-to-steer rocket that explodes on impact; Q again to jump off and send it flying).
+  - **Bullets:** **Piercer** (3 straight fast shots with +30% damage through walls, players,
+    shields and Bastion, ignoring armor), **Chaos** (a random master: an active one is used
+    once, a passive one lasts 15 s), **Clone** (a clone that walks where you looked for 8 s,
+    looks like you and fires every shot with you at half damage; Q again swaps places) and
+    **Unstable Cards** (3 random common cards from your deck for 8 s).
+  - **Shield:** **Bastion** (a wall for 4 s that sends bullets back at their shooter with
+    +50% damage; Q again pushes it 10 m forward, ramming whoever it runs over) and **Ice
+    Prison** (an ice shard that traps the target in a sliding ice block for 3 s).
+  - **Body:** **Mega Slap** (a short slap that launches far and knocks enemy bullets back;
+    hitting a wall in flight hurts and dazes for 1 s), **Hook** (pulls an enemy to you up to
+    28 m and holds them as a human shield; click to throw them into a wall or another enemy),
+    **King's Domain** (a homing shadow chain that pulls you and the target into a closed room
+    for 10 s, where you grow stronger and they weaker), **Mecha** (build a mech for 8 s with
+    armor that takes damage first and a missile on E; hold jump to charge a leap, grab walls
+    and slide down them, hold dash for a back thruster; it explodes when you leave),
+    **Last Breath** (a fatal hit leaves you at 1 health for 3 s, 40% faster, with a countdown
+    everyone sees; get a kill to come back with half) and **Camouflage** (stand still to
+    vanish; showing up gives Ambush, 3 s of +40% damage and +20% speed).
+  - **Movement:** **Rocket Boots** (+15% shot damage per second in the air, up to +50%,
+    kept 1 s after landing; a short jet when out of air jumps), **Sky Platforms** (out of air
+    jumps, jumping makes a launching platform under your feet, up to 3 in a row), **Plunger
+    Grapple** (hold Q to swing from a plunger, land a kick on enemies; leaving a swing gives
+    +30% damage for 2 s; 3 charges) and **Updraft** (an 8 m upward boost, 2 charges).
 - Shooting: 4 bullets per magazine, 25 damage (4 hits kill), visible bullets that drop
   with distance. Aim a bit higher from afar. Reflected bullets fly straight. A bullet's size
   grows with its damage, also mid-flight (Snowball, Bank Shot): huge bullets are
@@ -370,7 +359,7 @@ scoreboard lists what moved.
 | `scripts/match.gd` | Match flow: picks, countdown, round, 5-round blocks, end. |
 | `scripts/spectator.gd` | Camera when dead: slow-motion death shot toward the killer, then watch a living player in first or third person, or fly freely. |
 | `scripts/arena/` | Arena generator, color themes, moving pieces, jump pads, map items, and the practice room (`test_room.gd`). |
-| `scripts/meteor_strike.gd`, `sky_platform.gd` | Meteor Shower meteor, Sky Platforms platform. |
+| `scripts/meteor_strike.gd`, `missile_rain.gd`, `sky_platform.gd` | Meteor Shower meteor (turned off), Missile Rain area and missiles, Sky Platforms platform. |
 | `scripts/ui/` | HUD (`vitals.gd` for the health, master card and ability corner), kill feed, chat, damage feedback, scoreboard, pick screen, menu, settings, customization preview, deck screens and the shared look (`ui_style.gd`). |
 | `scripts/sfx.gd`, `effects.gd`, `aim_arm.gd` | Sounds, visual effects, arm pointing at the aim. |
 | `scripts/dev/checkup.gd` | Performance check-up tool (see below). |
