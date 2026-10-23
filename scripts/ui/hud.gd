@@ -964,6 +964,12 @@ func _update_status() -> void:
 		items.append([tr("IN THE AIR +%d%% DAMAGE") % roundi(me.air_bonus() * 100.0), Ui.ACCENT])
 	if me.swing_timer > 0.0:
 		items.append([tr("MOMENTUM +%d%% DAMAGE  %.1f") % [roundi(Player.GRAPPLE_SWING_DAMAGE * 100.0), me.swing_timer], Player.GRAPPLE_COLOR])
+	if me.rain_aim == 1:
+		items.append([tr("MISSILE RAIN: CLICK TO MARK THE SPOT  %.1f") % me.rain_aim_time, MissileRain.COLOR])
+	elif me.rain_aim == 2:
+		items.append([tr("MISSILE RAIN: CLICK TO SET THE DIRECTION  %.1f") % me.rain_aim_time, MissileRain.COLOR])
+	elif is_instance_valid(me.rain) and me.rain.owner_player == me and not me.rain.big_used:
+		items.append([tr("MISSILE RAIN  ·  [%s] big missile") % GameState.key_text("master"), MissileRain.COLOR])
 	# Velocidade Letal em degraus de 5% (o selo só é refeito quando o texto muda) e Vulto.
 	var fast := snappedf(me.speed_bonus() * 100.0, 5.0)
 	if fast > 0.0:

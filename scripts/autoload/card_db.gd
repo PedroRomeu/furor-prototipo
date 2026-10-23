@@ -125,6 +125,13 @@ const MASTERS := {
 	"canhao_arcano": {"name": "Arcane Cannon", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 18.0,
 		"desc": "Q: charges for 1 s (moving slowly) and fires a 40 m beam for 2.5 s that goes through walls. You stay in place, on the ground or floating in the air, and aim slowly. Each touch deals 22 damage, growing with your bullet Damage (44 with 50), applies your bullets' afflictions (poison, burn, frost, slow...) and throws the target out of the beam (the same target once every 0.6 s). A raised shield blocks the damage. Getting slapped, freezing or dying cuts the beam. Cooldown 18 s.",
 		"mods": [{"stat": "beam", "add": 1}]},
+	# Chuva de Mísseis (2026-10-23, ideia do usuário: rádio, ponto e direção como o E do Viktor,
+	# área que estica em oval e salvas com aviso que também ferem quem chamou; números meus,
+	# aprovados; o escudo não segurar e o ataque concentrado no Q de novo foram sugestões minhas
+	# aceitas; não ferir o parceiro, escolha dele). Lógica em MissileRain e Player._rain_*.
+	"chuva_de_misseis": {"name": "Missile Rain", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 22.0,
+		"desc": "Q: take out a radio. Click (or Q) marks a spot up to 35 m away; click again sets a direction. A 5 m circle appears there and slowly stretches that way into an oval (up to 15 m long) for 12 s. Every 2 s it flashes red with a whistle and missiles fall: everyone inside takes 18 damage (growing with your bullet Damage), you included; your teammate doesn't. The shield doesn't stop them: they come from above. Q again during the rain: one big missile at your crosshair, inside the area (40 damage, 3.5 m), once per rain. If you don't confirm within 4 s, it goes where you are aiming. Cooldown 22 s, counted after the rain ends.",
+		"mods": [{"stat": "missile_rain", "add": 1}]},
 	# Chuva de Meteoros (2026-10-06, ideia do usuário; números meus, aprovados; ignorar
 	# telhados foi escolha dele).
 	"chuva_de_meteoros": {"name": "Meteor Shower", "cat": "Balas", "rarity": "mitico", "master": true, "cooldown": 16.0,

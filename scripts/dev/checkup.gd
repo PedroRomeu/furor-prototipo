@@ -258,7 +258,7 @@ func _clear_effects() -> void:
 	for n in game.get_children():
 		if n is Bullet.TrailBatch:
 			continue   # a malha única dos rastros fica (é reaproveitada)
-		if n is MeshInstance3D or n is Label3D or n is CPUParticles3D or n is SkyPlatform 				or n.is_in_group("meteor_strikes"):
+		if n is MeshInstance3D or n is Label3D or n is CPUParticles3D or n is SkyPlatform 				or n.is_in_group("meteor_strikes") or n.is_in_group("missile_rains"):
 			n.queue_free()
 	await get_tree().process_frame
 

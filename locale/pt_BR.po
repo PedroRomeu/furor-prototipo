@@ -93,19 +93,19 @@ msgstr "PARKOUR"
 msgid "DEFENSE"
 msgstr "DEFESA"
 
-#: scripts/autoload/card_db.gd:896
+#: scripts/autoload/card_db.gd:903
 msgid "No limit per match."
 msgstr "Sem limite na partida."
 
-#: scripts/autoload/card_db.gd:898
+#: scripts/autoload/card_db.gd:905
 msgid "Only once per match."
 msgstr "Só 1 vez na partida."
 
-#: scripts/autoload/card_db.gd:899
+#: scripts/autoload/card_db.gd:906
 msgid "Up to %d times per match."
 msgstr "Até %d vezes na partida."
 
-#: scripts/autoload/card_db.gd:904
+#: scripts/autoload/card_db.gd:911
 msgid "%d per match"
 msgstr "%d por partida"
 
@@ -597,7 +597,7 @@ msgid_plural "  ·  Practice vs %d bots"
 msgstr[0] "  ·  Treino contra %d bot"
 msgstr[1] "  ·  Treino contra %d bots"
 
-#: scripts/player.gd:2151
+#: scripts/player.gd:2179
 msgid "DOWNED"
 msgstr "CAÍDO"
 
@@ -1327,71 +1327,83 @@ msgstr "NO AR +%d%% DE DANO"
 msgid "MOMENTUM +%d%% DAMAGE  %.1f"
 msgstr "EMBALO +%d%% DE DANO  %.1f"
 
+#: scripts/ui/hud.gd:968
+msgid "MISSILE RAIN: CLICK TO MARK THE SPOT  %.1f"
+msgstr "CHUVA DE MÍSSEIS: CLIQUE PARA MARCAR O LUGAR  %.1f"
+
 #: scripts/ui/hud.gd:970
+msgid "MISSILE RAIN: CLICK TO SET THE DIRECTION  %.1f"
+msgstr "CHUVA DE MÍSSEIS: CLIQUE PARA ESCOLHER A DIREÇÃO  %.1f"
+
+#: scripts/ui/hud.gd:972
+msgid "MISSILE RAIN  ·  [%s] big missile"
+msgstr "CHUVA DE MÍSSEIS  ·  [%s] míssil grande"
+
+#: scripts/ui/hud.gd:976
 msgid "SPEED +%d%% DAMAGE"
 msgstr "VELOCIDADE +%d%% DE DANO"
 
-#: scripts/ui/hud.gd:972
+#: scripts/ui/hud.gd:978
 msgid "%s -%d PER HIT"
 msgstr "%s -%d POR GOLPE"
 
-#: scripts/ui/hud.gd:974
+#: scripts/ui/hud.gd:980
 msgid "%s +%d%% SPEED"
 msgstr "%s +%d%% DE VELOCIDADE"
 
-#: scripts/ui/hud.gd:980
+#: scripts/ui/hud.gd:986
 msgid "%s +%d%% DAMAGE"
 msgstr "%s +%d%% DE DANO"
 
-#: scripts/ui/hud.gd:982
+#: scripts/ui/hud.gd:988
 msgid "%s -%d%% DAMAGE"
 msgstr "%s -%d%% DE DANO"
 
-#: scripts/ui/hud.gd:984
+#: scripts/ui/hud.gd:990
 msgid "SHADOW CHAIN  ·  [%s] to block"
 msgstr "CORRENTE SOMBRIA  ·  [%s] bloqueia"
 
-#: scripts/ui/hud.gd:988
+#: scripts/ui/hud.gd:994
 msgid "%s +%d%% DAMAGE  ·  %.1f"
 msgstr "%s +%d%% DE DANO  ·  %.1f"
 
-#: scripts/ui/hud.gd:990
+#: scripts/ui/hud.gd:996
 msgid "IN %s'S REALM -%d%% DAMAGE  ·  %.1f"
 msgstr "NO DOMÍNIO DE %s -%d%% DE DANO  ·  %.1f"
 
-#: scripts/ui/hud.gd:992
+#: scripts/ui/hud.gd:998
 msgid "REALM +%d%% DAMAGE  %.1f"
 msgstr "DOMÍNIO +%d%% DE DANO  %.1f"
 
-#: scripts/ui/hud.gd:994
+#: scripts/ui/hud.gd:1000
 msgid "%s %.1f: GET A KILL"
 msgstr "%s %.1f: ABATA ALGUÉM"
 
-#: scripts/ui/hud.gd:1014
+#: scripts/ui/hud.gd:1020
 msgid "%s: just you two for %d s"
 msgstr "%s: só vocês dois por %d s"
 
-#: scripts/ui/hud.gd:1016
+#: scripts/ui/hud.gd:1022
 msgid "%s pulled you into %s"
 msgstr "%s te levou para o %s"
 
-#: scripts/ui/hud.gd:1018
+#: scripts/ui/hud.gd:1024
 msgid "You won the Realm"
 msgstr "Você venceu o Domínio"
 
-#: scripts/ui/hud.gd:1018
+#: scripts/ui/hud.gd:1024
 msgid ": +%d%% damage for %d s"
 msgstr ": +%d%% de dano por %d s"
 
-#: scripts/ui/hud.gd:1061
+#: scripts/ui/hud.gd:1067
 msgid "Round %d of %d"
 msgstr "Rodada %d de %d"
 
-#: scripts/ui/hud.gd:1063
+#: scripts/ui/hud.gd:1069
 msgid "ROUND %d OF %d"
 msgstr "RODADA %d DE %d"
 
-#: scripts/ui/hud.gd:1067
+#: scripts/ui/hud.gd:1073
 msgid "ROUND %d / %d"
 msgstr "RODADA %d / %d"
 
@@ -4099,6 +4111,16 @@ msgstr "Canhão Arcano"
 msgctxt "card"
 msgid "Q: charges for 1 s (moving slowly) and fires a 40 m beam for 2.5 s that goes through walls. You stay in place, on the ground or floating in the air, and aim slowly. Each touch deals 22 damage, growing with your bullet Damage (44 with 50), applies your bullets' afflictions (poison, burn, frost, slow...) and throws the target out of the beam (the same target once every 0.6 s). A raised shield blocks the damage. Getting slapped, freezing or dying cuts the beam. Cooldown 18 s."
 msgstr "Q: carrega por 1 s (andando devagar) e solta um raio de 40 m por 2,5 s, que atravessa paredes. Parado, no chão ou flutuando no ar, você mira devagar. Cada toque causa 22 de dano, que cresce com o Dano das suas balas (44 com 50), aplica as aflições das suas balas (veneno, queimadura, gelo, lentidão...) e arremessa o alvo para fora do raio (o mesmo alvo a cada 0,6 s). Escudo levantado bloqueia o dano. Levar tapa, congelar ou morrer corta o raio. Recarga de 18 s."
+
+#: scripts/autoload/card_db.gd chuva_de_misseis
+msgctxt "card"
+msgid "Missile Rain"
+msgstr "Chuva de Mísseis"
+
+#: scripts/autoload/card_db.gd chuva_de_misseis
+msgctxt "card"
+msgid "Q: take out a radio. Click (or Q) marks a spot up to 35 m away; click again sets a direction. A 5 m circle appears there and slowly stretches that way into an oval (up to 15 m long) for 12 s. Every 2 s it flashes red with a whistle and missiles fall: everyone inside takes 18 damage (growing with your bullet Damage), you included; your teammate doesn't. The shield doesn't stop them: they come from above. Q again during the rain: one big missile at your crosshair, inside the area (40 damage, 3.5 m), once per rain. If you don't confirm within 4 s, it goes where you are aiming. Cooldown 22 s, counted after the rain ends."
+msgstr "Q: saca um rádio. Clique (ou Q) marca um lugar a até 35 m; clique de novo escolhe uma direção. Ali aparece um círculo de 5 m que estica devagar nessa direção até virar um oval (até 15 m de comprimento), por 12 s. A cada 2 s ele pisca vermelho com um assobio e caem mísseis: todos dentro levam 18 de dano (cresce com o Dano das suas balas), você também; seu parceiro não. O escudo não segura: eles vêm de cima. Q de novo durante a chuva: um míssil grande na sua mira, dentro da área (40 de dano, 3,5 m), uma vez por chuva. Sem confirmar em 4 s, vai para onde você estiver mirando. Recarga de 22 s, contada depois que a chuva acaba."
 
 #: scripts/autoload/card_db.gd chuva_de_meteoros
 msgctxt "card"

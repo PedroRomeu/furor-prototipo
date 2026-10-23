@@ -179,6 +179,7 @@ const BASE_STATS := {
 	"beam": 0,      # Canhão Arcano
 	"platforms": 0, # Plataformas Suspensas
 	"meteor": 0,    # Chuva de Meteoros
+	"missile_rain": 0,   # Chuva de Mísseis (carta mestra)
 	"rocket_ride": 0,   # Foguete
 	"mech": 0,      # Mecha
 	"clone": 0,     # Clone
@@ -900,6 +901,18 @@ var _mech_arm: Node3D
 var _mech_flame: MeshInstance3D
 var _mech_phase := 0.0
 var _mech_last_pos := Vector3.ZERO
+## Chuva de Mísseis (mestra, MissileRain): Q saca o rádio; clique ou Q marca o ponto (até
+## RAIN_RANGE), o segundo marca a direção e chama a chuva. Sem confirmar em RAIN_AIM_TIME, vai
+## sozinha para onde estiver mirando. Com a chuva ativa, Q de novo: o ataque concentrado.
+## A recarga só anda depois de a chuva acabar.
+const RAIN_RANGE := 35.0
+const RAIN_AIM_TIME := 4.0
+var rain_aim := 0               # 0 nada, 1 escolhendo o ponto, 2 escolhendo a direção (máquina dona)
+var rain_aim_time := 0.0
+var rain_point := Vector3.ZERO
+var rain_preview: MissileRain   # o desenho da mira (só na tela de quem chama)
+var rain: MissileRain           # a chuva ativa deste jogador (todas as máquinas)
+var radio: Node3D               # o rádio na mão enquanto mira
 ## Clone (mestra, ShadowClone): o clone vivo, o eco dos tiros (CLONE_ECHO do dano) e a troca.
 const CLONE_ECHO := 0.5
 const CLONE_SWAP_LOCK := 0.25   # o Q que criou não pode já trocar
@@ -1604,6 +1617,13 @@ func _build_viewmodel() -> void:
 	sword.visible = false
 	sword_pivot.add_child(sword)
 	_rest_sword()
+	radio = _make_radio()
+	_no_shadows(radio)
+	radio.scale = Vector3.ONE * 0.9
+	radio.position = Vector3(0.02, 0.0, 0.02)
+	radio.rotation = Vector3(0.3, 0.2, 0.1)
+	radio.visible = false
+	viewmodel.add_child(radio)
 	hand_pivot = Node3D.new()
 	hand_pivot.visible = false
 	viewmodel.add_child(hand_pivot)
@@ -1682,6 +1702,12 @@ func _build_body() -> void:
 	sword.position = gun.position
 	sword.visible = false
 	hand.add_child(sword)
+	radio = _make_radio()
+	radio.scale = Vector3.ONE * (3.0 / MODEL_SCALE)
+	radio.rotation = gun.rotation
+	radio.position = gun.position
+	radio.visible = false
+	hand.add_child(radio)
 	muzzle = Marker3D.new()
 	muzzle.position = Vector3(0, 0.04, -0.3) + _muzzle_shift()
 	gun.add_child(muzzle)
@@ -1896,6 +1922,8 @@ func reset_for_round(spawn: Transform3D) -> void:
 	_ride_visual(false)
 	_hook_clear()
 	get_tree().call_group("meteor_strikes", "queue_free")
+	get_tree().call_group("missile_rains", "queue_free")
+	_rain_cancel()
 	global_transform = spawn
 	reset_physics_interpolation()
 	net_pos = spawn.origin
@@ -2800,6 +2828,7 @@ func _tick(delta: float) -> void:
 	master_cd = maxf(0.0, master_cd - delta)
 	master_gap = maxf(0.0, master_gap - delta)
 	_mech_tick(delta)
+	_rain_tick(delta)
 	if grapple_refund > 0.0:
 		grapple_refund -= delta
 		if grapple_refund <= 0.0:
@@ -3884,6 +3913,12 @@ func _act(delta: float) -> void:
 	if in_master and is_instance_valid(my_barrier) and my_barrier.can_push():
 		_barrier_push()   # Bastião: Q de novo empurra a parede
 		in_master = false
+	if in_master and rain_aim > 0:
+		_rain_advance()   # Chuva de Mísseis: Q também confirma o ponto e a direção
+		in_master = false
+	elif in_master and is_instance_valid(rain) and rain.owner_player == self and not rain.big_used:
+		_rain_big()   # Chuva de Mísseis: ataque concentrado
+		in_master = false
 	if in_master and shrink_timer > 0.0:
 		_end_shrink(true)   # Formiga: Q de novo volta ao tamanho antes do tempo
 	elif in_master and master_ready() and hook_state == 0:
@@ -3902,6 +3937,11 @@ func _act(delta: float) -> void:
 		shot_queued = SHOT_BUFFER
 	shoot_was = in_shoot
 	var trigger: bool = shot_queued > 0.0 or (in_shoot and stats["auto_fire"] > 0)
+	if rain_aim > 0:
+		if trigger:
+			shot_queued = 0.0
+			_rain_advance()   # Chuva de Mísseis: o clique marca, não atira
+		return
 	if bazooka_timer > 0.0:
 		if trigger and not is_shielding() and fire_timer <= 0.0 and rockets_left > 0:
 			shot_queued = 0.0
@@ -3993,7 +4033,8 @@ func _chaos_tick(delta: float) -> void:
 		return
 	if bazooka_timer > 0.0 or sniper_timer > 0.0 or sword_timer > 0.0 or shrink_timer > 0.0 or pierce_left > 0 \
 			or beam_timer > 0.0 or beam_charge > 0.0 or meteor_left > 0 or ride_timer > 0.0 \
-			or hook_state > 0 or slap_windup > 0.0 or unstable_timer > 0.0 or mech_state > 0 or is_instance_valid(clone):
+			or hook_state > 0 or slap_windup > 0.0 or unstable_timer > 0.0 or mech_state > 0 or is_instance_valid(clone) \
+			or rain_aim > 0 or is_instance_valid(rain):
 		master_cd = CHAOS_WAIT
 	elif master_cd <= 0.0:
 		_chaos_draw()
@@ -5470,6 +5511,8 @@ func _use_master() -> void:
 		dash_timer = 0.0
 		Effects.burst(get_parent(), global_position + Vector3.UP * 0.2, 2.2, Color(0.75, 0.6, 1.0), 0.25)
 		Sfx.at(self, "pad", global_position)
+	if stats["missile_rain"] > 0:
+		_rain_start()
 	if stats["bazooka"] > 0:
 		bazooka_timer = BAZOOKA_TIME
 		rockets_left = BAZOOKA_ROCKETS
@@ -5601,6 +5644,8 @@ func _set_weapon(kind: int) -> void:
 		sniper.visible = kind == 2
 	if sword:
 		sword.visible = kind == 3
+	if radio:
+		radio.visible = kind == 4
 
 
 ## Bastião: a parede existe em todas as máquinas; quem decide o reflexo é a do dono.
@@ -7161,6 +7206,131 @@ func _net_meteor(pos: Vector3, dmg: float) -> void:
 	meteor_marked.emit()
 
 
+# ---------------------------------------------------------------- Chuva de Mísseis
+
+## Q: saca o rádio e começa a mirar o ponto. A recarga fica parada até a chuva acabar.
+func _rain_start() -> void:
+	rain_aim = 1
+	rain_aim_time = RAIN_AIM_TIME
+	_show_weapon(4)
+	Sfx.at(self, "pickup", chest())
+	if is_human:
+		rain_preview = MissileRain.spawn(get_parent(), self, _rain_aim_point(), _flat_forward(), 0.0, true)
+
+
+## Ponto no chão para onde a mira aponta, até RAIN_RANGE: bateu numa parede, desce dali.
+func _rain_aim_point() -> Vector3:
+	var origin := head.global_position
+	var aim := -head.global_transform.basis.z
+	var space := get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + aim * RAIN_RANGE, 1, [get_rid()])
+	var hit := space.intersect_ray(query)
+	var p: Vector3 = hit["position"] - aim * 0.3 if not hit.is_empty() else origin + aim * RAIN_RANGE
+	var down := space.intersect_ray(PhysicsRayQueryParameters3D.create(p + Vector3.UP * 0.5, p + Vector3.DOWN * 60.0, 1))
+	return down["position"] if not down.is_empty() else Vector3(p.x, global_position.y, p.z)
+
+
+## Máquina dona, a cada passo: o tempo da mira (acabou, confirma sozinho), o desenho da mira e
+## a recarga parada enquanto mira ou a chuva cai.
+func _rain_tick(delta: float) -> void:
+	if rain_aim > 0:
+		rain_aim_time -= delta
+		if rain_aim_time <= 0.0:
+			if rain_aim == 1:
+				_rain_advance()
+			_rain_advance()
+		elif is_instance_valid(rain_preview):
+			if rain_aim == 1:
+				rain_preview.set_shape(_rain_aim_point(), _flat_forward(), 0.0)
+			else:
+				rain_preview.set_shape(rain_point, _rain_dir(), MissileRain.LENGTH_MAX)
+	if (rain_aim > 0 or (is_instance_valid(rain) and rain.owner_player == self)) and not chaos:
+		master_cd = CardDB.CARDS["chuva_de_misseis"]["cooldown"]
+
+
+## Direção escolhida: do ponto marcado até a mira (perto demais, para onde você olha).
+func _rain_dir() -> Vector3:
+	var to := _rain_aim_point() - rain_point
+	to.y = 0.0
+	return to.normalized() if to.length() > 1.0 else _flat_forward()
+
+
+## Clique ou Q mirando: o 1o marca o ponto, o 2o a direção e chama a chuva.
+func _rain_advance() -> void:
+	if rain_aim == 1:
+		rain_point = _rain_aim_point()
+		rain_aim = 2
+		if is_human:
+			Sfx.ui(self, "count")
+		return
+	if rain_aim != 2:
+		return
+	var dir := _rain_dir()
+	_rain_cancel()
+	var dmg := MissileRain.DAMAGE * master_scale()
+	if Net.online and is_inside_tree():
+		_net_missile_rain.rpc(rain_point, dir, dmg)
+	else:
+		_net_missile_rain(rain_point, dir, dmg)
+
+
+@rpc("authority", "call_local", "reliable")
+func _net_missile_rain(pos: Vector3, dir: Vector3, dmg: float) -> void:
+	rain = MissileRain.spawn(get_parent(), self, pos, dir, dmg)
+
+
+## Para de mirar (confirmou, morreu, caiu, rodada nova): guarda o rádio e apaga a mira.
+func _rain_cancel() -> void:
+	if rain_aim > 0:
+		rain_aim = 0
+		_show_weapon(0)
+	if is_instance_valid(rain_preview):
+		rain_preview.queue_free()
+	rain_preview = null
+
+
+## Ataque concentrado: míssil grande na mira, levado para dentro da área.
+func _rain_big() -> void:
+	var point := rain.clamp_inside(_rain_aim_point())
+	var dmg := MissileRain.BIG_DAMAGE * master_scale()
+	if Net.online and is_inside_tree():
+		_net_rain_big.rpc(point, dmg)
+	else:
+		_net_rain_big(point, dmg)
+
+
+@rpc("authority", "call_local", "reliable")
+func _net_rain_big(point: Vector3, dmg: float) -> void:
+	if is_instance_valid(rain):
+		rain.big_strike(point, dmg)
+
+
+## Rádio de mão (formas simples, nas medidas da bazuca: o nó escala igual).
+func _make_radio() -> Node3D:
+	var root := Node3D.new()
+	var body := StandardMaterial3D.new()
+	body.albedo_color = Color(0.22, 0.26, 0.2)
+	body.roughness = 0.8
+	var dark := StandardMaterial3D.new()
+	dark.albedo_color = Color(0.1, 0.1, 0.11)
+	var light := StandardMaterial3D.new()
+	light.albedo_color = MissileRain.WARN_COLOR
+	light.emission_enabled = true
+	light.emission = MissileRain.WARN_COLOR
+	for part in [[Vector3(0.1, 0.22, 0.06), Vector3(0.0, 0.0, 0.0), body],   # corpo
+			[Vector3(0.07, 0.06, 0.01), Vector3(0.0, 0.04, -0.031), dark],   # tela
+			[Vector3(0.012, 0.16, 0.012), Vector3(0.032, 0.19, 0.0), dark],  # antena
+			[Vector3(0.02, 0.02, 0.02), Vector3(-0.025, 0.12, 0.0), light]]: # luz
+		var m := BoxMesh.new()
+		m.size = part[0]
+		m.material = part[2]
+		var mi := MeshInstance3D.new()
+		mi.mesh = m
+		mi.position = part[1]
+		root.add_child(mi)
+	return root
+
+
 # ---------------------------------------------------------------- Plataformas Suspensas
 
 ## Plataforma sob os pés, nesta e nas outras máquinas (para todo mundo poder pisar).
@@ -8428,6 +8598,7 @@ func _apply_death_now(killer: String, assists: Array) -> void:
 	death_killer = killer
 	death_assists = assists
 	alive = false
+	_rain_cancel()
 	health = 0.0
 	shape.set_deferred("disabled", true)
 	tag.visible = false
@@ -8497,6 +8668,7 @@ func _apply_down(bleed: float) -> void:
 	crouching = true
 	_set_height(DOWN_HEIGHT)
 	_end_shrink(false)
+	_rain_cancel()
 	if bazooka_timer > 0.0 or sniper_timer > 0.0 or sword_timer > 0.0:
 		bazooka_timer = 0.0
 		sniper_timer = 0.0

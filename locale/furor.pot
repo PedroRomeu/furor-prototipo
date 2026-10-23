@@ -92,19 +92,19 @@ msgstr ""
 msgid "DEFENSE"
 msgstr ""
 
-#: scripts/autoload/card_db.gd:896
+#: scripts/autoload/card_db.gd:903
 msgid "No limit per match."
 msgstr ""
 
-#: scripts/autoload/card_db.gd:898
+#: scripts/autoload/card_db.gd:905
 msgid "Only once per match."
 msgstr ""
 
-#: scripts/autoload/card_db.gd:899
+#: scripts/autoload/card_db.gd:906
 msgid "Up to %d times per match."
 msgstr ""
 
-#: scripts/autoload/card_db.gd:904
+#: scripts/autoload/card_db.gd:911
 msgid "%d per match"
 msgstr ""
 
@@ -596,7 +596,7 @@ msgid_plural "  ·  Practice vs %d bots"
 msgstr[0] ""
 msgstr[1] ""
 
-#: scripts/player.gd:2151
+#: scripts/player.gd:2179
 msgid "DOWNED"
 msgstr ""
 
@@ -1326,71 +1326,83 @@ msgstr ""
 msgid "MOMENTUM +%d%% DAMAGE  %.1f"
 msgstr ""
 
+#: scripts/ui/hud.gd:968
+msgid "MISSILE RAIN: CLICK TO MARK THE SPOT  %.1f"
+msgstr ""
+
 #: scripts/ui/hud.gd:970
-msgid "SPEED +%d%% DAMAGE"
+msgid "MISSILE RAIN: CLICK TO SET THE DIRECTION  %.1f"
 msgstr ""
 
 #: scripts/ui/hud.gd:972
+msgid "MISSILE RAIN  ·  [%s] big missile"
+msgstr ""
+
+#: scripts/ui/hud.gd:976
+msgid "SPEED +%d%% DAMAGE"
+msgstr ""
+
+#: scripts/ui/hud.gd:978
 msgid "%s -%d PER HIT"
 msgstr ""
 
-#: scripts/ui/hud.gd:974
+#: scripts/ui/hud.gd:980
 msgid "%s +%d%% SPEED"
 msgstr ""
 
-#: scripts/ui/hud.gd:980
+#: scripts/ui/hud.gd:986
 msgid "%s +%d%% DAMAGE"
 msgstr ""
 
-#: scripts/ui/hud.gd:982
+#: scripts/ui/hud.gd:988
 msgid "%s -%d%% DAMAGE"
 msgstr ""
 
-#: scripts/ui/hud.gd:984
+#: scripts/ui/hud.gd:990
 msgid "SHADOW CHAIN  ·  [%s] to block"
 msgstr ""
 
-#: scripts/ui/hud.gd:988
+#: scripts/ui/hud.gd:994
 msgid "%s +%d%% DAMAGE  ·  %.1f"
 msgstr ""
 
-#: scripts/ui/hud.gd:990
+#: scripts/ui/hud.gd:996
 msgid "IN %s'S REALM -%d%% DAMAGE  ·  %.1f"
 msgstr ""
 
-#: scripts/ui/hud.gd:992
+#: scripts/ui/hud.gd:998
 msgid "REALM +%d%% DAMAGE  %.1f"
 msgstr ""
 
-#: scripts/ui/hud.gd:994
+#: scripts/ui/hud.gd:1000
 msgid "%s %.1f: GET A KILL"
 msgstr ""
 
-#: scripts/ui/hud.gd:1014
+#: scripts/ui/hud.gd:1020
 msgid "%s: just you two for %d s"
 msgstr ""
 
-#: scripts/ui/hud.gd:1016
+#: scripts/ui/hud.gd:1022
 msgid "%s pulled you into %s"
 msgstr ""
 
-#: scripts/ui/hud.gd:1018
+#: scripts/ui/hud.gd:1024
 msgid "You won the Realm"
 msgstr ""
 
-#: scripts/ui/hud.gd:1018
+#: scripts/ui/hud.gd:1024
 msgid ": +%d%% damage for %d s"
 msgstr ""
 
-#: scripts/ui/hud.gd:1061
+#: scripts/ui/hud.gd:1067
 msgid "Round %d of %d"
 msgstr ""
 
-#: scripts/ui/hud.gd:1063
+#: scripts/ui/hud.gd:1069
 msgid "ROUND %d OF %d"
 msgstr ""
 
-#: scripts/ui/hud.gd:1067
+#: scripts/ui/hud.gd:1073
 msgid "ROUND %d / %d"
 msgstr ""
 
@@ -4097,6 +4109,16 @@ msgstr ""
 #: scripts/autoload/card_db.gd canhao_arcano
 msgctxt "card"
 msgid "Q: charges for 1 s (moving slowly) and fires a 40 m beam for 2.5 s that goes through walls. You stay in place, on the ground or floating in the air, and aim slowly. Each touch deals 22 damage, growing with your bullet Damage (44 with 50), applies your bullets' afflictions (poison, burn, frost, slow...) and throws the target out of the beam (the same target once every 0.6 s). A raised shield blocks the damage. Getting slapped, freezing or dying cuts the beam. Cooldown 18 s."
+msgstr ""
+
+#: scripts/autoload/card_db.gd chuva_de_misseis
+msgctxt "card"
+msgid "Missile Rain"
+msgstr ""
+
+#: scripts/autoload/card_db.gd chuva_de_misseis
+msgctxt "card"
+msgid "Q: take out a radio. Click (or Q) marks a spot up to 35 m away; click again sets a direction. A 5 m circle appears there and slowly stretches that way into an oval (up to 15 m long) for 12 s. Every 2 s it flashes red with a whistle and missiles fall: everyone inside takes 18 damage (growing with your bullet Damage), you included; your teammate doesn't. The shield doesn't stop them: they come from above. Q again during the rain: one big missile at your crosshair, inside the area (40 damage, 3.5 m), once per rain. If you don't confirm within 4 s, it goes where you are aiming. Cooldown 22 s, counted after the rain ends."
 msgstr ""
 
 #: scripts/autoload/card_db.gd chuva_de_meteoros

@@ -124,6 +124,12 @@ func think(delta: float) -> void:
 		p.look_at_point(foe.chest(), float(cfg["turn"]) * delta)
 		return
 	var wish := _movement(delta, foe, sees)
+	for node in p.get_tree().get_nodes_in_group("missile_rains"):
+		var out: Vector3 = (node as MissileRain).escape_dir(p.global_position)
+		if out != Vector3.ZERO:
+			wish = out   # Chuva de Mísseis: sai da área
+			_set_move(out)
+			break
 	_aim_and_shoot(delta, foe, sees, wish)
 	_defend()
 	_master(foe, sees)
@@ -226,6 +232,14 @@ func _master(foe: Player, sees: bool) -> void:
 			if to.length() < Barrier.PUSH_DIST and to.dot(-p.my_barrier.global_transform.basis.z) > 0.0:
 				p.in_master = true
 		return
+	if p.rain_aim > 0:
+		p.in_master = true   # Chuva de Mísseis: marca no alvo (a direção sai para onde olha)
+		return
+	if is_instance_valid(p.rain) and p.rain.owner_player == p:
+		# Chuva de Mísseis: o míssil grande quando o alvo está dentro da área.
+		if sees and not p.rain.big_used and p.rain.contains(foe.chest()):
+			p.in_master = true
+		return
 	if p.ride_timer > 0.0:
 		# Foguete: salta perto do alvo (o foguete solto segue até ele).
 		if p.global_position.distance_to(foe.global_position) < 9.0 and p.ride_age > 0.3:
@@ -251,6 +265,9 @@ func _master(foe: Player, sees: bool) -> void:
 		p.in_master = true
 	elif p.stats["bazooka"] > 0:
 		p.in_master = true
+	elif p.stats["missile_rain"] > 0 and p.global_position.distance_to(foe.global_position) > 10.0 \
+			and p.global_position.distance_to(foe.global_position) < 30.0:
+		p.in_master = true   # Chuva de Mísseis: alvo à vista entre 10 e 30 m
 	elif p.stats["sniper"] > 0 and p.global_position.distance_to(foe.global_position) > NEAR:
 		p.in_master = true
 	elif p.stats["pierce"] > 0 and p.pierce_left == 0:
