@@ -600,6 +600,8 @@ func _draw_crosshair() -> void:
 		if me != null and me.alive:
 			_draw_ammo_arc()
 			_draw_boot_fuel()
+			_draw_mech_charge()
+			_draw_mech_fuel()
 	crosshair.draw_circle(Vector2.ZERO, 1.6, white)
 	if me != null and me.daze_fx > 0.0:
 		_draw_daze_stars()
@@ -655,6 +657,29 @@ func _draw_boot_fuel() -> void:
 	var top := Vector2(-w / 2.0, 30.0)
 	crosshair.draw_rect(Rect2(top - Vector2(1, 1), Vector2(w + 2, 7)), Color(0, 0, 0, 0.5))
 	crosshair.draw_rect(Rect2(top, Vector2(w * me.boot_fuel / Player.BOOT_FUEL, 5)), Color(1.0, 0.6, 0.25, 0.95))
+
+
+## Mecha: barra do salto carregado sob a mira, enchendo enquanto segura o pulo (aço até o
+## toque virar salto, laranja quando cheia).
+func _draw_mech_charge() -> void:
+	if me.mech_charge < 0.0:
+		return
+	var t := clampf(me.mech_charge / Player.MECH_CHARGE_TIME, 0.0, 1.0)
+	var w := 64.0
+	var top := Vector2(-w / 2.0, 38.0)
+	var col := Player.MECH_JET_COLOR if t >= 1.0 else Player.MECH_COLOR
+	crosshair.draw_rect(Rect2(top - Vector2(1, 1), Vector2(w + 2, 7)), Color(0, 0, 0, 0.5))
+	crosshair.draw_rect(Rect2(top, Vector2(w * t, 5)), Color(col, 0.95))
+
+
+## Mecha: barra da propulsão (segurar o dash), só enquanto não está cheia.
+func _draw_mech_fuel() -> void:
+	if me.mech_state != 2 or me.mech_fuel >= Player.MECH_THRUST_FUEL:
+		return
+	var w := 64.0
+	var top := Vector2(-w / 2.0, 46.0)
+	crosshair.draw_rect(Rect2(top - Vector2(1, 1), Vector2(w + 2, 7)), Color(0, 0, 0, 0.5))
+	crosshair.draw_rect(Rect2(top, Vector2(w * me.mech_fuel / Player.MECH_THRUST_FUEL, 5)), Color(Player.MECH_JET_COLOR, 0.95))
 
 
 ## Caído: anel vermelho do prazo (esvazia) e, por dentro, o verde do reviver (enche). Duas
@@ -937,6 +962,8 @@ func _update_status() -> void:
 		items.append([tr("%s %.1f  ·  [%s] grow back") % [_card_tag("formiga"), me.shrink_timer, GameState.key_text("master")], Color(0.78, 0.64, 1.0)])
 	if me.air_bonus() > 0.0:
 		items.append([tr("IN THE AIR +%d%% DAMAGE") % roundi(me.air_bonus() * 100.0), Ui.ACCENT])
+	if me.swing_timer > 0.0:
+		items.append([tr("MOMENTUM +%d%% DAMAGE  %.1f") % [roundi(Player.GRAPPLE_SWING_DAMAGE * 100.0), me.swing_timer], Player.GRAPPLE_COLOR])
 	# Velocidade Letal em degraus de 5% (o selo só é refeito quando o texto muda) e Vulto.
 	var fast := snappedf(me.speed_bonus() * 100.0, 5.0)
 	if fast > 0.0:

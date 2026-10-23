@@ -93,19 +93,19 @@ msgstr "PARKOUR"
 msgid "DEFENSE"
 msgstr "DEFESA"
 
-#: scripts/autoload/card_db.gd:886
+#: scripts/autoload/card_db.gd:896
 msgid "No limit per match."
 msgstr "Sem limite na partida."
 
-#: scripts/autoload/card_db.gd:888
+#: scripts/autoload/card_db.gd:898
 msgid "Only once per match."
 msgstr "Só 1 vez na partida."
 
-#: scripts/autoload/card_db.gd:889
+#: scripts/autoload/card_db.gd:899
 msgid "Up to %d times per match."
 msgstr "Até %d vezes na partida."
 
-#: scripts/autoload/card_db.gd:894
+#: scripts/autoload/card_db.gd:904
 msgid "%d per match"
 msgstr "%d por partida"
 
@@ -597,7 +597,7 @@ msgid_plural "  ·  Practice vs %d bots"
 msgstr[0] "  ·  Treino contra %d bot"
 msgstr[1] "  ·  Treino contra %d bots"
 
-#: scripts/player.gd:2071
+#: scripts/player.gd:2151
 msgid "DOWNED"
 msgstr "CAÍDO"
 
@@ -1195,199 +1195,203 @@ msgstr "3ª pessoa"
 msgid "Free"
 msgstr "Livre"
 
-#: scripts/ui/hud.gd:825
+#: scripts/ui/hud.gd:850
 msgid "RELOADING"
 msgstr "RECARREGANDO"
 
-#: scripts/ui/hud.gd:831
+#: scripts/ui/hud.gd:856
 msgid "PIERCING %d"
 msgstr "PERFURANTES %d"
 
-#: scripts/ui/hud.gd:833
+#: scripts/ui/hud.gd:858
 msgid "METEORS %d  %.0f s"
 msgstr "METEOROS %d  %.0f s"
 
-#: scripts/ui/hud.gd:871
+#: scripts/ui/hud.gd:896
 msgid "PROTECTED %.1f  ·  attacking ends it"
 msgstr "PROTEGIDO %.1f  ·  atacar encerra"
 
-#: scripts/ui/hud.gd:873
+#: scripts/ui/hud.gd:898
 msgid "SLOWED"
 msgstr "LENTO"
 
-#: scripts/ui/hud.gd:875
+#: scripts/ui/hud.gd:900
 msgid "POISONED"
 msgstr "ENVENENADO"
 
-#: scripts/ui/hud.gd:878
+#: scripts/ui/hud.gd:903
 msgid "FROZEN"
 msgstr "CONGELADO"
 
-#: scripts/ui/hud.gd:882
+#: scripts/ui/hud.gd:907
 msgid "SHIELD BLOCKED"
 msgstr "ESCUDO BLOQUEADO"
 
-#: scripts/ui/hud.gd:884
+#: scripts/ui/hud.gd:909
 msgid "TOO HIGH  ·  get down  ·  damage in %.1f"
 msgstr "ALTO DEMAIS  ·  desça  ·  dano em %.1f"
 
-#: scripts/ui/hud.gd:886
+#: scripts/ui/hud.gd:911
 msgid "OUTSIDE THE ARENA  ·  damage in %.1f"
 msgstr "FORA DA ARENA  ·  dano em %.1f"
 
-#: scripts/ui/hud.gd:888
+#: scripts/ui/hud.gd:913
 msgid "VISIBLE"
 msgstr "VISÍVEL"
 
-#: scripts/ui/hud.gd:888
+#: scripts/ui/hud.gd:913
 msgid "INVISIBLE  ·  failing"
 msgstr "INVISÍVEL  ·  falhando"
 
-#: scripts/ui/hud.gd:888
+#: scripts/ui/hud.gd:913
 msgid "INVISIBLE"
 msgstr "INVISÍVEL"
 
-#: scripts/ui/hud.gd:890
+#: scripts/ui/hud.gd:915
 msgid "AMBUSH %.1f"
 msgstr "EMBOSCADA %.1f"
 
-#: scripts/ui/hud.gd:892
+#: scripts/ui/hud.gd:917
 msgid "CHARGING %.1f"
 msgstr "CARREGANDO %.1f"
 
-#: scripts/ui/hud.gd:894
+#: scripts/ui/hud.gd:919
 msgid "CANNON %.1f"
 msgstr "CANHÃO %.1f"
 
-#: scripts/ui/hud.gd:896
+#: scripts/ui/hud.gd:921
 msgid "HOLDING  ·  click to throw"
 msgstr "SEGURANDO  ·  clique arremessa"
 
-#: scripts/ui/hud.gd:898
+#: scripts/ui/hud.gd:923
 msgid "HOOKED"
 msgstr "PRESO NO GANCHO"
 
-#: scripts/ui/hud.gd:900
+#: scripts/ui/hud.gd:925
 msgid "%s %.1f  ·  [%s] jump off"
 msgstr "%s %.1f  ·  [%s] saltar"
 
-#: scripts/ui/hud.gd:902
+#: scripts/ui/hud.gd:927
 msgid "%s %.1f  ·  [%s] swap places"
 msgstr "%s %.1f  ·  [%s] trocar de lugar"
 
-#: scripts/ui/hud.gd:904
+#: scripts/ui/hud.gd:929
 msgid "BOARDING THE MECH %.1f"
 msgstr "MONTANDO O MECHA %.1f"
 
-#: scripts/ui/hud.gd:906
+#: scripts/ui/hud.gd:931
 msgid "%s %.1f  ·  [%s] exit and explode"
 msgstr "%s %.1f  ·  [%s] sair e explodir"
 
-#: scripts/ui/hud.gd:908
+#: scripts/ui/hud.gd:933
 msgid "SWINGING  ·  release [%s] to fly off"
 msgstr "BALANÇANDO  ·  solte [%s] para sair voando"
 
-#: scripts/ui/hud.gd:910
+#: scripts/ui/hud.gd:935
 msgid "HANGING %.1f  ·  [%s] to jump"
 msgstr "PENDURADO %.1f  ·  [%s] salta"
 
-#: scripts/ui/hud.gd:912
+#: scripts/ui/hud.gd:937
 msgid "SUCTION KICK"
 msgstr "CHUTE DE VENTOSA"
 
-#: scripts/ui/hud.gd:914
+#: scripts/ui/hud.gd:939
 msgid "PLATFORMS %d  ·  %.1f s"
 msgstr "PLATAFORMAS %d  ·  %.1f s"
 
-#: scripts/ui/hud.gd:916
+#: scripts/ui/hud.gd:941
 msgid "DIZZY %.1f"
 msgstr "TONTO %.1f"
 
-#: scripts/ui/hud.gd:927
+#: scripts/ui/hud.gd:952
 msgid "HUNGER %d/%d  +%d%% DAMAGE"
 msgstr "FOME %d/%d  +%d%% DE DANO"
 
-#: scripts/ui/hud.gd:933
+#: scripts/ui/hud.gd:958
 msgid "FROZEN %.1f"
 msgstr "CONGELADO %.1f"
 
-#: scripts/ui/hud.gd:935
+#: scripts/ui/hud.gd:960
 msgid "SPEED +%d%%  %.1f"
 msgstr "VELOCIDADE +%d%%  %.1f"
 
-#: scripts/ui/hud.gd:937
+#: scripts/ui/hud.gd:962
 msgid "%s %.1f  ·  [%s] grow back"
 msgstr "%s %.1f  ·  [%s] volta"
 
-#: scripts/ui/hud.gd:939
+#: scripts/ui/hud.gd:964
 msgid "IN THE AIR +%d%% DAMAGE"
 msgstr "NO AR +%d%% DE DANO"
 
-#: scripts/ui/hud.gd:943
+#: scripts/ui/hud.gd:966
+msgid "MOMENTUM +%d%% DAMAGE  %.1f"
+msgstr "EMBALO +%d%% DE DANO  %.1f"
+
+#: scripts/ui/hud.gd:970
 msgid "SPEED +%d%% DAMAGE"
 msgstr "VELOCIDADE +%d%% DE DANO"
 
-#: scripts/ui/hud.gd:945
+#: scripts/ui/hud.gd:972
 msgid "%s -%d PER HIT"
 msgstr "%s -%d POR GOLPE"
 
-#: scripts/ui/hud.gd:947
+#: scripts/ui/hud.gd:974
 msgid "%s +%d%% SPEED"
 msgstr "%s +%d%% DE VELOCIDADE"
 
-#: scripts/ui/hud.gd:953
+#: scripts/ui/hud.gd:980
 msgid "%s +%d%% DAMAGE"
 msgstr "%s +%d%% DE DANO"
 
-#: scripts/ui/hud.gd:955
+#: scripts/ui/hud.gd:982
 msgid "%s -%d%% DAMAGE"
 msgstr "%s -%d%% DE DANO"
 
-#: scripts/ui/hud.gd:957
+#: scripts/ui/hud.gd:984
 msgid "SHADOW CHAIN  ·  [%s] to block"
 msgstr "CORRENTE SOMBRIA  ·  [%s] bloqueia"
 
-#: scripts/ui/hud.gd:961
+#: scripts/ui/hud.gd:988
 msgid "%s +%d%% DAMAGE  ·  %.1f"
 msgstr "%s +%d%% DE DANO  ·  %.1f"
 
-#: scripts/ui/hud.gd:963
+#: scripts/ui/hud.gd:990
 msgid "IN %s'S REALM -%d%% DAMAGE  ·  %.1f"
 msgstr "NO DOMÍNIO DE %s -%d%% DE DANO  ·  %.1f"
 
-#: scripts/ui/hud.gd:965
+#: scripts/ui/hud.gd:992
 msgid "REALM +%d%% DAMAGE  %.1f"
 msgstr "DOMÍNIO +%d%% DE DANO  %.1f"
 
-#: scripts/ui/hud.gd:967
+#: scripts/ui/hud.gd:994
 msgid "%s %.1f: GET A KILL"
 msgstr "%s %.1f: ABATA ALGUÉM"
 
-#: scripts/ui/hud.gd:987
+#: scripts/ui/hud.gd:1014
 msgid "%s: just you two for %d s"
 msgstr "%s: só vocês dois por %d s"
 
-#: scripts/ui/hud.gd:989
+#: scripts/ui/hud.gd:1016
 msgid "%s pulled you into %s"
 msgstr "%s te levou para o %s"
 
-#: scripts/ui/hud.gd:991
+#: scripts/ui/hud.gd:1018
 msgid "You won the Realm"
 msgstr "Você venceu o Domínio"
 
-#: scripts/ui/hud.gd:991
+#: scripts/ui/hud.gd:1018
 msgid ": +%d%% damage for %d s"
 msgstr ": +%d%% de dano por %d s"
 
-#: scripts/ui/hud.gd:1034
+#: scripts/ui/hud.gd:1061
 msgid "Round %d of %d"
 msgstr "Rodada %d de %d"
 
-#: scripts/ui/hud.gd:1036
+#: scripts/ui/hud.gd:1063
 msgid "ROUND %d OF %d"
 msgstr "RODADA %d DE %d"
 
-#: scripts/ui/hud.gd:1040
+#: scripts/ui/hud.gd:1067
 msgid "ROUND %d / %d"
 msgstr "RODADA %d / %d"
 
@@ -4063,8 +4067,8 @@ msgstr "Bazuca"
 
 #: scripts/autoload/card_db.gd bazuca
 msgctxt "card"
-msgid "Q: swaps your weapon for a bazooka for 6 s. 3 straight rockets with double damage that explode (4 m). Cooldown 18 s."
-msgstr "Q: troca a arma por uma bazuca por 6 s. 3 foguetes retos, com o dobro do dano, que explodem (4 m). Recarga de 18 s."
+msgid "Q: swaps your weapon for a bazooka for 6 s. 3 straight rockets with double damage that explode (4 m, growing with Bullet size up to 7 m). Each extra bullet per shot adds +50% to the rocket, and Fire rate bonuses shorten the time between rockets. The explosion launches you like Rocket Jump, without hurting you. Cooldown 18 s."
+msgstr "Q: troca a arma por uma bazuca por 6 s. 3 foguetes retos, com o dobro do dano, que explodem (4 m, crescendo com o Tamanho da bala até 7 m). Cada bala a mais por tiro soma +50% ao foguete, e os bônus de Cadência encurtam o tempo entre os foguetes. A explosão te lança como o Pulo-Foguete, sem te ferir. Recarga de 18 s."
 
 #: scripts/autoload/card_db.gd espada
 msgctxt "card"
@@ -4093,8 +4097,8 @@ msgstr "Canhão Arcano"
 
 #: scripts/autoload/card_db.gd canhao_arcano
 msgctxt "card"
-msgid "Q: charges for 1 s (moving slowly) and fires a 40 m beam for 2.5 s that goes through walls. You stay in place, on the ground or floating in the air, and aim slowly. Each touch deals 22 damage and throws the target out of the beam (the same target once every 0.6 s). A raised shield blocks the damage. Getting slapped, freezing or dying cuts the beam. Cooldown 24 s."
-msgstr "Q: carrega por 1 s (andando devagar) e solta um raio de 40 m por 2,5 s, que atravessa paredes. Parado, no chão ou flutuando no ar, você mira devagar. Cada toque causa 22 de dano e arremessa o alvo para fora do raio (o mesmo alvo a cada 0,6 s). Escudo levantado bloqueia o dano. Levar tapa, congelar ou morrer corta o raio. Recarga de 24 s."
+msgid "Q: charges for 1 s (moving slowly) and fires a 40 m beam for 2.5 s that goes through walls. You stay in place, on the ground or floating in the air, and aim slowly. Each touch deals 22 damage, growing with your bullet Damage (44 with 50), applies your bullets' afflictions (poison, burn, frost, slow...) and throws the target out of the beam (the same target once every 0.6 s). A raised shield blocks the damage. Getting slapped, freezing or dying cuts the beam. Cooldown 18 s."
+msgstr "Q: carrega por 1 s (andando devagar) e solta um raio de 40 m por 2,5 s, que atravessa paredes. Parado, no chão ou flutuando no ar, você mira devagar. Cada toque causa 22 de dano, que cresce com o Dano das suas balas (44 com 50), aplica as aflições das suas balas (veneno, queimadura, gelo, lentidão...) e arremessa o alvo para fora do raio (o mesmo alvo a cada 0,6 s). Escudo levantado bloqueia o dano. Levar tapa, congelar ou morrer corta o raio. Recarga de 18 s."
 
 #: scripts/autoload/card_db.gd chuva_de_meteoros
 msgctxt "card"
@@ -4133,8 +4137,8 @@ msgstr "Bastião"
 
 #: scripts/autoload/card_db.gd bastiao
 msgctxt "card"
-msgid "Q: raises an energy wall in front of you for 4 s that reflects enemy bullets. Yours pass through. Cooldown 14 s."
-msgstr "Q: ergue à sua frente uma parede de energia por 4 s que devolve as balas inimigas. As suas passam. Recarga de 14 s."
+msgid "Q: raises an energy wall in front of you for 4 s that reflects enemy bullets back at whoever fired them, with +50% damage. Yours pass through. Q again pushes the wall 10 m forward: whoever it runs over is pushed and takes 25 damage (growing with your bullet Damage; a raised shield blocks the damage). Cooldown 14 s."
+msgstr "Q: ergue à sua frente uma parede de energia por 4 s que devolve as balas inimigas para quem atirou, com +50% de dano. As suas passam. Q de novo empurra a parede 10 m para a frente: quem ela atropelar é empurrado e leva 25 de dano (cresce com o Dano das suas balas; escudo levantado bloqueia o dano). Recarga de 14 s."
 
 #: scripts/autoload/card_db.gd prisao_gelo
 msgctxt "card"
@@ -4153,8 +4157,8 @@ msgstr "Mega Tapa"
 
 #: scripts/autoload/card_db.gd mega_tapa
 msgctxt "card"
-msgid "Q: raises your hand and, 0.6 s later, slaps forward (4.5 m), dealing 10 damage and throwing the target far and upward, with no air control until they land. If the thrown player hits a wall in flight, they take 20 more and are dizzy for 0.6 s (slowed and unable to shoot). A raised shield blocks. Cooldown 8 s."
-msgstr "Q: ergue a mão e, 0,6 s depois, dá um tapa à frente (4,5 m) que causa 10 de dano e arremessa longe e para cima, sem controle no ar até cair. Se o arremessado bater numa parede no voo, leva mais 20 e fica tonto por 0,6 s (lento e sem atirar). Escudo levantado bloqueia. Recarga de 8 s."
+msgid "Q: raises your hand and, 0.6 s later, slaps forward (4.5 m), dealing 20 damage (growing with your bullet Damage) and throwing the target far and upward, with no air control until they land. If the thrown player hits a wall in flight, they take 35 more and are dizzy for 1 s (slowed and unable to shoot). The slap also knocks enemy bullets in front of you back at whoever fired them. A raised shield blocks. Cooldown 8 s."
+msgstr "Q: ergue a mão e, 0,6 s depois, dá um tapa à frente (4,5 m) que causa 20 de dano (cresce com o Dano das suas balas) e arremessa longe e para cima, sem controle no ar até cair. Se o arremessado bater numa parede no voo, leva mais 35 e fica tonto por 1 s (lento e sem atirar). O tapa também rebate as balas inimigas à sua frente de volta para quem atirou. Escudo levantado bloqueia. Recarga de 8 s."
 
 #: scripts/autoload/card_db.gd gancho
 msgctxt "card"
@@ -4163,8 +4167,8 @@ msgstr "Gancho"
 
 #: scripts/autoload/card_db.gd gancho
 msgctxt "card"
-msgid "Q: throws a hook (up to 20 m) that pulls the enemy right in front of you and holds them for up to 3 s: you move at 70% and can't shoot; they can't act. They serve as a human shield (in Teams, their own team hits them too). Click or Q throws them where you aim: hitting a wall deals 22; hitting another enemy deals 22 to both and leaves both dizzy. Taking 30 damage while holding lets go. A raised shield blocks the hook. Cooldown 16 s (6 s if you miss)."
-msgstr "Q: lança um gancho (até 20 m) que puxa o inimigo até a sua frente e o segura por até 3 s: você anda a 70% e não atira; ele não age. Ele serve de escudo humano (nos Times, o time dele também o acerta). Clique ou Q arremessa na mira: bater numa parede dá 22; bater em outro inimigo dá 22 nos dois e deixa os dois tontos. Levar 30 de dano segurando solta. Escudo levantado bloqueia o gancho. Recarga de 16 s (6 s se errar)."
+msgid "Q: throws a hook (up to 28 m) that pulls the enemy right in front of you and holds them for up to 3 s: you move at 70% and can't shoot; they can't act. They serve as a human shield (in Teams, their own team hits them too). Click or Q throws them where you aim: hitting a wall deals 22 (growing with your bullet Damage); hitting another enemy deals the same to both and leaves both dizzy. Taking 30 damage while holding lets go. A raised shield blocks the hook. Cooldown 12 s (4 s if you miss)."
+msgstr "Q: lança um gancho (até 28 m) que puxa o inimigo até a sua frente e o segura por até 3 s: você anda a 70% e não atira; ele não age. Ele serve de escudo humano (nos Times, o time dele também o acerta). Clique ou Q arremessa na mira: bater numa parede dá 22 (cresce com o Dano das suas balas); bater em outro inimigo dá o mesmo nos dois e deixa os dois tontos. Levar 30 de dano segurando solta. Escudo levantado bloqueia o gancho. Recarga de 12 s (4 s se errar)."
 
 #: scripts/autoload/card_db.gd dominio_do_rei
 msgctxt "card"
@@ -4183,8 +4187,8 @@ msgstr "Mecha"
 
 #: scripts/autoload/card_db.gd mecha
 msgctxt "card"
-msgid "Q: builds a mecha around you, piece by piece, in 1.2 s (meanwhile you move slowly and can't shoot). Inside, for 8 s: plating of 60 + 60% of your max health that takes damage before anything else, immune to pushes and pulls, you keep shooting with your weapon, and E launches a missile (1 every 2.5 s; 20 + 40% of bullet damage, up to 45, in 3.5 m) instead of the shield. Bigger, 25% slower, no dash or extra jumps. Q again exits early. On exit, it explodes (5 m): 20 damage with full plating, up to 50 with it depleted. Piercer ignores the plating. Cooldown 24 s, counted after you exit."
-msgstr "Q: monta um mecha em volta de você, peça por peça, em 1,2 s (nesse tempo você anda devagar e não atira). Dentro, por 8 s: blindagem de 60 + 60% da vida máxima que leva o dano antes de tudo, imune a empurrões e puxões, segue atirando com a sua arma, e E lança um míssil (1 a cada 2,5 s; 20 + 40% do dano da bala, até 45, em 3,5 m) no lugar do escudo. Maior, 25% mais lento, sem dash nem pulos extras. Q de novo sai antes. Ao sair, ele explode (5 m): 20 de dano com a blindagem cheia, até 50 com ela zerada. A Perfurante ignora a blindagem. Recarga de 24 s, contada depois de sair."
+msgid "Q: builds a mecha around you, piece by piece, in 1.2 s (meanwhile you move slowly and can't shoot). Inside, for 8 s: plating of 60 + 60% of your max health that takes damage before anything else, immune to pushes and pulls, you keep shooting with your weapon, and E launches a missile (1 every 2.5 s; 20 + 40% of bullet damage, up to 45, in 3.5 m) instead of the shield. Bigger, 25% slower, no extra jumps. Hold jump to charge a leap (1 s) toward where you look, with strong air control; hitting a wall in the leap, the mecha grabs it for 1.5 s and then slides down, and jump leaps again from it. Instead of the dash, hold dash to fire a back thruster that pushes you toward where you look (in the air, without falling) while its bar lasts: 1.5 s, refilling in 3 s. Q again exits early. On exit, it explodes (5 m): 20 damage with full plating, up to 50 with it depleted. Piercer ignores the plating. Cooldown 24 s, counted after you exit."
+msgstr "Q: monta um mecha em volta de você, peça por peça, em 1,2 s (nesse tempo você anda devagar e não atira). Dentro, por 8 s: blindagem de 60 + 60% da vida máxima que leva o dano antes de tudo, imune a empurrões e puxões, segue atirando com a sua arma, e E lança um míssil (1 a cada 2,5 s; 20 + 40% do dano da bala, até 45, em 3,5 m) no lugar do escudo. Maior, 25% mais lento, sem pulos extras. Segure pular para carregar um salto (1 s) para onde você olha, com muito controle no ar; batendo numa parede no salto, o mecha se agarra por 1,5 s e depois escorrega, e pular salta de novo dali. No lugar do dash, segure dash para acender uma turbina nas costas que te empurra para onde você olha (no ar, sem cair) enquanto a barra durar: 1,5 s, que volta em 3 s. Q de novo sai antes. Ao sair, ele explode (5 m): 20 de dano com a blindagem cheia, até 50 com ela zerada. A Perfurante ignora a blindagem. Recarga de 24 s, contada depois de sair."
 
 #: scripts/autoload/card_db.gd ultimo_suspiro
 msgctxt "card"
@@ -4193,8 +4197,8 @@ msgstr "Último Suspiro"
 
 #: scripts/autoload/card_db.gd ultimo_suspiro
 msgctxt "card"
-msgid "Once per round, the killing blow leaves you at 1 health and unable to die for 3 s. Take someone down in that time to come back with half your health."
-msgstr "Uma vez por rodada, o golpe fatal te deixa com 1 de vida e sem morrer por 3 s. Abata alguém nesse tempo e volte com metade da vida."
+msgid "Once per round, the killing blow leaves you at 1 health and unable to die for 3 s, moving 40% faster; everyone sees the countdown above your name. Take someone down in that time to come back with half your health."
+msgstr "Uma vez por rodada, o golpe fatal te deixa com 1 de vida e sem morrer por 3 s, andando 40% mais rápido; todos veem a contagem acima do seu nome. Abata alguém nesse tempo e volte com metade da vida."
 
 #: scripts/autoload/card_db.gd camuflagem
 msgctxt "card"
@@ -4213,8 +4217,8 @@ msgstr "Bota Foguete"
 
 #: scripts/autoload/card_db.gd bota_foguete
 msgctxt "card"
-msgid "Each second in the air gives +10% shot damage, up to +40%; touching the ground resets it. With no air jumps left, press and hold jump for a short jet (0.7 s) that brakes your fall and pushes you up. The jet recharges when you touch the ground."
-msgstr "Cada segundo no ar dá +10% de dano nos tiros, até +40%; tocar o chão zera. Sem pulos no ar sobrando, aperte e segure pular para um jato curto (0,7 s) que freia a queda e te empurra para cima. O jato volta ao tocar o chão."
+msgid "Each second in the air gives +15% shot damage, up to +50%; it lasts 1 s after you land (jump again in that time and it keeps growing). With no air jumps left, press and hold jump for a short jet (1 s) that brakes your fall and pushes you up. The jet recharges when you touch the ground."
+msgstr "Cada segundo no ar dá +15% de dano nos tiros, até +50%; o bônus dura 1 s depois de pousar (pule de novo nesse tempo e ele continua crescendo). Sem pulos no ar sobrando, aperte e segure pular para um jato curto (1 s) que freia a queda e te empurra para cima. O jato volta ao tocar o chão."
 
 #: scripts/autoload/card_db.gd plataformas_suspensas
 msgctxt "card"
@@ -4273,8 +4277,8 @@ msgstr "Arpéu Ventoso"
 
 #: scripts/autoload/card_db.gd arpeu_ventoso
 msgctxt "card"
-msgid "Hold Q: fires a suction cup (up to 35 m). Stuck to the scenery: you swing from it, with half gravity, without losing momentum, and the movement keys steer the swing; the rope keeps shortening. Release Q to fly off with the momentum (+15% and one air jump); Space also releases, with an upward boost. Reaching the wall while still holding, you hang for up to 2 s (jump leaps off it). Stuck to an enemy: you are pulled to them and land a 20-damage kick that pushes them (a raised shield blocks). Dash cancels it. Missed: the charge returns in 1 s. Stores 3 uses: each comes back in 6 s, one at a time."
-msgstr "Segure Q: lança uma ventosa (até 35 m). Grudou no cenário: você balança preso a ela, com a gravidade pela metade, sem perder o embalo, e as teclas guiam o balanço; a corda vai encurtando. Solte Q para sair voando com o embalo (+15% e um pulo no ar); Espaço também solta, com um impulso para cima. Chegando à parede ainda segurando, fica pendurado até 2 s (pular salta dela). Grudou num inimigo: você é puxado até ele e dá um chute de 20 de dano que o empurra (escudo levantado bloqueia). Dash corta. Errou, a carga volta em 1 s. Guarda 3 usos: cada um volta em 6 s, um de cada vez."
+msgid "Hold Q: fires a suction cup (up to 35 m). Stuck to the scenery: you swing from it, with half gravity, without losing momentum, and the movement keys steer the swing; the rope keeps shortening. Release Q to fly off with the momentum (+15% and one air jump); Space also releases, with an upward boost. Leaving a swing gives Momentum: +30% Damage for 2 s. Reaching the wall while still holding, you hang for up to 2 s (jump leaps off it). Stuck to an enemy: you are pulled to them and land a 20-damage kick (growing with your bullet Damage) that pushes them (a raised shield blocks). Dash cancels it. Missed: the charge returns in 1 s. Stores 3 uses: each comes back in 6 s, one at a time."
+msgstr "Segure Q: lança uma ventosa (até 35 m). Grudou no cenário: você balança preso a ela, com a gravidade pela metade, sem perder o embalo, e as teclas guiam o balanço; a corda vai encurtando. Solte Q para sair voando com o embalo (+15% e um pulo no ar); Espaço também solta, com um impulso para cima. Sair de um balanço dá Embalo: +30% de Dano por 2 s. Chegando à parede ainda segurando, fica pendurado até 2 s (pular salta dela). Grudou num inimigo: você é puxado até ele e dá um chute de 20 de dano (cresce com o Dano das suas balas) que o empurra (escudo levantado bloqueia). Dash corta. Errou, a carga volta em 1 s. Guarda 3 usos: cada um volta em 6 s, um de cada vez."
 
 #: scripts/autoload/card_db.gd corrente
 msgctxt "card"

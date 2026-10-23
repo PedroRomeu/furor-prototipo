@@ -118,7 +118,7 @@ const FIELDS := ["damage", "radius", "bounces", "homing", "ghost", "explosion", 
 	"boomerang", "returning", "bounce_damage", "sticky", "split", "grow", "swap", "blind",
 	"lazy_top", "seek", "crit", "bounced", "guided", "pierce", "bounce_hits", "grow_mult", "ghost_walls",
 	"toxic", "hole", "laser", "ice", "meteor", "rocket", "missile", "blast_radius", "blast_damage", "life", "drill",
-	"bounce_life", "click", "bonus", "ambush", "close", "origin", "reach"]
+	"bounce_life", "click", "bonus", "ambush", "close", "origin", "reach", "bazooka"]
 ## Alcance (Player.RANGE_FREE): nos últimos RANGE_FADE m a bala encolhe (só o desenho; o
 ## tamanho que acerta não muda) até RANGE_FADE_MIN, e some ao passar do alcance.
 const RANGE_FADE := 3.0
@@ -200,6 +200,7 @@ var laser := false   # tiro da Sniper: deixa um feixe reto ao nascer (em todas a
 var ice := false     # caco da Prisão de Gelo: congela em vez de ferir; some a ICE_RANGE
 var meteor := false  # Chuva de Meteoros: onde bater marca o chão (uma vez só)
 var rocket := false  # Foguete solto: explode (Player.rocket_blast) no contato ou no tempo
+var bazooka := false # foguete da Bazuca: a explosão lança o dono como o Pulo-Foguete (desde 2026-10-23)
 var missile := false # míssil do Mecha: explode (Player.mech_blast) no contato ou no tempo, curva atrás de quem passa perto
 var toxic := 0   # Nuvem Tóxica: cópias (AreaField)
 var hole := 0    # Buraco Negro: cópias (AreaField)
@@ -694,7 +695,7 @@ func _check_barriers(from: Vector3, end: Vector3) -> bool:
 		if hit == null:
 			continue
 		if owner_player.is_local:
-			_reflect(owner_player, hit)
+			_reflect(owner_player, hit, Barrier.REFLECT_MULT)
 			wall.flash()
 		else:
 			waiting = REMOTE_WAIT
@@ -1059,7 +1060,7 @@ func _explode_now(point: Vector3, skip: Player) -> void:
 	Effects.explosion(get_parent(), point, r, Color(1.0, 0.6, 0.2))
 	Sfx.at(get_parent(), "explosion", point)
 	_refresh_cache()
-	var rj: bool = is_instance_valid(shooter) and shooter.stats["rocket_jump"] > 0
+	var rj: bool = is_instance_valid(shooter) and (shooter.stats["rocket_jump"] > 0 or bazooka)
 	if rj:
 		shooter.rocket_jump(point, r)
 	for node in _players:
@@ -1081,7 +1082,10 @@ func _explode_now(point: Vector3, skip: Player) -> void:
 
 ## Raio da explosão: cartas (explosion + blast_radius) mais a borda da bala.
 func blast_size() -> float:
-	return maxf(EXPLOSION_MIN, explosion + blast_radius + EXPLOSION_SIZE_GAIN * radius)
+	var r := maxf(EXPLOSION_MIN, explosion + blast_radius + EXPLOSION_SIZE_GAIN * radius)
+	if bazooka and explosion <= Player.ROCKET_EXPLOSION_MAX:
+		r = minf(r, Player.ROCKET_EXPLOSION_MAX)   # Bazuca: a bala grande não passa do teto
+	return r
 
 
 static func blast_size_mult(r: float) -> float:
@@ -1089,14 +1093,15 @@ static func blast_size_mult(r: float) -> float:
 
 
 ## Reflexo: a bala muda de dono e segue na direção de quem atirou.
-func _reflect(target: Player, point: Vector3) -> void:
+## mult: dano a mais deste reflexo (parede do Bastião, Barrier.REFLECT_MULT).
+func _reflect(target: Player, point: Vector3, mult := 1.0) -> void:
 	var dir := -velocity.normalized()
 	if is_instance_valid(shooter) and shooter.alive:
 		dir = (shooter.chest() - point).normalized()
 	# Só a primeira reflexão de cada bala se divide; senão um pingue-pongue entre
 	# dois Espelhos Duplos dobraria o número de balas a cada troca.
 	var split_count: int = 0 if reflected else target.stats["reflect_split"]
-	_apply_reflect(target, point, dir, damage * target.stats["reflect_mult"],
+	_apply_reflect(target, point, dir, damage * target.stats["reflect_mult"] * mult,
 		maxf(homing, target.stats["reflect_homing"]))
 	if Net.online:
 		get_parent().net_bullet_reflect.rpc(id, point, dir, String(target.name), damage, homing)

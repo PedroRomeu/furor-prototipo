@@ -349,11 +349,15 @@ const GLIDE_TURN := 6.0
 ## total, em quantos toques quiser, e enche ao tocar o chão. Curto de propósito (pedido do
 ## usuário): é um controle breve no ar; voar de verdade continua com as cartas comuns.
 ## No ar, os tiros ganham AIR_DAMAGE_RATE por segundo, até AIR_DAMAGE_MAX.
-const BOOT_FUEL := 0.7
+## Reforço de 2026-10-23 (pedido do usuário: quase lá, um empurrão nos números): 10% -> 15% por
+## segundo, teto 40% -> 50%, jato 0,7 -> 1 s, e o bônus aguenta BOOT_KEEP no chão (pulando de
+## novo nesse tempo, continua de onde parou).
+const BOOT_FUEL := 1.0
+const BOOT_KEEP := 1.0
 const BOOT_THRUST := 72.0
 const BOOT_MAX_UP := 4.5
-const AIR_DAMAGE_RATE := 0.1
-const AIR_DAMAGE_MAX := 0.4
+const AIR_DAMAGE_RATE := 0.15
+const AIR_DAMAGE_MAX := 0.5
 # Corpo
 const RADIUS := 0.4
 const STAND_HEIGHT := 1.8
@@ -616,11 +620,24 @@ const BURN_CHUNK := 6.0
 const UPDRAFT_SPEED := 21.9      # Corrente: sobe ~8 m em ~0,7 s
 const BAZOOKA_TIME := 6.0        # Bazuca: quanto tempo dura...
 const BAZOOKA_ROCKETS := 3       # ...e quantos foguetes dá
+## Reforço de 2026-10-23 (pedido do usuário: o efeito ficou simples perto das cartas novas):
+## cada bala a mais por tiro soma ROCKET_PER_BULLET ao foguete, a Cadência encurta o
+## intervalo (só melhora, até BAZOOKA_INTERVAL_MIN), a explosão cresce com o tamanho da
+## bala (ROCKET_EXPLOSION a ROCKET_EXPLOSION_MAX) e lança o dono como o Pulo-Foguete.
 const BAZOOKA_INTERVAL := 0.7
+const BAZOOKA_INTERVAL_MIN := 0.35
 const ROCKET_SPEED := 30.0
 const ROCKET_DAMAGE := 2.0       # vezes o dano da arma
+const ROCKET_PER_BULLET := 0.5   # +50% do foguete por bala a mais (Escopeta etc.)
 const ROCKET_EXPLOSION := 4.0
+const ROCKET_EXPLOSION_MAX := 7.0
 const LAST_STAND_TIME := 3.0     # Último Suspiro
+## Último Suspiro (2026-10-23, pedido do usuário: forte, mas chamava pouca atenção): nos 3 s
+## anda LAST_STAND_SPEED mais rápido; quem está no suspiro ouve o coração (LAST_STAND_BEATS:
+## a batida dupla e a pausa) e os outros veem a contagem em vermelho acima do nome.
+const LAST_STAND_SPEED := 0.4
+const LAST_STAND_BEATS := [0.16, 0.42]
+const LAST_STAND_COLOR := Color(1.0, 0.3, 0.3)
 ## Sniper (2026-10-06, desenho do usuário; números meus): Q dá a sniper por SNIPER_TIME
 ## ou até o único tiro. O tiro é um laser: reto, SNIPER_SPEED (quase instantâneo),
 ## atravessa todas as paredes e causa SNIPER_DAMAGE x o dano da arma (4x 25 = 100: mata
@@ -700,14 +717,17 @@ const REMOTE_METHODS := ["receive_grapple_kick", "receive_shockwave", "credit_da
 	"receive_slash", "receive_parry", "ice_shove", "receive_slap", "receive_beam", "receive_hook", "hook_blocked",
 	"hook_throw", "hook_release", "receive_bowl", "receive_slam", "receive_realm", "realm_blocked",
 	"mark_seen", "receive_contagion", "receive_detonation", "receive_chain", "receive_shatter",
-	"pressure_hit"]
+	"pressure_hit", "receive_wall_ram"]
 ## Gancho (mestra). Quem lança move a ponta (HOOK_SPEED, até HOOK_RANGE) e acha o alvo; a
 ## máquina do alvo decide (escudo bloqueia), puxa o próprio corpo (HOOK_PULL) até a frente
 ## de quem segura e fica lá por HOOK_HOLD. Arremesso a HOOK_THROW: parede dá HOOK_IMPACT e
 ## tontura (voo do Mega Tapa); outro jogador, HOOK_IMPACT nos dois. Quem segura solta ao
 ## levar HOOK_ESCAPE de dano. hook_state: 0 nada, 1 ponta voando, 2 puxando, 3 segurando.
-const HOOK_RANGE := 20.0
-const HOOK_SPEED := 60.0
+## Reforço de 2026-10-23 (pedido do usuário: ideia boa que entregava pouco): alcance 20 -> 28,
+## ponta 60 -> 80 m/s, recarga 16 -> 12 s (4 s se errar), impacto x master_scale() (vai de
+## quem arremessa no hook_throw), corrente brilhante e clarão ao pegar.
+const HOOK_RANGE := 28.0
+const HOOK_SPEED := 80.0
 const HOOK_PULL := 25.0
 const HOOK_HOLD := 3.0
 const HOOK_HOLD_DIST := 2.0
@@ -716,7 +736,7 @@ const HOOK_THROW := 25.0
 const HOOK_THROW_LIFT := 6.0   # arco do arremesso (~0,5 s no ar, ~12 m em campo aberto)
 const HOOK_IMPACT := 22.0
 const HOOK_ESCAPE := 30.0
-const HOOK_MISS_CD := 6.0
+const HOOK_MISS_CD := 4.0
 ## Ímã leve (2026-10-07, o usuário achou difícil acertar): a menos de HOOK_MAGNET_RANGE da
 ## ponta, um inimigo à frente dela (até HOOK_MAGNET_CONE do rumo) e à vista puxa a ponta a
 ## HOOK_MAGNET_TURN rad/s. Medido: pega quem passa a até 1,3 m da ponta (sem o ímã, 0,9;
@@ -727,6 +747,7 @@ const HOOK_MAGNET_TURN := 4.0
 const HOOK_MAGNET_CONE := 0.5   # cosseno: 60 graus
 const HOOK_CARRY_SPEED := 0.7
 const HOOK_COLOR := Color(0.75, 0.75, 0.8)
+const HOOK_GLOW := Color(1.0, 0.85, 0.45)   # brilho da corrente e clarão ao pegar (2026-10-23)
 var hook_state := 0
 var hook_dir := Vector3.ZERO
 var hook_tip := Vector3.ZERO
@@ -805,8 +826,8 @@ var ride_age := 0.0
 var ride_fx: Node3D
 ## Mecha (mestra): Q monta por MECH_BUILD (anda a MECH_BUILD_SPEED, sem atirar), depois
 ## MECH_TIME dentro: blindagem (MECH_ARMOR_BASE + MECH_ARMOR_PART da vida máxima) que leva o
-## dano antes de tudo, imune a empurrões e puxões, corpo MECH_SCALE, MECH_SPEED, sem dash nem
-## pulos extras, e o E lança mísseis (bala `missile`) no lugar do escudo. Q de novo, o tempo
+## dano antes de tudo, imune a empurrões e puxões, corpo MECH_SCALE, MECH_SPEED, sem pulos extras
+## (salto carregado e dash com turbina: ver abaixo), e o E lança mísseis (bala `missile`) no lugar do escudo. Q de novo, o tempo
 ## acabar ou a blindagem zerar: sai e explode (MECH_BLAST_*, maior com menos blindagem).
 const MECH_BUILD := 1.2
 const MECH_TIME := 8.0
@@ -839,6 +860,46 @@ var mech_armor_max := 0.0
 var mech_missile_cd := 0.0
 var mech_fx: Node3D             # o modelo (os outros) ou a cabine na tela (quem joga)
 var _mech_parts: Array = []
+## Movimento do Mecha (2026-10-23, ideia do usuário: "pulo do Hulk", agarrar na parede e turbina
+## no dash, para ele chegar perto e explodir; números meus, aprovados). Segurar o pulo carrega
+## por MECH_CHARGE_TIME (anda a MECH_CHARGE_SPEED); um toque (até MECH_TAP) é o pulo comum.
+## Soltando, pula para onde olha: MECH_LEAP_MIN a MECH_LEAP_MAX (x para a frente, y para cima),
+## com MECH_LEAP_STEER de controle no ar até pousar. Batendo numa parede no salto a mais de
+## MECH_GRAB_SPEED, agarra com a mão por MECH_HANG e depois escorrega a MECH_SLIDE; lá, o pulo
+## carrega outro salto (sempre o salto, mesmo num toque). Propulsão (pedido dele no mesmo dia, no
+## lugar do dash): segurar o dash empurra a MECH_THRUST_SPEED para onde olha (no ar, sem cair),
+## gastando a barra de MECH_THRUST_FUEL s; ela volta inteira em MECH_THRUST_REFILL s, começando
+## MECH_THRUST_WAIT s depois de soltar. A turbina acesa nas costas mostra aos outros.
+const MECH_CHARGE_TIME := 1.0
+const MECH_CHARGE_SPEED := 0.4
+const MECH_TAP := 0.2
+const MECH_LEAP_MIN := Vector2(12.0, 8.0)
+const MECH_LEAP_MAX := Vector2(26.0, 15.0)
+const MECH_LEAP_STEER := 20.0
+const MECH_GRAB_SPEED := 6.0
+const MECH_HANG := 1.5
+const MECH_SLIDE := 3.0
+const MECH_THRUST_SPEED := 18.0
+const MECH_THRUST_FUEL := 1.5
+const MECH_THRUST_REFILL := 3.0
+const MECH_THRUST_WAIT := 0.5
+const MECH_JET_COLOR := Color(1.0, 0.55, 0.15)
+var mech_charge := -1.0         # carregando o salto há quanto tempo (-1: não; todas as máquinas)
+var mech_leaping := false       # no ar depois do salto (controle forte, sem o teto de velocidade)
+var mech_on_wall := false       # agarrado ou escorregando na parede (todas as máquinas)
+var mech_hang := 0.0            # agarrado, parado, por mais quanto tempo
+var mech_wall_n := Vector3.ZERO
+var mech_wall_point := Vector3.ZERO
+var mech_thrusting := false     # propulsão ligada (todas as máquinas: a chama)
+var mech_fuel := MECH_THRUST_FUEL
+var mech_fuel_wait := 0.0
+var in_dash_held := false
+var _mech_hips: Node3D          # peças que se mexem no modelo de fora (_mech_animate)
+var _mech_legs: Array = []      # [coxa esq., canela esq., coxa dir., canela dir.]
+var _mech_arm: Node3D
+var _mech_flame: MeshInstance3D
+var _mech_phase := 0.0
+var _mech_last_pos := Vector3.ZERO
 ## Clone (mestra, ShadowClone): o clone vivo, o eco dos tiros (CLONE_ECHO do dano) e a troca.
 const CLONE_ECHO := 0.5
 const CLONE_SWAP_LOCK := 0.25   # o Q que criou não pode já trocar
@@ -857,11 +918,17 @@ const SLAP_SWIPE := 0.09    # a passada da mão (na tela e no modelo)
 const SLAP_GHOSTS := 4      # cópias do rastro por tapa
 const SLAP_GHOST_FADE := 0.18
 const SLAP_WINDUP := 0.6   # 2026-10-07, pedido do usuário (ele pensou em 1 s; 0,6 escolhido por ele)
-const SLAP_DAMAGE := 10.0
+## Reforço de 2026-10-23 (pedido do usuário: entregava pouco perto das outras): tapa 10 -> 20,
+## parede 20 -> 35 (os dois x master_scale() de quem bate), tontura da parede 0,6 -> 1 s
+## (SLAP_DAZE; a do Gancho segue DAZE_TIME), o tapa rebate as balas inimigas no leque
+## (SLAP_PARRY_PAD a mais de alcance) e tremor nas duas telas.
+const SLAP_DAMAGE := 20.0
+const SLAP_DAZE := 1.0
+const SLAP_PARRY_PAD := 1.0
 const SLAP_PUSH := 30.0   # era 22 e 24,5 (2026-10-08, pedido do usuário: a carta para tirar alguém de perto)
 const SLAP_LIFT := 14.0   # era 12; subir junto alonga o voo (2026-10-08)
 const SLAP_FLIGHT := 1.0
-const SPLAT_DAMAGE := 20.0
+const SPLAT_DAMAGE := 35.0
 const SPLAT_MIN_SPEED := 6.0
 const DAZE_TIME := 0.6
 const DAZE_SLOW := 0.5
@@ -1061,7 +1128,13 @@ const GRAPPLE_HANG := 2.0
 const GRAPPLE_LIFT := 3.0
 const GRAPPLE_REFUND := 1.0    # errou: a carga volta neste tempo
 const GRAPPLE_KICK_SPEED := 30.0
-const GRAPPLE_KICK_DAMAGE := 20.0
+const GRAPPLE_KICK_DAMAGE := 20.0   # x master_scale() desde 2026-10-23 (vai no receive_grapple_kick)
+## Embalo (2026-10-23, pedido do usuário: o Arpéu era só utilidade e entregava menos que as
+## outras): soltar do balanço dá GRAPPLE_SWING_DAMAGE de Dano por GRAPPLE_SWING_TIME.
+const GRAPPLE_SWING_DAMAGE := 0.3
+const GRAPPLE_SWING_TIME := 2.0
+var swing_timer := 0.0
+var my_barrier: Barrier   # Bastião: a parede de pé (para o Q de novo)
 const GRAPPLE_KICK_REACH := 1.6
 var grapple_state := 0         # 0 nada, 1 ventosa voando, 2 balançando, 3 pendurado, 4 indo chutar
 var grapple_len := 0.0         # comprimento da corda (encurta a GRAPPLE_REEL)
@@ -1098,6 +1171,9 @@ var pierce_left := 0       # Perfurante: tiros carregados
 var pierce_shot := false   # o disparo atual (com a rajada) é perfurante
 var last_stand_timer := 0.0
 var last_stand_used := false
+var _beat_wait := 0.0   # Último Suspiro: até a próxima batida do coração
+var _beat_step := 0
+var _last_stand_look := false   # etiqueta do nome em vermelho com a contagem
 
 var player_name := "Jogador"
 var skin := ""          # id em SKINS (vazio: a do lado da partida)
@@ -1309,6 +1385,7 @@ var boot_fuel := BOOT_FUEL   # Bota Foguete: jato que sobra (s)
 var boot_armed := false   # apertou pular no ar sem pulos sobrando; vale enquanto segurar
 var boosting := false     # jato ligado neste quadro (vai para as outras máquinas no estado)
 var air_time := 0.0       # há quanto tempo está no ar (bônus de dano da Bota Foguete)
+var ground_time := 0.0    # há quanto tempo está no chão (o bônus da Bota aguenta BOOT_KEEP)
 var boot_fx: CPUParticles3D
 var stomp_hits := {}      # Pisão: inimigo -> quando levou o último (ms)
 var burn_timer := 0.0     # Chamas: queimando por mais quanto tempo
@@ -1784,6 +1861,7 @@ func reset_for_round(spawn: Transform3D) -> void:
 	set_meta("shrunk", false)
 	_show_bazooka(false)
 	last_stand_timer = 0.0
+	swing_timer = 0.0
 	last_stand_used = false
 	ice_timer = 0.0
 	ice_debt = 0.0
@@ -1986,6 +2064,7 @@ func _read_local_input() -> void:
 		_clicked = false
 		in_shield = false
 		in_dash = false
+		in_dash_held = false
 		in_reload = false
 		in_master = false
 		in_master_held = false
@@ -2004,6 +2083,7 @@ func _read_local_input() -> void:
 	if sniper_timer > 0.0 and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 		in_shield = false
 	in_dash = Input.is_action_just_pressed("dash")
+	in_dash_held = Input.is_action_pressed("dash")
 	in_reload = Input.is_action_just_pressed("reload")
 	in_master = Input.is_action_just_pressed("master")
 	in_master_held = Input.is_action_pressed("master")
@@ -2069,10 +2149,15 @@ func _frame_step(delta: float) -> void:
 				and global_position.distance_squared_to(viewer.global_position) <= pow(viewer.stats["radar"] * RADAR_RANGE, 2.0))
 		if tag.visible and downed:
 			tag.text = player_name + "\n" + tr("DOWNED")
+		elif tag.visible and last_stand_timer > 0.0:
+			tag.text = "%s\n%.1f" % [player_name, last_stand_timer]   # Último Suspiro: a contagem
 		elif tag.visible:
 			# Mecha: a blindagem entre colchetes.
 			tag.text = "%s\n%d" % [player_name, ceili(health)] + (" +%d" % ceili(armor) if armor > 0.0 else "") \
 				+ ("  [%d]" % ceili(mech_armor) if mech_state == 2 else "")
+		if (last_stand_timer > 0.0) != _last_stand_look:
+			_last_stand_look = last_stand_timer > 0.0
+			tag.modulate = LAST_STAND_COLOR if _last_stand_look else color.lightened(0.5)
 		_update_guard_icons()
 		_update_realm_mark()
 		if frost_layers > 0 or frost_mark:
@@ -2604,6 +2689,7 @@ func _physics_step(delta: float) -> void:
 	realm_bonus_timer = maxf(0.0, realm_bonus_timer - delta)   # em todas: a coroa aparece para os outros
 	spawn_protect = maxf(0.0, spawn_protect - delta)
 	if not is_local:
+		last_stand_timer = maxf(0.0, last_stand_timer - delta)   # só a contagem (a dona decide)
 		_follow_network(delta)
 		if downed:
 			_update_down(delta)
@@ -2687,6 +2773,8 @@ func _physics_step(delta: float) -> void:
 	move_and_slide()
 	if slap_flight > 0.0:
 		_check_splat(before_h, delta)
+	if mech_state == 2:
+		_mech_check_wall(before_h)
 	_check_wall()
 	if is_local:   # todos pisam: qualquer jogador é lançado
 		_check_sky_pad()
@@ -2777,9 +2865,16 @@ func _tick(delta: float) -> void:
 	scoping = sniper_timer > 0.0 and sniper_shots > 0 and in_aim and alive
 	if last_stand_timer > 0.0:
 		last_stand_timer -= delta
+		if is_human:
+			_beat_wait -= delta
+			if _beat_wait <= 0.0:
+				Sfx.ui(self, "heartbeat")
+				_beat_wait = LAST_STAND_BEATS[_beat_step % 2]
+				_beat_step += 1
 		if last_stand_timer <= 0.0 and alive:
 			_lethal()   # ninguém abatido a tempo
 	haste_timer = maxf(0.0, haste_timer - delta)
+	swing_timer = maxf(0.0, swing_timer - delta)
 	slam_cd = maxf(0.0, slam_cd - delta)
 	protect_timer = maxf(0.0, protect_timer - delta)
 	ambush_cd = maxf(0.0, ambush_cd - delta)
@@ -2897,12 +2992,16 @@ func _target_speed() -> float:
 		speed *= 1.0 + SHRINK_SPEED
 	if mech_state > 0:
 		speed *= MECH_BUILD_SPEED if mech_state == 1 else MECH_SPEED
+	if mech_charge >= 0.0:
+		speed *= MECH_CHARGE_SPEED   # carregando o salto do Mecha
 	if sword_timer > 0.0:
 		speed *= SWORD_SPEED
 	if chase_timer > 0.0 and _toward(chase_target):
 		speed *= 1.0 + stats["chase"]
 	if is_surviving():
 		speed *= 1.0 + stats["survival_speed"]
+	if last_stand_timer > 0.0:
+		speed *= 1.0 + LAST_STAND_SPEED   # Último Suspiro
 	return speed
 
 
@@ -3019,11 +3118,15 @@ func _on_landed(fall_speed: float) -> void:
 
 func _move(delta: float) -> void:
 	var on_floor := is_on_floor()
+	if mech_state == 2 and _mech_move(delta, on_floor):
+		return
 	if on_floor:
 		coyote = COYOTE_TIME
 		boot_fuel = BOOT_FUEL
 		boot_armed = false
-		air_time = 0.0
+		ground_time += delta
+		if ground_time > BOOT_KEEP:
+			air_time = 0.0
 		jumps_left = stats["extra_jumps"]
 		wall_jumps_left = stats["wall_jumps"]
 		if velocity.y <= 0.0:
@@ -3074,6 +3177,8 @@ func _move(delta: float) -> void:
 		jump_buffer = 0.0
 		coyote = 0.0
 		jump_rising = true
+		if mech_state == 2:
+			jump_rising = false   # Mecha: o pulo sai ao soltar o toque; sem o corte do pulo curto
 		sliding = false
 		slamming = false
 		on_floor = false
@@ -3128,13 +3233,18 @@ func _move(delta: float) -> void:
 		var turn := h.signed_angle_to(wish, Vector3.UP)
 		var speed := maxf(h.length(), move_toward(h.length(), target * wish.length(), AIR_ACCEL * target * delta))
 		h = h.rotated(Vector3.UP, clampf(turn, -GLIDE_TURN * delta, GLIDE_TURN * delta)).normalized() * speed
+	elif mech_leaping:
+		# Salto do Mecha: as teclas puxam o rumo forte, sem frear abaixo do que já vinha.
+		var before := h.length()
+		if wish != Vector3.ZERO:
+			h = (h + wish.normalized() * MECH_LEAP_STEER * delta).limit_length(maxf(before, target))
 	else:
 		h = _accelerate(h, wish, target, AIR_ACCEL * float(stats["air_control"]), delta)
 	if on_floor:
 		glided = false
 	if on_floor and velocity.y <= 0.0:
 		slap_lock = false
-	if not slap_lock:
+	if not slap_lock and not mech_leaping:
 		h = h.limit_length(MAX_HSPEED)
 	velocity.x = h.x
 	velocity.z = h.z
@@ -3149,6 +3259,7 @@ func _move(delta: float) -> void:
 	boosting = false
 	if not on_floor:
 		air_time += delta
+		ground_time = 0.0
 		if boot_armed and in_jump_held and boot_fuel > 0.0 and not slamming and dash_timer <= 0.0:
 			boosting = true
 			boot_fuel = maxf(0.0, boot_fuel - delta)
@@ -3741,6 +3852,7 @@ func credit_damage(amount: float, lethal := false, tick := false, victim := "") 
 		last_stand_timer = 0.0
 		health = maxf(health, stats["max_health"] * 0.5)
 		Effects.burst(get_parent(), chest(), 3.0, Color(0.5, 0.95, 0.5))
+		_net_last_stand_all(2)
 		revived.emit()
 	damage_dealt.emit(amount, lethal)
 	# Um som por quadro: os chumbos de uma escopeta soam como um acerto só.
@@ -3768,6 +3880,9 @@ func _act(delta: float) -> void:
 		# Clone: Q de novo troca de lugar com ele.
 		if clone.life < ShadowClone.LIFE - CLONE_SWAP_LOCK and realm == 0:   # do Domínio do Rei não sai
 			_clone_swap()
+		in_master = false
+	if in_master and is_instance_valid(my_barrier) and my_barrier.can_push():
+		_barrier_push()   # Bastião: Q de novo empurra a parede
 		in_master = false
 	if in_master and shrink_timer > 0.0:
 		_end_shrink(true)   # Formiga: Q de novo volta ao tamanho antes do tempo
@@ -4092,6 +4207,160 @@ func _start_mech() -> void:
 	_mech_send()
 
 
+## Mecha, máquina dona, no começo do _move: carga do salto e parede. Devolve true quando já
+## decidiu a velocidade deste passo (salto saindo, agarrado ou escorregando).
+func _mech_move(delta: float, on_floor: bool) -> bool:
+	if mech_leaping and on_floor and velocity.y <= 0.0:
+		mech_leaping = false
+	if mech_charge < 0.0 and in_jump and (on_floor or mech_on_wall):
+		mech_charge = 0.0   # começou a carregar (sobe em _mech_step)
+		in_jump = false
+		jump_buffer = 0.0
+		_mech_event(1)
+	if mech_charge >= 0.0:
+		in_jump = false
+		if not on_floor and not mech_on_wall:
+			mech_charge = -1.0   # saiu do chão carregando: perde a carga
+			_mech_event(0)
+		elif not in_jump_held:
+			var held := mech_charge
+			mech_charge = -1.0
+			if held < MECH_TAP and not mech_on_wall:
+				jump_buffer = JUMP_BUFFER   # um toque: o pulo comum, no resto do _move
+				_mech_event(0)
+			else:
+				_mech_leap(clampf(held / MECH_CHARGE_TIME, 0.0, 1.0))
+				return true
+		elif is_human:
+			eye_dip = maxf(eye_dip, 0.25 * clampf(mech_charge / MECH_CHARGE_TIME, 0.0, 1.0))
+	if _mech_thrust(delta, on_floor):
+		return true
+	if not mech_on_wall:
+		return false
+	if on_floor:
+		_mech_wall_end()
+		return false
+	if mech_hang > 0.0:
+		mech_hang -= delta
+		velocity = -mech_wall_n   # encostado, parado
+	else:
+		velocity = -mech_wall_n + Vector3.DOWN * MECH_SLIDE
+	return true
+
+
+## Propulsão do Mecha (segurando o dash): empurra para onde olha enquanto houver barra; no ar
+## não deixa cair (subindo, segue subindo com a gravidade). Fora dela, a barra volta.
+func _mech_thrust(delta: float, on_floor: bool) -> bool:
+	var on := in_dash_held and mech_fuel > 0.0 and not mech_on_wall and mech_charge < 0.0
+	if on != mech_thrusting:
+		mech_thrusting = on
+		_mech_event(3 if on else 5)
+	if not on:
+		mech_fuel_wait -= delta
+		if mech_fuel_wait <= 0.0:
+			mech_fuel = minf(MECH_THRUST_FUEL, mech_fuel + MECH_THRUST_FUEL / MECH_THRUST_REFILL * delta)
+		return false
+	mech_fuel = maxf(0.0, mech_fuel - delta)
+	mech_fuel_wait = MECH_THRUST_WAIT
+	var dir := _flat_forward()
+	velocity.x = dir.x * MECH_THRUST_SPEED
+	velocity.z = dir.z * MECH_THRUST_SPEED
+	if not on_floor:
+		velocity.y = maxf(velocity.y - _gravity() * delta, 0.0)
+	mech_leaping = false
+	jump_rising = false
+	sliding = false
+	reveal()
+	return true
+
+
+## Salto do Mecha: para onde olha (no chão), mais forte com mais carga. Da parede, sai para
+## longe dela mesmo olhando para a parede.
+func _mech_leap(t: float) -> void:
+	var dir := _flat_forward()
+	if mech_on_wall:
+		var n := mech_wall_n
+		if dir.dot(n) < 0.3:
+			var side := dir - n * dir.dot(n)
+			dir = (side * 0.6 + n * 0.8).normalized()
+		_mech_wall_end(false)
+	var v := MECH_LEAP_MIN.lerp(MECH_LEAP_MAX, t)
+	velocity = dir * v.x + Vector3.UP * v.y
+	mech_leaping = true
+	jump_rising = false
+	jump_buffer = 0.0
+	coyote = 0.0
+	sliding = false
+	Effects.burst(get_parent(), global_position + Vector3.UP * 0.2, 1.4 + t, MECH_COLOR, 0.25)
+	Sfx.at(self, "pad", global_position)
+	reveal()
+	_mech_event(0)
+
+
+## Depois do move_and_slide (máquina dona): no salto, bateu de frente numa parede ainda
+## rápido, agarra; agarrado, a parede sumiu (passou da beirada), solta.
+func _mech_check_wall(before_h: Vector3) -> void:
+	var hit := {}
+	for i in get_slide_collision_count():
+		var c := get_slide_collision(i)
+		var n := c.get_normal()
+		if absf(n.y) < 0.35 and c.get_collider() is not Player:
+			hit = {"n": Vector3(n.x, 0.0, n.z).normalized(), "p": c.get_position()}
+			break
+	if mech_on_wall:
+		if hit.is_empty():
+			_mech_wall_end()
+		else:
+			mech_wall_point = hit["p"]
+		return
+	if not mech_leaping or hit.is_empty() or before_h.length() < MECH_GRAB_SPEED \
+			or before_h.normalized().dot(-hit["n"]) < 0.3:
+		return
+	mech_leaping = false
+	mech_on_wall = true
+	mech_hang = MECH_HANG
+	mech_wall_n = hit["n"]
+	mech_wall_point = hit["p"]
+	velocity = Vector3.ZERO
+	shake = maxf(shake, 0.25) if is_human else shake
+	Effects.sparks(get_parent(), mech_wall_point, Color(1, 1, 1), 8, 5.0)
+	Sfx.at(get_parent(), "hit", mech_wall_point)
+	_mech_event(2)
+
+
+func _mech_wall_end(send := true) -> void:
+	mech_on_wall = false
+	mech_hang = 0.0
+	if send:
+		_mech_event(4)
+
+
+## Avisos do movimento do Mecha para as outras máquinas (só o visual; o corpo vem pelo estado):
+## 0 parou de carregar (ou saltou), 1 começou a carregar, 2 agarrou na parede, 3 ligou a
+## propulsão, 4 soltou da parede, 5 desligou a propulsão.
+func _mech_event(kind: int) -> void:
+	if Net.online and is_local and is_inside_tree():
+		_net_mech_event.rpc(kind, mech_wall_point)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_mech_event(kind: int, point: Vector3) -> void:
+	match kind:
+		0:
+			mech_charge = -1.0
+		1:
+			mech_charge = 0.0
+		2:
+			mech_on_wall = true
+			mech_wall_point = point
+		3:
+			mech_thrusting = true
+		5:
+			mech_thrusting = false
+		4:
+			mech_on_wall = false
+
+
 ## Máquina dona, a cada passo: a recarga só anda depois de sair; montou, entra; acabou o
 ## tempo, sai explodindo.
 func _mech_tick(delta: float) -> void:
@@ -4163,6 +4432,13 @@ func _mech_set(state: int) -> void:
 	mech_timer = MECH_BUILD if state == 1 else (MECH_TIME if state == 2 else 0.0)
 	if state == 0:
 		mech_armor = 0.0
+		mech_charge = -1.0
+		mech_leaping = false
+		mech_on_wall = false
+		mech_hang = 0.0
+		mech_thrusting = false
+	mech_fuel = MECH_THRUST_FUEL
+	mech_fuel_wait = 0.0
 	_mech_visual()
 	_recompute_stats()   # depois do visual: _apply_body_scale põe o piloto e o mecha no tamanho
 	mech_changed.emit(state)
@@ -4174,7 +4450,7 @@ func _mech_set(state: int) -> void:
 
 
 ## Os custos de dentro (e da montagem) por cima das cartas: corpo maior, pulo menor, sem
-## pulos extras, de parede nem dash no ar (o dash no chão é cortado em _move).
+## pulos extras, de parede nem dash no ar (dentro, o dash vira a propulsão: _mech_thrust).
 func _mech_mods() -> void:
 	stats["body_scale"] = float(stats["body_scale"]) * MECH_SCALE
 	stats["jump_velocity"] = float(stats["jump_velocity"]) * MECH_JUMP
@@ -4242,9 +4518,10 @@ static func mech_blast(parent: Node, pos: Vector3, owner_p: Player, radius: floa
 
 
 ## Modelo montado em código, peças em comum entre todos (malha e material uma vez só).
-## Para os outros: pernas, pés, quadril, costas e laterais abertas na frente (o personagem
-## aparece na cabine), ombros com os lançadores. Na própria tela: a moldura da cabine nos
-## cantos. As peças aparecem uma a uma na montagem (_mech_update_fx).
+## Para os outros: pernas (coxa e canela, com joelho), pés, quadril, costas e laterais abertas
+## na frente (o personagem aparece na cabine), ombros com os lançadores, e fora da montagem o
+## braço da parede e a chama da turbina. Na própria tela: a moldura da cabine nos cantos. As
+## peças aparecem uma a uma na montagem (_mech_update_fx); de fora, _mech_animate mexe as juntas.
 static var _mech_meshes: Array = []
 
 func _mech_visual() -> void:
@@ -4253,6 +4530,10 @@ func _mech_visual() -> void:
 			mech_fx.queue_free()
 			mech_fx = null
 			_mech_parts.clear()
+			_mech_legs.clear()
+			_mech_hips = null
+			_mech_arm = null
+			_mech_flame = null
 		return
 	if mech_fx:
 		return
@@ -4267,28 +4548,34 @@ func _mech_visual() -> void:
 		hot.albedo_color = MISSILE_COLOR
 		hot.emission_enabled = true
 		hot.emission = MISSILE_COLOR * 0.4
+		var fire := StandardMaterial3D.new()
+		fire.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		fire.albedo_color = MECH_JET_COLOR
 		var box := func(size: Vector3, mat: Material) -> BoxMesh:
 			var m := BoxMesh.new()
 			m.size = size
 			m.material = mat
 			return m
-		# [malha, posição] em metros, para o corpo de tamanho 1 (o nó escala com o corpo).
+		# [malha, posição, junta] em metros, para o corpo de tamanho 1 (o nó escala com o corpo).
 		# Em volta de um corpo de 2,5 m (1,4x): o piloto (MECH_PILOT) senta a MECH_SEAT e
-		# aparece da cintura para cima pela frente aberta da cabine.
+		# aparece da cintura para cima pela frente aberta da cabine. A coxa gira no quadril
+		# (y 0,95), a canela no joelho (0,42 abaixo); a posição é a partir da junta.
 		var third := [
-			[box.call(Vector3(0.55, 0.2, 0.8), dark), Vector3(-0.42, 0.1, -0.05)],     # pés
-			[box.call(Vector3(0.55, 0.2, 0.8), dark), Vector3(0.42, 0.1, -0.05)],
-			[box.call(Vector3(0.42, 0.75, 0.5), steel), Vector3(-0.42, 0.55, 0.0)],    # pernas
-			[box.call(Vector3(0.42, 0.75, 0.5), steel), Vector3(0.42, 0.55, 0.0)],
-			[box.call(Vector3(1.3, 0.3, 0.85), dark), Vector3(0.0, 1.0, 0.0)],         # quadril
-			[box.call(Vector3(1.2, 0.45, 0.12), steel), Vector3(0.0, 1.35, -0.42)],    # painel da frente (cobre as pernas do piloto)
-			[box.call(Vector3(1.3, 1.25, 0.14), steel), Vector3(0.0, 1.75, 0.45)],     # costas
-			[box.call(Vector3(0.14, 1.0, 0.85), steel), Vector3(-0.68, 1.65, 0.0)],    # laterais
-			[box.call(Vector3(0.14, 1.0, 0.85), steel), Vector3(0.68, 1.65, 0.0)],
-			[box.call(Vector3(0.45, 0.4, 0.8), dark), Vector3(-0.95, 2.25, 0.05)],     # ombros com os lançadores
-			[box.call(Vector3(0.45, 0.4, 0.8), dark), Vector3(0.95, 2.25, 0.05)],
-			[box.call(Vector3(0.32, 0.26, 0.08), hot), Vector3(-0.95, 2.25, -0.37)],   # bocas dos mísseis
-			[box.call(Vector3(0.32, 0.26, 0.08), hot), Vector3(0.95, 2.25, -0.37)],
+			[box.call(Vector3(0.55, 0.2, 0.8), dark), Vector3(0.0, -0.43, -0.05), "shin_l"],   # pés
+			[box.call(Vector3(0.55, 0.2, 0.8), dark), Vector3(0.0, -0.43, -0.05), "shin_r"],
+			[box.call(Vector3(0.4, 0.38, 0.48), steel), Vector3(0.0, -0.2, 0.0), "shin_l"],    # canelas
+			[box.call(Vector3(0.4, 0.38, 0.48), steel), Vector3(0.0, -0.2, 0.0), "shin_r"],
+			[box.call(Vector3(0.42, 0.45, 0.5), steel), Vector3(0.0, -0.2, 0.0), "thigh_l"],   # coxas
+			[box.call(Vector3(0.42, 0.45, 0.5), steel), Vector3(0.0, -0.2, 0.0), "thigh_r"],
+			[box.call(Vector3(1.3, 0.3, 0.85), dark), Vector3(0.0, 1.0, 0.0), "hips"],         # quadril
+			[box.call(Vector3(1.2, 0.45, 0.12), steel), Vector3(0.0, 1.35, -0.42), "hips"],    # painel da frente (cobre as pernas do piloto)
+			[box.call(Vector3(1.3, 1.25, 0.14), steel), Vector3(0.0, 1.75, 0.45), "hips"],     # costas
+			[box.call(Vector3(0.14, 1.0, 0.85), steel), Vector3(-0.68, 1.65, 0.0), "hips"],    # laterais
+			[box.call(Vector3(0.14, 1.0, 0.85), steel), Vector3(0.68, 1.65, 0.0), "hips"],
+			[box.call(Vector3(0.45, 0.4, 0.8), dark), Vector3(-0.95, 2.25, 0.05), "hips"],     # ombros com os lançadores
+			[box.call(Vector3(0.45, 0.4, 0.8), dark), Vector3(0.95, 2.25, 0.05), "hips"],
+			[box.call(Vector3(0.32, 0.26, 0.08), hot), Vector3(-0.95, 2.25, -0.37), "hips"],   # bocas dos mísseis
+			[box.call(Vector3(0.32, 0.26, 0.08), hot), Vector3(0.95, 2.25, -0.37), "hips"],
 		]
 		# Na tela (a 0,5 m da câmera a tela vai de ~±0,67 de lado e ±0,38 de altura): hastes
 		# finas inclinadas nos cantos de baixo e uma faixa fina no pé da tela, com luzes.
@@ -4299,24 +4586,77 @@ func _mech_visual() -> void:
 			[box.call(Vector3(0.06, 0.012, 0.01), hot), Vector3(-0.3, -0.353, -0.48), Vector3.ZERO],
 			[box.call(Vector3(0.06, 0.012, 0.01), hot), Vector3(0.3, -0.353, -0.48), Vector3.ZERO],
 		]
-		_mech_meshes = [third, first]
+		# Braço da parede (aponta para -z a partir do ombro) e chama da turbina (cone para trás).
+		var flame := CylinderMesh.new()
+		flame.top_radius = 0.02
+		flame.bottom_radius = 0.28
+		flame.height = 1.0
+		flame.radial_segments = 8
+		flame.rings = 1
+		flame.material = fire
+		var extra := {"arm": box.call(Vector3(0.24, 0.24, 1.0), steel),
+			"hand": box.call(Vector3(0.36, 0.36, 0.3), dark), "flame": flame}
+		_mech_meshes = [third, first, extra]
 	mech_fx = Node3D.new()
 	var parts: Array = _mech_meshes[1 if is_human else 0]
+	var joints := {}
 	if is_human:
 		camera.add_child(mech_fx)
 	else:
 		add_child(mech_fx)
+		_mech_build_joints(joints)
 	for part in parts:
 		var mi := MeshInstance3D.new()
 		mi.mesh = part[0]
 		mi.position = part[1]
-		if part.size() > 2:
+		if part.size() > 2 and part[2] is Vector3:
 			mi.rotation = part[2]
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mi.visible = false
-		mech_fx.add_child(mi)
+		var parent: Node3D = mech_fx
+		if part.size() > 2 and part[2] is String:
+			parent = joints[part[2]]
+		parent.add_child(mi)
 		_mech_parts.append(mi)
 	_mech_update_fx()
+
+
+## Juntas do modelo de fora: quadril (sobe e desce), coxa e canela de cada perna, o braço da
+## parede e a chama da turbina (os dois fora da montagem, só aparecem na hora).
+func _mech_build_joints(joints: Dictionary) -> void:
+	_mech_hips = Node3D.new()
+	mech_fx.add_child(_mech_hips)
+	joints["hips"] = _mech_hips
+	_mech_legs.clear()
+	for side in [["l", -0.42], ["r", 0.42]]:
+		var thigh := Node3D.new()
+		thigh.position = Vector3(side[1], 0.95, 0.0)
+		_mech_hips.add_child(thigh)
+		var shin := Node3D.new()
+		shin.position = Vector3(0.0, -0.42, 0.0)
+		thigh.add_child(shin)
+		joints["thigh_" + side[0]] = thigh
+		joints["shin_" + side[0]] = shin
+		_mech_legs.append_array([thigh, shin])
+	var extra: Dictionary = _mech_meshes[2]
+	_mech_arm = Node3D.new()
+	_mech_arm.position = Vector3(0.95, 2.0, 0.0)
+	_mech_arm.visible = false
+	_mech_hips.add_child(_mech_arm)
+	for piece in [[extra["arm"], Vector3(0, 0, -0.5)], [extra["hand"], Vector3(0, 0, -1.05)]]:
+		var am := MeshInstance3D.new()
+		am.mesh = piece[0]
+		am.position = piece[1]
+		am.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_mech_arm.add_child(am)
+	_mech_flame = MeshInstance3D.new()
+	_mech_flame.mesh = extra["flame"]
+	_mech_flame.position = Vector3(0.0, 1.6, 1.05)
+	_mech_flame.rotation.x = PI / 2.0
+	_mech_flame.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_mech_flame.visible = false
+	_mech_hips.add_child(_mech_flame)
+	_mech_last_pos = global_position
 
 
 ## Todas as máquinas, a cada passo: o tempo e as peças aparecendo na montagem.
@@ -4324,15 +4664,19 @@ func _mech_step(delta: float) -> void:
 	if mech_state == 0:
 		return
 	mech_timer = maxf(0.0, mech_timer - delta)
-	_mech_update_fx()
+	if mech_charge >= 0.0:
+		mech_charge += delta
+	_mech_update_fx(delta)
 
 
-func _mech_update_fx() -> void:
+func _mech_update_fx(delta := 0.0) -> void:
 	if mech_fx == null:
 		return
 	if not is_human:
 		# O corpo do jogador já cresceu com o mecha (body_scale): o modelo acompanha.
 		mech_fx.scale = Vector3.ONE * float(stats["body_scale"]) / MECH_SCALE
+		if mech_state == 2 and delta > 0.0:
+			_mech_animate(delta)
 	var shown := _mech_parts.size()
 	if mech_state == 1:
 		shown = ceili((1.0 - mech_timer / MECH_BUILD) * _mech_parts.size())
@@ -4342,6 +4686,50 @@ func _mech_update_fx() -> void:
 			mi.visible = i < shown
 			if mi.visible and mech_state == 1:
 				Effects.burst(get_parent(), mi.global_position, 0.4, MECH_COLOR, 0.1)
+
+
+## Juntas do modelo de fora (todas as máquinas, pela posição: vale para os jogadores remotos):
+## andando, as pernas balançam com a velocidade e o corpo sobe e desce no passo; carregando o
+## salto, dobra os joelhos e abaixa; no ar, encolhe as pernas; na parede, o braço estica até
+## ela; no dash, a chama da turbina acende.
+func _mech_animate(delta: float) -> void:
+	if _mech_hips == null:
+		return
+	var moved := global_position - _mech_last_pos
+	_mech_last_pos = global_position
+	var speed := Vector2(moved.x, moved.z).length() / delta
+	var air := mech_on_wall or absf(moved.y / delta) > 1.5
+	var thigh := 0.0
+	var knee := 0.0
+	var drop := 0.0
+	var swing := 0.0
+	if mech_charge >= 0.0:
+		var c := 0.75 * clampf(mech_charge / MECH_CHARGE_TIME, 0.0, 1.0)
+		thigh = -c
+		knee = 2.0 * c
+		drop = 0.75 * (1.0 - cos(c))
+	elif air:
+		thigh = -0.45
+		knee = 0.8
+	else:
+		var s := clampf(speed / 6.0, 0.0, 1.0)
+		_mech_phase = fmod(_mech_phase + speed * delta * 1.6, TAU)
+		swing = 0.5 * s
+		drop = -0.06 * s * absf(sin(_mech_phase))   # sobe no meio do passo
+	var k := minf(1.0, delta * 14.0)
+	for i in 2:
+		var leg_thigh: Node3D = _mech_legs[i * 2]
+		var leg_shin: Node3D = _mech_legs[i * 2 + 1]
+		var walk := sin(_mech_phase) * swing * (1.0 if i == 0 else -1.0)
+		leg_thigh.rotation.x = lerpf(leg_thigh.rotation.x, thigh + walk, k)
+		leg_shin.rotation.x = lerpf(leg_shin.rotation.x, knee + maxf(0.0, -walk) * 1.2, k)
+	_mech_hips.position.y = lerpf(_mech_hips.position.y, -drop, k)
+	_mech_arm.visible = mech_on_wall
+	if mech_on_wall and _mech_arm.global_position.distance_squared_to(mech_wall_point) > 0.01:
+		_mech_arm.look_at(mech_wall_point + Vector3.UP * 0.6, Vector3.UP)
+	_mech_flame.visible = mech_thrusting
+	if _mech_flame.visible:
+		_mech_flame.scale = Vector3(1.0, 0.8 + 0.4 * randf(), 1.0)
 
 
 # ---------------------------------------------------------------- Arpéu Ventoso
@@ -4493,6 +4881,7 @@ func _grapple_move(delta: float) -> bool:
 ## cima; pendurado, só cai; com a ventosa ainda voando, ela some (a carga já foi).
 func _grapple_release(boost := false) -> void:
 	if grapple_state == 2:
+		swing_timer = GRAPPLE_SWING_TIME   # Embalo
 		if boost:
 			velocity = (velocity * GRAPPLE_RELEASE_BOOST).limit_length(GRAPPLE_MAX_SPEED * GRAPPLE_RELEASE_BOOST)
 			jumps_left = maxi(jumps_left, 1)
@@ -4521,7 +4910,7 @@ func _grapple_kick_step(delta: float) -> bool:
 		velocity = dir * GRAPPLE_KICK_SPEED
 		sliding = false
 		return true
-	foe.remote_call("receive_grapple_kick", [String(name), dir])
+	foe.remote_call("receive_grapple_kick", [String(name), dir, GRAPPLE_KICK_DAMAGE * master_scale()])
 	velocity = -Vector3(dir.x, 0.0, dir.z).normalized() * 6.0 + Vector3.UP * 7.0
 	jump_rising = false
 	jumps_left = maxi(jumps_left, 1)
@@ -4532,7 +4921,7 @@ func _grapple_kick_step(delta: float) -> bool:
 
 
 ## Na máquina de quem leva o chute: escudo de pé bloqueia (só o reflexo); senão dano e empurrão.
-func receive_grapple_kick(from_name: String, dir: Vector3) -> void:
+func receive_grapple_kick(from_name: String, dir: Vector3, dmg := GRAPPLE_KICK_DAMAGE) -> void:
 	if not alive:
 		return
 	if is_shielding():
@@ -4540,7 +4929,7 @@ func receive_grapple_kick(from_name: String, dir: Vector3) -> void:
 		Sfx.at(self, "reflect", chest())
 		return
 	knockback(Vector3(dir.x, 0.0, dir.z).normalized() * 12.0 + Vector3.UP * 5.0)
-	take_damage(GRAPPLE_KICK_DAMAGE, get_parent().get_node_or_null(from_name) as Player)
+	take_damage(dmg, get_parent().get_node_or_null(from_name) as Player)
 
 
 func _grapple_clear() -> void:
@@ -5218,6 +5607,7 @@ func _set_weapon(kind: int) -> void:
 func _make_barrier(pos: Vector3, yaw: float) -> void:
 	var b := Barrier.new()
 	b.owner_player = self
+	my_barrier = b
 	get_parent().add_child(b)
 	b.global_position = pos
 	b.rotation.y = yaw
@@ -5227,6 +5617,33 @@ func _make_barrier(pos: Vector3, yaw: float) -> void:
 @rpc("authority", "call_remote", "reliable")
 func _net_barrier(pos: Vector3, yaw: float) -> void:
 	_make_barrier(pos, yaw)
+
+
+## Bastião: Q de novo empurra a parede (Barrier.push). O dano sai daqui (dano de agora).
+func _barrier_push() -> void:
+	var dmg := Barrier.RAM_DAMAGE * master_scale()
+	my_barrier.push(dmg)
+	if Net.online:
+		_net_barrier_push.rpc(dmg)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_barrier_push(dmg: float) -> void:
+	if is_instance_valid(my_barrier):
+		my_barrier.push(dmg)
+
+
+## Atropelado pela parede do Bastião (máquina da vítima): empurrão e dano; escudo levantado
+## segura o dano (o empurrão vem igual).
+func receive_wall_ram(from_name: String, dir: Vector3, dmg: float) -> void:
+	if not alive:
+		return
+	knockback(Vector3(dir.x, 0.0, dir.z).normalized() * 14.0 + Vector3.UP * 5.0)
+	if is_shielding():
+		reflect_flash = 1.0
+		Sfx.at(self, "reflect", chest())
+		return
+	take_damage(dmg, get_parent().get_node_or_null(from_name) as Player)
 
 
 ## Formiga: só a máquina dona decide; as outras recebem o tamanho pelo _net_shrink.
@@ -6018,11 +6435,34 @@ func _slap() -> void:
 			continue
 		if dist > 0.9 and forward.angle_to(flat / dist) > arc:
 			continue
-		enemy.remote_call("receive_slap", [String(name), forward])
+		enemy.remote_call("receive_slap", [String(name), forward, master_scale()])
 		Effects.burst(get_parent(), enemy.chest(), 1.1, SLAP_COLOR, 0.15)
+		if is_human:
+			shake = maxf(shake, 0.35)
+	_slap_parry(forward, arc)
 	_show_slap()
 	if Net.online:
 		_net_slap.rpc()
+
+
+## Mega Tapa: rebate as balas inimigas no leque (como o escudo: voltam para quem atirou). Esta
+## máquina decide e avisa as outras (Bullet._reflect). Perfurante, foguete, míssil, caco de gelo
+## e o laser da Sniper passam.
+func _slap_parry(forward: Vector3, arc: float) -> void:
+	for node in get_tree().get_nodes_in_group("bullets"):
+		var b := node as Bullet
+		if b == null or b.drill or b.rocket or b.missile or b.ice or b.laser or b.waiting > 0.0 \
+				or not is_instance_valid(b.shooter) or b.shooter == self or is_ally(b.shooter):
+			continue
+		var to: Vector3 = b.global_position - chest()
+		if absf(to.y) > 2.5:
+			continue
+		var flat := Vector3(to.x, 0.0, to.z)
+		var dist := flat.length()
+		if dist > SLAP_RANGE + SLAP_PARRY_PAD or (dist > 0.9 and forward.angle_to(flat / dist) > arc):
+			continue
+		b._reflect(self, b.global_position)
+		Effects.sparks(get_parent(), b.global_position, SLAP_COLOR, 6, 6.0)
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -6031,7 +6471,7 @@ func _net_slap() -> void:
 
 
 ## Levou o tapa (máquina dona): escudo bloqueia; congelado só voa; senão dano e voo.
-func receive_slap(from_name: String, dir: Vector3) -> void:
+func receive_slap(from_name: String, dir: Vector3, dmg_scale := 1.0) -> void:
 	if not alive:
 		return
 	if is_shielding():
@@ -6040,7 +6480,7 @@ func receive_slap(from_name: String, dir: Vector3) -> void:
 		Effects.burst(get_parent(), chest(), 1.2, Color(0.5, 0.9, 1.0), 0.15)
 		return
 	if mech_state == 2:
-		take_damage(SLAP_DAMAGE, get_parent().get_node_or_null(from_name) as Player)   # Mecha: não voa
+		take_damage(SLAP_DAMAGE * dmg_scale, get_parent().get_node_or_null(from_name) as Player)   # Mecha: não voa
 		return
 	_end_beam(true)
 	_ride_crash()
@@ -6056,10 +6496,12 @@ func receive_slap(from_name: String, dir: Vector3) -> void:
 	slap_flight = SLAP_FLIGHT
 	slap_lock = true
 	slap_from = from_name
-	splat_damage = SPLAT_DAMAGE
+	splat_damage = SPLAT_DAMAGE * dmg_scale
 	bowl = false
 	slapped.emit(false)
-	take_damage(SLAP_DAMAGE, get_parent().get_node_or_null(from_name) as Player)
+	if is_human:
+		shake = maxf(shake, 0.45)
+	take_damage(SLAP_DAMAGE * dmg_scale, get_parent().get_node_or_null(from_name) as Player)
 
 
 ## No voo do tapa: bateu numa parede (superfície em pé, sem ser outro jogador) ainda
@@ -6078,8 +6520,8 @@ func _check_splat(before_h: Vector3, delta: float) -> void:
 			if bowl and String(other.name) != slap_from and other.alive 					and not (thrower and thrower.is_ally(other)):
 				slap_flight = 0.0
 				bowl = false
-				other.remote_call("receive_bowl", [slap_from])
-				take_damage(HOOK_IMPACT, thrower)
+				other.remote_call("receive_bowl", [slap_from, splat_damage])
+				take_damage(splat_damage, thrower)
 				_daze(DAZE_TIME, thrower)
 				_show_splat(c.get_position())
 				if Net.online:
@@ -6094,7 +6536,7 @@ func _check_splat(before_h: Vector3, delta: float) -> void:
 		if bowl:
 			bowl = false   # Gancho: na parede só o dano; a tontura vem de acertar outro jogador
 		else:
-			_daze(DAZE_TIME, get_parent().get_node_or_null(slap_from) as Player)
+			_daze(SLAP_DAZE, get_parent().get_node_or_null(slap_from) as Player)
 		shake = maxf(shake, 0.6)
 		take_damage(splat_damage, get_parent().get_node_or_null(slap_from) as Player)
 		_show_splat(c.get_position())
@@ -6132,6 +6574,7 @@ func _show_slap() -> void:
 	var own := is_human
 	Effects.slash(get_parent(), chest() - Vector3.UP * (0.35 if own else 0.0), forward, right, SLAP_RANGE * 0.8,
 		false, SLAP_COLOR, 0.2, 0.35 if own else 1.0, 0.85 if own else 0.6)
+	Effects.burst(get_parent(), chest() + forward * 2.0, 1.6, SLAP_COLOR, 0.18)   # onda à frente (2026-10-23)
 	if model:
 		swing_anim = 0.4
 		anim.play("attack-melee-right", 0.05)
@@ -6327,6 +6770,10 @@ func _net_hooked(from_name: String, state: int) -> void:
 		grabber.hook_taken = 0.0
 		grabber._hook_visual(true)
 		grabber.hooked_someone.emit()
+		Effects.burst(get_parent(), chest(), 1.6, HOOK_GLOW, 0.2)   # pegou: clarão no preso
+		Effects.sparks(get_parent(), chest(), HOOK_GLOW, 10, 7.0)
+		if grabber.is_human:
+			grabber.shake = maxf(grabber.shake, 0.3)
 		_restore_overlay()
 		sliding = false
 		dash_timer = 0.0
@@ -6395,12 +6842,12 @@ func _hook_throw_now() -> void:
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	var point: Vector3 = hit["position"] if not hit.is_empty() else head.global_position + aim * 60.0
 	var dir := (point - hook_target.chest()).normalized()
-	hook_target.remote_call("hook_throw", [dir])
+	hook_target.remote_call("hook_throw", [dir, HOOK_IMPACT * master_scale()])
 	hook_state = 0
 	Sfx.at(self, "dash", chest())
 
 
-func hook_throw(dir: Vector3) -> void:
+func hook_throw(dir: Vector3, dmg := HOOK_IMPACT) -> void:
 	var g := hooked_by
 	if g == null:
 		return
@@ -6410,7 +6857,7 @@ func hook_throw(dir: Vector3) -> void:
 	jump_rising = false
 	slap_flight = SLAP_FLIGHT
 	slap_from = from
-	splat_damage = HOOK_IMPACT
+	splat_damage = dmg
 	bowl = true
 
 
@@ -6427,11 +6874,11 @@ func hook_release() -> void:
 
 
 ## Levou um jogador arremessado em cima (máquina dele).
-func receive_bowl(from_name: String) -> void:
+func receive_bowl(from_name: String, dmg := HOOK_IMPACT) -> void:
 	if not alive:
 		return
 	knockback(Vector3.UP * 4.0)
-	take_damage(HOOK_IMPACT, get_parent().get_node_or_null(from_name) as Player)
+	take_damage(dmg, get_parent().get_node_or_null(from_name) as Player)
 	_daze(DAZE_TIME, get_parent().get_node_or_null(from_name) as Player)
 
 
@@ -6461,14 +6908,17 @@ func _hook_visual(on: bool) -> void:
 		return
 	if _chain_mesh == null:
 		_chain_mesh = CylinderMesh.new()
-		_chain_mesh.top_radius = 0.05
-		_chain_mesh.bottom_radius = 0.05
+		_chain_mesh.top_radius = 0.06
+		_chain_mesh.bottom_radius = 0.06
 		_chain_mesh.height = 1.0
 		_chain_mesh.radial_segments = 6
 		_chain_mesh.rings = 1
 		var mat := StandardMaterial3D.new()
 		mat.albedo_color = HOOK_COLOR
 		mat.metallic = 0.6
+		mat.emission_enabled = true   # brilha: a corrente se vê de longe
+		mat.emission = HOOK_GLOW
+		mat.emission_energy_multiplier = 0.8
 		_chain_mesh.material = mat
 	hook_fx = MeshInstance3D.new()
 	hook_fx.mesh = _chain_mesh
@@ -6839,13 +7289,13 @@ func _beam_step(delta: float) -> void:
 			side = dir.cross(Vector3.UP)
 		var along := Vector3(dir.x, 0.0, dir.z).normalized()
 		var push := side.normalized() * BEAM_PUSH_SIDE + along * BEAM_PUSH_ALONG + Vector3.UP * BEAM_LIFT
-		enemy.remote_call("receive_beam", [String(name), push])
+		enemy.remote_call("receive_beam", [String(name), push, BEAM_DAMAGE * master_scale()])
 		Effects.burst(get_parent(), c, 1.3, BEAM_COLOR, 0.15)
 
 
 ## Raio acertou (máquina dona do alvo): arremessa para fora do raio (push vem de quem
 ## atirou); escudo bloqueia o dano e segura metade do empurrão; bloco de gelo só voa.
-func receive_beam(from_name: String, push: Vector3) -> void:
+func receive_beam(from_name: String, push: Vector3, dmg := BEAM_DAMAGE) -> void:
 	if not alive:
 		return
 	if is_shielding():
@@ -6859,7 +7309,32 @@ func receive_beam(from_name: String, push: Vector3) -> void:
 	sliding = false
 	dash_timer = 0.0
 	beamed.emit()
-	take_damage(BEAM_DAMAGE, get_parent().get_node_or_null(from_name) as Player)
+	var from := get_parent().get_node_or_null(from_name) as Player
+	var flat := afflict_from(from, dmg)
+	take_damage(dmg, from)
+	if flat:
+		frost_hit(from)   # depois do dano, como na bala
+
+
+## Aflições das balas de from neste alvo, sem bala (Canhão Arcano, desde 2026-10-23): as
+## mesmas contas de Bullet._afflict, com os atributos de quem atacou. Devolve se os efeitos de
+## valor fixo valem agora (flat_ready), para quem chamou pôr a camada de gelo depois do dano.
+func afflict_from(from: Player, dmg: float) -> bool:
+	if not is_instance_valid(from) or from == self or is_ally(from):
+		return false
+	var s := from.stats
+	var flat := flat_ready(from)
+	if s["slow"] > 0.0:
+		apply_slow(s["slow"], SLOW_TIME, from)
+	if s["poison"] > 0.0:
+		apply_poison(dot_base(dmg, POISON_ABOVE) * s["poison"], from)
+	if s["burn"] > 0.0:
+		apply_burn(dot_base(dmg, BURN_ABOVE) * s["burn"] * from.burn_dps_mult(), BURN_HIT_TIME, from, flat)
+	if s["shield_break"] > 0:
+		silence(from)
+	if s["blind"] > 0.0:
+		apply_blind(s["blind"], from)
+	return flat
 
 
 ## Visual: 1 carga (esfera na mão crescendo), 2 raio (cilindro pela mira), 0 nada.
@@ -6938,15 +7413,17 @@ func _fire_rocket() -> void:
 	since_attack = 0.0
 	spawn_protect = 0.0   # atacar encerra a proteção do começo da rodada
 	rockets_left -= 1
-	fire_timer = BAZOOKA_INTERVAL
+	fire_timer = maxf(BAZOOKA_INTERVAL_MIN, BAZOOKA_INTERVAL * minf(1.0, stats["fire_interval"] / BASE_STATS["fire_interval"]))
 	var origin := head.global_position
 	var aim := -head.global_transform.basis.z
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + aim * 300.0, 1 | 2, [get_rid()])
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	var target: Vector3 = hit["position"] if not hit.is_empty() else origin + aim * 300.0
 	shot_mult = 1.0
-	Bullet.fire(self, muzzle.global_position, (target - muzzle.global_position).normalized(), ROCKET_DAMAGE, true,
-		{"speed": ROCKET_SPEED, "gravity": 0.0, "explosion": maxf(ROCKET_EXPLOSION, float(stats["explosion"])),
+	var mult := ROCKET_DAMAGE * (1.0 + ROCKET_PER_BULLET * maxf(0.0, stats["bullet_count"] - 1))
+	var blast := clampf(ROCKET_EXPLOSION * stats["bullet_radius"] / BASE_STATS["bullet_radius"], ROCKET_EXPLOSION, ROCKET_EXPLOSION_MAX)
+	Bullet.fire(self, muzzle.global_position, (target - muzzle.global_position).normalized(), mult, true,
+		{"speed": ROCKET_SPEED, "gravity": 0.0, "explosion": maxf(blast, float(stats["explosion"])), "bazooka": true,
 		"bounces": 0, "split": 0, "sticky": false, "boomerang": false, "guided": false, "pierce": false})
 	recoil = 1.6
 	shake = maxf(shake, 0.25)
@@ -7126,6 +7603,12 @@ func damage_for(sum: float) -> float:
 	return float(stats["damage"]) / (1.0 + stats["damage_bonus"]) * sum * (1.0 - realm_weaken())
 
 
+## Escala do dano fixo das mestras (2026-10-23, regra aprovada pelo usuário): o dano de bala
+## de agora dividido pelo da arma base (25). Com 50 de dano, os 22 do Canhão viram 44.
+func master_scale() -> float:
+	return damage_for(damage_sum()) / float(BASE_STATS["damage"])
+
+
 ## 1 + todos os bônus de Dano que valem agora (cartas e situação). A bala guarda este número
 ## (Bullet.bonus) para somar os bônus do acerto (Executor, Vingança) e da Bola de Neve.
 func damage_sum() -> float:
@@ -7136,6 +7619,8 @@ func damage_sum() -> float:
 		sum += stats["rage"]
 	if ambush_timer > 0.0:
 		sum += AMBUSH_DAMAGE
+	if swing_timer > 0.0:
+		sum += GRAPPLE_SWING_DAMAGE   # Embalo do Arpéu
 	if stats["rocket_boots"] > 0:
 		sum += air_bonus()
 	sum += speed_bonus()
@@ -7833,6 +8318,9 @@ func take_damage(amount: float, from: Player, flash := true, ignore_armor := fal
 	elif health <= 0.0 and stats["last_stand"] > 0 and not last_stand_used:
 		last_stand_used = true
 		last_stand_timer = LAST_STAND_TIME
+		_beat_wait = 0.0
+		_beat_step = 0
+		_net_last_stand_all(1)
 		health = 1.0
 		poisons.clear()
 		Effects.burst(get_parent(), chest(), 2.0, Color(1.0, 0.3, 0.3), 0.3)
@@ -7854,8 +8342,26 @@ func take_damage(amount: float, from: Player, flash := true, ignore_armor := fal
 		_lethal()
 
 
+## Último Suspiro nas outras máquinas: 1 começou (contagem acima do nome), 2 voltou com o
+## abate (som), 0 acabou sem abate. Nesta máquina, o som de voltar toca aqui mesmo.
+func _net_last_stand_all(state: int) -> void:
+	if state == 2:
+		Sfx.at(get_parent(), "revive", chest())
+	if Net.online and is_inside_tree():
+		_net_last_stand.rpc(state)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_last_stand(state: int) -> void:
+	last_stand_timer = LAST_STAND_TIME if state == 1 else 0.0
+	if state == 2:
+		Sfx.at(get_parent(), "revive", chest())
+
+
 ## Vida zerada: a Fênix segura, senão morre.
 func _lethal() -> void:
+	if last_stand_timer > 0.0:
+		_net_last_stand_all(0)
 	last_stand_timer = 0.0
 	if immortal:
 		# Sala de teste: o Último Suspiro que acaba sem abate não mata (não há próxima rodada

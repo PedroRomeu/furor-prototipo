@@ -110,7 +110,7 @@ const SHIELD_COST_MAX := 12.0
 const MASTER_DEFAULT := "corrente"
 const MASTERS := {
 	"bazuca": {"name": "Bazooka", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 18.0,
-		"desc": "Q: swaps your weapon for a bazooka for 6 s. 3 straight rockets with double damage that explode (4 m). Cooldown 18 s.",
+		"desc": "Q: swaps your weapon for a bazooka for 6 s. 3 straight rockets with double damage that explode (4 m, growing with Bullet size up to 7 m). Each extra bullet per shot adds +50% to the rocket, and Fire rate bonuses shorten the time between rockets. The explosion launches you like Rocket Jump, without hurting you. Cooldown 18 s.",
 		"mods": [{"stat": "bazooka", "add": 1}]},
 	# Espada (2026-10-06, desenho do usuário: combo de 3; números meus).
 	"espada": {"name": "Sword", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 24.0,
@@ -122,8 +122,8 @@ const MASTERS := {
 		"mods": [{"stat": "sniper", "add": 1}]},
 	# Canhão Arcano (2026-10-06, desenho do usuário, "tipo Kamehameha"; números meus,
 	# aprovados; andar devagar na carga foi escolha dele).
-	"canhao_arcano": {"name": "Arcane Cannon", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 24.0,
-		"desc": "Q: charges for 1 s (moving slowly) and fires a 40 m beam for 2.5 s that goes through walls. You stay in place, on the ground or floating in the air, and aim slowly. Each touch deals 22 damage and throws the target out of the beam (the same target once every 0.6 s). A raised shield blocks the damage. Getting slapped, freezing or dying cuts the beam. Cooldown 24 s.",
+	"canhao_arcano": {"name": "Arcane Cannon", "cat": "Arma", "rarity": "mitico", "master": true, "cooldown": 18.0,
+		"desc": "Q: charges for 1 s (moving slowly) and fires a 40 m beam for 2.5 s that goes through walls. You stay in place, on the ground or floating in the air, and aim slowly. Each touch deals 22 damage, growing with your bullet Damage (44 with 50), applies your bullets' afflictions (poison, burn, frost, slow...) and throws the target out of the beam (the same target once every 0.6 s). A raised shield blocks the damage. Getting slapped, freezing or dying cuts the beam. Cooldown 18 s.",
 		"mods": [{"stat": "beam", "add": 1}]},
 	# Chuva de Meteoros (2026-10-06, ideia do usuário; números meus, aprovados; ignorar
 	# telhados foi escolha dele).
@@ -139,7 +139,7 @@ const MASTERS := {
 		"desc": "Q: your next 3 shots fly straight, with no drop, 3x faster, with +30% damage and passing through everything: walls, players (each one is hit once), the shield and the Bastion, which can't reflect them. The damage ignores armor and goes straight to health. Cooldown 20 s.",
 		"mods": [{"stat": "pierce", "add": 1}]},
 	"bastiao": {"name": "Bastion", "cat": "Escudo", "rarity": "mitico", "master": true, "cooldown": 14.0,
-		"desc": "Q: raises an energy wall in front of you for 4 s that reflects enemy bullets. Yours pass through. Cooldown 14 s.",
+		"desc": "Q: raises an energy wall in front of you for 4 s that reflects enemy bullets back at whoever fired them, with +50% damage. Yours pass through. Q again pushes the wall 10 m forward: whoever it runs over is pushed and takes 25 damage (growing with your bullet Damage; a raised shield blocks the damage). Cooldown 14 s.",
 		"mods": [{"stat": "barrier", "add": 1}]},
 	# Prisão de Gelo (2026-10-06, desenho do usuário; números meus, ele pediu 3 s; o bloco
 	# quica no vazio e o dano do vazio vem quando o gelo derrete).
@@ -151,12 +151,12 @@ const MASTERS := {
 	# Mega Tapa (2026-10-06, ideia do usuário: tirar quem joga de perto; números meus e o
 	# impacto na parede, escolhido por ele entre 3 extras).
 	"mega_tapa": {"name": "Mega Slap", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 8.0,
-		"desc": "Q: raises your hand and, 0.6 s later, slaps forward (4.5 m), dealing 10 damage and throwing the target far and upward, with no air control until they land. If the thrown player hits a wall in flight, they take 20 more and are dizzy for 0.6 s (slowed and unable to shoot). A raised shield blocks. Cooldown 8 s.",
+		"desc": "Q: raises your hand and, 0.6 s later, slaps forward (4.5 m), dealing 20 damage (growing with your bullet Damage) and throwing the target far and upward, with no air control until they land. If the thrown player hits a wall in flight, they take 35 more and are dizzy for 1 s (slowed and unable to shoot). The slap also knocks enemy bullets in front of you back at whoever fired them. A raised shield blocks. Cooldown 8 s.",
 		"mods": [{"stat": "slap", "add": 1}]},
 	# Gancho (2026-10-06, ideia do usuário: fundiu as minhas propostas de gancho e de
 	# agarrar e arremessar; números meus, aprovados).
-	"gancho": {"name": "Hook", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 16.0,
-		"desc": "Q: throws a hook (up to 20 m) that pulls the enemy right in front of you and holds them for up to 3 s: you move at 70% and can't shoot; they can't act. They serve as a human shield (in Teams, their own team hits them too). Click or Q throws them where you aim: hitting a wall deals 22; hitting another enemy deals 22 to both and leaves both dizzy. Taking 30 damage while holding lets go. A raised shield blocks the hook. Cooldown 16 s (6 s if you miss).",
+	"gancho": {"name": "Hook", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 12.0,
+		"desc": "Q: throws a hook (up to 28 m) that pulls the enemy right in front of you and holds them for up to 3 s: you move at 70% and can't shoot; they can't act. They serve as a human shield (in Teams, their own team hits them too). Click or Q throws them where you aim: hitting a wall deals 22 (growing with your bullet Damage); hitting another enemy deals the same to both and leaves both dizzy. Taking 30 damage while holding lets go. A raised shield blocks the hook. Cooldown 12 s (4 s if you miss).",
 		"mods": [{"stat": "hook", "add": 1}]},
 	# Domínio do Rei (2026-10-11, ideia e nome do usuário, inspirada na ultimate do
 	# Mordekaiser; números meus, aprovados; começar só com o bônus e voltar para onde saíram
@@ -169,10 +169,10 @@ const MASTERS := {
 	# perdida e a Perfurante ignorando a blindagem foram dele; números meus, aprovados).
 	# Lógica em Player._mech_*.
 	"mecha": {"name": "Mecha", "cat": "Corpo", "rarity": "mitico", "master": true, "cooldown": 24.0,
-		"desc": "Q: builds a mecha around you, piece by piece, in 1.2 s (meanwhile you move slowly and can't shoot). Inside, for 8 s: plating of 60 + 60% of your max health that takes damage before anything else, immune to pushes and pulls, you keep shooting with your weapon, and E launches a missile (1 every 2.5 s; 20 + 40% of bullet damage, up to 45, in 3.5 m) instead of the shield. Bigger, 25% slower, no dash or extra jumps. Q again exits early. On exit, it explodes (5 m): 20 damage with full plating, up to 50 with it depleted. Piercer ignores the plating. Cooldown 24 s, counted after you exit.",
+		"desc": "Q: builds a mecha around you, piece by piece, in 1.2 s (meanwhile you move slowly and can't shoot). Inside, for 8 s: plating of 60 + 60% of your max health that takes damage before anything else, immune to pushes and pulls, you keep shooting with your weapon, and E launches a missile (1 every 2.5 s; 20 + 40% of bullet damage, up to 45, in 3.5 m) instead of the shield. Bigger, 25% slower, no extra jumps. Hold jump to charge a leap (1 s) toward where you look, with strong air control; hitting a wall in the leap, the mecha grabs it for 1.5 s and then slides down, and jump leaps again from it. Instead of the dash, hold dash to fire a back thruster that pushes you toward where you look (in the air, without falling) while its bar lasts: 1.5 s, refilling in 3 s. Q again exits early. On exit, it explodes (5 m): 20 damage with full plating, up to 50 with it depleted. Piercer ignores the plating. Cooldown 24 s, counted after you exit.",
 		"mods": [{"stat": "mech", "add": 1}]},
 	"ultimo_suspiro": {"name": "Last Breath", "cat": "Corpo", "rarity": "mitico", "master": true,
-		"desc": "Once per round, the killing blow leaves you at 1 health and unable to die for 3 s. Take someone down in that time to come back with half your health.",
+		"desc": "Once per round, the killing blow leaves you at 1 health and unable to die for 3 s, moving 40% faster; everyone sees the countdown above your name. Take someone down in that time to come back with half your health.",
 		"mods": [{"stat": "last_stand", "add": 1}]},
 	# Camuflagem virou mestra em 2026-10-06 (pedido do usuário; números meus, aprovados):
 	# some mais rápido, anda agachada sem aparecer e, ao aparecer, ganha a Emboscada.
@@ -182,7 +182,7 @@ const MASTERS := {
 	# Bota Foguete (2026-10-06, desenho do usuário a partir da minha proposta; números meus):
 	# passiva. Bônus por estar no ar e um jato curto como a bota foguete do Terraria.
 	"bota_foguete": {"name": "Rocket Boots", "cat": "Movimento", "rarity": "mitico", "master": true,
-		"desc": "Each second in the air gives +10% shot damage, up to +40%; touching the ground resets it. With no air jumps left, press and hold jump for a short jet (0.7 s) that brakes your fall and pushes you up. The jet recharges when you touch the ground.",
+		"desc": "Each second in the air gives +15% shot damage, up to +50%; it lasts 1 s after you land (jump again in that time and it keeps growing). With no air jumps left, press and hold jump for a short jet (1 s) that brakes your fall and pushes you up. The jet recharges when you touch the ground.",
 		"mods": [{"stat": "rocket_boots", "add": 1}]},
 	# Formiga (2026-10-06, ideia do usuário; números meus, aprovados; cancelar no Q e o
 	# impacto ao crescer foram sugestões minhas aceitas).
@@ -219,7 +219,7 @@ const MASTERS := {
 	# qualquer momento). Lógica em Player._grapple_*.
 	"arpeu_ventoso": {"name": "Plunger Grapple", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 6.0,
 		"charges": 3,
-		"desc": "Hold Q: fires a suction cup (up to 35 m). Stuck to the scenery: you swing from it, with half gravity, without losing momentum, and the movement keys steer the swing; the rope keeps shortening. Release Q to fly off with the momentum (+15% and one air jump); Space also releases, with an upward boost. Reaching the wall while still holding, you hang for up to 2 s (jump leaps off it). Stuck to an enemy: you are pulled to them and land a 20-damage kick that pushes them (a raised shield blocks). Dash cancels it. Missed: the charge returns in 1 s. Stores 3 uses: each comes back in 6 s, one at a time.",
+		"desc": "Hold Q: fires a suction cup (up to 35 m). Stuck to the scenery: you swing from it, with half gravity, without losing momentum, and the movement keys steer the swing; the rope keeps shortening. Release Q to fly off with the momentum (+15% and one air jump); Space also releases, with an upward boost. Leaving a swing gives Momentum: +30% Damage for 2 s. Reaching the wall while still holding, you hang for up to 2 s (jump leaps off it). Stuck to an enemy: you are pulled to them and land a 20-damage kick (growing with your bullet Damage) that pushes them (a raised shield blocks). Dash cancels it. Missed: the charge returns in 1 s. Stores 3 uses: each comes back in 6 s, one at a time.",
 		"mods": [{"stat": "grapple", "add": 1}]},
 	"corrente": {"name": "Updraft", "cat": "Movimento", "rarity": "mitico", "master": true, "cooldown": 9.0,
 		"charges": 2,
@@ -259,6 +259,11 @@ const SHELVED_MASTERS := {
 		"desc": "Suas balas seguem a sua mira, sem queda: depois de atirar, mova o mouse para guiá-las em curva.",
 		"mods": [{"stat": "guided", "add": 1}]},
 }
+## Mestras desligadas (2026-10-23, limpeza das mestras pedida pelo usuário): continuam em
+## MASTERS e no código, mas não aparecem no editor, nos pacotes, no Caos nem nos bots, e
+## baralho salvo com uma delas passa para MASTER_DEFAULT. `--mestra=<id>` ainda as liga
+## num teste. Motivo de cada uma em .claude/mestras_desligadas.md. Religar: tirar daqui.
+const MASTERS_OFF := ["chuva_de_meteoros", "formiga"]
 ## Baralho salvo com uma mestra que saiu passa para esta (ver GameState.load_decks).
 const MASTER_REPLACED := {"piloto": "perfurante"}
 
@@ -876,7 +881,12 @@ func all_ids() -> Array:
 
 
 func master_ids() -> Array:
-	return MASTERS.keys()
+	return MASTERS.keys().filter(func(id): return not id in MASTERS_OFF)
+
+
+## Mestra fora do jogo por enquanto (MASTERS_OFF).
+func is_off(id: String) -> bool:
+	return id in MASTERS_OFF
 
 
 ## "No limit per match.", "Only once per match." ou "Up to 2 times per match."

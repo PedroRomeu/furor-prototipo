@@ -27,13 +27,17 @@ const TONES := {
 	"count_go": {"freqs": [330.0, 495.0, 165.0], "gains": [1.0, 0.6, 0.8], "length": 0.8, "decay": 4.5, "sweep": 0.6},
 	# Domínio do Rei (2026-10-12): rugido grave subindo no puxão.
 	"realm_pull": {"freqs": [80.0, 120.0, 160.0], "gains": [1.0, 0.6, 0.3], "length": 0.8, "decay": 1.2, "sweep": 2.2},
+	# Último Suspiro (2026-10-23): batida grave de coração (só para quem está no suspiro) e um
+	# acorde subindo ao voltar com o abate (todos ouvem).
+	"heartbeat": {"freqs": [55.0, 110.0], "gains": [1.0, 0.4], "length": 0.16, "decay": 20.0, "sweep": 0.7},
+	"revive": {"freqs": [440.0, 660.0, 880.0], "gains": [1.0, 0.6, 0.35], "length": 0.7, "decay": 4.0, "sweep": 1.8},
 }
 ## Volume base de cada som, em dB. Baixado em 2026-10-05 (o usuário achava explosões e
 ## efeitos altos demais): explosão -4 -> -11, tiro -8 -> -12, os outros uns 4 dB.
 const VOLUME := {"shot": -12.0, "shield": -10.0, "reflect": -6.0, "hit": -8.0, "hurt": -6.0,
 	"explosion": -11.0, "death": -7.0, "pad": -12.0, "dash": -17.0, "pickup": -13.0,
 	"hitmarker": -7.0, "kill": -6.0, "grapple_fire": -14.0, "grapple_stick": -9.0,
-	"count": -9.0, "count_go": -4.0, "realm_pull": -5.0}
+	"count": -9.0, "count_go": -4.0, "realm_pull": -5.0, "heartbeat": -2.0, "revive": -6.0}
 ## Canal de áudio: sons do mundo vão para Efeitos; os da tela (Sfx.ui) para Interface.
 const BUS_WORLD := "Efeitos"
 const BUS_UI := "Interface"

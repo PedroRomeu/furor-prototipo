@@ -501,8 +501,8 @@ func load_decks() -> void:
 				if d is Dictionary and d.get("cards") is Array:
 					var master := str(d.get("master", ""))
 					master = CardDB.MASTER_REPLACED.get(master, master)
-					if not CardDB.is_master(master):
-						master = CardDB.MASTER_DEFAULT   # baralho de antes das cartas mestras
+					if not CardDB.is_master(master) or CardDB.is_off(master):
+						master = CardDB.MASTER_DEFAULT   # baralho de antes das cartas mestras ou mestra desligada
 					decks.append({"name": str(d.get("name", tr("Deck"))), "cards": _known(d["cards"]), "master": master})
 			equipped = int(data.get("equipped", 0))
 	elif FileAccess.file_exists(OLD_DECK_PATH):
@@ -594,7 +594,7 @@ func parse_deck_code(text: String) -> Dictionary:
 		return {}
 	var master := CardDB.MASTER_REPLACED.get(fields[1], fields[1]) as String
 	var missing: Array = []
-	if not CardDB.is_master(master):
+	if not CardDB.is_master(master) or CardDB.is_off(master):
 		missing.append(fields[1])
 		master = CardDB.MASTER_DEFAULT
 	var cards: Array = []

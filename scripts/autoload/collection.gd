@@ -129,7 +129,7 @@ static func i18n_strings() -> Array:
 
 ## Todas as cartas da raridade (mítica = mestras), as de hoje e as que entrarem depois.
 static func ids_of(rarity: String) -> Array:
-	return CardDB.CARDS.keys().filter(func(id): return CardDB.CARDS[id]["rarity"] == rarity)
+	return CardDB.CARDS.keys().filter(func(id): return CardDB.CARDS[id]["rarity"] == rarity and not CardDB.is_off(id))
 
 
 ## Quanto da coleção você tem (cópias contadas até o máximo de cada carta).
@@ -137,6 +137,8 @@ func progress() -> Vector2i:
 	var have := 0
 	var total := 0
 	for id in CardDB.CARDS:
+		if CardDB.is_off(id):
+			continue
 		have += mini(has_card(id), max_copies(id))
 		total += max_copies(id)
 	return Vector2i(have, total)

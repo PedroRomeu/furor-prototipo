@@ -60,6 +60,7 @@ var aim_seen := 0.0      # tempo vendo o alvo atual (reação antes do 1o tiro)
 var aim_target: Player
 var master_ready := 0.0  # tempo com a carta mestra pronta
 var reload_roll := -1    # Recarga Perfeita: -1 sem recarga, 0 vai deixar passar, 1 vai acertar a faixa
+var leap_goal := 0.0      # Mecha: até quanto carregar o salto (0 = um toque, pulo comum)
 
 
 func set_level(l: int) -> void:
@@ -72,10 +73,15 @@ func think(delta: float) -> void:
 	p.in_move = Vector2.ZERO
 	p.in_jump = false
 	p.in_jump_held = p.velocity.y > -0.5   # segura o pulo subindo, solta caindo
+	if p.mech_charge >= 0.0:
+		p.in_jump_held = p.mech_charge < leap_goal   # Mecha: segura até a carga escolhida
+	else:
+		leap_goal = 0.0
 	p.in_crouch = false
 	p.in_shoot = false
 	p.in_shield = false
 	p.in_dash = false
+	p.in_dash_held = false
 	p.in_reload = false
 	p.in_master = false
 	p.in_master_held = false
@@ -195,11 +201,30 @@ func _master(foe: Player, sees: bool) -> void:
 	if p.mech_state > 0:
 		# Mecha: míssil sempre que pronto com o alvo à vista (a explosão sai sozinha no fim).
 		p.in_shield = p.mech_state == 2 and sees and p.mech_missile_cd <= 0.0
+		# Salto carregado: do chão, para chegar perto de um alvo a 10-25 m (mais longe, mais carga);
+		# da parede, salta de novo logo depois de agarrar.
+		var d := p.global_position.distance_to(foe.global_position)
+		if p.mech_state == 2 and p.mech_charge < 0.0:
+			if p.mech_on_wall and p.mech_hang < Player.MECH_HANG - 0.5:
+				p.in_jump = true
+				leap_goal = 0.5
+			elif p.is_on_floor() and sees and d > 10.0 and d < 25.0 and randf() < 0.03:
+				p.in_jump = true
+				leap_goal = clampf(d / 25.0, 0.3, 1.0) * Player.MECH_CHARGE_TIME
+			# Propulsão: segura o dash na direção do alvo enquanto ele está longe e a barra dá.
+			p.in_dash_held = sees and d > 12.0 and (p.mech_thrusting or p.mech_fuel > Player.MECH_THRUST_FUEL * 0.6)
 		return
 	if is_instance_valid(p.clone):
 		# Clone: troca de lugar com pouca vida ou de vez em quando (o eco sai sozinho).
 		if p.clone.life < ShadowClone.LIFE - 1.0 and (p.health < p.stats["max_health"] * 0.35 or randf() < 0.004):
 			p.in_master = true
+		return
+	if is_instance_valid(p.my_barrier):
+		# Bastião: empurra a parede quando o alvo está à frente dela, a até 10 m.
+		if p.my_barrier.can_push() and sees:
+			var to := foe.global_position - p.my_barrier.global_position
+			if to.length() < Barrier.PUSH_DIST and to.dot(-p.my_barrier.global_transform.basis.z) > 0.0:
+				p.in_master = true
 		return
 	if p.ride_timer > 0.0:
 		# Foguete: salta perto do alvo (o foguete solto segue até ele).
