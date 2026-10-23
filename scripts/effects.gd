@@ -44,6 +44,36 @@ static func clear_cache() -> void:
 	_live.clear()
 
 
+## Travadas das explosões (2026-10-23, achado no check-up do bloco 9): no PC do usuário (Intel HD,
+## ANGLE/D3D11) cada explosão travava um quadro em 80-150 ms. A explosão desenha só a face de
+## trás (CULL_FRONT, para não pintar cada pixel duas vezes); medido: com as duas faces, ou
+## opaca, ou o clarão de acerto, nada trava, e manter o material vivo não muda nada. O que
+## resolve é ter algo com essa mesma combinação desenhado o tempo todo: este pontinho
+## transparente na frente da câmera em uso (o driver não desmonta a configuração). Leitura
+## minha, não confirmada no código do motor. Chamado pela HUD a cada quadro.
+static var _state_keeper: MeshInstance3D
+
+static func keep_states(cam: Camera3D) -> void:
+	if cam == null:
+		return
+	if not is_instance_valid(_state_keeper):
+		var mat := StandardMaterial3D.new()
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.cull_mode = BaseMaterial3D.CULL_FRONT
+		mat.albedo_color = Color(1, 1, 1, 0.0)
+		_state_keeper = MeshInstance3D.new()
+		_state_keeper.mesh = sphere_mesh()
+		_state_keeper.material_override = mat
+		_state_keeper.scale = Vector3.ONE * 0.01
+		_state_keeper.position = Vector3(0, 0, -0.5)
+		_state_keeper.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if _state_keeper.get_parent() != cam:
+		if _state_keeper.get_parent():
+			_state_keeper.get_parent().remove_child(_state_keeper)
+		cam.add_child(_state_keeper)
+
+
 ## Esfera de poucos polígonos: a padrão do Godot tem 64 x 32 faixas, demais para um clarão.
 static func sphere_mesh() -> SphereMesh:
 	if _sphere == null:

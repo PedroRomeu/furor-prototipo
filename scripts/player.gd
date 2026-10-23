@@ -1619,9 +1619,9 @@ func _build_viewmodel() -> void:
 	_rest_sword()
 	radio = _make_radio()
 	_no_shadows(radio)
-	radio.scale = Vector3.ONE * 0.9
-	radio.position = Vector3(0.02, 0.0, 0.02)
-	radio.rotation = Vector3(0.3, 0.2, 0.1)
+	radio.scale = Vector3.ONE * 0.45
+	radio.position = Vector3(0.0, -0.03, 0.02)
+	radio.rotation = Vector3(0.35, 0.35, 0.12)
 	radio.visible = false
 	viewmodel.add_child(radio)
 	hand_pivot = Node3D.new()

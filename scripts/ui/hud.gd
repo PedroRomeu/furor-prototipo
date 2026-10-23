@@ -785,6 +785,7 @@ func _arc_piece(pts: PackedVector2Array, cols: PackedColorArray, radius: float, 
 
 
 func _process(delta: float) -> void:
+	Effects.keep_states(get_viewport().get_camera_3d())   # sem isso cada explosão trava (Effects)
 	if Prof.enabled:
 		var t := Time.get_ticks_usec()
 		_frame_step(delta)

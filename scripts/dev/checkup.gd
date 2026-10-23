@@ -42,6 +42,7 @@ func _ready() -> void:
 		5: await _block_new(_part())
 		7: await _block_camo()
 		8: await _block_afflictions()
+		9: await _block_masters(_part())
 		_: _note("bloco desconhecido")
 	_save()
 	get_tree().quit()
@@ -171,6 +172,113 @@ func _block_match() -> void:
 		_note("%-34s %6.1f ms (pior %.1f)  montar %.0f ms  1o quadro %.0f ms  %d malhas" % [
 			"mapa " + MapList.SIZES[size]["id"] + ", 4", m.x, m.y, build_ms, first_ms, meshes])
 	_note("chamadas de desenho no último: %d" % RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME))
+
+
+## Bloco 9 (2026-10-23): o que entrou na build 0.9.0.12 (limpeza das mestras). Parte 1:
+## Mecha visto de fora nos 3 bots (só o desenho, com o jogo pausado, e com o jogo andando,
+## que inclui a animação das juntas), poses (carga, propulsão, parede) e a etiqueta do Último
+## Suspiro, com prints. Parte 2: Chuva de Mísseis (uma e três ao mesmo tempo, com o jogo
+## andando por 2 salvas: média e pior quadro) e a mira do rádio, com prints.
+func _block_masters(part: int) -> void:
+	await _start_match(0)
+	var me = game.me
+	var cam: Camera3D = me.camera
+	var fwd := -cam.global_transform.basis.z
+	fwd.y = 0.0
+	fwd = fwd.normalized()
+	var right := fwd.cross(Vector3.UP)
+	var ground: Vector3 = me.global_position
+	var bots: Array = game.players.filter(func(p): return p != me)
+	for i in bots.size():
+		bots[i].global_position = ground + fwd * 9.0 + right * (i - 1) * 4.0
+		bots[i].velocity = Vector3.ZERO
+		bots[i].immortal = true
+		bots[i].look_yaw = me.look_yaw + PI
+		bots[i].rotation.y = bots[i].look_yaw
+	var shot := func(file: String) -> void:
+		await get_tree().process_frame
+		get_tree().root.get_texture().get_image().save_png("res://_prints/mestras_%s.png" % file)
+	var base := await measure()
+	_note("%-34s %6.1f ms (pior %.1f)" % ["partida, mapa pequeno, 4", base.x, base.y])
+	if part == 1:
+		await cost("Mecha x3, só o desenho (pausado)", func(on):
+			for b in bots:
+				b._mech_set(2 if on else 0))
+		get_tree().paused = false
+		await cost("Mecha x3, jogo andando (animação)", func(on):
+			for b in bots:
+				b._mech_set(2 if on else 0))
+		bots[0].in_jump = true   # o bot obedece às próprias teclas: segura o pulo e o dash
+		bots[0].in_jump_held = true
+		bots[1].in_dash_held = true
+		bots[1].rotation.y = me.look_yaw   # de costas: a chama aparece
+		bots[2].mech_on_wall = true
+		bots[2].rotation.y = me.look_yaw + PI / 2.0   # de lado, a mão na parede à direita da tela
+		bots[2].mech_wall_point = bots[2].chest() + right * 1.8 + Vector3.UP * 0.5
+		await get_tree().create_timer(0.4).timeout
+		get_tree().paused = true
+		await shot.call("mecha_poses")
+		for b in bots:
+			b._mech_set(0)
+			b.last_stand_timer = 2.4
+			b._process(0.016)
+		await shot.call("ultimo_suspiro")
+		for b in bots:
+			b.last_stand_timer = 0.0
+		return
+	var sample := func(seconds: float) -> Vector2:
+		_frames.clear()
+		_sampling = true
+		var t0 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t0 < seconds * 1000.0:
+			await get_tree().process_frame
+		_sampling = false
+		var sum := 0.0
+		var worst := 0.0
+		for f in _frames:
+			sum += f
+			worst = maxf(worst, f)
+		return Vector2(sum / maxf(1, _frames.size()), worst)
+	# Cada medida anota os quadros acima de 40 ms com o tempo desde o começo da chuva (aviso
+	# em 1,2 s e 3,2 s, salvas em 2,0 s e 4,0 s), para achar o que trava.
+	var slow_log := func(t0: int) -> String:
+		var out := PackedStringArray()
+		var at := 0.0
+		for f in _frames:
+			at += f
+			if f > 40.0:
+				out.append("%.0f ms em %.2f s" % [f, at / 1000.0])
+		return ", ".join(out) if not out.is_empty() else "nenhum"
+	var rain_cost := func(label: String, count: int) -> void:
+		get_tree().paused = false
+		for k in count:
+			MissileRain.spawn(me.get_parent(), me, ground + fwd * (9.0 + 6.0 * k) - right * 4.0, right, 18.0)
+		var with: Vector2 = await sample.call(4.4)
+		_note("%-34s %6.1f ms (pior %.1f)  lentos: %s" % [label, with.x, with.y, slow_log.call(0)])
+		get_tree().call_group("missile_rains", "queue_free")
+		await _clear_effects()
+		get_tree().paused = true
+	get_tree().paused = false
+	var without: Vector2 = await sample.call(2.0)
+	_note("%-34s %6.1f ms (pior %.1f)" % ["andando, sem chuva", without.x, without.y])
+	await rain_cost.call("Chuva x1, a 1a da partida", 1)
+	await rain_cost.call("Chuva x1, de novo", 1)
+	await rain_cost.call("Chuva x3", 3)
+	get_tree().paused = false
+	MissileRain.spawn(me.get_parent(), me, ground + fwd * 9.0 - right * 4.0, right, 18.0)
+	await get_tree().create_timer(1.6).timeout
+	await shot.call("chuva_aviso")
+	get_tree().call_group("missile_rains", "queue_free")
+	await _clear_effects()
+	me.cards.append("chuva_de_misseis")
+	me._recompute_stats()
+	me._rain_start()
+	me.rain_point = ground + fwd * 12.0
+	me.rain_aim = 2
+	await get_tree().create_timer(0.3).timeout
+	get_tree().paused = true
+	await shot.call("radio_mirando")
+	me._rain_cancel()
 
 
 ## Bloco 7 (2026-10-09): arma da primeira pessoa translúcida da Camuflagem, contra opaca.
